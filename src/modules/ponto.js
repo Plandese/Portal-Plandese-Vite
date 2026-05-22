@@ -631,4 +631,8 @@ export function exportSemanaExcel(obraNome,obraData,days,semLabel){
   });
   wd.push([]);wd.push(['','','TOTAIS',...Array(7).fill(''),totN,totE,totT]);
   const ws=XLSX.utils.aoa_to_sheet(wd);
-  ws['!cols']=[{wch:6},{wch:22},{wch:16},...Array(7).fill({wch:16})
+  ws['!cols']=[{wch:6},{wch:22},{wch:16},...Array(7).fill({wch:16}),{wch:12},{wch:10},{wch:12}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}},{s:{r:1,c:0},e:{r:1,c:11}},{s:{r:2,c:0},e:{r:2,c:11}},{s:{r:3,c:0},e:{r:3,c:11}}];
+  XLSX.utils.book_append_sheet(wb,ws,obraNome.slice(0,31));
+  XLSX.writeFile(wb,`Plandese_${obraNome.replace(/\s/g,'_')}_${semLabel.replace(/\//g,'').replace(/\s/g,'').replace(/—/g,'_')}.xlsx`);
+}

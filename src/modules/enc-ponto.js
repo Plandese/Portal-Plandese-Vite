@@ -241,12 +241,28 @@ async function encTimeChange(n){
 async function encTipoChange(n){
   const tipo=document.getElementById('tipo-'+n)?.value;
   const card=document.getElementById('ec-'+n);
-  if(card&&tipo&&tipo!=='Presença'){
-    card.className='mob-colab-card ausente';
+  const isAusente=tipo&&tipo!=='Presença';
+  if(isAusente){
+    // Limpar horas de entrada/saída
+    const entEl=document.getElementById('ent-'+n);
+    const saiEl=document.getElementById('sai-'+n);
+    if(entEl){entEl.value='';entEl.classList.remove('filled');}
+    if(saiEl){saiEl.value='';saiEl.classList.remove('filled');}
+    // Mostrar 0 horas
+    const hBox=document.getElementById('h-'+n);
+    if(hBox)hBox.innerHTML='<span style="color:var(--gray-300)">—</span>';
+    if(card){
+      card.className='mob-colab-card ausente';
+      const statusEl=card.querySelector('.mob-colab-status');
+      if(statusEl)statusEl.innerHTML=`<span class="badge b-red">${tipo}</span>`;
+    }
+  } else if(card){
+    card.className='mob-colab-card';
     const statusEl=card.querySelector('.mob-colab-status');
-    if(statusEl)statusEl.innerHTML=`<span class="badge b-red">${tipo}</span>`;
+    if(statusEl)statusEl.innerHTML='';
   }
   encAutoSave(n);
+  encRecalcStats();
 }
 
 function encAutoSave(n){
@@ -458,4 +474,3 @@ export {
   encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel,
   encVoltarHome, _encHideAll
 };
-                              

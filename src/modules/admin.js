@@ -434,7 +434,7 @@ async function renderFechoMes(){
   if(infoEl) infoEl.textContent = 'Período: ' + dIniStr.split('-').reverse().join('/') + ' a ' + dFimStr.split('-').reverse().join('/');
 
   const tbody = document.getElementById('fecho-tbody');
-  if(tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--gray-500)">A carregar dados…</td></tr>';
+  if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-500)">A carregar dados…</td></tr>';
 
   try {
     const {data: regs, error} = await sb.from('registos_ponto').select('*').gte('data', dIniStr).lte('data', dFimStr);
@@ -459,13 +459,17 @@ async function renderFechoMes(){
 
     for(const colab of colabsAtivos){
       const {n, nome, func} = colab;
-      let totN = 0, totE = 0;
+      let totN = 0, totE = 0, dFer = 0, dFaltInj = 0, dFaltJust = 0;
       const obraHoras = {};
 
       for(const dk of datas){
         const r = (regMap[dk]||{})[String(n)];
         if(!r) continue;
         if(r.tipo === 'Folga') continue;
+        if(r.tipo === 'Férias'){dFer++; continue;}
+        if(r.tipo === 'Falta Injust.'){dFaltInj++; continue;}
+        if(r.tipo === 'Falta Just.'){dFaltJust++; continue;}
+        if(r.tipo && r.tipo.includes('Falta')){dFaltInj++; continue;} // compat. registos antigos
         const dateObj = new Date(dk + 'T12:00:00');
         const h = calcH(r.entrada ? r.entrada.slice(0,5) : '', r.saida ? r.saida.slice(0,5) : '', dateObj);
         totN += h.n;
@@ -475,14 +479,14 @@ async function renderFechoMes(){
       }
 
       const totT = totN + totE;
-      if(totT === 0) continue;
-      rows.push({n, nome, func, totN, totE, totT, obraHoras});
+      if(totT === 0 && dFer === 0 && dFaltInj === 0 && dFaltJust === 0) continue;
+      rows.push({n, nome, func, totN, totE, totT, obraHoras, dFer, dFaltInj, dFaltJust});
     }
 
     if(!tbody) return;
 
     if(rows.length === 0){
-      tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--gray-400)">Sem registos para este período (' + dIniStr + ' a ' + dFimStr + '). Total de registos carregados: ' + (regs||[]).length + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-400)">Sem registos para este período (' + dIniStr + ' a ' + dFimStr + '). Total de registos carregados: ' + (regs||[]).length + '</td></tr>';
       const totaisEl = document.getElementById('fecho-totais');
       if(totaisEl) totaisEl.style.display = 'none';
       return;
@@ -510,6 +514,9 @@ async function renderFechoMes(){
         + '<td style="padding:10px 14px;text-align:right;font-family:monospace;color:var(--gray-700)">' + fmtH(row.totN) + '</td>'
         + '<td style="padding:10px 14px;text-align:right;font-family:monospace;color:#3b82f6">' + fmtH(row.totE) + '</td>'
         + '<td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:var(--green)">' + fmtH(row.totT) + '</td>'
+        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#16a34a;font-weight:600">' + (row.dFer > 0 ? row.dFer + 'd' : '—') + '</td>'
+        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#dc2626;font-weight:600">' + (row.dFaltInj > 0 ? row.dFaltInj + 'd' : '—') + '</td>'
+        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#dc2626;font-weight:600">' + (row.dFaltJust > 0 ? row.dFaltJust + 'd' : '—') + '</td>'
         + '<td style="padding:10px 14px">' + (obraBadges || '<span style="color:var(--gray-300);font-size:12px">—</span>') + '</td>'
         + '</tr>';
     });
@@ -529,7 +536,7 @@ async function renderFechoMes(){
 
   } catch(err) {
     console.error('renderFechoMes error:', err);
-    if(tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--red)">Erro: ' + err.message + '</td></tr>';
+    if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--red)">Erro: ' + err.message + '</td></tr>';
   }
 }
 
@@ -553,12 +560,15 @@ async function exportFechoMes(){
     {header:'H.Normais', key:'hn', width:12},
     {header:'H.Extra', key:'he', width:10},
     {header:'Total', key:'ht', width:10},
+    {header:'F\u00e9rias', key:'fer', width:9},
+    {header:'F.Injust.', key:'finj', width:10},
+    {header:'F.Just.', key:'fjust', width:10},
     {header:'Distribui\u00e7\u00e3o por Obra', key:'obras', width:50},
   ];
 
   // Linha de título (inserida antes do cabeçalho)
   ws.spliceRows(1, 0, []);
-  ws.mergeCells('A1:G1');
+  ws.mergeCells('A1:J1');
   const titleCell = ws.getCell('A1');
   titleCell.value = 'Folha de Fecho \u2014 ' + mesNome + ' 2026 (' + dIniStr + ' a ' + dFimStr + ')';
   titleCell.font = {bold:true, size:13, color:{argb:'FF002060'}};
@@ -568,7 +578,7 @@ async function exportFechoMes(){
 
   // Cabeçalhos da tabela
   const hdr = ws.getRow(2);
-  ['N\u00ba','Nome','Fun\u00e7\u00e3o','H. Normais','H. Extra','Total Horas','Distribui\u00e7\u00e3o por Obra'].forEach((v,i) => {
+  ['N\u00ba','Nome','Fun\u00e7\u00e3o','H. Normais','H. Extra','Total Horas','F\u00e9rias','F.Injust.','F.Just.','Distribui\u00e7\u00e3o por Obra'].forEach((v,i) => {
     const cell = hdr.getCell(i+1);
     cell.value = v;
     cell.font = {bold:true, color:{argb:'FFFFFFFF'}};
@@ -588,7 +598,7 @@ async function exportFechoMes(){
     }).join(' | ');
 
     const dataRow = ws.getRow(i+3);
-    dataRow.values = [row.n, row.nome, row.func||'', fmtH(row.totN), fmtH(row.totE), fmtH(row.totT), obraStr];
+    dataRow.values = [row.n, row.nome, row.func||'', fmtH(row.totN), fmtH(row.totE), fmtH(row.totT), row.dFer||0, row.dFaltInj||0, row.dFaltJust||0, obraStr];
     dataRow.eachCell(cell => {
       cell.alignment = {vertical:'middle', wrapText:true};
       if(i%2===1) cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFF2F6FF'}};
@@ -601,7 +611,10 @@ async function exportFechoMes(){
   const globalN = rows.reduce((s,r) => s+r.totN, 0);
   const globalE = rows.reduce((s,r) => s+r.totE, 0);
   const globalT = rows.reduce((s,r) => s+r.totT, 0);
-  totRow.values = ['', 'TOTAL (' + rows.length + ' trabalhadores)', '', fmtH(globalN), fmtH(globalE), fmtH(globalT), ''];
+  const globalFer = rows.reduce((s,r) => s+(r.dFer||0), 0);
+  const globalFaltInj = rows.reduce((s,r) => s+(r.dFaltInj||0), 0);
+  const globalFaltJust = rows.reduce((s,r) => s+(r.dFaltJust||0), 0);
+  totRow.values = ['', 'TOTAL (' + rows.length + ' trabalhadores)', '', fmtH(globalN), fmtH(globalE), fmtH(globalT), globalFer||'', globalFaltInj||'', globalFaltJust||'', ''];
   totRow.eachCell(cell => {
     cell.font = {bold:true, color:{argb:'FF002060'}};
     cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFD9E1F2'}};
@@ -624,4 +637,5 @@ export {
   loadPainelConfig, savePainelConfig, renderPainel, buildWidget, _painelCard,
   openPainelCustomizer, closePainelCustomizer, savePainelCustomizer,
   painelWChkChange, painelObraChkChange,
-  renderFechoM
+  renderFechoMes, exportFechoMes
+};
