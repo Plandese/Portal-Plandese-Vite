@@ -220,6 +220,84 @@ Object.assign(window, {
   renderMapaFerias, feriasNavAno, feriasTogglePrevista,
 });
 
+// ── Settings panel ──────────────────────────────────────────────────────────
+(function () {
+  let open = false;
+
+  window.toggleSettingsPanel = function () {
+    const panel = document.getElementById('settings-panel');
+    if (!panel) return;
+    open = !open;
+    panel.classList.toggle('open', open);
+  };
+
+  document.addEventListener('click', function (e) {
+    if (!open) return;
+    if (!e.target.closest('#settings-wrap')) {
+      open = false;
+      document.getElementById('settings-panel')?.classList.remove('open');
+    }
+  });
+})();
+
+// ── Dark mode ────────────────────────────────────────────────────────────────
+(function () {
+  const KEY = 'plandese-dark-mode';
+  function applyTheme(dark) {
+    document.body.classList.toggle('dark-mode', dark);
+    const lbl = document.getElementById('settings-theme-label');
+    if (lbl) lbl.textContent = dark ? 'Ecrã Claro' : 'Ecrã Escuro';
+  }
+  // restore saved preference
+  applyTheme(localStorage.getItem(KEY) === '1');
+
+  window.toggleDarkMode = function () {
+    const dark = !document.body.classList.contains('dark-mode');
+    localStorage.setItem(KEY, dark ? '1' : '0');
+    applyTheme(dark);
+  };
+})();
+
+// ── Profile modal ─────────────────────────────────────────────────────────────
+window.openProfileModal = function () {
+  const u = S.currentUser;
+  if (!u) return;
+  document.getElementById('perfil-av-badge').textContent = u.initials || '';
+  document.getElementById('perfil-nome-display').textContent = u.nome || '';
+  document.getElementById('perfil-role-display').textContent = u.role || '';
+  document.getElementById('perfil-nome-input').value = u.nome || '';
+  document.getElementById('perfil-senha').value = '';
+  document.getElementById('perfil-senha2').value = '';
+  document.getElementById('modal-perfil').classList.add('open');
+};
+
+window.closePerfil = function () {
+  document.getElementById('modal-perfil').classList.remove('open');
+};
+
+window.savePerfil = async function () {
+  const nome = document.getElementById('perfil-nome-input').value.trim();
+  const pass = document.getElementById('perfil-senha').value;
+  const pass2 = document.getElementById('perfil-senha2').value;
+  if (!nome) { showToast('Introduza um nome'); return; }
+  if (pass && pass !== pass2) { showToast('As senhas não coincidem'); return; }
+  const u = S.currentUser;
+  if (!u) return;
+  u.nome = nome;
+  const initials = nome.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  u.initials = initials;
+  document.getElementById('u-nm').textContent = nome;
+  document.getElementById('u-av').textContent = initials;
+  if (pass) {
+    try {
+      const { sb } = await import('./supabase.js');
+      await sb.from('utilizadores').update({ nome, password: pass, initials }).eq('username', u.key);
+    } catch (e) { showToast('Erro ao guardar no servidor'); return; }
+  }
+  closePerfil();
+  showToast('Perfil actualizado');
+};
+
 // ── Hooks goTo: inicializa cada secção quando navegada ──
 (function () {
   const _orig = window.goTo;

@@ -773,6 +773,11 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         Guardado
       </div>
+      <!-- DATE -->
+      <div class="dw-wrap" id="dw-wrap-adm">
+        <div class="dw-date" id="dw-date-adm" onclick="dwToggleCal('adm')">Carregando...</div>
+        <div class="dw-cal" id="dw-cal-adm" style="display:none"></div>
+      </div>
       <!-- NOTIFICATION BELL -->
       <div class="notif-wrap">
         <button class="notif-btn" id="notif-btn" onclick="toggleNotifPanel()" title="Notificações">
@@ -780,17 +785,39 @@
           <span class="notif-badge" id="notif-badge" hidden>0</span>
         </button>
       </div>
-      <div class="app-bar-chip"><div class="app-bar-av" id="u-av">AD</div><div><div class="app-bar-nm" id="u-nm">Admin</div><div class="app-bar-role" id="u-role">Administrador</div></div></div>
-      <div class="dw-wrap" id="dw-wrap-adm">
-        <div class="dw-time" id="dw-clock-adm">00:00:00</div>
-        <div class="dw-date" id="dw-date-adm" onclick="dwToggleCal('adm')">Carregando...</div>
-        <div class="dw-cal" id="dw-cal-adm" style="display:none"></div>
+      <!-- SETTINGS -->
+      <div class="settings-wrap" id="settings-wrap">
+        <button class="settings-btn" id="settings-btn" onclick="toggleSettingsPanel()" title="Definições">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+        <div class="settings-panel" id="settings-panel">
+          <div class="settings-user-row">
+            <div class="settings-av" id="u-av">AD</div>
+            <div class="settings-user-info">
+              <div class="settings-nm" id="u-nm">Admin</div>
+              <div class="settings-role" id="u-role">Administrador</div>
+            </div>
+          </div>
+          <div class="settings-sep"></div>
+          <button class="settings-item" onclick="openProfileModal();toggleSettingsPanel()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            Ajustes de Perfil
+          </button>
+          <button class="settings-item" id="settings-theme-btn" onclick="toggleDarkMode()">
+            <svg viewBox="0 0 24 24" fill="currentColor" id="settings-theme-icon"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
+            <span id="settings-theme-label">Ecrã Escuro</span>
+          </button>
+          <div class="settings-sep"></div>
+          <button class="settings-item" id="btn-refresh" onclick="refreshPortal();toggleSettingsPanel()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Actualizar
+          </button>
+          <button class="settings-item settings-item-danger" onclick="doLogout()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            Sair
+          </button>
+        </div>
       </div>
-      <button class="btn-refresh" id="btn-refresh" onclick="refreshPortal()" title="Actualizar dados">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        <span>Actualizar</span>
-      </button>
-      <button class="btn-out" onclick="doLogout()">Sair</button>
     </div>
   </div>
   </div>
@@ -2799,6 +2826,28 @@
       Produção
     </button>
   </nav>
+<!-- MODAL PERFIL -->
+<div class="modal-bg" id="modal-perfil">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">Ajustes de Perfil</div>
+    <div class="modal-sub" id="perfil-sub">Actualize as suas informações de acesso</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:12px 14px;background:var(--gray-50);border-radius:var(--radius);border:1px solid var(--gray-200)">
+      <div class="settings-av" style="width:40px;height:40px;font-size:14px;flex-shrink:0" id="perfil-av-badge">AD</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--gray-900)" id="perfil-nome-display"></div>
+        <div style="font-size:12px;color:var(--gray-500)" id="perfil-role-display"></div>
+      </div>
+    </div>
+    <div class="field"><label>Nome de apresentação</label><input type="text" id="perfil-nome-input" placeholder="Nome completo"/></div>
+    <div class="field"><label>Nova senha</label><input type="password" id="perfil-senha" placeholder="Deixe em branco para manter"/></div>
+    <div class="field"><label>Confirmar senha</label><input type="password" id="perfil-senha2" placeholder="Repita a nova senha"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePerfil()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePerfil()">Guardar</button>
+    </div>
+  </div>
+</div>
+
     <script src="/artigos-data.js"></script>
     <script type="module" src="/src/main.js"></script>
 </body>
