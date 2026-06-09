@@ -7,7 +7,7 @@ import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
 import { TIPOS } from '../config.js';
 import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
-import { _encEquipShowState, startEncQrScanner } from './enc-equip.js';
+import { _encEquipShowState, startEncQrScanner, stopEncQrScanner } from './enc-equip.js';
 import { stopCombQrScanner } from './enc-combustivel.js';
 
 // ═══════════════════════════════════════
