@@ -3,7 +3,11 @@
   "appName": "Plandese Portal",
   "webDir": "dist_mobile",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "ios": {
+    "preferredContentMode": "mobile"
   },
   "plugins": {
     "SplashScreen": {
