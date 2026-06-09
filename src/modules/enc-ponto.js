@@ -20,7 +20,7 @@ async function initEnc(){
   const _nomeEl = document.getElementById('enc-home-nome');
   if (_nomeEl) _nomeEl.textContent = S.currentUser?.nome?.split(' ')[0] || 'Encarregado';
   document.getElementById('enc-screen0').style.display='flex';
-  ['enc-screen-menu-ponto','enc-screen1','enc-screen2','enc-screen-equip',
+  ['enc-screen1','enc-screen2','enc-screen-equip',
    'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
    'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
@@ -360,11 +360,8 @@ function _encMarkDoneToday(type){
 }
 
 // ── Navegação entre ecrãs ──────────────
-function encGoMenuPonto(){
-  _encHideAll();
-  const s=document.getElementById('enc-screen-menu-ponto');
-  s.style.display='flex'; s.style.flexDirection='column';
-}
+// Mantido para compatibilidade — navega directamente para o home
+function encGoMenuPonto(){ encVoltarHome(); }
 
 function encGoFolhaPontoPlandese(){
   _encHideAll();
@@ -497,7 +494,7 @@ function encVoltarHome(){
 }
 
 function _encHideAll(){
-  ['enc-screen0','enc-screen-menu-ponto','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });

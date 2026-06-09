@@ -120,13 +120,11 @@ export function doLogout() {
   document.getElementById('admin-app').style.display = 'none';
   document.body.classList.remove('enc-mode');
   S.encObraId = ''; S.encDataSel = '';
-  ['enc-screen0','enc-screen-menu-ponto','enc-screen1','enc-screen2',
+  ['enc-screen0','enc-screen1','enc-screen2',
    'enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
-  const _s1 = document.getElementById('enc-screen1');
-  if(_s1){ _s1.style.display='flex'; _s1.style.flexDirection='column'; }
   document.getElementById('lu').value = '';
   document.getElementById('lp').value = '';
 }

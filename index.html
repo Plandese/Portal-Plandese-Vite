@@ -181,59 +181,6 @@
     </div>
   </div>
 
-  <!-- ECRÃ: SUB-MENU FOLHA DE PONTO -->
-  <div id="enc-screen-menu-ponto" style="display:none;flex:1;flex-direction:column">
-    <div class="enc-home-body">
-      <!-- Cabeçalho com voltar -->
-      <div class="enc-sub-header">
-        <button onclick="encVoltarHome()" class="enc-back-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-          Voltar
-        </button>
-        <div class="enc-sub-title">Folhas de Ponto</div>
-      </div>
-      <div class="enc-home-cards">
-
-        <!-- Registo MO Plandese -->
-        <button class="enc-mode-card" onclick="encGoFolhaPontoPlandese()">
-          <div class="enc-mode-icon blue">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div class="enc-mode-title">Registo de MO Plandese</div>
-            <div class="enc-mode-desc">Registar presenças e horas da equipa Plandese</div>
-          </div>
-          <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></div>
-        </button>
-
-        <!-- Registo MO Aluguer -->
-        <button class="enc-mode-card" onclick="encGoFolhaPontoAluguer()">
-          <div class="enc-mode-icon purple">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div class="enc-mode-title">Registo de MO Aluguer</div>
-            <div class="enc-mode-desc">Registar presenças de trabalhadores cedidos por empresa externa</div>
-          </div>
-          <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></div>
-        </button>
-
-        <!-- Visualização de registos anteriores -->
-        <button class="enc-mode-card" onclick="encGoHistoricoEnc()">
-          <div class="enc-mode-icon green">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div class="enc-mode-title">Visualização dos registos anteriores</div>
-            <div class="enc-mode-desc">Consultar os registos de ponto já submetidos</div>
-          </div>
-          <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></div>
-        </button>
-
-      </div>
-    </div>
-  </div>
-
   <!-- ECRÃ EQUIPAMENTO — LEITOR QR + FORMULÁRIO -->
   <div id="enc-screen-equip" style="display:none;flex:1;flex-direction:column">
     <div class="enc-equip-body" id="enc-equip-body">
@@ -573,7 +520,16 @@
   </div>
 
   <!-- ECRÃ 1: DADOS DO REGISTO -->
-  <div id="enc-screen1" class="enc-body" style="display:none">
+  <div id="enc-screen1" style="display:none;flex:1;flex-direction:column;background:var(--blue-800);position:relative;overflow:hidden">
+    <!-- Cabeçalho com Voltar -->
+    <div style="padding:10px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:2">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Voltar
+      </button>
+      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">Folha de Ponto — Plandese</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 clamp(14px,4vw,22px) 24px">
     <div class="enc-card">
       <div class="enc-card-title">Novo registo de ponto</div>
       <div class="enc-card-sub">Preencha os dados do dia de trabalho</div>
@@ -607,6 +563,7 @@
         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
       </button>
     </div>
+    </div>
   </div>
 
   <!-- ECRÃ 2: COLABORADORES -->
@@ -614,7 +571,11 @@
 
     <!-- Contexto do registo -->
     <div class="enc-ctx">
-      <div style="flex:1;min-width:0">
+      <button onclick="encVoltarHome()" style="flex-shrink:0;padding:5px 10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.85);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        Início
+      </button>
+      <div style="flex:1;min-width:0;text-align:center">
         <div class="enc-ctx-lbl">Registo em curso</div>
         <div class="enc-ctx-obra" id="enc-resumo-obra">—</div>
         <div class="enc-ctx-info" id="enc-resumo-info">—</div>
@@ -671,7 +632,7 @@
   <!-- ECRÃ: HISTÓRICO DO ENCARREGADO -->
   <div id="enc-screen-historico-enc" style="display:none;flex:1;flex-direction:column">
     <div style="background:var(--blue-700);padding:12px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px">
-      <button onclick="encGoMenuPonto()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
@@ -695,7 +656,7 @@
 
     <!-- Cabeçalho -->
     <div style="padding:12px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;position:relative;z-index:2">
-      <button onclick="encGoMenuPonto()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
