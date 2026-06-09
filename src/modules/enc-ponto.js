@@ -42,6 +42,7 @@ async function initEnc(){
   document.getElementById('enc-screen1').style.display='none';
   document.getElementById('enc-screen2').style.display='none';
   document.getElementById('enc-screen-equip').style.display='none';
+  _encUpdateCtxBar();
 }
 
 async function encPassarColaboradores(){
@@ -314,6 +315,7 @@ async function encSubmeterRegisto(){
   showToast('A submeter...');
   for(const n of (S.activeRows[dk]||[])){encAutoSave(n);await sbSaveRegistoEnc(dk,n);}
   showToast('Registo submetido com sucesso! ✓');
+  _encMarkDoneToday('plandese');
   setTimeout(()=>encVoltarHome(), 1500);
 }
 
@@ -321,6 +323,34 @@ async function encSaveDay(){
   await encSubmeterRegisto();
 }
 
+
+// ── Context bar: data/hora + badges "registado hoje" ──────────
+function _encUpdateCtxBar(){
+  const now=new Date();
+  const dias=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const dateEl=document.getElementById('enc-ctx-date');
+  const timeEl=document.getElementById('enc-ctx-time');
+  if(dateEl) dateEl.textContent=`${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]}`;
+  if(timeEl){ const h=String(now.getHours()).padStart(2,'0'),m=String(now.getMinutes()).padStart(2,'0'); timeEl.textContent=`${h}:${m}`; }
+  const dk=fmt(now);
+  const plandOk=localStorage.getItem(`enc_done_plandese_${dk}`)==='1';
+  const alugOk =localStorage.getItem(`enc_done_aluguer_${dk}`)==='1';
+  const donePl=document.getElementById('enc-done-plandese');
+  const doneAl=document.getElementById('enc-done-aluguer');
+  if(donePl) donePl.classList.toggle('visible',plandOk);
+  if(doneAl) doneAl.classList.toggle('visible',alugOk);
+  const statusEl=document.getElementById('enc-ponto-status');
+  const statusTxt=document.getElementById('enc-ponto-status-txt');
+  if(statusEl&&statusTxt){
+    if(plandOk||alugOk){ statusEl.className='enc-ctx-status ok'; statusTxt.textContent='Ponto registado'; }
+    else { statusEl.className='enc-ctx-status pending'; statusTxt.textContent='Ponto não registado'; }
+  }
+}
+
+function _encMarkDoneToday(type){
+  localStorage.setItem(`enc_done_${type}_${fmt(new Date())}`,'1');
+}
 
 // ── Navegação entre ecrãs ──────────────
 function encGoMenuPonto(){
@@ -456,6 +486,7 @@ function encVoltarHome(){
   _encHideAll();
   document.getElementById('enc-screen0').style.display='flex';
   document.getElementById('enc-screen0').style.flexDirection='column';
+  _encUpdateCtxBar();
 }
 
 function _encHideAll(){

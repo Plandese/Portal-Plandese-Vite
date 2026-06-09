@@ -496,6 +496,63 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 }
 .enc-back-btn:hover{background:#f9fafb}
 .enc-sub-title{font-size:15px;font-weight:700;color:#111827}
+/* ── Context bar (data/hora + estado ponto) ── */
+.enc-ctx-bar{
+  background:white;border-bottom:1px solid #f0f0f0;
+  padding:10px clamp(14px,3.5vw,20px);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.enc-ctx-date{font-size:13px;font-weight:600;color:#374151}
+.enc-ctx-time{font-size:11px;color:#9ca3af;margin-top:1px}
+.enc-ctx-status{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;
+  white-space:nowrap;flex-shrink:0;
+}
+.enc-ctx-status.ok{background:#f0fdf4;color:#16a34a}
+.enc-ctx-status.pending{background:#fff7ed;color:#ea580c}
+.enc-ctx-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+/* ── Section label ── */
+.enc-sec-label{
+  font-size:10px;font-weight:700;color:#9ca3af;
+  letter-spacing:.8px;text-transform:uppercase;padding:0 2px;margin-bottom:6px;
+}
+/* ── Primary card com acento lateral ── */
+.enc-card-p{
+  background:white;border-radius:12px;border:1px solid #e8eaed;
+  cursor:pointer;display:flex;align-items:stretch;overflow:hidden;
+  font-family:'DM Sans',sans-serif;text-align:left;width:100%;
+  transition:background .12s,box-shadow .12s;box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.enc-card-p:hover{background:#fafafa;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.enc-card-p:active{background:#f3f4f6;box-shadow:none}
+.enc-card-p-accent{width:4px;flex-shrink:0;align-self:stretch}
+.enc-card-p-inner{display:flex;align-items:center;gap:12px;padding:15px 14px;flex:1;min-width:0}
+.enc-card-p-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.enc-card-p-icon svg{width:23px;height:23px}
+.enc-card-p-info{flex:1;min-width:0}
+.enc-card-p-title{font-size:14px;font-weight:700;color:#111827;letter-spacing:-.1px}
+.enc-card-p-desc{font-size:12px;color:#9ca3af;margin-top:2px;line-height:1.4}
+.enc-card-p-done{display:none;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#16a34a;margin-top:5px}
+.enc-card-p-done.visible{display:flex}
+.enc-card-p-done svg{width:11px;height:11px;flex-shrink:0}
+.enc-card-p-arrow{color:#d1d5db;flex-shrink:0}
+.enc-card-p-arrow svg{width:18px;height:18px}
+/* ── Secondary compact row ── */
+.enc-sec-row{display:flex;gap:8px}
+.enc-card-s{
+  flex:1;background:white;border-radius:12px;border:1px solid #e8eaed;
+  padding:12px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+  font-family:'DM Sans',sans-serif;text-align:left;
+  transition:background .12s;box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.enc-card-s:hover{background:#fafafa}
+.enc-card-s:active{background:#f3f4f6}
+.enc-card-s-label{font-size:11.5px;font-weight:600;color:#374151}
+.enc-card-s-sub{font-size:10.5px;color:#9ca3af;margin-top:-3px}
+.enc-mode-icon.sm{width:34px;height:34px;border-radius:9px}
+.enc-mode-icon.sm svg{width:17px;height:17px}
 
 /* ─────────────────────────────────────────────────────
    CHAT — ASSISTENTE DE COMPRAS
