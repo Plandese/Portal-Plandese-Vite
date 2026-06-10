@@ -15,6 +15,137 @@ import { stopCombQrScanner } from './enc-combustivel.js';
 // ═══════════════════════════════════════
 // ── ENCARREGADO — ESTADO ──────────────────────────────────────
 
+function _encUpdatePrazoWidget(){
+  const username=S.currentUser?.username||S.currentUser?.nome;
+  const obra=S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.prazo)
+    .find(o=>o.encarregado_id===username);
+  const valEl=document.getElementById('enc-obra-prazo-days');
+  const lblEl=document.getElementById('enc-obra-prazo-label');
+  const iconEl=document.getElementById('enc-obra-prazo-icon');
+  if(!valEl||!lblEl||!iconEl) return;
+  if(!obra){
+    valEl.textContent='—';
+    lblEl.textContent='sem obra atribuída';
+    iconEl.style.background='#f9fafb'; iconEl.style.color='#9ca3af';
+    return;
+  }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const prazoDate=new Date(obra.prazo+'T00:00:00');
+  const days=Math.ceil((prazoDate-today)/(1000*60*60*24));
+  valEl.textContent=days>0?days:'0';
+  lblEl.textContent=`dias · ${obra.nome}`;
+  if(days<=7){iconEl.style.background='#fef2f2';iconEl.style.color='#dc2626';}
+  else if(days<=21){iconEl.style.background='#fff7ed';iconEl.style.color='#ea580c';}
+  else{iconEl.style.background='#f0fdf4';iconEl.style.color='#16a34a';}
+}
+
+const _WMO_DESC={
+  0:'Céu limpo',1:'Principalmente limpo',2:'Parcialmente nublado',3:'Nublado',
+  45:'Nevoeiro',48:'Nevoeiro',51:'Garoa leve',53:'Garoa',55:'Garoa intensa',
+  61:'Chuva leve',63:'Chuva',65:'Chuva intensa',71:'Neve leve',73:'Neve',75:'Neve intensa',
+  80:'Aguaceiros',81:'Aguaceiros',82:'Aguaceiros fortes',95:'Trovoada',96:'Trovoada c/ granizo',99:'Trovoada intensa'
+};
+function _wmoIcon(code){
+  if(code<=1) return `<svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>`;
+  if(code<=3) return `<svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
+  if(code>=95) return `<svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM13 14h3l-4 6v-4h-3l4-6v4z"/></svg>`;
+  return `<svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M17.66 8L12 2.35 6.34 8C4.78 9.56 4 11.64 4 13.64s.78 4.11 2.34 5.67 3.61 2.35 5.66 2.35 4.1-.79 5.66-2.35S20 15.64 20 13.64 19.22 9.56 17.66 8zM6 14c.01-2 .62-3.27 1.76-4.4L12 5.27l4.24 4.38C17.38 10.77 17.99 12 18 14H6z"/></svg>`;
+}
+function _wmoColors(code){
+  if(code<=1) return {bg:'#fefce8',color:'#ca8a04'};
+  if(code<=3) return {bg:'#f9fafb',color:'#6b7280'};
+  if(code>=95) return {bg:'#fef3c7',color:'#d97706'};
+  return {bg:'#eff6ff',color:'#2563eb'};
+}
+let _encWeatherCoords=null;
+
+function _encLoadWeather(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    _encWeatherCoords={lat:pos.coords.latitude,lon:pos.coords.longitude};
+    try{
+      const {lat,lon}=_encWeatherCoords;
+      const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,weather_code,precipitation_probability&timezone=auto&forecast_days=1`;
+      const resp=await fetch(url);
+      const json=await resp.json();
+      const cur=json.current;
+      const temp=Math.round(cur.temperature_2m);
+      const code=cur.weather_code;
+      const desc=_WMO_DESC[code]||'Tempo variável';
+      const precip=cur.precipitation_probability??null;
+      const tempEl=document.getElementById('enc-weather-temp');
+      const descEl=document.getElementById('enc-weather-desc');
+      const iconEl=document.getElementById('enc-weather-icon');
+      const alertEl=document.getElementById('enc-weather-rain-alert');
+      if(tempEl) tempEl.textContent=temp+'°';
+      if(descEl) descEl.textContent=desc;
+      if(iconEl){
+        iconEl.innerHTML=_wmoIcon(code);
+        const {bg,color}=_wmoColors(code);
+        iconEl.style.background=bg; iconEl.style.color=color;
+      }
+      if(alertEl&&precip!==null&&precip>=50){
+        alertEl.textContent=`💧 ${precip}% chuva`;
+        alertEl.classList.add('visible');
+      }
+    }catch(e){
+      const d=document.getElementById('enc-weather-desc'); if(d) d.textContent='Sem dados';
+    }
+  },()=>{
+    const d=document.getElementById('enc-weather-desc'); if(d) d.textContent='—';
+  },{timeout:8000});
+}
+
+const _DAYS_PT=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+async function encOpenWeatherModal(){
+  const modal=document.getElementById('enc-weather-modal');
+  const list=document.getElementById('enc-weather-forecast');
+  if(!modal||!list) return;
+  modal.style.display='flex';
+  list.innerHTML=`<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">A carregar previsão...</div>`;
+  if(!_encWeatherCoords){
+    list.innerHTML=`<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Localização não disponível</div>`;
+    return;
+  }
+  try{
+    const {lat,lon}=_encWeatherCoords;
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
+    const resp=await fetch(url);
+    const json=await resp.json();
+    const daily=json.daily;
+    const todayStr=fmt(new Date());
+    list.innerHTML='';
+    daily.time.forEach((dateStr,i)=>{
+      const d=new Date(dateStr+'T12:00:00');
+      const isToday=dateStr===todayStr;
+      const dayName=isToday?'Hoje':_DAYS_PT[d.getDay()];
+      const code=daily.weather_code[i];
+      const tmax=Math.round(daily.temperature_2m_max[i]);
+      const tmin=Math.round(daily.temperature_2m_min[i]);
+      const precip=daily.precipitation_probability_max[i]??0;
+      const desc=_WMO_DESC[code]||'—';
+      const {bg,color}=_wmoColors(code);
+      const row=document.createElement('div');
+      row.className='enc-forecast-row';
+      row.innerHTML=`
+        <div class="enc-forecast-day${isToday?' today':''}">${dayName}</div>
+        <div class="enc-forecast-icon" style="background:${bg};color:${color}">${_wmoIcon(code)}</div>
+        <div class="enc-forecast-desc">${desc}</div>
+        <div class="enc-forecast-precip${precip<20?' dry':''}">💧${precip}%</div>
+        <div class="enc-forecast-temp">${tmax}°<span> / ${tmin}°</span></div>`;
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML=`<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Erro ao carregar previsão</div>`;
+  }
+}
+
+function encCloseWeatherModal(){
+  const modal=document.getElementById('enc-weather-modal');
+  if(modal) modal.style.display='none';
+}
+
 async function initEnc(){
   // Mostrar home imediatamente (antes das chamadas async ao Supabase)
   const _nomeEl = document.getElementById('enc-home-nome');
@@ -34,7 +165,7 @@ async function initEnc(){
   // Buscar obras do Supabase
   try {
     const {data:obras}=await sb.from('obras').select('*').eq('ativa',true).order('nome');
-    if(obras&&obras.length>0) S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa}));
+    if(obras&&obras.length>0) S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa,prazo:o.prazo||null,encarregado_id:o.encarregado_id||null}));
   } catch(e){ console.warn('obras:',e); }
   // Buscar colaboradores
   try {
@@ -50,6 +181,9 @@ async function initEnc(){
   // Reforçar visibilidade (caso algo tenha mudado durante o carregamento)
   document.getElementById('enc-screen0').style.display='flex';
   const s1=document.getElementById('enc-screen1'); if(s1) s1.style.display='none';
+  // Widgets: prazo da obra + meteorologia
+  _encUpdatePrazoWidget();
+  _encLoadWeather();
 }
 
 async function encPassarColaboradores(){
@@ -507,5 +641,6 @@ export {
   encRemColab, encRecalcStats, encUpdateStats, encSubmeterRegisto, encSaveDay,
   encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc,
   encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel,
-  encVoltarHome, _encHideAll
+  encVoltarHome, _encHideAll,
+  encOpenWeatherModal, encCloseWeatherModal
 };

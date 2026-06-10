@@ -64,6 +64,29 @@
         </div>
       </div>
 
+      <!-- Widgets: Trabalhadores hoje + Meteorologia -->
+      <div class="enc-home-widgets">
+        <div class="enc-widget">
+          <div class="enc-widget-icon" id="enc-obra-prazo-icon" style="background:#f0fdf4;color:#16a34a">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-7-7h5v5h-5z"/></svg>
+          </div>
+          <div>
+            <div class="enc-widget-value" id="enc-obra-prazo-days">—</div>
+            <div class="enc-widget-label" id="enc-obra-prazo-label">prazo da obra</div>
+          </div>
+        </div>
+        <button class="enc-widget" onclick="encOpenWeatherModal()" style="cursor:pointer;text-align:left">
+          <div class="enc-widget-icon" id="enc-weather-icon" style="background:#fefce8;color:#ca8a04">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>
+          </div>
+          <div>
+            <div class="enc-widget-value" id="enc-weather-temp">—</div>
+            <div class="enc-widget-label" id="enc-weather-desc">A carregar...</div>
+            <div class="enc-widget-rain-alert" id="enc-weather-rain-alert"></div>
+          </div>
+        </button>
+      </div>
+
       <div class="enc-home-cards">
 
         <!-- FOLHAS DE PONTO -->
@@ -276,20 +299,20 @@
   </div>
 
   <!-- ECRÃ: COMBUSTÍVEL — ESCOLHA DE TIPO -->
-  <div id="enc-screen-combustivel" style="display:none;flex:1;flex-direction:column;background:var(--blue-800)">
+  <div id="enc-screen-combustivel" style="display:none;flex:1;flex-direction:column;background:var(--white);align-items:center;justify-content:flex-end">
 
     <!-- Cabeçalho -->
     <div style="padding:12px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;position:relative;z-index:2">
-      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
-      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">Abastecimento de Combustível</div>
+      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--gray-900);padding-right:60px">Abastecimento de Combustível</div>
     </div>
 
     <!-- Escolha -->
     <div style="flex:1;overflow-y:auto;padding:8px clamp(14px,4vw,22px) 32px">
-      <div style="margin-bottom:18px;text-align:center;font-size:13px;color:rgba(255,255,255,.6)">Escolha o tipo de registo</div>
+      <div style="margin-bottom:18px;text-align:center;font-size:13px;color:var(--gray-500)">Escolha o tipo de registo</div>
 
       <!-- Opção 1: Depósito de Obra -->
       <button class="enc-mode-card" onclick="encGoCombDeposito()" style="margin-bottom:14px">
@@ -318,15 +341,15 @@
   </div>
 
   <!-- ECRÃ: DEPÓSITO DE OBRA -->
-  <div id="enc-screen-comb-deposito" style="display:none;flex:1;flex-direction:column;background:var(--blue-800)">
+  <div id="enc-screen-comb-deposito" style="display:none;flex:1;flex-direction:column;background:var(--white);align-items:center;justify-content:flex-end">
 
     <!-- Cabeçalho -->
     <div style="padding:12px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;position:relative;z-index:2">
-      <button onclick="encGoCombustivel()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encGoCombustivel()" style="padding:7px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
-      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">Depósito de Obra</div>
+      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--gray-900);padding-right:60px">Depósito de Obra</div>
     </div>
 
     <!-- Formulário -->
@@ -393,7 +416,7 @@
           <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
           Submeter registo
         </button>
-        <button class="enc-btn" style="margin-top:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)" onclick="encVoltarHome()">
+        <button class="enc-btn" style="margin-top:10px;background:var(--white);border:1px solid var(--gray-200);color:var(--gray-700)" onclick="encVoltarHome()">
           Menu principal
         </button>
       </div>
@@ -406,11 +429,11 @@
 
       <!-- Cabeçalho -->
       <div style="display:flex;align-items:center;gap:10px;padding:12px clamp(14px,4vw,22px);position:relative;z-index:2">
-        <button onclick="encGoCombustivel()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+        <button onclick="encGoCombustivel()" style="padding:7px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
           Voltar
         </button>
-        <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">Abastecimento — Viatura/Equipamento</div>
+        <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--gray-900);padding-right:60px">Abastecimento — Viatura/Equipamento</div>
       </div>
 
       <!-- Estado: SCANNER QR -->
@@ -424,7 +447,7 @@
         </div>
         <!-- Botão fallback manual -->
         <div style="padding:0 clamp(14px,4vw,22px) 20px;text-align:center">
-          <button onclick="combViaturaManual()" style="display:inline-flex;align-items:center;gap:7px;padding:11px 20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-lg);color:rgba(255,255,255,.85);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">
+          <button onclick="combViaturaManual()" style="display:inline-flex;align-items:center;gap:7px;padding:11px 20px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);color:var(--gray-700);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75 1.84-1.83z"/></svg>
             Sem QR code — Registo manual
           </button>
@@ -434,7 +457,7 @@
       <!-- Estado: FORMULÁRIO (após QR ou manual) -->
       <div id="comb-viatura-state-form" style="display:none;flex:1;flex-direction:column">
         <div style="padding:6px clamp(16px,4vw,24px) 8px;position:relative;z-index:1">
-          <button onclick="combViaturaVoltarScanner()" id="comb-viatura-scan-btn" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:'DM Sans',sans-serif">
+          <button onclick="combViaturaVoltarScanner()" id="comb-viatura-scan-btn" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:'DM Sans',sans-serif">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4z"/></svg>
             Ler outro QR
           </button>
@@ -520,14 +543,14 @@
   </div>
 
   <!-- ECRÃ 1: DADOS DO REGISTO -->
-  <div id="enc-screen1" style="display:none;flex:1;flex-direction:column;background:var(--blue-800);position:relative;overflow:hidden">
+  <div id="enc-screen1" style="display:none;flex:1;flex-direction:column;background:var(--white);position:relative;overflow:hidden;align-items:center;justify-content:flex-end">
     <!-- Cabeçalho com Voltar -->
     <div style="padding:10px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:2">
-      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
-      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">Folha de Ponto — Plandese</div>
+      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--gray-900);padding-right:60px">Folha de Ponto — Plandese</div>
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 clamp(14px,4vw,22px) 24px">
     <div class="enc-card">
@@ -567,11 +590,11 @@
   </div>
 
   <!-- ECRÃ 2: COLABORADORES -->
-  <div id="enc-screen2" style="display:none;flex:1;flex-direction:column;background:var(--blue-800)">
+  <div id="enc-screen2" style="display:none;flex:1;flex-direction:column;background:var(--white);align-items:center;justify-content:flex-end">
 
     <!-- Contexto do registo -->
     <div class="enc-ctx">
-      <button onclick="encVoltarHome()" style="flex-shrink:0;padding:5px 10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:rgba(255,255,255,.85);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px">
+      <button onclick="encVoltarHome()" style="flex-shrink:0;padding:5px 10px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         Início
       </button>
@@ -652,15 +675,15 @@
   </div>
 
   <!-- ECRÃ: MÃO DE OBRA DE ALUGUER -->
-  <div id="enc-screen-aluguer" style="display:none;flex:1;flex-direction:column;background:var(--blue-800)">
+  <div id="enc-screen-aluguer" style="display:none;flex:1;flex-direction:column;background:var(--white);align-items:center;justify-content:flex-end">
 
     <!-- Cabeçalho -->
     <div style="padding:12px clamp(14px,4vw,22px);display:flex;align-items:center;gap:10px;position:relative;z-index:2">
-      <button onclick="encVoltarHome()" style="padding:7px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
+      <button onclick="encVoltarHome()" style="padding:7px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Voltar
       </button>
-      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:white;padding-right:60px">M.O. de Aluguer</div>
+      <div style="flex:1;text-align:center;font-size:14px;font-weight:600;color:var(--gray-900);padding-right:60px">M.O. de Aluguer</div>
     </div>
 
     <!-- Ecrã A: Seleção de empresa + dados do registo -->
@@ -761,6 +784,20 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Modal: Previsão do Tempo -->
+  <div id="enc-weather-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:flex-end" onclick="encCloseWeatherModal()">
+    <div class="enc-weather-sheet" onclick="event.stopPropagation()">
+      <div class="enc-weather-sheet-handle"></div>
+      <div class="enc-weather-sheet-header">
+        <div class="enc-weather-sheet-title">Previsão do tempo — 7 dias</div>
+        <button class="enc-weather-sheet-close" onclick="encCloseWeatherModal()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div id="enc-weather-forecast" class="enc-weather-forecast-list"></div>
+    </div>
   </div>
 
 </div>
@@ -1100,7 +1137,7 @@
       <section id="sec-obras" class="section">
         <div class="pg-hdr">
           <div><div class="pg-title">Gestão de obras</div><div class="pg-sub">Obras disponíveis para os encarregados</div></div>
-          <button class="btn btn-primary" onclick="openModal('modal-obra')">
+          <button class="btn btn-primary" onclick="novaObra()">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             Nova obra
           </button>
@@ -2347,6 +2384,10 @@
     <input type="hidden" id="mo-id"/>
     <div class="field"><label>Nome da obra *</label><input type="text" id="mo-nome" placeholder="Ex: Obra Aveiro Norte"/></div>
     <div class="field"><label>Localização</label><input type="text" id="mo-local" placeholder="Ex: Rua das Flores, Aveiro"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Prazo de entrega</label><input type="date" id="mo-prazo"/></div>
+      <div class="field"><label>Encarregado</label><select id="mo-encarregado"><option value="">— Nenhum —</option></select></div>
+    </div>
     <div class="field"><label>Notas</label><textarea id="mo-desc" style="resize:vertical;min-height:60px" placeholder="Notas..."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-obra')">Cancelar</button>

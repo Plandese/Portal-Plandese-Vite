@@ -18,6 +18,13 @@ let _chat = {
   obraNome: null,
 };
 
+function _encHideAll(){
+  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+   'enc-screen-compras-chat'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+}
+
 function encGoCombustivel(){
   _encHideAll();
   stopCombQrScanner();

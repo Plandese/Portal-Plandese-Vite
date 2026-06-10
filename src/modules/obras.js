@@ -6,6 +6,17 @@ import { S } from '../state.js';
 import { sbToggleObra } from '../db.js';
 import { closeModal, populateFilterSelects, flashAlert } from './navigation.js';
 
+export function novaObra(){
+  document.getElementById('mo-title').textContent='Nova obra';
+  document.getElementById('mo-id').value='';
+  document.getElementById('mo-nome').value='';
+  document.getElementById('mo-local').value='';
+  document.getElementById('mo-desc').value='';
+  document.getElementById('mo-prazo').value='';
+  _populateEncSelect('');
+  document.getElementById('modal-obra').classList.add('open');
+}
+
 export function renderObras(){
   const cont=document.getElementById('obras-list');cont.innerHTML='';
   if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';document.getElementById('nb-obras').textContent=0;return;}
@@ -14,16 +25,41 @@ export function renderObras(){
   cont.appendChild(grid);document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
 }
 
-export function editObra(id){const o=S.OBRAS.find(x=>x.id===id);if(!o)return;document.getElementById('mo-title').textContent='Editar obra';document.getElementById('mo-id').value=id;document.getElementById('mo-nome').value=o.nome;document.getElementById('mo-local').value=o.local||'';document.getElementById('mo-desc').value=o.desc||'';document.getElementById('modal-obra').classList.add('open');}
+export function editObra(id){
+  const o=S.OBRAS.find(x=>x.id===id);if(!o)return;
+  document.getElementById('mo-title').textContent='Editar obra';
+  document.getElementById('mo-id').value=id;
+  document.getElementById('mo-nome').value=o.nome;
+  document.getElementById('mo-local').value=o.local||'';
+  document.getElementById('mo-desc').value=o.desc||'';
+  document.getElementById('mo-prazo').value=o.prazo||'';
+  _populateEncSelect(o.encarregado_id||'');
+  document.getElementById('modal-obra').classList.add('open');
+}
+
+function _populateEncSelect(selectedId=''){
+  const sel=document.getElementById('mo-encarregado');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Nenhum —</option>';
+  Object.entries(S.USERS||{}).filter(([,u])=>u.role==='encarregado').forEach(([username,u])=>{
+    const op=document.createElement('option');
+    op.value=username; op.textContent=u.nome||username;
+    if(username===selectedId) op.selected=true;
+    sel.appendChild(op);
+  });
+}
 
 export async function saveObra(){
   const nome=document.getElementById('mo-nome').value.trim();if(!nome){alert('Nome obrigatório.');return;}
   const id=document.getElementById('mo-id').value||('obra_'+Date.now());
   const existing=S.OBRAS.findIndex(o=>o.id===id);
-  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa:true};
+  const prazo=document.getElementById('mo-prazo').value||null;
+  const encarregado_id=document.getElementById('mo-encarregado').value||null;
+  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa:true,prazo,encarregado_id};
   try {
     const {error} = await sb.from('obras').upsert({
-      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa:true
+      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa:true,
+      prazo:prazo||null, encarregado_id:encarregado_id||null
     });
     if(error) throw error;
     if(existing>=0)S.OBRAS[existing]={...S.OBRAS[existing],...rec};else S.OBRAS.push(rec);

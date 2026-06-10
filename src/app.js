@@ -16,7 +16,7 @@ import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, cl
 import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
-import { renderObras, editObra, saveObra, toggleObra } from './modules/obras.js';
+import { renderObras, editObra, saveObra, toggleObra, novaObra } from './modules/obras.js';
 import { renderColabs, editColab, saveColab, toggleColab } from './modules/colaboradores.js';
 import { renderUsers, editUser, saveUser } from './modules/utilizadores.js';
 
@@ -39,7 +39,7 @@ import { renderEquipamentos, openEqModal, editEquipamento, saveEquipamento, apag
 import { loadCombustivelAdmin, toggleCombView, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
 
 // Enc-ponto
-import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome } from './modules/enc-ponto.js';
+import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal } from './modules/enc-ponto.js';
 
 // Enc-equip
 import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
@@ -120,7 +120,7 @@ Object.assign(window, {
   applyMOAFilter, navMOASemana, exportMOAExcel,
 
   // Obras
-  renderObras, saveObra, editObra, toggleObra, saveObraExtra,
+  renderObras, saveObra, editObra, toggleObra, novaObra, saveObraExtra,
 
   // Colaboradores
   renderColabs, saveColab, editColab, toggleColab,
@@ -160,6 +160,7 @@ Object.assign(window, {
 
   // Encarregado — navegação
   encVoltarHome, encGoMenuPonto, encGoFolhaPontoPlandese,
+  encOpenWeatherModal, encCloseWeatherModal,
   encGoFolhaPontoAluguer, encGoHistoricoEnc,
   encGoEquipamentos, encGoCombustivel,
 
