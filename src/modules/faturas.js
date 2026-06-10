@@ -160,9 +160,37 @@ function textoPareceLixo(texto){
   return false;
 }
 
+// ═══════════════════════════════════════
+//  CARREGAMENTO LAZY das bibliotecas OCR (só quando há upload de fatura)
+// ═══════════════════════════════════════
+let _pdfjsPromise = null, _tessPromise = null;
+async function getPdfjs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  if(!_pdfjsPromise) _pdfjsPromise = (async()=>{
+    const mod = await import('pdfjs-dist');
+    const pdfjs = mod.getDocument ? mod : (mod.default || mod);
+    try{
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.js?url')).default;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    }catch(e){ console.warn('Worker PDF.js não configurado, a usar fallback:', e); }
+    window.pdfjsLib = pdfjs;
+    return pdfjs;
+  })();
+  return _pdfjsPromise;
+}
+async function getTesseract(){
+  if(window.Tesseract) return window.Tesseract;
+  if(!_tessPromise) _tessPromise = (async()=>{
+    const mod = await import('tesseract.js');
+    window.Tesseract = mod.default || mod;
+    return window.Tesseract;
+  })();
+  return _tessPromise;
+}
+
 // Extrai texto direto de um PDF (sem OCR — para PDFs com texto)
 async function extractTextFromPDF(item){
-  if(!window.pdfjsLib) throw new Error('PDF.js indisponível');
+  const pdfjsLib = await getPdfjs();
   const buf = await item._file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:buf}).promise;
   let txt = '';
@@ -187,7 +215,7 @@ async function extractTextFromPDF(item){
 
 // OCR de imagem (jpg/png) com Tesseract
 async function ocrImageToText(item){
-  if(!window.Tesseract) throw new Error('Tesseract.js indisponível');
+  const Tesseract = await getTesseract();
   const url = URL.createObjectURL(item._file);
   try{
     const { data } = await Tesseract.recognize(url, 'por+eng', {
@@ -205,7 +233,7 @@ async function ocrImageToText(item){
 
 // PDF digitalizado: renderiza páginas em canvas e corre OCR em cada
 async function ocrPDFPagesToText(item){
-  if(!window.pdfjsLib || !window.Tesseract) throw new Error('Bibliotecas OCR indisponíveis');
+  const [pdfjsLib, Tesseract] = await Promise.all([getPdfjs(), getTesseract()]);
   const buf = await item._file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:buf}).promise;
   let texto = '';
