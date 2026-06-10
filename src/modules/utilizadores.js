@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  ADMIN — UTILIZADORES
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { sbSaveUser } from '../db.js';
 import { closeModal, flashAlert } from './navigation.js';
 import { ROLE_LABELS } from '../config.js';
@@ -34,4 +34,5 @@ export async function saveUser(){
   S.USERS[user]={pass,nome,initials,role};
   await sbSaveUser(user,{pass,nome,initials,role});
   closeModal('modal-user');renderUsers();flashAlert('user-alert');
+  R.emitEvent?.({ acao:(editKey?'Utilizador atualizado':'Novo utilizador')+': '+nome, seccao:'utilizadores' });
 }

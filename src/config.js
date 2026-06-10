@@ -52,6 +52,22 @@ export const ROLE_ACCESS = {
   'comercial':    {sections:['painel','comercial'], default:'painel'},
 };
 
+// Secções que emitem notificações (chave → rótulo legível).
+// A chave 'seccao' usada em emitEvent deve corresponder ao destino de navegação (goTo).
+export const NOTIF_SECTIONS = {
+  'historico':    'Folha de Ponto',
+  'compras':      'Compras',
+  'faturas':      'Faturas',
+  'equipamentos': 'Equipamentos',
+  'combustivel':  'Combustível',
+  'producao':     'Produção',
+  'obras':        'Obras',
+  'colaboradores':'Colaboradores',
+  'utilizadores': 'Utilizadores',
+  'mapa-ferias':  'Férias',
+  'comercial':    'Comercial',
+};
+
 export const NAV_GROUP_SECTIONS = {
   'pnl': ['painel'],
   'rh':  ['historico'],

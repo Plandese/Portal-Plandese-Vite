@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 1 — Industrial Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111111;--surface:#1C1C1E;--surface2:#252528;--surface3:#2E2E32;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --orange:#F97316;--orange-dim:#7C3A10;
+  --green:#22C55E;--green-bg:rgba(34,197,94,0.12);
+  --red:#EF4444;--red-bg:rgba(239,68,68,0.12);
+  --yellow:#EAB308;--yellow-bg:rgba(234,179,8,0.12);
+  --blue:#3B82F6;--blue-bg:rgba(59,130,246,0.12);
+  --text:#F1F1F1;--text2:#A1A1AA;--text3:#71717A;
+  --radius:8px;--radius-lg:12px;
+  --sidebar-w:220px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* ── LAYOUT ── */
+.layout{display:flex;height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sb-header{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo{width:32px;height:32px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-logo svg{width:18px;height:18px;fill:white}
+.sb-brand{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.sb-brand-sub{font-size:10px;color:var(--text3);margin-top:1px}
+
+.sb-nav{flex:1;overflow-y:auto;padding:10px 8px;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:12px 8px 6px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);cursor:pointer;transition:background .15s;color:var(--text2);font-size:12px;font-weight:500}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{background:rgba(249,115,22,0.14);color:var(--orange)}
+.sb-item .icon{width:16px;height:16px;opacity:.7;flex-shrink:0}
+.sb-item.active .icon{opacity:1}
+.sb-badge{margin-left:auto;background:var(--orange);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;line-height:16px}
+
+.sb-footer{padding:12px 8px;border-top:1px solid var(--border)}
+.sb-user{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);background:var(--surface2)}
+.sb-av{width:28px;height:28px;background:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0}
+.sb-user-info{flex:1;min-width:0}
+.sb-user-name{font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-role{font-size:9px;color:var(--text3)}
+.sb-logout{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text3);font-size:10px;padding:3px 7px;cursor:pointer;font-family:inherit;transition:all .15s}
+.sb-logout:hover{border-color:var(--red);color:var(--red)}
+
+/* ── TOP BAR ── */
+.topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:600;color:var(--text)}
+.topbar-breadcrumb{font-size:12px;color:var(--text3)}
+.topbar-breadcrumb span{color:var(--text2)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tb-btn{width:32px;height:32px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .15s}
+.tb-btn:hover{background:var(--surface3)}
+.tb-btn svg{width:15px;height:15px;stroke:var(--text2);fill:none;stroke-width:1.8}
+.notif-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;background:var(--orange);border-radius:50%;border:2px solid var(--surface)}
+.tb-search{height:32px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;color:var(--text2);font-size:12px;font-family:inherit;outline:none;width:180px;transition:border-color .15s}
+.tb-search:focus{border-color:var(--orange);color:var(--text)}
+.tb-search::placeholder{color:var(--text3)}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+.page-header{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between}
+.page-title{font-size:18px;font-weight:700;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.btn-primary{background:var(--orange);color:white;border:none;padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;display:flex;align-items:center;gap:6px}
+.btn-primary:hover{background:#EA6A10}
+.btn-primary svg{width:14px;height:14px;stroke:white;fill:none;stroke-width:2}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card.orange::before{background:var(--orange)}
+.kpi-card.green::before{background:var(--green)}
+.kpi-card.blue::before{background:var(--blue)}
+.kpi-card.yellow::before{background:var(--yellow)}
+.kpi-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.kpi-value{font-size:26px;font-weight:700;color:var(--text);line-height:1}
+.kpi-unit{font-size:13px;font-weight:500;color:var(--text2);margin-left:4px}
+.kpi-delta{margin-top:8px;font-size:11px;display:flex;align-items:center;gap:4px}
+.kpi-delta.up{color:var(--green)}
+.kpi-delta.down{color:var(--red)}
+.kpi-delta svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5}
+
+/* ── SEMANA GRID ── */
+.week-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden}
+.week-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.week-title{font-size:13px;font-weight:600;color:var(--text)}
+.week-nav{display:flex;align-items:center;gap:6px}
+.week-nav-btn{width:26px;height:26px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.week-nav-btn svg{width:12px;height:12px;stroke:var(--text2);fill:none;stroke-width:2}
+.week-label{font-size:11px;color:var(--text2);font-weight:500}
+.week-grid{display:grid;grid-template-columns:160px repeat(5,1fr);border-bottom:1px solid var(--border)}
+.week-col-header{padding:10px 12px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-right:1px solid var(--border);text-align:center}
+.week-col-header:first-child{text-align:left}
+.week-col-header.today{color:var(--orange)}
+.week-row{display:contents}
+.week-cell{padding:12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:11px}
+.week-cell:last-child{border-right:none}
+.week-cell.name-cell{color:var(--text);font-weight:500;display:flex;align-items:center;gap:8px}
+.w-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0}
+.week-cell.hours{text-align:center;color:var(--text2)}
+.week-cell.hours.present{color:var(--green)}
+.week-cell.hours.absent{color:var(--red-bg);background:var(--red-bg)}
+.week-cell.hours.partial{color:var(--yellow)}
+.week-bar{height:4px;background:var(--surface3);border-radius:2px;margin-top:4px}
+.week-bar-fill{height:100%;border-radius:2px;background:var(--green)}
+.week-summary-row .week-cell{background:var(--surface2);font-weight:600;font-size:11px;color:var(--text)}
+
+/* ── TABLE ── */
+.table-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.table-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-title{font-size:13px;font-weight:600;color:var(--text)}
+.table-tools{display:flex;gap:8px}
+.filter-btn{height:28px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px}
+.filter-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+table{width:100%;border-collapse:collapse}
+th{padding:9px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);font-size:12px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.td-name{color:var(--text);font-weight:500}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.badge.green{background:var(--green-bg);color:var(--green)}
+.badge.orange{background:rgba(249,115,22,.14);color:var(--orange)}
+.badge.red{background:var(--red-bg);color:var(--red)}
+.badge.blue{background:var(--blue-bg);color:var(--blue)}
+.badge.yellow{background:var(--yellow-bg);color:var(--yellow)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* ── LABEL TAG ── */
+.design-tag{position:fixed;top:12px;right:12px;background:var(--orange);color:white;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px;z-index:999;font-family:'Inter',sans-serif}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 1 — INDUSTRIAL PRO</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div>
+        <div class="sb-brand">Plandese</div>
+        <div class="sb-brand-sub">Portal de Gestão</div>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <div class="sb-section">Principal</div>
+      <div class="sb-item active">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Ponto
+        <span class="sb-badge">3</span>
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        Obras
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+        Equipamentos
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+        Combustível
+      </div>
+      <div class="sb-section">Gestão</div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Produção
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Colaboradores
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Faturas
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        Compras
+      </div>
+      <div class="sb-section">Admin</div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Painel
+      </div>
+      <div class="sb-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Permissões
+      </div>
+    </nav>
+
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="sb-av">DM</div>
+        <div class="sb-user-info">
+          <div class="sb-user-name">David Mosca</div>
+          <div class="sb-user-role">Administrador</div>
+        </div>
+        <button class="sb-logout">Sair</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <span class="topbar-breadcrumb">Início <span>›</span> Ponto</span>
+      <div class="topbar-right">
+        <input class="tb-search" type="text" placeholder="Pesquisar...">
+        <div class="tb-btn">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="tb-btn">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Registo de Ponto</div>
+          <div class="page-sub">Semana 23 · 2 a 6 de Junho 2026</div>
+        </div>
+        <button class="btn-primary">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Exportar Excel
+        </button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card orange">
+          <div class="kpi-label">Horas Semana</div>
+          <div class="kpi-value">342<span class="kpi-unit">h</span></div>
+          <div class="kpi-delta up">
+            <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            +12h vs semana anterior
+          </div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Colaboradores</div>
+          <div class="kpi-value">23</div>
+          <div class="kpi-delta up">
+            <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            2 adicionados
+          </div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Obras Ativas</div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-delta" style="color:var(--text3)">— sem alterações</div>
+        </div>
+        <div class="kpi-card yellow">
+          <div class="kpi-label">Faltas</div>
+          <div class="kpi-value">4</div>
+          <div class="kpi-delta down">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            Esta semana
+          </div>
+        </div>
+      </div>
+
+      <!-- WEEK GRID -->
+      <div class="week-section">
+        <div class="week-header">
+          <div class="week-title">Folha de Ponto — Semana 23</div>
+          <div class="week-nav">
+            <div class="week-nav-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+            <span class="week-label">Jun 2 – 6, 2026</span>
+            <div class="week-nav-btn"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="width:160px;padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:left">Colaborador</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Seg 2</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Ter 3</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Qua 4 ●</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Qui 5</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Sex 6</th>
+                <th style="padding:10px 14px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border);text-align:center;border-left:1px solid var(--border)">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:500;display:flex;align-items:center;gap:8px">
+                  <div style="width:22px;height:22px;background:#3B82F6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0">JS</div>
+                  João Silva
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border);background:rgba(249,115,22,.04)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--yellow);text-align:center;border-left:1px solid var(--border)">6h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;border-left:1px solid var(--border)">—</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">30h</td>
+              </tr>
+              <tr>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:500;display:flex;align-items:center;gap:8px">
+                  <div style="width:22px;height:22px;background:#8B5CF6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0">MF</div>
+                  Maria Ferreira
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border);background:rgba(249,115,22,.04)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;border-left:1px solid var(--border)">—</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">32h</td>
+              </tr>
+              <tr>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:500;display:flex;align-items:center;gap:8px">
+                  <div style="width:22px;height:22px;background:#10B981;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0">AC</div>
+                  António Costa
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;background:rgba(239,68,68,.08);color:var(--red);text-align:center;border-left:1px solid var(--border)">Falta</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border);background:rgba(249,115,22,.04)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">8h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;border-left:1px solid var(--border)">—</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">24h</td>
+              </tr>
+              <tr>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);font-weight:500;display:flex;align-items:center;gap:8px">
+                  <div style="width:22px;height:22px;background:#F59E0B;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0">RP</div>
+                  Rui Pereira
+                </td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">9h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">9h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border);background:rgba(249,115,22,.04)">9h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--green);text-align:center;border-left:1px solid var(--border)">9h</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;border-left:1px solid var(--border)">—</td>
+                <td style="padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--orange);font-weight:700;text-align:center;border-left:1px solid var(--border)">36h</td>
+              </tr>
+              <tr style="background:var(--surface2)">
+                <td style="padding:11px 14px;font-size:11px;color:var(--text);font-weight:600;border-left:2px solid var(--orange)">TOTAL SEMANA</td>
+                <td style="padding:11px 14px;font-size:11px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">33h</td>
+                <td style="padding:11px 14px;font-size:11px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">25h</td>
+                <td style="padding:11px 14px;font-size:11px;color:var(--orange);font-weight:700;text-align:center;border-left:1px solid var(--border);background:rgba(249,115,22,.06)">33h</td>
+                <td style="padding:11px 14px;font-size:11px;color:var(--text);font-weight:600;text-align:center;border-left:1px solid var(--border)">31h</td>
+                <td style="padding:11px 14px;font-size:11px;color:var(--text3);font-weight:600;text-align:center;border-left:1px solid var(--border)">—</td>
+                <td style="padding:11px 14px;font-size:12px;color:var(--orange);font-weight:700;text-align:center;border-left:1px solid var(--border)">122h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- OBRAS TABLE -->
+      <div class="table-section">
+        <div class="table-header">
+          <div class="table-title">Obras em Curso</div>
+          <div class="table-tools">
+            <button class="filter-btn">
+              <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              Filtros
+            </button>
+            <button class="filter-btn">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Excel
+            </button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Obra</th>
+              <th>Cliente</th>
+              <th>Encarregado</th>
+              <th>Início</th>
+              <th>Prazo</th>
+              <th>Estado</th>
+              <th>Progresso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-name">Residencial Torres Verdes</td>
+              <td>Construções XYZ</td>
+              <td>João Silva</td>
+              <td>Mar 2026</td>
+              <td>Ago 2026</td>
+              <td><span class="badge green">Em curso</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:4px;background:var(--surface3);border-radius:2px"><div style="width:68%;height:100%;background:var(--green);border-radius:2px"></div></div>
+                  <span style="font-size:10px;color:var(--text2);white-space:nowrap">68%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-name">Armazém Logístico Norte</td>
+              <td>Log & Ship Lda</td>
+              <td>Rui Pereira</td>
+              <td>Jan 2026</td>
+              <td>Jul 2026</td>
+              <td><span class="badge orange">Atrasada</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:4px;background:var(--surface3);border-radius:2px"><div style="width:45%;height:100%;background:var(--orange);border-radius:2px"></div></div>
+                  <span style="font-size:10px;color:var(--text2);white-space:nowrap">45%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-name">Escola Básica Setúbal</td>
+              <td>Câmara Setúbal</td>
+              <td>António Costa</td>
+              <td>Abr 2026</td>
+              <td>Dez 2026</td>
+              <td><span class="badge blue">Planeada</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:4px;background:var(--surface3);border-radius:2px"><div style="width:12%;height:100%;background:var(--blue);border-radius:2px"></div></div>
+                  <span style="font-size:10px;color:var(--text2);white-space:nowrap">12%</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="td-name">Remodelação Sede Lisboa</td>
+              <td>Tech Corp SA</td>
+              <td>Maria Ferreira</td>
+              <td>Mai 2026</td>
+              <td>Set 2026</td>
+              <td><span class="badge green">Em curso</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:4px;background:var(--surface3);border-radius:2px"><div style="width:31%;height:100%;background:var(--green);border-radius:2px"></div></div>
+                  <span style="font-size:10px;color:var(--text2);white-space:nowrap">31%</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -2,7 +2,7 @@
 //  EQUIPAMENTOS E LOGÍSTICA
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal, openModal } from './navigation.js';
 
@@ -204,6 +204,7 @@ function saveEquipamento(){
   saveEqLocal(); closeModal('modal-equip'); renderEquipamentos(); refreshEqMap();
   showEqAlert('Equipamento guardado com sucesso.');
   sbUpsertEquipamento(obj);
+  R.emitEvent?.({ acao:(_editingEqId?'Equipamento atualizado':'Novo equipamento')+': '+nome, seccao:'equipamentos' });
 }
 function apagarEquipamento(){
   if(!_editingEqId) return;

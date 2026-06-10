@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 3 — Field First</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EEF2F7;--white:#FFFFFF;
+  --blue-800:#1E3A8A;--blue-700:#1D4ED8;--blue-600:#2563EB;--blue-500:#3B82F6;
+  --blue-light:#EFF6FF;--blue-mid:#DBEAFE;
+  --green-700:#059669;--green-600:#10B981;--green-light:#ECFDF5;
+  --amber-700:#D97706;--amber-light:#FFFBEB;
+  --red-600:#DC2626;--red-light:#FEF2F2;
+  --gray-900:#111827;--gray-800:#1F2937;--gray-700:#374151;--gray-600:#4B5563;
+  --gray-500:#6B7280;--gray-400:#9CA3AF;--gray-300:#D1D5DB;--gray-200:#E5E7EB;--gray-100:#F9FAFB;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow:0 2px 8px rgba(0,0,0,.1);
+  --shadow-md:0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.14);
+  --radius:12px;--radius-lg:16px;--radius-xl:20px;
+}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--gray-900);-webkit-font-smoothing:antialiased}
+
+/* ── OUTER SHELL — simulated phone/tablet ── */
+.shell{height:100vh;display:flex;gap:0;overflow:hidden}
+
+/* ── PHONE VIEW ── */
+.phone{
+  width:390px;flex-shrink:0;background:var(--bg);
+  display:flex;flex-direction:column;height:100vh;
+  border-right:1px solid var(--gray-300);
+  position:relative;overflow:hidden;
+}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--blue-800);
+  padding:12px 16px 14px;
+  flex-shrink:0;
+  position:relative;overflow:hidden;
+}
+.topbar::before{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05);top:-80px;right:-40px;pointer-events:none}
+.topbar::after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04);bottom:-50px;left:-30px;pointer-events:none}
+.topbar-inner{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.tb-back{width:32px;height:32px;background:rgba(255,255,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.tb-back svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2.5}
+.tb-info{flex:1;min-width:0}
+.tb-title{font-size:15px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px}
+.tb-right{display:flex;gap:8px;flex-shrink:0}
+.tb-icon{width:36px;height:36px;background:rgba(255,255,255,.12);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.tb-icon svg{width:18px;height:18px;stroke:white;fill:none;stroke-width:1.8}
+.tb-notif{position:absolute;top:7px;right:7px;width:8px;height:8px;background:#F97316;border-radius:50%;border:2px solid var(--blue-800)}
+.tb-av{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;cursor:pointer;border:1.5px solid rgba(255,255,255,.2)}
+
+/* ── SCROLL AREA ── */
+.scroll{flex:1;overflow-y:auto;padding:16px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── HERO CARD ── */
+.hero{
+  background:linear-gradient(135deg,var(--blue-700) 0%,var(--blue-800) 100%);
+  border-radius:var(--radius-xl);padding:20px;margin-bottom:16px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow-lg);
+}
+.hero::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.06);top:-50px;right:-30px}
+.hero::after{content:'';position:absolute;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04);bottom:-30px;left:20px}
+.hero-greeting{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:4px;position:relative;z-index:1}
+.hero-name{font-size:20px;font-weight:800;color:white;position:relative;z-index:1;letter-spacing:-.3px}
+.hero-meta{margin-top:14px;display:flex;gap:8px;position:relative;z-index:1}
+.hero-chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:5px;font-weight:500}
+.hero-chip svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+.hero-actions{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;z-index:1}
+.hero-action{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .15s}
+.hero-action:hover{background:rgba(255,255,255,.22)}
+.hero-action-icon{font-size:18px}
+.hero-action-text{font-size:12px;font-weight:600;color:white}
+
+/* ── SECTION HEADER ── */
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:13px;font-weight:700;color:var(--gray-800)}
+.section-link{font-size:11px;color:var(--blue-600);font-weight:600;cursor:pointer}
+
+/* ── ACTION GRID ── */
+.action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.action-card{
+  background:var(--white);border-radius:var(--radius-lg);padding:16px;
+  display:flex;flex-direction:column;gap:10px;cursor:pointer;
+  box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);
+  transition:all .15s;position:relative;overflow:hidden;
+}
+.action-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.action-card:active{transform:scale(.98)}
+.action-card::before{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:0 var(--radius-lg) 0 60px;opacity:.08}
+.action-card.blue::before{background:var(--blue-600)}
+.action-card.green::before{background:var(--green-700)}
+.action-card.amber::before{background:var(--amber-700)}
+.action-card.red::before{background:var(--red-600)}
+.action-card.purple::before{background:#7C3AED}
+.action-card.teal::before{background:#0891B2}
+.ac-icon{font-size:28px;line-height:1}
+.ac-label{font-size:13px;font-weight:700;color:var(--gray-800)}
+.ac-sub{font-size:11px;color:var(--gray-400)}
+.ac-badge{position:absolute;top:10px;right:10px;background:var(--red-600);color:white;font-size:9px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+/* ── WEEK STRIP ── */
+.week-strip{background:var(--white);border-radius:var(--radius-lg);padding:14px;margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200)}
+.week-days{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.week-day{background:var(--gray-100);border-radius:10px;padding:8px 4px;text-align:center}
+.week-day.today{background:var(--blue-600)}
+.week-day-name{font-size:9px;font-weight:600;color:var(--gray-400);text-transform:uppercase}
+.week-day.today .week-day-name{color:rgba(255,255,255,.7)}
+.week-day-num{font-size:16px;font-weight:700;color:var(--gray-700);margin:2px 0}
+.week-day.today .week-day-num{color:white}
+.week-day-h{font-size:10px;font-weight:600;color:var(--green-700)}
+.week-day.today .week-day-h{color:rgba(255,255,255,.85)}
+.week-day-dot{width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:var(--green-600)}
+.week-day.today .week-day-dot{background:rgba(255,255,255,.6)}
+.week-day.miss .week-day-h{color:var(--red-600)}
+.week-day.miss .week-day-dot{background:var(--red-600)}
+
+/* ── WORKER LIST ── */
+.worker-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.worker-item{background:var(--white);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);cursor:pointer;transition:all .15s}
+.worker-item:hover{box-shadow:var(--shadow);border-color:var(--blue-500)}
+.wi-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0}
+.wi-info{flex:1;min-width:0}
+.wi-name{font-size:13px;font-weight:600;color:var(--gray-900)}
+.wi-detail{font-size:11px;color:var(--gray-400);margin-top:1px}
+.wi-hours{text-align:right;flex-shrink:0}
+.wi-h-val{font-size:16px;font-weight:700;color:var(--gray-800)}
+.wi-h-label{font-size:10px;color:var(--gray-400)}
+.wi-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.wi-status.ok{background:var(--green-600)}
+.wi-status.warn{background:var(--amber-700)}
+.wi-status.miss{background:var(--red-600)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  height:70px;background:var(--white);border-top:1px solid var(--gray-200);
+  display:flex;align-items:center;justify-content:space-around;
+  flex-shrink:0;padding:0 8px 8px;box-shadow:0 -4px 16px rgba(0,0,0,.06);
+}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 16px;border-radius:12px;cursor:pointer;transition:all .15s;flex:1}
+.bn-item:hover{background:var(--blue-light)}
+.bn-item.active{background:var(--blue-light)}
+.bn-item svg{width:22px;height:22px;stroke:var(--gray-400);fill:none;stroke-width:1.8;transition:stroke .15s}
+.bn-item.active svg{stroke:var(--blue-600)}
+.bn-label{font-size:10px;font-weight:500;color:var(--gray-400);transition:color .15s}
+.bn-item.active .bn-label{color:var(--blue-600);font-weight:700}
+.bn-dot{position:relative}
+.bn-dot::after{content:'';position:absolute;top:-2px;right:-4px;width:7px;height:7px;background:var(--red-600);border-radius:50%;border:1.5px solid var(--white)}
+
+/* ── RIGHT PANEL (desktop context) ── */
+.right-panel{flex:1;display:flex;flex-direction:column;padding:24px;overflow-y:auto;background:var(--bg)}
+.rp-header{margin-bottom:20px}
+.rp-title{font-size:22px;font-weight:800;color:var(--gray-900);letter-spacing:-.4px}
+.rp-sub{font-size:13px;color:var(--gray-500);margin-top:4px}
+.rp-note{background:var(--blue-mid);border:1px solid var(--blue-500);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px}
+.rp-note-title{font-size:13px;font-weight:700;color:var(--blue-700)}
+.rp-note-text{font-size:12px;color:var(--blue-800);margin-top:4px;line-height:1.5}
+.rp-features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.feat-card{background:var(--white);border-radius:var(--radius-lg);padding:16px;border:1px solid var(--gray-200);box-shadow:var(--shadow-sm)}
+.feat-icon{font-size:22px;margin-bottom:8px}
+.feat-title{font-size:12px;font-weight:700;color:var(--gray-800);margin-bottom:4px}
+.feat-desc{font-size:11px;color:var(--gray-500);line-height:1.5}
+
+/* ── TAG ── */
+.design-tag{position:fixed;top:12px;right:12px;background:var(--green-700);color:white;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px;z-index:999;font-family:'DM Sans',sans-serif}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 3 — FIELD FIRST</div>
+
+<div class="shell">
+  <!-- ── PHONE / MOBILE VIEW ── -->
+  <div class="phone">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="tb-back">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </div>
+        <div class="tb-info">
+          <div class="tb-title">Ponto Semana 23</div>
+          <div class="tb-sub">Qua, 4 Jun 2026</div>
+        </div>
+        <div class="tb-right">
+          <div class="tb-icon">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <div class="tb-notif"></div>
+          </div>
+          <div class="tb-av">DM</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCROLL -->
+    <div class="scroll">
+      <!-- HERO -->
+      <div class="hero">
+        <div class="hero-greeting">Boa tarde,</div>
+        <div class="hero-name">David Mosca 👋</div>
+        <div class="hero-meta">
+          <div class="hero-chip">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            14:32 · Qua
+          </div>
+          <div class="hero-chip">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            8 obras ativas
+          </div>
+        </div>
+        <div class="hero-actions">
+          <div class="hero-action">
+            <span class="hero-action-icon">📋</span>
+            <span class="hero-action-text">Registar ponto</span>
+          </div>
+          <div class="hero-action">
+            <span class="hero-action-icon">⛽</span>
+            <span class="hero-action-text">Combustível</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEEK STRIP -->
+      <div class="week-strip">
+        <div class="section-hd">
+          <span class="section-title">Esta Semana</span>
+          <span class="section-link">Ver completo →</span>
+        </div>
+        <div class="week-days">
+          <div class="week-day">
+            <div class="week-day-name">Seg</div>
+            <div class="week-day-num">2</div>
+            <div class="week-day-h">8h</div>
+            <div class="week-day-dot"></div>
+          </div>
+          <div class="week-day">
+            <div class="week-day-name">Ter</div>
+            <div class="week-day-num">3</div>
+            <div class="week-day-h">8h</div>
+            <div class="week-day-dot"></div>
+          </div>
+          <div class="week-day today">
+            <div class="week-day-name">Qua</div>
+            <div class="week-day-num">4</div>
+            <div class="week-day-h">8h</div>
+            <div class="week-day-dot"></div>
+          </div>
+          <div class="week-day miss">
+            <div class="week-day-name">Qui</div>
+            <div class="week-day-num">5</div>
+            <div class="week-day-h">—</div>
+            <div class="week-day-dot"></div>
+          </div>
+          <div class="week-day" style="opacity:.5">
+            <div class="week-day-name">Sex</div>
+            <div class="week-day-num">6</div>
+            <div class="week-day-h">—</div>
+            <div class="week-day-dot" style="background:var(--gray-300)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION GRID -->
+      <div class="section-hd">
+        <span class="section-title">Ações Rápidas</span>
+      </div>
+      <div class="action-grid">
+        <div class="action-card blue">
+          <div class="ac-icon">📅</div>
+          <div>
+            <div class="ac-label">Ponto</div>
+            <div class="ac-sub">Registar horas</div>
+          </div>
+          <div class="ac-badge">3</div>
+        </div>
+        <div class="action-card green">
+          <div class="ac-icon">🏗️</div>
+          <div>
+            <div class="ac-label">Obras</div>
+            <div class="ac-sub">8 em curso</div>
+          </div>
+        </div>
+        <div class="action-card amber">
+          <div class="ac-icon">⛽</div>
+          <div>
+            <div class="ac-label">Combustível</div>
+            <div class="ac-sub">Registar abastec.</div>
+          </div>
+        </div>
+        <div class="action-card teal">
+          <div class="ac-icon">🔧</div>
+          <div>
+            <div class="ac-label">Equipamentos</div>
+            <div class="ac-sub">Scan QR code</div>
+          </div>
+        </div>
+        <div class="action-card purple">
+          <div class="ac-icon">📦</div>
+          <div>
+            <div class="ac-label">Aluguer MOA</div>
+            <div class="ac-sub">Trabalhadores</div>
+          </div>
+        </div>
+        <div class="action-card red">
+          <div class="ac-icon">📊</div>
+          <div>
+            <div class="ac-label">Produção</div>
+            <div class="ac-sub">Fecho de mês</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKER LIST -->
+      <div class="section-hd">
+        <span class="section-title">Minha Equipa Hoje</span>
+        <span class="section-link">Ver todos →</span>
+      </div>
+      <div class="worker-list">
+        <div class="worker-item">
+          <div class="wi-av" style="background:#3B82F6">JS</div>
+          <div class="wi-info">
+            <div class="wi-name">João Silva</div>
+            <div class="wi-detail">Obra: Torres Verdes</div>
+          </div>
+          <div class="wi-hours">
+            <div class="wi-h-val">8h</div>
+            <div class="wi-h-label">hoje</div>
+          </div>
+          <div class="wi-status ok"></div>
+        </div>
+        <div class="worker-item">
+          <div class="wi-av" style="background:#8B5CF6">MF</div>
+          <div class="wi-info">
+            <div class="wi-name">Maria Ferreira</div>
+            <div class="wi-detail">Obra: Sede Lisboa</div>
+          </div>
+          <div class="wi-hours">
+            <div class="wi-h-val">8h</div>
+            <div class="wi-h-label">hoje</div>
+          </div>
+          <div class="wi-status ok"></div>
+        </div>
+        <div class="worker-item">
+          <div class="wi-av" style="background:#10B981">AC</div>
+          <div class="wi-info">
+            <div class="wi-name">António Costa</div>
+            <div class="wi-detail">Falta registada</div>
+          </div>
+          <div class="wi-hours">
+            <div class="wi-h-val" style="color:var(--red-600)">0h</div>
+            <div class="wi-h-label">hoje</div>
+          </div>
+          <div class="wi-status miss"></div>
+        </div>
+        <div class="worker-item">
+          <div class="wi-av" style="background:#F59E0B">RP</div>
+          <div class="wi-info">
+            <div class="wi-name">Rui Pereira</div>
+            <div class="wi-detail">Obra: Armazém Norte</div>
+          </div>
+          <div class="wi-hours">
+            <div class="wi-h-val" style="color:var(--amber-700)">6h</div>
+            <div class="wi-h-label">hoje</div>
+          </div>
+          <div class="wi-status warn"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav">
+      <div class="bn-item active">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        <span class="bn-label">Início</span>
+      </div>
+      <div class="bn-item">
+        <div class="bn-dot">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <span class="bn-label">Ponto</span>
+      </div>
+      <div class="bn-item">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span class="bn-label">Produção</span>
+      </div>
+      <div class="bn-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span class="bn-label">Equipa</span>
+      </div>
+      <div class="bn-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        <span class="bn-label">Mais</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL — design notes ── -->
+  <div class="right-panel">
+    <div class="rp-header">
+      <div class="rp-title">Field First</div>
+      <div class="rp-sub">Mockup 3 · Design centrado no encarregado de obra em campo</div>
+    </div>
+
+    <div class="rp-note">
+      <div class="rp-note-title">📱 Otimizado para telemóvel e tablet</div>
+      <div class="rp-note-text">Este layout prioriza ações rápidas com elementos touch de 48px+, navegação por bottom bar, e hierarquia visual clara. Ideal para uso em obra com luvas ou em situações de stress.</div>
+    </div>
+
+    <div class="rp-features">
+      <div class="feat-card">
+        <div class="feat-icon">🏠</div>
+        <div class="feat-title">Hero Card Personalizado</div>
+        <div class="feat-desc">Saudação com contexto do dia, obra atual e atalhos rápidos num único cartão de destaque.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📅</div>
+        <div class="feat-title">Strip Semanal Visual</div>
+        <div class="feat-desc">Vista rápida dos 5 dias com indicadores de horas, faltas e dia atual destacado.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">Grid de Ações 2×3</div>
+        <div class="feat-desc">6 módulos principais em grelha com ícones grandes, cor por categoria e badges de alerta.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">Lista de Equipa</div>
+        <div class="feat-desc">Colaboradores do dia com status visual imediato — verde, amarelo ou vermelho.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🧭</div>
+        <div class="feat-title">Bottom Navigation</div>
+        <div class="feat-desc">5 destinos principais sempre acessíveis com polegar. Substitui sidebar lateral.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎨</div>
+        <div class="feat-title">Azul + Verde + Fundo Suave</div>
+        <div class="feat-desc">Identidade Plandese mantida com fundo #EEF2F7 que reduz fadiga visual em uso prolongado.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

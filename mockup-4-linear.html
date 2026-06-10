@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 4 — Linear Style</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090A;--surface:#0E0F11;--surface2:#16171A;--surface3:#1C1D21;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.10);
+  --accent:#5E6AD2;--accent-hover:#6E79E0;--accent-dim:rgba(94,106,210,0.14);
+  --text:#F7F8F8;--text2:#8A8F98;--text3:#62666D;
+  --green:#4CB782;--amber:#F2C94C;--red:#EB5757;--blue:#4EA7FC;--purple:#A78BFA;
+  --radius:6px;--radius-lg:8px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+
+.layout{display:flex;height:100vh}
+.sidebar{width:212px;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sb-top{padding:12px 12px 8px;display:flex;align-items:center;gap:8px}
+.sb-logo{width:22px;height:22px;background:linear-gradient(135deg,#5E6AD2,#A78BFA);border-radius:6px;flex-shrink:0}
+.sb-ws{font-size:13px;font-weight:600;color:var(--text);flex:1}
+.sb-chevron{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:2}
+.sb-search{margin:4px 8px 8px;height:30px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:7px;padding:0 9px}
+.sb-search svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2}
+.sb-search span{font-size:12px;color:var(--text3);flex:1}
+.sb-kbd{font-size:10px;color:var(--text3);background:var(--surface3);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
+
+.sb-nav{flex:1;overflow-y:auto;padding:4px 8px;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-group-label{font-size:11px;font-weight:500;color:var(--text3);padding:10px 8px 4px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:13px;font-weight:450;transition:background .12s,color .12s}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{background:var(--surface2);color:var(--text);font-weight:500}
+.sb-item svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;flex-shrink:0;opacity:.85}
+.sb-count{margin-left:auto;font-size:11px;color:var(--text3);font-weight:500}
+
+.sb-footer{padding:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sb-av{width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:white}
+.sb-user{flex:1;font-size:12px;color:var(--text2)}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.header{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+.header-crumb{font-size:13px;color:var(--text2);font-weight:450}
+.header-crumb b{color:var(--text);font-weight:500}
+.header-sep{color:var(--text3)}
+.header-right{margin-left:auto;display:flex;gap:6px}
+.h-btn{height:28px;padding:0 10px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .12s}
+.h-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+.h-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.h-btn.primary{background:var(--accent);border-color:var(--accent);color:white}
+.h-btn.primary:hover{background:var(--accent-hover)}
+
+.content{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+
+.page-top{padding:20px 24px 8px}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-.02em;color:var(--text)}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* filter bar like Linear */
+.filter-bar{display:flex;align-items:center;gap:8px;padding:10px 24px;border-bottom:1px solid var(--border)}
+.filter-pill{height:26px;padding:0 9px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:12px;font-weight:450;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit}
+.filter-pill svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+.filter-pill:hover{background:var(--surface2);color:var(--text)}
+.filter-pill.active{background:var(--accent-dim);border-color:transparent;color:var(--accent)}
+
+/* KPI inline row */
+.stat-row{display:flex;gap:0;padding:0 24px;border-bottom:1px solid var(--border)}
+.stat{flex:1;padding:16px 0;border-right:1px solid var(--border)}
+.stat:last-child{border-right:none}
+.stat-label{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:22px;font-weight:600;color:var(--text);margin-top:6px;letter-spacing:-.02em}
+.stat-val small{font-size:13px;color:var(--text2);font-weight:450}
+.stat-delta{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:3px}
+.stat-delta.up{color:var(--green)}.stat-delta.down{color:var(--red)}.stat-delta.flat{color:var(--text3)}
+
+/* list section header */
+.list-section-hd{display:flex;align-items:center;gap:8px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+.list-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.list-title{font-size:12px;font-weight:600;color:var(--text)}
+.list-count{font-size:11px;color:var(--text3);background:var(--surface2);padding:1px 7px;border-radius:10px}
+
+/* table */
+.lt{width:100%;border-collapse:collapse}
+.lt th{text-align:left;padding:7px 24px;font-size:11px;font-weight:500;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg)}
+.lt th.c{text-align:center}
+.lt td{padding:9px 24px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);font-weight:450}
+.lt td.c{text-align:center}
+.lt tr:hover td{background:var(--surface2)}
+.lt .nm{color:var(--text);font-weight:450;display:flex;align-items:center;gap:9px}
+.av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:white;flex-shrink:0}
+.h-ok{color:var(--green)}.h-warn{color:var(--amber)}.h-miss{color:var(--red)}.h-empty{color:var(--text3)}
+.tcol-today{background:rgba(94,106,210,0.05)}
+.sumrow td{background:var(--bg);color:var(--text);font-weight:600;border-top:1px solid var(--border2)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:var(--radius);font-size:11px;font-weight:500;border:1px solid var(--border)}
+.badge .d{width:6px;height:6px;border-radius:50%}
+.badge.green{color:var(--green)}.badge.green .d{background:var(--green)}
+.badge.amber{color:var(--amber)}.badge.amber .d{background:var(--amber)}
+.badge.blue{color:var(--blue)}.badge.blue .d{background:var(--blue)}
+.badge.red{color:var(--red)}.badge.red .d{background:var(--red)}
+.prog{display:flex;align-items:center;gap:8px}
+.prog-bar{width:60px;height:4px;background:var(--surface3);border-radius:2px}
+.prog-fill{height:100%;border-radius:2px;background:var(--accent)}
+.prog-pct{font-size:11px;color:var(--text3)}
+
+.design-tag{position:fixed;top:10px;right:10px;background:var(--accent);color:white;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;z-index:999;font-family:'Inter',sans-serif}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 4 · LINEAR</div>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-top">
+      <div class="sb-logo"></div>
+      <span class="sb-ws">Plandese</span>
+      <svg class="sb-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="sb-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Pesquisar...</span>
+      <span class="sb-kbd">⌘K</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-item active"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Ponto<span class="sb-count">3</span></div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Obras<span class="sb-count">8</span></div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>Equipamentos</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-10"/></svg>Combustível</div>
+      <div class="sb-group-label">Gestão</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Produção</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Colaboradores</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Faturas</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L23 6H6"/></svg>Compras</div>
+      <div class="sb-group-label">Admin</div>
+      <div class="sb-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 01-.1 1.4l2 1.6-2 3.4-2.4-1a7 7 0 01-2.4 1.4l-.4 2.6h-4l-.4-2.6a7 7 0 01-2.4-1.4l-2.4 1-2-3.4 2-1.6A7 7 0 015 12"/></svg>Definições</div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-av">DM</div>
+      <span class="sb-user">David Mosca</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="header">
+      <span class="header-crumb">Ponto <span class="header-sep">›</span> <b>Semana 23</b></span>
+      <div class="header-right">
+        <button class="h-btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <button class="h-btn primary"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo registo</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-top">
+        <div class="page-title">Registo de Ponto</div>
+        <div class="page-sub">Semana 23 · 2 a 6 de Junho de 2026</div>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-pill active"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Todos</button>
+        <button class="filter-pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>Presentes</button>
+        <button class="filter-pill"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>Faltas</button>
+        <button class="filter-pill" style="margin-left:auto"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Jun 2–6</button>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="stat-label">Horas semana</div><div class="stat-val">342<small> h</small></div><div class="stat-delta up">↑ +12h vs anterior</div></div>
+        <div class="stat"><div class="stat-label">Colaboradores</div><div class="stat-val">23</div><div class="stat-delta up">↑ 2 adicionados</div></div>
+        <div class="stat"><div class="stat-label">Obras ativas</div><div class="stat-val">8</div><div class="stat-delta flat">— sem alteração</div></div>
+        <div class="stat"><div class="stat-label">Faltas</div><div class="stat-val">4</div><div class="stat-delta down">↓ esta semana</div></div>
+      </div>
+
+      <div class="list-section-hd"><span class="list-dot"></span><span class="list-title">Folha de Ponto</span><span class="list-count">4 colaboradores</span></div>
+      <table class="lt">
+        <thead><tr><th>Colaborador</th><th class="c">Seg 2</th><th class="c">Ter 3</th><th class="c">Qua 4</th><th class="c">Qui 5</th><th class="c">Sex 6</th><th class="c">Total</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td class="nm"><span class="av" style="background:#4EA7FC">JS</span>João Silva</td><td class="c h-ok">8h</td><td class="c h-ok">8h</td><td class="c h-ok tcol-today">8h</td><td class="c h-warn">6h</td><td class="c h-empty">—</td><td class="c" style="color:var(--text);font-weight:600">30h</td><td><span class="badge green"><span class="d"></span>Normal</span></td></tr>
+          <tr><td class="nm"><span class="av" style="background:#A78BFA">MF</span>Maria Ferreira</td><td class="c h-ok">8h</td><td class="c h-ok">8h</td><td class="c h-ok tcol-today">8h</td><td class="c h-ok">8h</td><td class="c h-empty">—</td><td class="c" style="color:var(--text);font-weight:600">32h</td><td><span class="badge green"><span class="d"></span>Normal</span></td></tr>
+          <tr><td class="nm"><span class="av" style="background:#4CB782">AC</span>António Costa</td><td class="c h-ok">8h</td><td class="c h-miss">Falta</td><td class="c h-ok tcol-today">8h</td><td class="c h-ok">8h</td><td class="c h-empty">—</td><td class="c" style="color:var(--text);font-weight:600">24h</td><td><span class="badge red"><span class="d"></span>1 falta</span></td></tr>
+          <tr><td class="nm"><span class="av" style="background:#F2C94C;color:#222">RP</span>Rui Pereira</td><td class="c h-ok">9h</td><td class="c h-ok">9h</td><td class="c h-ok tcol-today">9h</td><td class="c h-ok">9h</td><td class="c h-empty">—</td><td class="c" style="color:var(--amber);font-weight:600">36h</td><td><span class="badge amber"><span class="d"></span>Extra</span></td></tr>
+          <tr class="sumrow"><td>Total semana</td><td class="c">33h</td><td class="c">25h</td><td class="c tcol-today">33h</td><td class="c">31h</td><td class="c h-empty">—</td><td class="c">122h</td><td></td></tr>
+        </tbody>
+      </table>
+
+      <div class="list-section-hd"><span class="list-dot" style="background:var(--green)"></span><span class="list-title">Obras em Curso</span><span class="list-count">8 ativas</span></div>
+      <table class="lt">
+        <thead><tr><th>Obra</th><th>Cliente</th><th>Encarregado</th><th>Prazo</th><th>Estado</th><th>Progresso</th></tr></thead>
+        <tbody>
+          <tr><td class="nm">Residencial Torres Verdes</td><td>Construções XYZ</td><td>João Silva</td><td>Ago 2026</td><td><span class="badge green"><span class="d"></span>Em curso</span></td><td><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:68%;background:var(--green)"></div></div><span class="prog-pct">68%</span></div></td></tr>
+          <tr><td class="nm">Armazém Logístico Norte</td><td>Log & Ship Lda</td><td>Rui Pereira</td><td>Jul 2026</td><td><span class="badge amber"><span class="d"></span>Atrasada</span></td><td><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:45%;background:var(--amber)"></div></div><span class="prog-pct">45%</span></div></td></tr>
+          <tr><td class="nm">Escola Básica Setúbal</td><td>Câmara Setúbal</td><td>António Costa</td><td>Dez 2026</td><td><span class="badge blue"><span class="d"></span>Planeada</span></td><td><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:12%;background:var(--blue)"></div></div><span class="prog-pct">12%</span></div></td></tr>
+          <tr><td class="nm">Remodelação Sede Lisboa</td><td>Tech Corp SA</td><td>Maria Ferreira</td><td>Set 2026</td><td><span class="badge green"><span class="d"></span>Em curso</span></td><td><div class="prog"><div class="prog-bar"><div class="prog-fill" style="width:31%;background:var(--green)"></div></div><span class="prog-pct">31%</span></div></td></tr>
+        </tbody>
+      </table>
+      <div style="height:24px"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

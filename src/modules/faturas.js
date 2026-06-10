@@ -1,14 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════
 //  MÓDULO FATURAS — OCR + extração de campos
 // ═══════════════════════════════════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
+import { sb } from '../supabase.js';
 
 let FATURAS = [];
 let FAT_QUEUE = [];
 let _fatSeq = 0;
 let _editFatId = null;
+
+// Memória de aprendizagem por fornecedor (NIF → template de âncoras), carregada do Supabase.
+let FAT_TEMPLATES = {};
+
+// Padrão de um valor monetário típico em faturas PT/EN (reutilizado na extração e na aprendizagem).
+const NUM_REGEX_STR = '(\\d[\\d\\s.,]{0,15}[.,]\\d{2})';
 
 // ═══════════════════════════════════════════════════════════════════
 //  MÓDULO FATURAS  (apenas perfil 'admin')
@@ -122,7 +129,9 @@ async function processQueueItem(item){
     item.status='done'; item.progress=100; renderQueue();
     renderFaturas(); atualizaKPIs();
     const detetados = countCamposDetetados(fat);
-    showToast(`${item.name}: ${detetados}/5 campos detetados`);
+    showToast(fat._fonte==='memoria'
+      ? `${item.name}: fornecedor reconhecido — preenchido da memória`
+      : `${item.name}: ${detetados}/5 campos · fornecedor novo, confirme para ensinar`);
     setTimeout(()=>{ FAT_QUEUE = FAT_QUEUE.filter(q=>q.id!==item.id); renderQueue(); }, 4000);
   } catch(e){
     console.error('Erro processamento fatura:', e);
@@ -241,7 +250,7 @@ function extractInvoiceFields(texto, item){
 
   // Padrão para um número de fatura típico: "1 107.00", "1.107,00", "900.00", "207,00"
   // (1 dígito, depois até 15 chars [dígitos/espaços/pontos/vírgulas], depois separador decimal e 2 dígitos)
-  const NUM_REGEX = '(\\d[\\d\\s.,]{0,15}[.,]\\d{2})';
+  const NUM_REGEX = NUM_REGEX_STR;
 
   // Total — várias variantes em PT
   const total = parseEuro(matchValor(t, [
@@ -296,6 +305,26 @@ function extractInvoiceFields(texto, item){
   }
   fornecedor = fornecedor.replace(/^[•\-\*\s]+/,'').trim();
 
+  // ── Memória de aprendizagem por fornecedor ──
+  // Se já vimos este NIF antes, usamos as âncoras aprendidas para preencher com precisão
+  // (sobrepõe-se às regex genéricas) e autopreenchemos o nome canónico do fornecedor.
+  let _fonte = 'ocr';
+  let _exemplos = 0;
+  const tpl = nif ? FAT_TEMPLATES[nif] : null;
+  if(tpl){
+    _fonte = 'memoria';
+    _exemplos = tpl.exemplos || 0;
+    if(tpl.fornecedor) fornecedor = tpl.fornecedor;
+    const ap = aplicarTemplate(t, tpl);
+    if(ap.total!=null)  total  = ap.total;
+    if(ap.iva!=null)    iva    = ap.iva;
+    if(ap.base!=null)   base   = ap.base;
+    if(ap.numero)       numero = ap.numero;
+    if(ap.data)         data   = ap.data;
+    if(ap.dataPag)      dataPag= ap.dataPag;
+    if(base==null && total!=null && iva!=null) base = Math.round((total-iva)*100)/100;
+  }
+
   // Confiança = proporção dos 5 campos chave detetados, ponderada pela qualidade
   const detetados = [fornecedor, nif, total, iva, data].filter(v=>v!=null && v!=='').length;
   let confianca = detetados/5;
@@ -303,6 +332,8 @@ function extractInvoiceFields(texto, item){
   const _flags = [];
   if(nif && !validaNIF(nif)){ confianca -= 0.15; _flags.push('invalid_nif'); }
   if(!coerenciaTotais(base,iva,total)){ confianca -= 0.10; _flags.push('totals_mismatch'); }
+  // Vindo da memória de um fornecedor conhecido (com total e NIF válido) → confiança alta
+  if(_fonte==='memoria' && total!=null && validaNIF(nif)) confianca = Math.max(confianca, 0.92);
   if(confianca<0) confianca=0; if(confianca>1) confianca=1;
   if(detetados<3) _flags.push('low_extraction');
 
@@ -317,11 +348,126 @@ function extractInvoiceFields(texto, item){
     confianca,
     ficheiro: item.name,
     paginas: 1,
-    notas: detetados<3 ? `Apenas ${detetados}/5 campos detetados — confirme manualmente.` : '',
+    notas: _fonte==='memoria'
+      ? `Preenchido da memória do fornecedor (${_exemplos} ${_exemplos===1?'fatura aprendida':'faturas aprendidas'}).`
+      : (detetados<3 ? `Apenas ${detetados}/5 campos detetados — confirme manualmente.` : ''),
     criadoEm: new Date().toISOString(),
     _flags,
-    _rawText: t.slice(0,4000),
+    _fonte,
+    _exemplos,
+    _rawText: t,
   };
+}
+
+// ═══════════════════════════════════════
+//  APRENDIZAGEM POR FORNECEDOR — memória de âncoras por NIF
+// ═══════════════════════════════════════
+// Remove acentos para comparar etiquetas de forma robusta (NFD → strip diacríticos).
+function semAcentos(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+// Limpa o prefixo de uma linha para uma âncora estável: minúsculas, sem acentos,
+// descarta números/percentagens soltos e fica com as últimas ~4 palavras alfabéticas.
+function limpaAnchor(prefixo){
+  const p = semAcentos(prefixo).toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
+  if(!p) return '';
+  // Guardamos as últimas ~4 palavras (incluindo conectores curtos como "a"/"de"): o tail
+  // é contíguo no texto, por isso a reconstrução com \s+ continua a casar a etiqueta.
+  const palavras = p.split(' ').filter(Boolean);
+  return palavras.length ? palavras.slice(-4).join(' ') : '';
+}
+
+// Localiza um valor confirmado no texto e devolve a etiqueta que o antecede na mesma linha.
+// tipo: 'money' (compara via parseEuro) | 'date' (compara via parseData) | 'text' (substring).
+function extrairAnchor(texto, valor, tipo){
+  if(valor==null || valor==='') return '';
+  const linhas = String(texto).split('\n');
+  const numRe = new RegExp(NUM_REGEX_STR, 'g');
+  const dateRe = /\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}/g;
+  for(const linha of linhas){
+    if(tipo==='text'){
+      const idx = linha.indexOf(String(valor));
+      if(idx>0){ const a = limpaAnchor(linha.slice(0, idx)); if(a) return a; }
+      continue;
+    }
+    const re = tipo==='date' ? dateRe : numRe;
+    const alvoOk = tipo==='date'
+      ? (tok)=> parseData(tok) === valor
+      : (tok)=>{ const n = parseEuro(tok); return n!=null && Math.abs(n - Number(valor)) < 0.005; };
+    re.lastIndex = 0;
+    let m;
+    while((m = re.exec(linha))){
+      if(alvoOk(m[0])){ const a = limpaAnchor(linha.slice(0, m.index)); if(a) return a; }
+    }
+  }
+  return '';
+}
+
+// Aplica as âncoras aprendidas de um fornecedor ao texto de uma fatura nova.
+function aplicarTemplate(texto, tpl){
+  const out = {};
+  const campos = tpl.campos || {};
+  const txt = semAcentos(texto);
+  for(const campo of Object.keys(campos)){
+    const def = campos[campo];
+    if(!def || !def.anchor) continue;
+    const anchorRe = def.anchor.split(' ')
+      .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');
+    const valPat = def.tipo==='money' ? NUM_REGEX_STR
+      : def.tipo==='date' ? '(\\d{4}[\\/\\-.]\\d{1,2}[\\/\\-.]\\d{1,2}|\\d{1,2}[\\/\\-.]\\d{1,2}[\\/\\-.]\\d{2,4})'
+      : '([A-Z0-9][\\w\\-\\/]{2,30})';
+    const m = txt.match(new RegExp(anchorRe + '[^\\d\\n]*?' + valPat, 'i'));
+    if(m && m[1]){
+      if(def.tipo==='money')      out[campo] = parseEuro(m[1]);
+      else if(def.tipo==='date')  out[campo] = parseData(m[1]);
+      else                        out[campo] = String(m[1]).replace(/[.\s]+$/,'');
+    }
+  }
+  return out;
+}
+
+// Aprende/atualiza o template de um fornecedor a partir de uma fatura confirmada pelo utilizador.
+function aprenderTemplate(f){
+  if(!validaNIF(f.nif)) return;
+  const texto = f._rawText || '';
+  if(texto.length < 20) return;
+  const tpl = FAT_TEMPLATES[f.nif] || { nif:f.nif, fornecedor:'', campos:{}, exemplos:0 };
+  if(f.fornecedor) tpl.fornecedor = f.fornecedor;
+  const campos = tpl.campos || {};
+  const aprende = (campo, valor, tipo)=>{ const a = extrairAnchor(texto, valor, tipo); if(a) campos[campo] = {anchor:a, tipo}; };
+  aprende('total',   f.total,   'money');
+  aprende('iva',     f.iva,     'money');
+  aprende('base',    f.base,    'money');
+  aprende('numero',  f.numero,  'text');
+  aprende('data',    f.data,    'date');
+  aprende('dataPag', f.dataPag, 'date');
+  tpl.campos = campos;
+  tpl.exemplos = (tpl.exemplos||0) + 1;
+  FAT_TEMPLATES[f.nif] = tpl;
+  sbSaveTemplate(tpl);
+}
+
+// Persiste o template no Supabase (upsert por NIF).
+async function sbSaveTemplate(tpl){
+  try{
+    await sb.from('fatura_fornecedores').upsert({
+      nif: tpl.nif,
+      fornecedor: tpl.fornecedor||null,
+      campos: tpl.campos||{},
+      exemplos: tpl.exemplos||0,
+      atualizado_em: new Date().toISOString()
+    }, { onConflict:'nif' });
+  } catch(e){ console.warn('Erro ao guardar template de fatura:', e); }
+}
+
+// Carrega todos os templates aprendidos para memória (chamado ao entrar na secção Faturas).
+async function carregarTemplatesFaturas(){
+  try{
+    const { data } = await sb.from('fatura_fornecedores').select('*');
+    if(data){
+      FAT_TEMPLATES = {};
+      data.forEach(r=>{ FAT_TEMPLATES[r.nif] = { nif:r.nif, fornecedor:r.fornecedor||'', campos:r.campos||{}, exemplos:r.exemplos||0 }; });
+    }
+  } catch(e){ console.warn('Erro ao carregar templates de fatura:', e); }
 }
 
 function matchValor(texto, patterns){
@@ -501,6 +647,10 @@ function editarFatura(id){
   document.getElementById('mf-notas').value = f.notas||'';
   const elRaw = document.getElementById('mf-rawtext');
   if(elRaw) elRaw.textContent = f._rawText || '(sem texto extraído)';
+  const elSub = document.getElementById('mf-sub');
+  if(elSub) elSub.textContent = f._fonte==='memoria'
+    ? `Fornecedor reconhecido — preenchido da memória (${f._exemplos||0} ${f._exemplos===1?'fatura':'faturas'}). Corrija se necessário; o sistema reaprende.`
+    : 'Fornecedor novo — confirme os campos. Ao guardar, o sistema aprende para as próximas faturas deste fornecedor.';
   validaCamposModal();
   document.getElementById('modal-fat').classList.add('open');
   ['mf-nif','mf-base','mf-iva','mf-total'].forEach(id=>{
@@ -537,10 +687,13 @@ function saveFatura(){
   if(!coerenciaTotais(f.base,f.iva,f.total)) f._flags.push('totals_mismatch');
   // Edição manual aumenta confiança
   if(f.confianca<0.99) f.confianca = Math.min(0.99, (f.confianca||0.7)+0.15);
+  // Aprende com a confirmação do utilizador — memória do fornecedor por NIF
+  aprenderTemplate(f);
   closeModal('modal-fat');
   renderFaturas();
   flashAlert('fat-alert');
-  showToast('Fatura atualizada');
+  showToast(validaNIF(f.nif) ? 'Fatura atualizada — memória do fornecedor atualizada' : 'Fatura atualizada');
+  R.emitEvent?.({ acao:'Fatura atualizada: '+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
 }
 function apagarFatura(){
   const id = parseInt(document.getElementById('mf-id').value,10);
@@ -574,5 +727,6 @@ export {
   handleFatFiles, renderFaturas, limparFatFiltros, renderQueue,
   editarFatura, saveFatura, apagarFatura, exportFaturasXLSX,
   setupFatDropzone, atualizaKPIs, seedFaturasDemo,
+  carregarTemplatesFaturas,
   validaNIF, coerenciaTotais
 };

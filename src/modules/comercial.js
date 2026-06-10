@@ -2,6 +2,7 @@
 //  COMERCIAL
 // ═══════════════════════════════════════
 import { fmt } from '../utils/helpers.js';
+import { R } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
 
 let PROPOSTAS = []; // [{id, cliente, descricao, valor, estado, data}]
@@ -102,6 +103,7 @@ export function saveProposta(){
   renderComercial();
   const al=document.getElementById('com-alert');
   if(al){al.style.display='';setTimeout(()=>al.style.display='none',2500);}
+  R.emitEvent?.({ acao:(idx>=0?'Proposta atualizada':'Nova proposta')+': '+cliente, seccao:'comercial' });
 }
 
 export function deleteProposta(id){

@@ -2,7 +2,7 @@
 //  MÓDULO COMPRAS — pedidos e mapa Leaflet
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 
@@ -606,6 +606,8 @@ async function saveCompra() {
   showToast('Pedido guardado');
   if (isNovo && c.emailNotif) setTimeout(() => enviarEmailNotificacao(c), 400);
   await sbSaveCompra(c);
+  const obraNome = S.OBRAS.find(o=>o.id===c.obraId)?.nome || '';
+  R.emitEvent?.({ acao:(isNovo?'Novo pedido de compra':'Pedido de compra atualizado')+': '+titulo+(obraNome?' · '+obraNome:''), seccao:'compras' });
 }
 
 async function apagarCompra() {

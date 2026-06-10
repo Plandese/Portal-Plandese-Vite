@@ -130,6 +130,7 @@ export function switchUtilTab(tab, btn){
   const btnNovo = document.getElementById('btn-novo-utilizador');
   if(btnNovo) btnNovo.style.display = tab==='users' ? '' : 'none';
   if(tab==='perms') renderPermMatrix();
+  if(tab==='notifs' && window.renderNotifSubs) window.renderNotifSubs();
 }
 
 export function applyStoredPermissions(){

@@ -2,7 +2,7 @@
 //  ENC-EQUIP — Scanner QR Encarregado
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { showToast } from './navigation.js';
 import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal } from './equipamentos.js';
 
@@ -155,6 +155,7 @@ function submitEncEquipamento(){
     (obraNome?`em <strong>${obraNome}</strong>`:'sem obra associada')+
     `<br><span style="font-size:11px;opacity:.65;display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
   _encEquipShowState('success');
+  R.emitEvent?.({ acao:'Equipamento registado: '+(eq?eq.nome:_encQrEquipId)+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
 }
 
 // ═══════════════════════════════════════

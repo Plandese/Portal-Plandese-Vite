@@ -24,10 +24,11 @@ import { renderUsers, editUser, saveUser } from './modules/utilizadores.js';
 import { loadPermissions, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions } from './modules/permissions.js';
 
 // Notificações
-import { initNotifications, buildNotifications, agora, addNotification, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
+import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
+import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
 
 // Faturas
-import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo } from './modules/faturas.js';
+import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas } from './modules/faturas.js';
 
 // Compras
 import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras } from './modules/compras.js';
@@ -75,7 +76,7 @@ Object.assign(R, {
   initEnc,
   initAdmin,
   applyStoredPermissions, applyRolePermissions, renderPermMatrix,
-  initNotifications,
+  initNotifications, emitEvent,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
   loadCombustivelAdmin, renderProdDashboard, renderComercial,
@@ -197,7 +198,8 @@ Object.assign(window, {
   editProposta, saveProposta, deleteProposta,
 
   // Notificações
-  toggleNotifPanel, notifClick,
+  toggleNotifPanel, notifClick, markAllRead,
+  renderNotifSubs, toggleNotifSub,
 
   // Folha de Fecho
   renderFechoMes, exportFechoMes,
@@ -305,7 +307,7 @@ window.savePerfil = async function () {
   window.goTo = function (id, btn) {
     _orig(id, btn);
     if (id === 'painel')       { renderPainel(); }
-    if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); renderFaturas(); atualizaKPIs(); }
+    if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); injectMapaCompBtns(); }
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }

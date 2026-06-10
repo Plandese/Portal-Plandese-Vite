@@ -92,6 +92,62 @@ export async function sbToggleColab(n, ativo) {
   try { await sb.from('colaboradores').update({ativo}).eq('numero',n); } catch(e) {}
 }
 
+// ═══════════════════════════════════════
+//  SUPABASE — NOTIFICAÇÕES
+// ═══════════════════════════════════════
+// Carrega as últimas notificações do utilizador autenticado
+export async function sbLoadNotificacoes(destinatario, limit=50){
+  try {
+    const {data} = await sb.from('notificacoes')
+      .select('*').eq('destinatario', destinatario)
+      .order('created_at',{ascending:false}).limit(limit);
+    return data||[];
+  } catch(e){ console.warn('Erro ao carregar notificações:', e); return []; }
+}
+
+// Insere várias linhas de notificação (fan-out já calculado)
+export async function sbInsertNotificacoes(rows){
+  if(!rows||!rows.length) return;
+  try { await sb.from('notificacoes').insert(rows); }
+  catch(e){ console.warn('Erro ao inserir notificações:', e); }
+}
+
+export async function sbMarkNotifRead(id){
+  try { await sb.from('notificacoes').update({lida:true}).eq('id',id); } catch(e){}
+}
+
+export async function sbMarkAllNotifRead(destinatario){
+  try { await sb.from('notificacoes').update({lida:true}).eq('destinatario',destinatario).eq('lida',false); } catch(e){}
+}
+
+// Subscrições — quem recebe de que secção
+export async function sbLoadSubscriptions(){
+  try { const {data} = await sb.from('notif_subscriptions').select('*'); return data||[]; }
+  catch(e){ console.warn('Erro ao carregar subscrições:', e); return []; }
+}
+
+export async function sbSetSubscription(destinatario, seccao, ativo){
+  try {
+    if(ativo){
+      await sb.from('notif_subscriptions').upsert({destinatario, seccao},{onConflict:'destinatario,seccao'});
+    } else {
+      await sb.from('notif_subscriptions').delete().eq('destinatario',destinatario).eq('seccao',seccao);
+    }
+  } catch(e){ console.warn('Erro ao guardar subscrição:', e); }
+}
+
+// Realtime — entrega ao vivo de notificações novas para o utilizador
+export function sbSubscribeNotificacoes(destinatario, onInsert){
+  try {
+    const ch = sb.channel('notif-'+destinatario)
+      .on('postgres_changes',
+        {event:'INSERT', schema:'public', table:'notificacoes', filter:`destinatario=eq.${destinatario}`},
+        payload => onInsert(payload.new))
+      .subscribe();
+    return ch;
+  } catch(e){ console.warn('Erro ao subscrever realtime:', e); return null; }
+}
+
 export function showSaveInd(){
   const el=document.getElementById('save-ind');
   if(!el)return;

@@ -26,3 +26,4 @@ android/.idea/caches/
 # Scripts de deploy locais (opcionais)
 *.bat
 *.ps1
+.vercel

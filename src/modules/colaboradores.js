@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  ADMIN — COLABORADORES
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { sbSaveColab, sbToggleColab } from '../db.js';
 import { closeModal, flashAlert } from './navigation.js';
 
@@ -26,6 +26,7 @@ export async function saveColab(){
   else S.COLABORADORES.push({n:num,nome,func,ativo:true});
   await sbSaveColab({n:num,nome,func,ativo:true});
   closeModal('modal-colab');renderColabs();flashAlert('colab-alert');
+  R.emitEvent?.({ acao:(idEdit?'Colaborador atualizado':'Novo colaborador')+': '+nome, seccao:'colaboradores' });
 }
 
 export async function toggleColab(n){

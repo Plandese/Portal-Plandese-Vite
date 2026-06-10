@@ -2,7 +2,7 @@
 //  ADMIN — OBRAS
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { sbToggleObra } from '../db.js';
 import { closeModal, populateFilterSelects, flashAlert } from './navigation.js';
 
@@ -64,6 +64,7 @@ export async function saveObra(){
     if(error) throw error;
     if(existing>=0)S.OBRAS[existing]={...S.OBRAS[existing],...rec};else S.OBRAS.push(rec);
     closeModal('modal-obra');renderObras();populateFilterSelects();flashAlert('obra-alert');
+    R.emitEvent?.({ acao:(existing>=0?'Obra atualizada':'Nova obra')+': '+nome, seccao:'obras' });
   } catch(e){
     alert('Erro ao guardar obra: '+e.message+'\nVerifique a ligação ao Supabase.');
   }

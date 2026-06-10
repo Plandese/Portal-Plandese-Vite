@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  PRODUÇÃO — Controlo de obras
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal } from './navigation.js';
 
@@ -594,6 +594,7 @@ function savePrevFat(){
   renderPrevFat();
   if(_coState.detailObraId) coRenderDetail(_coState.detailObraId);
   showToast('Previsão guardada');
+  R.emitEvent?.({ acao:(_editPrevId?'Previsão de faturação atualizada':'Nova previsão de faturação')+' · '+obraNome, seccao:'producao' });
 }
 
 function deletePrevFat(id){
@@ -700,6 +701,7 @@ function saveAuto(){
   renderAutos();
   if(_coState.detailObraId) coRenderDetail(_coState.detailObraId);
   showToast('Auto de medição guardado');
+  R.emitEvent?.({ acao:(_editAutoId?'Auto de medição atualizado':'Novo auto de medição')+' · '+obraNome, seccao:'producao' });
 }
 
 function deleteAuto(id){

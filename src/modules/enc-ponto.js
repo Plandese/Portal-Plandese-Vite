@@ -2,7 +2,7 @@
 //  ENC-PONTO — Encarregado: ponto e navegação
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
 import { TIPOS } from '../config.js';
 import { showToast } from './navigation.js';
@@ -457,6 +457,7 @@ async function encSubmeterRegisto(){
   for(const n of (S.activeRows[dk]||[])){encAutoSave(n);await sbSaveRegistoEnc(dk,n);}
   showToast('Registo submetido com sucesso! ✓');
   _encMarkDoneToday('plandese');
+  R.emitEvent?.({ acao:'Folha de ponto submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+(S.activeRows[dk]||[]).length+' colab.)', seccao:'historico' });
   setTimeout(()=>encVoltarHome(), 1500);
 }
 
