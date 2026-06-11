@@ -66,6 +66,9 @@ import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornec
 // Mapas comparativos
 import { sbLoadMapasComp, renderMapasComp, openModalMapa, editarMapaComp, adicionarFornecedorMapa, removerFornecedorMapa, adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa, saveMapaComp, apagarMapaComp, abrirMapaComparativo, injectMapaCompBtns } from './modules/mapas-comp.js';
 
+// Dropbox
+import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './modules/dropbox.js';
+
 // Férias
 import { renderMapaFerias, feriasNavAno, feriasTogglePrevista } from './modules/ferias.js';
 
@@ -98,6 +101,9 @@ window.addEventListener('resize', () => {
 // ── QR Registration via URL param ──
 initQrRegistration();
 
+// ── Dropbox OAuth callback (se vier redirect de volta da Dropbox) ──
+dropboxInit();
+
 // ── Login com Enter ──
 document.getElementById('lp')?.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
@@ -105,6 +111,9 @@ document.getElementById('lp')?.addEventListener('keypress', e => { if (e.key ===
 Object.assign(window, {
   // Auth
   doLogin, doLogout,
+
+  // Dropbox
+  dropboxLogin, dropboxLogout, dropboxIsConnected,
 
   // Painel Principal
   openPainelCustomizer, closePainelCustomizer, savePainelCustomizer,

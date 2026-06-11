@@ -5,6 +5,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
+import { dropboxUpload, dropboxFatPath, dropboxIsConnected } from './dropbox.js';
 
 let FATURAS = [];
 let FAT_QUEUE = [];
@@ -1041,9 +1042,27 @@ async function fssSave(){
   FATURAS.push(_fssFat);
   renderFaturas(); atualizaKPIs();
   await sbSaveFatura(_fssFat);
-  showToast(validaNIF(_fssFat.nif)
-    ? `${_fssItem?.name||'Fatura'}: guardada e memória do fornecedor atualizada`
-    : `${_fssItem?.name||'Fatura'}: guardada`);
+
+  // Upload Dropbox (se ligado e ficheiro disponível)
+  if(dropboxIsConnected() && _fssItem?._file){
+    try{
+      const path = dropboxFatPath(_fssFat, _fssItem.name);
+      const dbxPath = await dropboxUpload(_fssItem._file, path);
+      _fssFat.dropboxPath = dbxPath;
+      sbSaveFatura(_fssFat);
+      showToast(`${_fssItem.name}: guardada + enviada para Dropbox`);
+    } catch(e){
+      console.warn('Dropbox upload:', e);
+      showToast(validaNIF(_fssFat.nif)
+        ? `${_fssItem?.name||'Fatura'}: guardada e memória do fornecedor atualizada (Dropbox falhou)`
+        : `${_fssItem?.name||'Fatura'}: guardada (Dropbox falhou)`);
+    }
+  } else {
+    showToast(validaNIF(_fssFat.nif)
+      ? `${_fssItem?.name||'Fatura'}: guardada e memória do fornecedor atualizada`
+      : `${_fssItem?.name||'Fatura'}: guardada`);
+  }
+
   R.emitEvent?.({ acao:'Fatura inserida: '+(_fssFat.fornecedor||'')+(_fssFat.total?' · '+_fssFat.total+'€':''), seccao:'faturas' });
   fssClose();
 }

@@ -269,6 +269,7 @@ body{font-family:'Inter',sans-serif;background:var(--gray-50);color:var(--gray-9
 .btn-secondary{background:var(--white);color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
 .btn-green{background:var(--green);color:var(--white)}.btn-green:hover{background:#166534}
 .btn-sm{padding:5px 10px;font-size:12px}
+.btn-success{background:#0061FE;color:#fff;border:none}.btn-success:hover{background:#004ec2}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)}
 .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}

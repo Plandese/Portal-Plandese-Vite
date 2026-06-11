@@ -1213,10 +1213,16 @@
             <div class="pg-title">Gestão de faturas</div>
             <div class="pg-sub">Upload e extração automática de dados via OCR/IA</div>
           </div>
-          <button class="btn btn-secondary" onclick="exportFaturasXLSX()">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            Exportar Excel
-          </button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button id="dbx-btn" class="btn btn-secondary btn-sm" onclick="dropboxLogin()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 13l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/></svg>
+              Ligar Dropbox
+            </button>
+            <button class="btn btn-secondary" onclick="exportFaturasXLSX()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Exportar Excel
+            </button>
+          </div>
         </div>
 
         <!-- KPIs -->
