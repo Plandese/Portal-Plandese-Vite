@@ -274,6 +274,36 @@ async function ocrPDFPagesToText(item){
 // ═══════════════════════════════════════
 //  EXTRAÇÃO DE CAMPOS — regex específicas para faturas PT
 // ═══════════════════════════════════════
+
+// Linhas a ignorar na extração do fornecedor: moradas, códigos postais, cabeçalhos comuns.
+const _FORN_SKIP = /\b(rua|av\.|avenida|largo|travessa|r\/c|lote|bloco|apartado|nif|nipc|contribuinte|exmo|senhor|para:|a:|att:|subject|email|telef|fax|iban|bic|swift)\b|\d{4}[-\/]\d{3}|\b\d{4}\s\d{3}\b/i;
+
+function extrairFornecedor(t){
+  // Estratégia 1: linha com sufixo jurídico (Lda, SA, Unipessoal, etc.)
+  const sufixoMatch = t.match(/^[ \t]*([^\n]{4,80}?\b(?:Lda\.?|LDA|S\.?\s*A\.?|Unipessoal|SGPS|SARL|& Cia\.?|Sociedade)\b[^\n]*)/im);
+  if(sufixoMatch) return sufixoMatch[1].trim().replace(/^[•\-\*\s]+/,'').slice(0,80);
+
+  // Estratégia 2: linha em MAIÚSCULAS predominantes (nome da empresa tipicamente em caps)
+  const linhasUpper = t.split('\n').filter(l=>{
+    const c = l.trim();
+    if(c.length < 4 || c.length > 80) return false;
+    if(_FORN_SKIP.test(c)) return false;
+    if(/^\d+[\d.,€\s\-\/]*$/.test(c)) return false;
+    const letras = (c.match(/[a-zA-Z]/g)||[]);
+    const upper  = (c.match(/[A-Z]/g)||[]);
+    return letras.length >= 4 && upper.length / letras.length > 0.65;
+  });
+  if(linhasUpper.length) return linhasUpper[0].trim().replace(/^[•\-\*\s]+/,'').slice(0,80);
+
+  // Estratégia 3: primeira linha razoável não-endereço, não-numérica
+  const linhas = t.split('\n').map(l=>l.trim()).filter(l=>
+    l.length >= 4 && l.length <= 80
+    && !/^\d+[\d.,€\s\-\/]*$/.test(l)
+    && !_FORN_SKIP.test(l)
+  );
+  return (linhas[0]||'').replace(/^[•\-\*\s]+/,'').trim().slice(0,80);
+}
+
 function extractInvoiceFields(texto, item){
   const t = texto.replace(/ /g,' ').replace(/[ \t]+/g,' ');
   // NIF: tag explícita primeiro, depois fallback para qualquer 9 dígitos válido
@@ -289,14 +319,16 @@ function extractInvoiceFields(texto, item){
   // (1 dígito, depois até 15 chars [dígitos/espaços/pontos/vírgulas], depois separador decimal e 2 dígitos)
   const NUM_REGEX = NUM_REGEX_STR;
 
-  // Total — várias variantes em PT
-  const total = parseEuro(matchValor(t, [
+  // Total — várias variantes em PT (let: pode ser derivado ou sobreescrito pela memória)
+  let total = parseEuro(matchValor(t, [
     new RegExp('^\\s*Total\\s*(?:a\\s*pagar|geral|c[\\/\\.]?\\s*IVA|com\\s*IVA|fatura|factura|documento|do\\s*documento)[^\\d\\n]*?'+NUM_REGEX, 'im'),
     new RegExp('^\\s*Valor\\s*(?:total|a\\s*pagar)[^\\d\\n]*?'+NUM_REGEX, 'im'),
-    new RegExp('^\\s*TOTAL[^\\d\\n]*?'+NUM_REGEX, 'm'),
+    new RegExp('^\\s*Montante\\s*(?:total|a\\s*pagar)[^\\d\\n]*?'+NUM_REGEX, 'im'),
+    new RegExp('^\\s*A\\s*pagar[^\\d\\n]*?'+NUM_REGEX, 'im'),
+    new RegExp('^\\s*TOTAL[^\\d\\n]*?'+NUM_REGEX, 'im'),
   ]));
   // IVA — preferimos "Total IVA" para evitar apanhar células de tabela com 0,00
-  const iva = parseEuro(matchValor(t, [
+  let iva = parseEuro(matchValor(t, [
     new RegExp('^\\s*Total\\s*IVA[^\\d\\n]*?'+NUM_REGEX, 'im'),
     new RegExp('^\\s*IVA(?:\\s*\\(?\\d+\\s*%\\)?)?[^\\d\\n]+?'+NUM_REGEX, 'im'),
     new RegExp('^\\s*Imposto[^\\d\\n]*?'+NUM_REGEX, 'im'),
@@ -306,8 +338,10 @@ function extractInvoiceFields(texto, item){
     new RegExp('^\\s*Total\\s*(?:Servi[çc]os|Mercadoria|Mercadorias|Bruto)[^\\d\\n]*?'+NUM_REGEX, 'im'),
     new RegExp('^\\s*(?:Total\\s*)?(?:Base\\s*tribut[áa]vel|Subtotal|Sub-total|Total\\s*l[íi]quido|Sem\\s*IVA|Valor\\s*l[íi]quido|Incid[êe]ncia)[^\\d\\n]*?'+NUM_REGEX, 'im'),
   ]));
+  // Derivar campos em falta a partir dos outros dois
   if(base==null && total!=null && iva!=null) base = Math.round((total-iva)*100)/100;
-  if(total==null && base!=null && iva!=null) {/* mantemos null */}
+  if(total==null && base!=null && iva!=null) total = Math.round((base+iva)*100)/100;
+  if(iva==null && total!=null && base!=null) iva = Math.round((total-base)*100)/100;
 
   // Data emissão — suporta YYYY.MM.DD, YYYY-MM-DD, YYYY/MM/DD, DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
   let data = '';
@@ -325,22 +359,13 @@ function extractInvoiceFields(texto, item){
      || t.match(/(?:Data\s*(?:de\s*)?(?:pagamento|liquida[çc][ãa]o|vencimento)|Venc\.?)[\s:]*?(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i);
   if(dpTag) dataPag = parseData(dpTag[1]);
 
-  // Número da fatura (FACTURA Nº 261995, FT 2026/123, etc.)
+  // Número da fatura (FACTURA Nº 261995, FT 2026/123, REC 2024/00045, etc.)
   let numero = '';
-  const numTag = t.match(/(?:FACTURA|FATURA|FACT|FAT|FT|FA|FR|FS)\s*N?[ºo°.]?\s*[:.]?\s*([A-Z0-9][\w\-\/]{2,30})/i);
+  const numTag = t.match(/(?:FACTURA|FATURA|FACT|FAT|FT|FA|FR|FS|REC|VD|NC)\s*N?[ºo°.]?\s*[:.]?\s*([A-Z0-9][\w\-\/]{2,30})/i);
   if(numTag) numero = numTag[1].replace(/[.\s]+$/,'');
 
-  // Fornecedor — heurísticas:
-  // 1) linha que contém Lda / S.A. / Unipessoal
-  // 2) primeira linha "longa" não numérica antes do NIF
-  let fornecedor = '';
-  const empresaMatch = t.match(/^[ \t]*([^\n]*?(?:\b(?:Lda\.?|LDA|S\.?\s*A\.?|S\.?A\.?|Unipessoal|SGPS|SARL|& Cia|& C\.?ª|Sociedade)\b)[^\n]*)/im);
-  if(empresaMatch) fornecedor = empresaMatch[1].trim().slice(0,80);
-  if(!fornecedor){
-    const linhas = t.split('\n').map(l=>l.trim()).filter(l=>l.length>=4 && l.length<=80 && !/^\d+[\d.,€\s/-]*$/.test(l));
-    fornecedor = (linhas[0]||'').trim();
-  }
-  fornecedor = fornecedor.replace(/^[•\-\*\s]+/,'').trim();
+  // Fornecedor — 3 estratégias em cascata
+  let fornecedor = extrairFornecedor(t);
 
   // ── Memória de aprendizagem por fornecedor ──
   // Se já vimos este NIF antes, usamos as âncoras aprendidas para preencher com precisão
@@ -353,13 +378,15 @@ function extractInvoiceFields(texto, item){
     _exemplos = tpl.exemplos || 0;
     if(tpl.fornecedor) fornecedor = tpl.fornecedor;
     const ap = aplicarTemplate(t, tpl);
-    if(ap.total!=null)  total  = ap.total;
-    if(ap.iva!=null)    iva    = ap.iva;
-    if(ap.base!=null)   base   = ap.base;
-    if(ap.numero)       numero = ap.numero;
-    if(ap.data)         data   = ap.data;
-    if(ap.dataPag)      dataPag= ap.dataPag;
-    if(base==null && total!=null && iva!=null) base = Math.round((total-iva)*100)/100;
+    if(ap.total!=null)  total   = ap.total;
+    if(ap.iva!=null)    iva     = ap.iva;
+    if(ap.base!=null)   base    = ap.base;
+    if(ap.numero)       numero  = ap.numero;
+    if(ap.data)         data    = ap.data;
+    if(ap.dataPag)      dataPag = ap.dataPag;
+    // Re-derivar após aplicação do template
+    if(base==null && total!=null && iva!=null) base  = Math.round((total-iva)*100)/100;
+    if(total==null && base!=null && iva!=null) total = Math.round((base+iva)*100)/100;
   }
 
   // Confiança = proporção dos 5 campos chave detetados, ponderada pela qualidade
@@ -402,28 +429,45 @@ function extractInvoiceFields(texto, item){
 // Remove acentos para comparar etiquetas de forma robusta (NFD → strip diacríticos).
 function semAcentos(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
 
+// Palavras-chave de etiquetas de fatura — âncoras que as contenham são preferidas.
+const ANCHOR_KEYWORDS = /\b(total|iva|base|liquido|fatura|factura|data|vencimento|pagamento|subtotal|valor|emiss|numero|referencia|ref|montante|pagar)\b/;
+
+// Pontua a qualidade de uma âncora: >0 = utilizável, -1 = rejeitar.
+function anchorScore(anchor){
+  if(!anchor || anchor.length < 3) return -1;
+  const letras = (anchor.match(/[a-z]/g)||[]).length;
+  const nonSpace = anchor.replace(/\s/g,'').length;
+  // Rejeita se menos de 50% dos chars são letras (ruído OCR / números)
+  if(nonSpace > 0 && letras / nonSpace < 0.5) return -1;
+  let score = anchor.length;
+  if(ANCHOR_KEYWORDS.test(anchor)) score += 20;
+  return score;
+}
+
 // Limpa o prefixo de uma linha para uma âncora estável: minúsculas, sem acentos,
 // descarta números/percentagens soltos e fica com as últimas ~4 palavras alfabéticas.
 function limpaAnchor(prefixo){
   const p = semAcentos(prefixo).toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
   if(!p) return '';
-  // Guardamos as últimas ~4 palavras (incluindo conectores curtos como "a"/"de"): o tail
-  // é contíguo no texto, por isso a reconstrução com \s+ continua a casar a etiqueta.
   const palavras = p.split(' ').filter(Boolean);
-  return palavras.length ? palavras.slice(-4).join(' ') : '';
+  const anchor = palavras.slice(-4).join(' ');
+  // Rejeita se não passa o filtro de qualidade
+  return anchorScore(anchor) >= 0 ? anchor : '';
 }
 
-// Localiza um valor confirmado no texto e devolve a etiqueta que o antecede na mesma linha.
+// Localiza um valor confirmado no texto e devolve a melhor etiqueta que o antecede.
+// Recolhe todos os candidatos e escolhe o de maior pontuação (preferência por keywords).
 // tipo: 'money' (compara via parseEuro) | 'date' (compara via parseData) | 'text' (substring).
 function extrairAnchor(texto, valor, tipo){
   if(valor==null || valor==='') return '';
   const linhas = String(texto).split('\n');
   const numRe = new RegExp(NUM_REGEX_STR, 'g');
   const dateRe = /\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}/g;
+  let bestAnchor = '', bestScore = -1;
   for(const linha of linhas){
     if(tipo==='text'){
       const idx = linha.indexOf(String(valor));
-      if(idx>0){ const a = limpaAnchor(linha.slice(0, idx)); if(a) return a; }
+      if(idx>0){ const a = limpaAnchor(linha.slice(0, idx)); const s = anchorScore(a); if(s > bestScore){ bestScore=s; bestAnchor=a; } }
       continue;
     }
     const re = tipo==='date' ? dateRe : numRe;
@@ -433,13 +477,14 @@ function extrairAnchor(texto, valor, tipo){
     re.lastIndex = 0;
     let m;
     while((m = re.exec(linha))){
-      if(alvoOk(m[0])){ const a = limpaAnchor(linha.slice(0, m.index)); if(a) return a; }
+      if(alvoOk(m[0])){ const a = limpaAnchor(linha.slice(0, m.index)); const s = anchorScore(a); if(s > bestScore){ bestScore=s; bestAnchor=a; } }
     }
   }
-  return '';
+  return bestAnchor;
 }
 
 // Aplica as âncoras aprendidas de um fornecedor ao texto de uma fatura nova.
+// Âncoras de má qualidade (ruído de templates antigos) são ignoradas.
 function aplicarTemplate(texto, tpl){
   const out = {};
   const campos = tpl.campos || {};
@@ -447,6 +492,7 @@ function aplicarTemplate(texto, tpl){
   for(const campo of Object.keys(campos)){
     const def = campos[campo];
     if(!def || !def.anchor) continue;
+    if(anchorScore(def.anchor) < 0) continue; // descarta âncoras de má qualidade
     const anchorRe = def.anchor.split(' ')
       .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');
     const valPat = def.tipo==='money' ? NUM_REGEX_STR
