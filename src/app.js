@@ -95,6 +95,9 @@ window.addEventListener('resize', () => {
   if (S.currentUser?.role === 'admin') updateDeviceBadge(dt);
 });
 
+// ── QR Registration via URL param ──
+initQrRegistration();
+
 // ── Login com Enter ──
 document.getElementById('lp')?.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 

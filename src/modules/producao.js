@@ -1134,8 +1134,6 @@ window.addEventListener('resize', function(){
   }
 });
 
-// ── Verificar URL param no arranque ─────
-(function(){ try{ initQrRegistration(); }catch(e){ console.warn('QR init:',e); } })();
 
 // ═══════════════════════════════════════
 //  GESTÃO DE PERMISSÕES DE ACESSO
