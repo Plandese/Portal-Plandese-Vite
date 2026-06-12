@@ -609,7 +609,7 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
    ENCARREGADO — ECRÃ HOME (escolha de módulo)
 ───────────────────────────────────────────────────── */
 .enc-home-body{
-  background:var(--gray-50);flex:1;display:flex;flex-direction:column;
+  background:var(--white);flex:1;display:flex;flex-direction:column;
   overflow-y:auto;overflow-x:hidden;
 }
 .enc-home-body::before,.enc-home-body::after{display:none}
