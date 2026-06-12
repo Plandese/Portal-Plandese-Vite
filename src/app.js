@@ -67,7 +67,7 @@ import { sbLoadMapasComp, renderMapasComp, openModalMapa, editarMapaComp, adicio
 import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './modules/dropbox.js';
 
 // Férias
-import { renderMapaFerias, feriasNavAno, feriasTogglePrevista } from './modules/ferias.js';
+import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro } from './modules/ferias.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
@@ -228,7 +228,7 @@ Object.assign(window, {
   encGoComprasChat, chatSend, chatOnInput,
 
   // Férias
-  renderMapaFerias, feriasNavAno, feriasTogglePrevista,
+  renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro,
 });
 
 // ── Settings panel ──────────────────────────────────────────────────────────
