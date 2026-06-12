@@ -106,8 +106,19 @@ export function toggleNavGrp(key){
   const lbl = document.querySelector('.nav-lbl[data-grp="'+key+'"]');
   const grp = document.querySelector('.nav-group[data-grp="'+key+'"]');
   if(!lbl||!grp) return;
-  const open = grp.classList.toggle('open');
-  lbl.classList.toggle('open', open);
+  const willOpen = !grp.classList.contains('open');
+  // fecha todos os outros grupos que não têm item ativo
+  if(willOpen){
+    document.querySelectorAll('.sidebar .nav-group.open').forEach(g=>{
+      if(g.getAttribute('data-grp')===key) return;
+      if(g.querySelector('.nav-btn.active')) return;
+      g.classList.remove('open');
+      const l=document.querySelector('.nav-lbl[data-grp="'+g.getAttribute('data-grp')+'"]');
+      if(l) l.classList.remove('open');
+    });
+  }
+  grp.classList.toggle('open', willOpen);
+  lbl.classList.toggle('open', willOpen);
 }
 
 export function syncNavGroups(){
@@ -126,27 +137,7 @@ export function syncNavGroups(){
 
 export function flashAlert(id){const el=document.getElementById(id);if(!el)return;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
 
-// On first load: setup nav hover behavior
-document.addEventListener('DOMContentLoaded',()=>{
-  syncNavGroups();
-  document.querySelectorAll('.sidebar .nav-lbl').forEach(lbl=>{
-    const key=lbl.getAttribute('data-grp');
-    const grp=document.querySelector('.nav-group[data-grp="'+key+'"]');
-    if(!grp) return;
-    let timer;
-    const openGrp=()=>{ clearTimeout(timer); grp.classList.add('open'); lbl.classList.add('open'); };
-    const scheduleClose=()=>{
-      timer=setTimeout(()=>{
-        if(grp.querySelector('.nav-btn.active')) return;
-        grp.classList.remove('open'); lbl.classList.remove('open');
-      },150);
-    };
-    lbl.addEventListener('mouseenter',openGrp);
-    lbl.addEventListener('mouseleave',scheduleClose);
-    grp.addEventListener('mouseenter',()=>clearTimeout(timer));
-    grp.addEventListener('mouseleave',scheduleClose);
-  });
-});
+document.addEventListener('DOMContentLoaded',()=>{ syncNavGroups(); });
 
 // Modal close on background click
 document.querySelectorAll('.modal-bg').forEach(mb=>mb.addEventListener('click',e=>{if(e.target===mb)mb.classList.remove('open');}));
