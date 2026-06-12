@@ -105,22 +105,14 @@ export async function renderHistSemana(){
     days.forEach((d,i)=>{
       const we=isWeekend(d);
       const bg=we?'#C2410C':'var(--blue-600)';
-      thead+=`<th colspan="3" style="color:white;background:${bg};text-align:center;border-left:2px solid rgba(255,255,255,.2)">
+      thead+=`<th style="color:white;background:${bg};text-align:center;border-left:2px solid rgba(255,255,255,.2)">
         <div style="font-size:12px;font-weight:700">${dayNames[i]}</div>
         <div style="font-size:10px;font-weight:400;opacity:.8">${fmtPT(dStrs[i])}</div>
       </th>`;
     });
     thead+=`<th style="color:white;background:#1e3a2f;text-align:center;border-left:2px solid rgba(255,255,255,.2)">H.Nor.</th>
       <th style="color:white;background:#1e3a2f;text-align:center">H.Ext.</th>
-      <th style="color:white;background:#1e3a2f;text-align:center">Total</th></tr>`;
-    thead+=`<tr style="background:var(--gray-50)">
-      <th colspan="3" style="background:var(--gray-50)"></th>`;
-    days.forEach(()=>{
-      thead+=`<th style="font-size:10px;color:var(--gray-500);text-align:center;border-left:1px solid var(--gray-200)">H.Nor.</th>
-        <th style="font-size:10px;color:var(--gray-500);text-align:center">H.Ext.</th>
-        <th style="font-size:10px;color:var(--gray-500);text-align:center;border-right:1px solid var(--gray-200)">Total</th>`;
-    });
-    thead+=`<th></th><th></th><th></th></tr></thead>`;
+      <th style="color:white;background:#1e3a2f;text-align:center">Total</th></tr></thead>`;
     tbl.innerHTML=thead;
 
     let tbody='<tbody>';
@@ -137,19 +129,17 @@ export async function renderHistSemana(){
       let rN=0,rE=0,rT=0;
       let dayCells='';
       obraData[n].forEach((r,i)=>{
-        if(!r){dayCells+=`<td style="text-align:center;color:var(--gray-200);border-left:1px solid var(--gray-100);font-size:11px">—</td><td style="text-align:center;color:var(--gray-200);font-size:11px">—</td><td style="text-align:center;color:var(--gray-200);border-right:1px solid var(--gray-100);font-size:11px">—</td>`;return;}
+        if(!r){dayCells+=`<td style="text-align:center;color:var(--gray-200);border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100);font-size:11px">—</td>`;return;}
         const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);
         rN+=h.n;rE+=h.e;rT+=h.t;
         const isFalta=r.tipo?.includes('Falta');
         const isFolga=r.tipo==='Folga';
         if(isFalta){
-          dayCells+=`<td colspan="3" style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
+          dayCells+=`<td style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
         } else if(isFolga){
-          dayCells+=`<td colspan="3" style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
+          dayCells+=`<td style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
         } else {
-          dayCells+=`<td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;color:var(--green);border-left:1px solid var(--gray-100)">${h.n>0?fmtH(h.n):'—'}</td>
-            <td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;color:var(--orange)">${h.e>0?fmtH(h.e):'—'}</td>
-            <td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;font-weight:600;border-right:1px solid var(--gray-100)">${h.t>0?fmtH(h.t):'—'}</td>`;
+          dayCells+=`<td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;font-weight:600;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)">${h.t>0?fmtH(h.t):'—'}</td>`;
         }
       });
       totN+=rN;totE+=rE;totT+=rT;
@@ -167,7 +157,7 @@ export async function renderHistSemana(){
     });
 
     let totCells='';
-    for(let i=0;i<6;i++) totCells+=`<td colspan="3" style="border-left:1px solid var(--gray-200)"></td>`;
+    for(let i=0;i<6;i++) totCells+=`<td style="border-left:1px solid var(--gray-200)"></td>`;
     tbody+=`<tr style="background:var(--gray-100);border-top:2px solid var(--gray-300)">
       <td colspan="3" style="font-weight:700;font-size:12px;padding:9px 12px;color:var(--gray-700)">TOTAL DA OBRA</td>
       ${totCells}
