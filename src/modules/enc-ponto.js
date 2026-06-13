@@ -248,7 +248,7 @@ async function carregarEquipaAnterior(){
     paraAdicionar.forEach(n=>{
       const c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
       const chip=document.createElement('button');
-      chip.style.cssText='padding:6px 12px;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-light);border-radius:20px;font-family:"DM Sans",sans-serif;font-size:12px;font-weight:600;cursor:pointer';
+      chip.style.cssText='padding:6px 12px;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-light);border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer';
       chip.textContent=`+ ${c.nome.split(' ')[0]}`;
       chip.onclick=()=>encAddColabN(n,chip);
       lista.appendChild(chip);
