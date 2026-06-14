@@ -895,10 +895,10 @@ async function saveCompra() {
   const artigos   = JSON.parse(JSON.stringify(_cmpArtigosEdit));
   const fornecedores = [..._cmpFornsEdit];
   const fornecedor   = fornecedores[0] || '';
-  const pedidoCotacao = document.getElementById('mcmp-cotacao').checked;
-  const aprovadoDO    = document.getElementById('mcmp-aprov-do').checked;
-  const adjudicado    = document.getElementById('mcmp-adjud').checked;
-  const dataFornecimento = document.getElementById('mcmp-data-forn').value || null;
+  const pedidoCotacao = document.getElementById('mcmp-cotacao')?.checked ?? false;
+  const aprovadoDO    = document.getElementById('mcmp-aprov-do')?.checked ?? false;
+  const adjudicado    = document.getElementById('mcmp-adjud')?.checked ?? false;
+  const dataFornecimento = document.getElementById('mcmp-data-forn')?.value || null;
   if (c) {
     c.titulo           = titulo;
     c.artigos          = artigos;
