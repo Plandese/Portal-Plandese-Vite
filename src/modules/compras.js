@@ -857,11 +857,15 @@ function openCompraModal(c) {
   document.getElementById('mcmp-notas').value             = c ? (c.notas||'') : '';
   document.getElementById('mcmp-email').value             = c ? (c.emailNotif||'') : '';
   document.getElementById('mcmp-del-btn').style.display   = c ? '' : 'none';
-  // Workflow checkboxes
-  document.getElementById('mcmp-cotacao').checked         = c ? !!c.pedidoCotacao : false;
-  document.getElementById('mcmp-aprov-do').checked        = c ? !!c.aprovadoDO    : false;
-  document.getElementById('mcmp-adjud').checked           = c ? !!c.adjudicado    : false;
-  document.getElementById('mcmp-data-forn').value         = c ? (c.dataFornecimento||'') : '';
+  // Workflow checkboxes (elementos opcionais — podem ter sido removidos do form)
+  const elCotacao = document.getElementById('mcmp-cotacao');
+  const elAprovDO = document.getElementById('mcmp-aprov-do');
+  const elAdjud   = document.getElementById('mcmp-adjud');
+  const elDataForn = document.getElementById('mcmp-data-forn');
+  if (elCotacao)  elCotacao.checked  = c ? !!c.pedidoCotacao : false;
+  if (elAprovDO)  elAprovDO.checked  = c ? !!c.aprovadoDO    : false;
+  if (elAdjud)    elAdjud.checked    = c ? !!c.adjudicado    : false;
+  if (elDataForn) elDataForn.value   = c ? (c.dataFornecimento||'') : '';
   // Artigos
   _cmpArtigosEdit = c && Array.isArray(c.artigos) ? JSON.parse(JSON.stringify(c.artigos)) : [];
   cmpRenderArtigosSelected();
