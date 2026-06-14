@@ -857,6 +857,8 @@ function openCompraModal(c) {
   document.getElementById('mcmp-notas').value             = c ? (c.notas||'') : '';
   document.getElementById('mcmp-email').value             = c ? (c.emailNotif||'') : '';
   document.getElementById('mcmp-del-btn').style.display   = c ? '' : 'none';
+  const elMapaBtn = document.getElementById('mcmp-mapa-btn');
+  if (elMapaBtn) elMapaBtn.style.display = c ? '' : 'none';
   // Workflow checkboxes (elementos opcionais — podem ter sido removidos do form)
   const elCotacao = document.getElementById('mcmp-cotacao');
   const elAprovDO = document.getElementById('mcmp-aprov-do');

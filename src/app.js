@@ -61,7 +61,7 @@ import { loadPainelConfig, savePainelConfig, renderPainel, buildWidget, openPain
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
 // Mapas comparativos
-import { sbLoadMapasComp, renderMapasComp, openModalMapa, editarMapaComp, adicionarFornecedorMapa, removerFornecedorMapa, adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa, saveMapaComp, apagarMapaComp, abrirMapaComparativo, injectMapaCompBtns } from './modules/mapas-comp.js';
+import { sbLoadMapasComp, renderMapasComp, openModalMapa, editarMapaComp, adicionarFornecedorMapa, removerFornecedorMapa, adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa, saveMapaComp, apagarMapaComp, abrirMapaComparativo, abrirResumoMapa, exportResumoPDF, injectMapaCompBtns } from './modules/mapas-comp.js';
 
 // Dropbox
 import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './modules/dropbox.js';
@@ -90,6 +90,8 @@ Object.assign(R, {
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
 window.fmt = fmt; window.fmtPT = fmtPT; window.calcH = calcH; window.fmtH = fmtH;
+// Expõe S globalmente para os handlers inline dos modais (ex: onchange="S._mcLinhas[i].valor_seco=...")
+window.S = S;
 
 // ── Device detection ao carregar ──
 applyDeviceClass();
@@ -229,7 +231,14 @@ Object.assign(window, {
   openModalMapa, editarMapaComp,
   adicionarFornecedorMapa, removerFornecedorMapa,
   adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa,
-  saveMapaComp, apagarMapaComp, abrirMapaComparativo,
+  saveMapaComp, apagarMapaComp, abrirMapaComparativo, abrirResumoMapa, exportResumoPDF,
+  criarMapaFromPedido: function() {
+    const id = document.getElementById('mcmp-id').value;
+    if (!id) return;
+    closeModal('modal-compra');
+    goTo('mapas-comparativos', document.getElementById('nav-mapas-comp'));
+    setTimeout(() => openModalMapa(id), 300);
+  },
 
   // Chat compras
   encGoComprasChat, chatSend, chatOnInput,

@@ -2641,6 +2641,10 @@
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-secondary" id="mcmp-del-btn" style="color:var(--red);border-color:var(--red-bg);display:none" onclick="apagarCompra()">Apagar</button>
       <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" id="mcmp-mapa-btn" style="display:none" onclick="criarMapaFromPedido()">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          Mapa Comparativo
+        </button>
         <button class="btn btn-secondary" onclick="closeModal('modal-compra')">Cancelar</button>
         <button class="btn btn-primary" onclick="saveCompra()">Guardar</button>
       </div>
@@ -2715,6 +2719,122 @@
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-secondary btn-sm" onclick="fecharMapaPicker()">Cancelar</button>
         <button class="btn btn-primary btn-sm" id="map-confirm-btn" onclick="confirmarLocalizacao()" disabled>Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESUMO MAPA COMPARATIVO -->
+<div class="modal-bg" id="modal-mapa-resumo">
+  <div class="modal" style="width:800px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--gray-200);flex-shrink:0">
+      <div>
+        <div id="modal-mapa-resumo-title" style="font-size:17px;font-weight:700;color:var(--gray-900)">Resumo</div>
+        <div id="modal-mapa-resumo-sub" style="font-size:12px;color:var(--gray-500);margin-top:3px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="exportResumoPDF()" style="display:flex;align-items:center;gap:6px;background:var(--blue-700,#1d4ed8);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer" title="Exportar PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Exportar PDF
+        </button>
+        <button onclick="closeModal('modal-mapa-resumo')" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:22px;line-height:1;padding:4px 8px" title="Fechar">✕</button>
+      </div>
+    </div>
+    <div id="modal-mapa-resumo-body" style="flex:1;overflow-y:auto;padding:20px 24px">
+      <div style="text-align:center;padding:40px;color:var(--gray-400)">A calcular...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VISUALIZAÇÃO MAPA COMPARATIVO -->
+<div class="modal-bg" id="modal-mapa-view">
+  <div class="modal" style="width:1100px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--gray-200);flex-shrink:0">
+      <div>
+        <div id="modal-mapa-view-title" style="font-size:17px;font-weight:700;color:var(--gray-900)">Mapa Comparativo</div>
+        <div id="modal-mapa-view-sub" style="font-size:12px;color:var(--gray-500);margin-top:3px"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="modal-mapa-view-edit-btn" class="btn btn-secondary btn-sm">Editar</button>
+        <button onclick="closeModal('modal-mapa-view')" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:22px;line-height:1;padding:4px 8px" title="Fechar">✕</button>
+      </div>
+    </div>
+    <div id="modal-mapa-view-body" style="flex:1;overflow-y:auto;padding:20px 24px">
+      <div style="text-align:center;padding:40px;color:var(--gray-400)">A carregar mapa...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MAPA COMPARATIVO -->
+<div class="modal-bg" id="modal-mapa-comp">
+  <div class="modal" style="width:900px;max-width:98vw;max-height:92vh;overflow-y:auto">
+    <div class="modal-title" id="mmc-title">Novo Mapa Comparativo</div>
+    <div class="modal-sub" id="mmc-sub">Preencha os dados do mapa</div>
+    <input type="hidden" id="mmc-id"/>
+
+    <div class="field"><label>Título *</label><input type="text" id="mmc-titulo" placeholder="Ex: Mapa Comparativo — Fornecimento de Betão"/></div>
+    <div class="field"><label>Descrição</label><input type="text" id="mmc-descricao" placeholder="Descrição opcional"/></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div class="field"><label>Obra</label>
+        <select id="mmc-obra"><option value="">— Sem obra —</option></select>
+      </div>
+      <div class="field"><label>Pedido de compra</label>
+        <select id="mmc-pedido"><option value="">— Sem pedido —</option></select>
+      </div>
+      <div class="field"><label>Estado</label>
+        <select id="mmc-estado">
+          <option value="rascunho">Rascunho</option>
+          <option value="em_analise">Em análise</option>
+          <option value="aprovado">Aprovado</option>
+          <option value="arquivado">Arquivado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="mmc-mostrar-venda" style="width:16px;height:16px;cursor:pointer"/>
+      <label for="mmc-mostrar-venda" style="margin:0;cursor:pointer;font-size:13px">Mostrar coluna de valor de venda</label>
+    </div>
+
+    <!-- Fornecedores -->
+    <div class="field">
+      <label>Fornecedores a comparar</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="mmc-forn-add-input" placeholder="Nome do fornecedor…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarFornecedorMapa()}"/>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="adicionarFornecedorMapa()" style="white-space:nowrap">+ Adicionar</button>
+      </div>
+      <div id="mmc-forn-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:24px"></div>
+    </div>
+
+    <!-- Linhas do mapa -->
+    <div class="field">
+      <label>Linhas do mapa</label>
+      <div class="card" style="padding:0;overflow:hidden;margin-top:4px">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr id="mmc-linhas-header">
+                <th>Descrição</th>
+                <th style="width:70px">Un.</th>
+                <th style="width:80px">Qtd.</th>
+                <th style="width:110px">Valor Seco</th>
+                <th id="mmc-th-venda" style="width:110px;display:none">Valor Venda</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="mmc-linhas-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="adicionarLinhaMapa()" style="margin-top:8px">+ Adicionar linha</button>
+    </div>
+
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary" id="mmc-del-btn" style="color:var(--red);border-color:var(--red-bg);display:none" onclick="apagarMapaComp()">Apagar</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closeModal('modal-mapa-comp')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveMapaComp()">Guardar</button>
       </div>
     </div>
   </div>
@@ -3070,6 +3190,8 @@
   </div>
 </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="/artigos-data.js"></script>
     <script type="module" src="/src/main.js"></script>
 </body>
