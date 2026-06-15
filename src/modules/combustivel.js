@@ -5,6 +5,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
+import { EQUIPAMENTOS } from './equipamentos.js';
 
 let _combView = 'tabela';
 
@@ -102,7 +103,7 @@ async function loadCombustivelAdmin(){
 
     // ── 7. Render tabela ──
     tbody.innerHTML=filtered.map(r=>{
-      const obraNome=S.OBRAS.find(o=>o.id===r.obra_id)?.nome||r.obra_id||'—';
+      const obraNome=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
       const isEnt=r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
       const litrosVal=parseFloat(r.litros)||0;
       const litrosFormatado=r.litros!=null
@@ -165,7 +166,7 @@ function renderCombObraCards(rows){
   const map={};
   rows.forEach(r=>{
     const id=r.obra_id||'__sem_obra__';
-    const nome=S.OBRAS.find(o=>o.id===r.obra_id)?.nome||(r.obra_id?r.obra_id:'Sem obra');
+    const nome=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||(r.obra_id?r.obra_id:'Sem obra');
     if(!map[id]) map[id]={nome,rows:[]};
     map[id].rows.push(r);
   });
