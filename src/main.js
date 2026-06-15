@@ -8,6 +8,10 @@ import './styles/global.css';
 import L from 'leaflet';
 window.L = L;
 
+// XLSX (SheetJS) — exposto como global para export/import Excel em todos os módulos
+import * as XLSX from 'xlsx';
+window.XLSX = XLSX;
+
 // Html5Qrcode — exposto como global para compatibilidade com app.js (usa Html5Qrcode para QR scanner)
 import { Html5Qrcode } from 'html5-qrcode';
 window.Html5Qrcode = Html5Qrcode;
