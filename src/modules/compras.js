@@ -955,6 +955,7 @@ async function saveCompra() {
   showToast('Pedido guardado');
   if (isNovo && c.emailNotif) setTimeout(() => enviarEmailNotificacao(c), 400);
   await sbSaveCompra(c);
+  if (isNovo) renderCompras(); // re-renderizar com o UUID real do Supabase (substitui o ID local temporário)
   const obraNome = S.OBRAS.find(o=>o.id===c.obraId)?.nome || '';
   R.emitEvent?.({ acao:(isNovo?'Novo pedido de compra':'Pedido de compra atualizado')+': '+titulo+(obraNome?' · '+obraNome:''), seccao:'compras' });
 }
