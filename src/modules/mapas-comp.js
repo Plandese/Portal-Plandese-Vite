@@ -161,7 +161,7 @@ async function openModalMapa(pedidoId) {
           descricao: a.ref ? `[${a.ref}] ${a.nome}` : a.nome,
           unidade: a.un || 'un',
           quantidade: a.qty || 1,
-          valor_seco: null,
+          valor_seco: a.valor_seco ?? null,
           valor_venda: null,
           _valores: []
         }));

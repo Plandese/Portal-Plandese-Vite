@@ -987,23 +987,25 @@ function uploadListaExcelFile(input) {
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-      // Encontrar linha de cabeçalho: procura "Descrição" ou "QTD"
+      // Encontrar linha de cabeçalho: procura "Descrição"/"Nome" e "QTD"/"Un"
+      const _norm = h => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
       let headerIdx = -1;
       for (let i = 0; i < Math.min(rows.length, 10); i++) {
-        const r = rows[i].map(h => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim());
-        if (r.some(h => h.includes('descri')) && r.some(h => h.includes('qtd') || h === 'un')) {
+        const r = rows[i].map(_norm);
+        if (r.some(h => h.includes('descri') || h === 'nome') && r.some(h => h.includes('qtd') || h === 'un' || h === 'un.')) {
           headerIdx = i; break;
         }
       }
       if (headerIdx < 0) { showToast('Cabeçalho não encontrado no ficheiro'); return; }
 
-      const header = rows[headerIdx].map(h => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim());
-      const colDesc = header.findIndex(h => h.includes('descri'));
-      const colQty  = header.findIndex(h => h.includes('qtd'));
-      const colUn   = header.findIndex(h => h === 'un.' || h === 'un');
-      const colRef  = header.findIndex(h => h === 'artigo' || h.includes('codigo') || h.includes('ref'));
+      const header  = rows[headerIdx].map(_norm);
+      const colDesc  = header.findIndex(h => h === 'nome' || h.includes('descri'));
+      const colQty   = header.findIndex(h => h.includes('qtd'));
+      const colUn    = header.findIndex(h => h === 'un.' || h === 'un');
+      const colRef   = header.findIndex(h => h === 'artigo' || h.includes('codigo') || h.includes('ref'));
+      const colPreco = header.findIndex(h => h.includes('prec') || h.includes('preco'));
 
-      if (colDesc < 0) { showToast('Coluna "Descrição" não encontrada'); return; }
+      if (colDesc < 0) { showToast('Coluna "Descrição/Nome" não encontrada'); return; }
 
       let count = 0;
       for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -1013,14 +1015,16 @@ function uploadListaExcelFile(input) {
         const qtyRaw = colQty >= 0 ? row[colQty] : '';
         const qty    = parseFloat(String(qtyRaw).replace(',', '.')) || 1;
         if (qty <= 0) continue;
-        const un  = colUn  >= 0 ? (String(row[colUn]  ?? '').trim() || 'un') : 'un';
-        const ref = colRef >= 0 ? String(row[colRef] ?? '').trim() : '';
+        const un         = colUn    >= 0 ? (String(row[colUn]    ?? '').trim() || 'un') : 'un';
+        const ref        = colRef   >= 0 ?  String(row[colRef]   ?? '').trim()          : '';
+        const valor_seco = colPreco >= 0 ? (parseFloat(String(row[colPreco] ?? '').replace(',', '.')) || null) : null;
 
         const exists = _cmpArtigosEdit.find(a => a.nome.toLowerCase() === nome.toLowerCase());
         if (exists) {
           exists.qty += qty;
+          if (valor_seco != null) exists.valor_seco = valor_seco;
         } else {
-          _cmpArtigosEdit.push({ ref, nome, un, qty });
+          _cmpArtigosEdit.push({ ref, nome, un, qty, valor_seco });
           count++;
         }
       }
