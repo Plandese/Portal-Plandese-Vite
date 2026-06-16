@@ -227,7 +227,7 @@ function exportCombustivelXLSX(){
 function _initCombustivelAdmin(){
   // Preencher datas padrão: mês corrente
   const hoje=fmt(new Date());
-  const ini=hoje.slice(0,7)+'-01';
+  const ini=hoje.slice(0,4)+'-01-01';
   document.getElementById('comb-f-ini').value=ini;
   document.getElementById('comb-f-fim').value=hoje;
   // Preencher select de equipamentos
