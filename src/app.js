@@ -69,6 +69,9 @@ import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './
 // Férias
 import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro } from './modules/ferias.js';
 
+// Advertências
+import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
+
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
@@ -139,6 +142,9 @@ Object.assign(window, {
 
   // Colaboradores
   renderColabs, saveColab, editColab, toggleColab,
+
+  // Advertências
+  openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF,
 
   // Utilizadores
   renderUsers, saveUser, editUser, switchUtilTab,

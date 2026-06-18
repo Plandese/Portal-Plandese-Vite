@@ -2419,6 +2419,53 @@
     </div>
   </div>
 </div>
+<div class="modal-bg" id="modal-advertencias">
+  <div class="modal" style="max-width:520px;width:95%">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="modal-title" style="margin:0">Advertências</div>
+    </div>
+    <div class="modal-sub" id="adv-colab-nome" style="margin-bottom:12px"></div>
+
+    <!-- VISTA: LISTA -->
+    <div id="adv-view-lista">
+      <div id="adv-lista" style="max-height:320px;overflow-y:auto"></div>
+      <div class="modal-footer" style="margin-top:14px">
+        <button class="btn btn-secondary" onclick="closeAdvertencias()">Fechar</button>
+        <button class="btn btn-primary" onclick="advShowForm()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova advertência
+        </button>
+      </div>
+    </div>
+
+    <!-- VISTA: FORMULÁRIO -->
+    <div id="adv-view-form" style="display:none">
+      <div style="display:grid;grid-template-columns:140px 1fr;gap:12px">
+        <div class="field"><label>Data *</label><input type="date" id="adv-data"/></div>
+        <div class="field"><label>Tipo / Motivo *</label>
+          <select id="adv-tipo">
+            <option>Falta sem aviso</option>
+            <option>Falta com aviso fora do prazo</option>
+            <option>Atraso injustificado</option>
+            <option>Incumprimento de normas de segurança</option>
+            <option>Comportamento inadequado</option>
+            <option>Incumprimento de ordens</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Descrição / Observações <span style="color:var(--gray-400);font-weight:400">(opcional)</span></label>
+        <textarea id="adv-desc" rows="4" placeholder="Descreva os detalhes da ocorrência..." style="resize:vertical"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="advShowLista()">Voltar</button>
+        <button class="btn btn-primary" onclick="saveAdvertencia()">Guardar e gerar PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-user">
   <div class="modal">
     <div class="modal-title" id="mu-title">Novo utilizador</div>
