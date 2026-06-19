@@ -967,6 +967,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
           <span class="nav-label">Controlo de Obras</span>
         </button>
+        <button class="nav-btn" onclick="goTo('precos-unitarios',this)" id="nav-precos-unit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+          <span class="nav-label">Lista de Preços</span>
+        </button>
       </div>
 
       <button class="nav-lbl" data-grp="def" onclick="toggleNavGrp('def')" type="button">
@@ -2268,6 +2272,98 @@
 
         <input type="file" id="custo-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="custoHandleDrop(event)"/>
 
+      </section>
+
+      <!-- ══════════════ PREÇOS UNITÁRIOS ══════════════ -->
+      <section id="sec-precos-unitarios" class="section">
+        <style>
+          .pu-table-wrap{background:var(--white);border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+          table.pu-table{width:100%;border-collapse:collapse;font-size:13px}
+          .pu-table th{background:var(--gray-50);color:var(--gray-500);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:11px 14px;border-bottom:1px solid var(--gray-200);white-space:nowrap}
+          .pu-table td{padding:10px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle;color:var(--gray-800)}
+          .pu-table tr:last-child td{border-bottom:none}
+          .pu-table tbody tr:hover{background:var(--gray-50)}
+          .pu-cap-row td{background:oklch(0.96 0.02 240);color:var(--gray-900);font-weight:700;font-size:12.5px;padding:9px 14px;border-top:2px solid var(--gray-200);border-bottom:1px solid var(--gray-200);letter-spacing:-.1px}
+          .pu-cod{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--gray-600);white-space:nowrap}
+          .pu-desc{max-width:460px}
+          .pu-un{text-align:center;font-size:12px;color:var(--gray-500)}
+          .pu-num{text-align:right;font-family:'DM Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+          .pu-price{color:var(--gray-700)}
+          .pu-total{font-weight:600;color:oklch(0.55 0.13 155)}
+          .pu-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+          .pu-kpi{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)}
+          .pu-kpi-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400);margin-bottom:4px}
+          .pu-kpi-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--gray-900);letter-spacing:-.3px}
+          .pu-empty-box{background:var(--white);border:2px dashed var(--gray-200);border-radius:14px;padding:52px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+          .pu-empty-box:hover,.pu-empty-box.drag{border-color:var(--blue-400);background:var(--blue-50)}
+          .pu-empty-icon{width:48px;height:48px;margin:0 auto 14px;color:var(--gray-300)}
+          .pu-empty-msg{font-size:13.5px;color:var(--gray-500);margin-bottom:6px}
+          .pu-empty-sub{font-size:12px;color:var(--gray-400)}
+          .pu-tools{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+          .pu-search{position:relative;flex:1;min-width:220px;max-width:360px}
+          .pu-search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--gray-200);border-radius:9px;background:var(--white);font:inherit;font-size:13px;color:var(--gray-900);outline:none}
+          .pu-search input:focus{border-color:var(--blue-500);box-shadow:0 0 0 3px rgba(42,102,192,.12)}
+          .pu-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400)}
+          @media(max-width:768px){.pu-kpis{grid-template-columns:1fr 1fr}}
+        </style>
+
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Lista de Preços Unitários</div>
+            <div class="pg-sub">Importação e análise de preços unitários por obra — mapa de quantidades e artigos.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <select id="pu-obra-sel" onchange="puSelObra(this.value)" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:8px;font:inherit;font-size:13px;color:var(--gray-900);background:var(--white);min-width:220px">
+              <option value="">— Selecionar obra —</option>
+            </select>
+            <button class="btn btn-primary" onclick="puOpenImport()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importar Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="pu-kpis">
+          <div class="pu-kpi"><div class="pu-kpi-lbl">Artigos</div><div class="pu-kpi-val" id="pu-k-artigos">—</div></div>
+          <div class="pu-kpi"><div class="pu-kpi-lbl">Total da obra</div><div class="pu-kpi-val" id="pu-k-total" style="color:oklch(0.55 0.13 155)">—</div></div>
+          <div class="pu-kpi"><div class="pu-kpi-lbl">Importado em</div><div class="pu-kpi-val" style="font-size:16px;color:var(--gray-600)" id="pu-k-import">—</div></div>
+        </div>
+
+        <!-- Toolbar (só visível com dados) -->
+        <div id="pu-actions" class="pu-tools" style="display:none">
+          <div class="pu-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="pu-q" placeholder="Pesquisar artigo ou código…" oninput="_puRenderTableGlobal()"/>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-green" onclick="puExportExcel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Descarregar Excel
+          </button>
+          <button class="btn" style="color:var(--red);background:var(--red-bg);border:1px solid #fca5a5" onclick="puLimpar()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Limpar
+          </button>
+        </div>
+
+        <!-- Tabela -->
+        <div id="pu-table-container"></div>
+
+        <!-- Estado vazio -->
+        <div id="pu-empty">
+          <div class="pu-empty-box"
+            onclick="puOpenImport()"
+            ondragover="puDragOver(event)"
+            ondragleave="puDragLeave()"
+            ondrop="puHandleDrop(event)">
+            <svg class="pu-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+            <div class="pu-empty-msg">Selecione uma obra e importe o mapa de quantidades</div>
+            <div class="pu-empty-sub">Arraste um ficheiro .xlsx ou clique para escolher</div>
+          </div>
+        </div>
+
+        <input type="file" id="pu-file-input" accept=".xlsx,.xls" style="display:none" onchange="puHandleFile(event)"/>
       </section>
 
       <!-- FOLHA DE FECHO -->

@@ -69,6 +69,9 @@ import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './
 // Férias
 import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro } from './modules/ferias.js';
 
+// Preços Unitários
+import { initPrecosUnit, renderPrecosUnit, puSelObra, puRefreshTable, puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave, puExportExcel, puLimpar } from './modules/precos-unitarios.js';
+
 // Advertências
 import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
 
@@ -209,6 +212,12 @@ Object.assign(window, {
   // Encarregado — aluguer
   encAlugPassarTrabalhadores, encAlugVoltarA,
   encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover,
+
+  // Preços Unitários
+  initPrecosUnit, renderPrecosUnit, puSelObra, puRefreshTable,
+  puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave,
+  puExportExcel, puLimpar,
+  _puRenderTableGlobal: puRefreshTable,
 
   // Produção / Controlo de Obras
   coGoList, coOpenDetail,
@@ -354,7 +363,8 @@ window.savePerfil = async function () {
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { renderFechoMes(); }
-    if (id === 'producao')     { renderProdDashboard(); }
+    if (id === 'producao')          { renderProdDashboard(); }
+    if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
