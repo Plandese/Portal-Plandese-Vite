@@ -184,7 +184,7 @@ async function openModalMapaFromLPU(obraId, artigos) {
   document.getElementById('mmc-titulo').value = obraObj ? `Mapa Comparativo — ${obraObj.nome}` : 'Mapa Comparativo';
   document.getElementById('mmc-descricao').value = '';
   document.getElementById('mmc-estado').value = 'rascunho';
-  document.getElementById('mmc-mostrar-venda').checked = false;
+  document.getElementById('mmc-mostrar-venda').checked = true;
   populaMcObras();
   populaMcPedidos();
   if (obraId) document.getElementById('mmc-obra').value = obraId;
@@ -194,8 +194,8 @@ async function openModalMapaFromLPU(obraId, artigos) {
     descricao: a.codigo ? `[${a.codigo}] ${a.descricao}` : a.descricao,
     unidade: a.unidade || 'un',
     quantidade: a.quantidade || 1,
-    valor_seco: a.precoUnit || null,
-    valor_venda: null,
+    valor_seco: null,
+    valor_venda: a.precoUnit || null,
     _valores: []
   }));
   renderMmcFornecedores();
