@@ -473,69 +473,21 @@ async function _puParsePDF(file){
     curItems.push(item);
   }
 
-  // Detectar limites de colunas e construir artigos
-  const col = _puDetectColumns(lines);
-  return _puBuildArticosFromLines(lines, col);
+  return _puBuildArticosFromLines(lines);
 }
 
-function _puDetectColumns(lines){
-  // Procurar a linha de cabeçalho da tabela (contém "Item" e "quant")
-  for(const line of lines){
-    const joined = line.items.map(i=>i.text).join(' ');
-    if(!/\bItem\b/i.test(joined)) continue;
-    if(!/quant/i.test(joined)) continue;
-
-    // Ordenar itens do cabeçalho da esquerda para a direita
-    const sorted = [...line.items].sort((a,b) => a.x - b.x);
-
-    // Encontrar X da coluna "quant." (ponto de referência central)
-    const qtyItem = sorted.find(i => /^quant/i.test(i.text.trim()));
-    if(!qtyItem) continue;
-    const xQty = qtyItem.x;
-
-    // "Un" standalone está ANTES de "quant."
-    // "Un" em "Un venda" está DEPOIS de "quant."
-    let xDesc=-1, xUn=-1, xPrice=-1, xTotal=-1, xPct=-1;
-    for(const item of sorted){
-      const t = item.text.toLowerCase().trim();
-      const x = item.x;
-      if(t.startsWith('descri') || t.includes('artigo')) { xDesc = x; continue; }
-      // "Un" antes de quant → coluna unidade; após quant → "Un venda" (preço unitário)
-      if((t === 'un' || t === 'un.') && x < xQty - 5) { xUn = x; continue; }
-      if((t === 'un' || t === 'un.') && x > xQty)     { if(xPrice<0) xPrice = x; continue; }
-      // "Un venda" como item único
-      if(t === 'un venda') { xPrice = x; continue; }
-      // "Total venda" como item único ou "Total" separado
-      if(t === 'total venda') { xTotal = x; continue; }
-      if(t === 'total' && x > xQty && xPrice > 0) { xTotal = x; continue; }
-      // "venda" sozinho: 1ª ocorrência → parte de "Un venda"; 2ª → parte de "Total venda"
-      if(t === 'venda') { if(xPrice < 0) xPrice = x; else if(xTotal < 0) xTotal = x; continue; }
-      if(t.includes('%')) { xPct = x; continue; }
-    }
-
-    if(xQty > 0){
-      return {
-        itemEnd:  (xDesc  > 0 ? xDesc  : xQty - 280) - 2,
-        descEnd:  (xUn    > 0 ? xUn    : xQty - 60)  - 2,
-        unEnd:    xQty - 2,
-        qtyEnd:   (xPrice > 0 ? xPrice : xQty + 60)  - 2,
-        priceEnd: (xTotal > 0 ? xTotal : xQty + 130)  - 2,
-        totalEnd: (xPct   > 0 ? xPct   : xQty + 200)  - 2
-      };
-    }
-  }
-  // Fallback para PDF Plandese A4 típico (595pt)
-  return { itemEnd:108, descEnd:388, unEnd:428, qtyEnd:468, priceEnd:530, totalEnd:603 };
-}
-
-function _puBuildArticosFromLines(lines, col){
+function _puBuildArticosFromLines(lines){
   const artigos = [];
-  // Padrões para linhas a ignorar
-  const SKIP   = /TOTAL DA PROPOSTA|Lista de preços unitários|Processo interno|Data de impressão|DOCUMENTOS DA|EMPREITADA DE|PLANDESE|^\s*Página\s+\d+|^NOTA\b|^\*CP/i;
+
+  const SKIP   = /TOTAL DA PROPOSTA|Processo interno|DOCUMENTOS DA|EMPREITADA DE|PLANDESE|^\s*P.gina\s+\d+|^NOTA\b|^\*CP/i;
   const HEADER = /\bItem\b.*Descri|\bDescri.*\bquant|\bUn\s+venda\b.*\bTotal/i;
 
-  const ART_CODE = /^(\d+(?:\.\d+){2,})\.?\s*$/;   // 3+ níveis: "1.1.1" ou "4.3.1.1"
-  const ART_LINE = /^(\d+(?:\.\d+){2,})\.?\s+(.+)/; // código + descrição na mesma linha
+  const UNIT_RE = /^(?:m[²³23]?|ml|KVA|kVA|un\.?|unid\.?|vg\.?|cj\.?|lote?\.?|km|ha)$/i;
+  const PT_N_RE = /^\d[\d\s  ]*,\d{1,2}$/;
+  const PCT_RE  = /^\d[\d,]+%$/;
+
+  const ART_CODE = /^(\d+(?:\.\d+){2,})\.?\s*$/;
+  const ART_LINE = /^(\d+(?:\.\d+){2,})\.?\s+(.+)/;
   const ROMAN    = /^([IVX]+(?:\.\d+)*\.?)\s+(.{2,})$/i;
   const SECTION  = /^(\d+(?:\.\d+){0,1})\.?\s+(.{3,})$/;
 
@@ -549,45 +501,23 @@ function _puBuildArticosFromLines(lines, col){
     if(SKIP.test(fullText))   continue;
     if(HEADER.test(fullText)) continue;
 
-    // ── Classificar cada item da linha pela sua coluna (posição X) ──
-    const cells = { code:[], desc:[], un:[], qty:[], price:[], total:[], pct:[] };
-    for(const item of line.items){
-      const t = item.text; const x = item.x;
-      if     (x <= col.itemEnd)  cells.code.push(t);
-      else if(x <= col.descEnd)  cells.desc.push(t);
-      else if(x <= col.unEnd)    cells.un.push(t);
-      else if(x <= col.qtyEnd)   cells.qty.push(t);
-      else if(x <= col.priceEnd) cells.price.push(t);
-      else if(x <= col.totalEnd) cells.total.push(t);
-      else                       cells.pct.push(t);
-    }
+    const sortedRTL = [...line.items].sort((a,b) => b.x - a.x);
+    const data = _puExtractDataRTL(sortedRTL, UNIT_RE, PT_N_RE, PCT_RE);
 
-    // Texto limpo de cada coluna
-    const unT    = cells.un.join('').replace(/[\s ]/g,'').replace(/[€%]/g,'');
-    const qtyT   = cells.qty.join(' ').replace(/[€%]/g,'').trim();
-    const priceT = cells.price.join(' ').replace(/€/g,'').trim();
-    const totalT = cells.total.join(' ').replace(/€/g,'').trim();
-    const pctT   = cells.pct.join('').replace(/[\s ]/g,'');
-    const codeT  = cells.code.join(' ').trim();
-    const descT  = cells.desc.join(' ').trim();
-
-    // É uma linha de dados se tiver unidade + quantidade + preço
-    const isData = !!(unT && qtyT && priceT);
-
-    if(isData){
-      const finalCode = (codeT || pendingCode || '').replace(/\.$/,'').trim();
-      const allDesc   = [...pendingDesc];
-      if(descT) allDesc.push(descT);
+    if(data){
+      const allDesc = [...pendingDesc];
+      if(data.leftText) allDesc.push(data.leftText);
+      const finalCode = (pendingCode || '').replace(/\.$/ ,'').trim();
 
       artigos.push({
         id:           newId(),
         codigo:       finalCode,
         descricao:    allDesc.join(' ').replace(/\s+/g,' ').trim(),
-        unidade:      unT,
-        quantidade:   _puParseNum(qtyT),
-        precoUnit:    _puParseNum(priceT),
-        total:        _puParseNum(totalT),
-        percentTotal: _puParsePct(pctT),
+        unidade:      data.un,
+        quantidade:   _puParseNum(data.qty),
+        precoUnit:    _puParseNum(data.price),
+        total:        _puParseNum(data.total),
+        percentTotal: _puParsePct(data.pct),
         isCapitulo:   false,
         nivel:        3,
         notas:        '',
@@ -597,48 +527,52 @@ function _puBuildArticosFromLines(lines, col){
       pendingDesc = [];
 
     } else {
-      // Linha não-dados: capítulo, secção ou continuação de descrição
-      const lineText = [codeT, descT].join(' ').trim() || fullText;
-
-      // Capítulo romano
-      const rm = lineText.match(ROMAN);
+      const rm = fullText.match(ROMAN);
       if(rm){
         if(pendingCode){ pendingCode=null; pendingDesc=[]; }
         artigos.push({ id:newId(), codigo:rm[1].trim(), descricao:rm[2].trim(), isCapitulo:true, nivel:0, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
         continue;
       }
-
-      // Código de artigo 3+ níveis (sozinho ou com início de descrição)
-      const ac1 = (codeT||lineText).match(ART_CODE);
-      if(ac1){
-        pendingCode = ac1[1];
-        pendingDesc = descT ? [descT] : [];
-        continue;
-      }
-      const ac2 = lineText.match(ART_LINE);
-      if(ac2){
-        pendingCode = ac2[1];
-        pendingDesc = [ac2[2]];
-        continue;
-      }
-
-      // Secção numérica (1-2 níveis)
-      const sc = lineText.match(SECTION);
+      const ac1 = fullText.match(ART_CODE);
+      if(ac1){ pendingCode = ac1[1]; pendingDesc = []; continue; }
+      const ac2 = fullText.match(ART_LINE);
+      if(ac2){ pendingCode = ac2[1]; pendingDesc = [ac2[2]]; continue; }
+      const sc = fullText.match(SECTION);
       if(sc && !pendingCode){
         artigos.push({ id:newId(), codigo:sc[1].trim(), descricao:sc[2].trim(), isCapitulo:true, nivel:1, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
         continue;
       }
-
-      // Continuação de descrição de artigo em curso
-      if(pendingCode !== null && lineText.length > 2){
-        pendingDesc.push(descT || lineText);
-      }
+      if(pendingCode !== null && fullText.length > 2) pendingDesc.push(fullText);
     }
   }
-
   return artigos;
 }
 
+function _puExtractDataRTL(itemsRTL, UNIT_RE, PT_N_RE, PCT_RE){
+  const items = itemsRTL.filter(i => i.text.trim());
+  let idx = 0;
+  const peek = () => idx < items.length ? items[idx].text.trim() : null;
+  const take = () => items[idx++].text.trim();
+  // Recolhe número PT eventualmente dividido em "168,50" + "27" (milhar separado)
+  const BARE_DIGIT = /^\d+$/;
+  function collectNum(){
+    if(!peek() || !PT_N_RE.test(peek())) return null;
+    const parts = [take()];
+    while(peek() && BARE_DIGIT.test(peek())) parts.unshift(take());
+    return parts.join(' ');
+  }
+  if(!peek() || !PCT_RE.test(peek())) return null;
+  const pct = take();
+  if(peek() === '€') idx++;
+  const total = collectNum(); if(!total) return null;
+  if(peek() === '€') idx++;
+  const price = collectNum(); if(!price) return null;
+  const qty   = collectNum(); if(!qty)   return null;
+  if(!peek() || !UNIT_RE.test(peek())) return null;
+  const un = take();
+  const leftText = items.slice(idx).reverse().map(x=>x.text.trim()).filter(Boolean).join(' ').trim();
+  return { un, qty, price, total, pct, leftText };
+}
 function _puParsePct(v){
   if(!v) return 0;
   return parseFloat(String(v).replace('%','').replace(',','.')) || 0;
