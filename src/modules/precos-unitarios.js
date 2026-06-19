@@ -449,165 +449,199 @@ async function _puParsePDF(file){
     const content = await page.getTextContent();
     const vp      = page.getViewport({ scale:1 });
     content.items.forEach(item => {
+      const txt = item.str; // não fazer trim aqui para preservar espaços internos
       rawItems.push({
-        text: item.str,
+        text: txt,
         x:    Math.round(item.transform[4]),
-        y:    Math.round(vp.height - item.transform[5]), // converter para Y top-down
+        y:    Math.round(vp.height - item.transform[5]), // Y top-down
         page: p,
-        w:    item.width
+        w:    Math.round(item.width || 0)
       });
     });
   }
 
-  // Agrupar em linhas por (página, Y) com tolerância de 4px
+  // Ordenar e agrupar em linhas por (página, Y) com tolerância de 5px
   rawItems.sort((a,b) => a.page!==b.page ? a.page-b.page : a.y!==b.y ? a.y-b.y : a.x-b.x);
   const lines = [];
-  let curLine = null, curPage = -1, curY = -999;
+  let curItems = null, curPage = -1, curY = -999;
   for(const item of rawItems){
     if(!item.text.trim()) continue;
     if(item.page !== curPage || Math.abs(item.y - curY) > 5){
-      curLine = []; lines.push({ page:item.page, y:item.y, items: curLine });
+      curItems = []; lines.push({ page:item.page, y:item.y, items:curItems });
       curPage = item.page; curY = item.y;
     }
-    curLine.push(item);
+    curItems.push(item);
   }
 
-  // Detectar limites das colunas a partir da linha de cabeçalho
-  const colBounds = _puDetectColumns(lines);
-
-  // Construir artigos a partir das linhas com awareness de colunas
-  return _puBuildArticosFromLines(lines, colBounds);
+  // Detectar limites de colunas e construir artigos
+  const col = _puDetectColumns(lines);
+  return _puBuildArticosFromLines(lines, col);
 }
 
 function _puDetectColumns(lines){
-  // Procurar linha de cabeçalho: contém "Item" e "quant" e "Un venda"
+  // Procurar a linha de cabeçalho da tabela (contém "Item" e "quant")
   for(const line of lines){
-    const texts = line.items.map(i => i.text.toLowerCase());
-    const joined = texts.join(' ');
-    if(joined.includes('item') && (joined.includes('quant') || joined.includes('un venda'))){
-      // Encontrei o cabeçalho — usar posições X para definir colunas
-      const byLabel = {};
-      line.items.forEach(item => {
-        const t = item.text.toLowerCase().trim();
-        if(t === 'item' || t === 'artigo') byLabel.item = item.x;
-        if(t.startsWith('descri') || t.includes('artigos')) byLabel.desc = item.x;
-        if(t === 'un' || t === 'un.') byLabel.un = item.x;
-        if(t.startsWith('quant')) byLabel.qty = item.x;
-        if(t.includes('venda') && !byLabel.price) byLabel.price = item.x;
-        else if(t.includes('venda') && byLabel.price) byLabel.total = item.x;
-        if(t.includes('%')) byLabel.pct = item.x;
-      });
-      if(byLabel.item !== undefined && byLabel.qty !== undefined){
-        return {
-          itemEnd:  (byLabel.desc || byLabel.qty - 200) - 5,
-          descEnd:  (byLabel.un   || byLabel.qty - 80)  - 5,
-          unEnd:    (byLabel.qty  || byLabel.price - 60) - 5,
-          qtyEnd:   (byLabel.price|| byLabel.total - 70) - 5,
-          priceEnd: (byLabel.total|| byLabel.pct - 80)  - 5,
-          totalEnd: (byLabel.pct  || 9999) - 5
-        };
-      }
+    const joined = line.items.map(i=>i.text).join(' ');
+    if(!/\bItem\b/i.test(joined)) continue;
+    if(!/quant/i.test(joined)) continue;
+
+    // Ordenar itens do cabeçalho da esquerda para a direita
+    const sorted = [...line.items].sort((a,b) => a.x - b.x);
+
+    // Encontrar X da coluna "quant." (ponto de referência central)
+    const qtyItem = sorted.find(i => /^quant/i.test(i.text.trim()));
+    if(!qtyItem) continue;
+    const xQty = qtyItem.x;
+
+    // "Un" standalone está ANTES de "quant."
+    // "Un" em "Un venda" está DEPOIS de "quant."
+    let xDesc=-1, xUn=-1, xPrice=-1, xTotal=-1, xPct=-1;
+    for(const item of sorted){
+      const t = item.text.toLowerCase().trim();
+      const x = item.x;
+      if(t.startsWith('descri') || t.includes('artigo')) { xDesc = x; continue; }
+      // "Un" antes de quant → coluna unidade; após quant → "Un venda" (preço unitário)
+      if((t === 'un' || t === 'un.') && x < xQty - 5) { xUn = x; continue; }
+      if((t === 'un' || t === 'un.') && x > xQty)     { if(xPrice<0) xPrice = x; continue; }
+      // "Un venda" como item único
+      if(t === 'un venda') { xPrice = x; continue; }
+      // "Total venda" como item único ou "Total" separado
+      if(t === 'total venda') { xTotal = x; continue; }
+      if(t === 'total' && x > xQty && xPrice > 0) { xTotal = x; continue; }
+      // "venda" sozinho: 1ª ocorrência → parte de "Un venda"; 2ª → parte de "Total venda"
+      if(t === 'venda') { if(xPrice < 0) xPrice = x; else if(xTotal < 0) xTotal = x; continue; }
+      if(t.includes('%')) { xPct = x; continue; }
+    }
+
+    if(xQty > 0){
+      return {
+        itemEnd:  (xDesc  > 0 ? xDesc  : xQty - 280) - 2,
+        descEnd:  (xUn    > 0 ? xUn    : xQty - 60)  - 2,
+        unEnd:    xQty - 2,
+        qtyEnd:   (xPrice > 0 ? xPrice : xQty + 60)  - 2,
+        priceEnd: (xTotal > 0 ? xTotal : xQty + 130)  - 2,
+        totalEnd: (xPct   > 0 ? xPct   : xQty + 200)  - 2
+      };
     }
   }
-  // Fallback: usar thresholds típicos para A4 (595pt)
-  return { itemEnd:105, descEnd:390, unEnd:425, qtyEnd:460, priceEnd:525, totalEnd:595 };
+  // Fallback para PDF Plandese A4 típico (595pt)
+  return { itemEnd:108, descEnd:388, unEnd:428, qtyEnd:468, priceEnd:530, totalEnd:603 };
 }
 
 function _puBuildArticosFromLines(lines, col){
   const artigos = [];
-  const SKIP = /TOTAL DA PROPOSTA|Lista de preços unitários|Processo interno|Data de impressão|DOCUMENTOS DA|EMPREITADA DE|PLANDESE SA|^\s*Página\s+\d+|^NOTA\b|^\*CP/i;
+  // Padrões para linhas a ignorar
+  const SKIP   = /TOTAL DA PROPOSTA|Lista de preços unitários|Processo interno|Data de impressão|DOCUMENTOS DA|EMPREITADA DE|PLANDESE|^\s*Página\s+\d+|^NOTA\b|^\*CP/i;
+  const HEADER = /\bItem\b.*Descri|\bDescri.*\bquant|\bUn\s+venda\b.*\bTotal/i;
 
-  // Padrão para número PT: ex "3 350,00" ou "8,11" ou "44 381,06"
-  const PT_N = String.raw`\d[\d\s]*,\d{1,2}`;
-  // Linha de dados termina com: UN  QTY  PRICE€  TOTAL€  PCT%
-  const DATA_RE = new RegExp(
-    String.raw`\s+(m[²³23]?|ml|un\.?|unid\.?|vg\.?|cj\.?|lote\.?|km|l\b|t\b|gl|KVA|kVA|m2|m3|mvl|vãos?)\s+(${PT_N})\s+(${PT_N})\s?€\s+(${PT_N})\s?€\s+([\d,]+%)\s*$`,
-    'i'
-  );
-
-  // Padrão para código de artigo: pelo menos 3 níveis numéricos (ex: 1.1.1 ou 4.3.1.1)
-  const ART_CODE_RE = /^(\d+(?:\.\d+){2,})\s*/;
-  // Padrão para capítulo romano: I, II, I.1., II.1., etc.
-  const ROMAN_RE   = /^([IVX]+(?:\.\d+)*\.?)\s+(.{2,})$/i;
-  // Padrão para secção numérica: 1.1, 1.2, 2.1 (2 níveis)
-  const SECT_RE    = /^(\d+(?:\.\d+){0,1}\.?)\s+(.{3,})$/;
+  const ART_CODE = /^(\d+(?:\.\d+){2,})\.?\s*$/;   // 3+ níveis: "1.1.1" ou "4.3.1.1"
+  const ART_LINE = /^(\d+(?:\.\d+){2,})\.?\s+(.+)/; // código + descrição na mesma linha
+  const ROMAN    = /^([IVX]+(?:\.\d+)*\.?)\s+(.{2,})$/i;
+  const SECTION  = /^(\d+(?:\.\d+){0,1})\.?\s+(.{3,})$/;
 
   let pendingCode = null;
   let pendingDesc = [];
-
   const newId = () => 'A'+Math.random().toString(36).slice(2,8);
 
-  const pushArtigo = (codigo, descArr, dm) => {
-    const [, un, qty, pu, tot, pct] = dm;
-    artigos.push({
-      id:           newId(),
-      codigo:       codigo.trim(),
-      descricao:    descArr.join(' ').replace(/\s+/g,' ').trim(),
-      unidade:      un.trim(),
-      quantidade:   _puParseNum(qty),
-      precoUnit:    _puParseEur(pu),
-      total:        _puParseEur(tot),
-      percentTotal: parseFloat(pct.replace(',','.')),
-      isCapitulo:   false,
-      nivel:        3,
-      notas:        '',
-      editado:      false
-    });
-    pendingCode = null;
-    pendingDesc = [];
-  };
-
   for(const line of lines){
-    // Juntar todos os items da linha em texto, mantendo espaço
     const fullText = line.items.map(i=>i.text).join(' ').replace(/\s+/g,' ').trim();
     if(!fullText) continue;
-    if(SKIP.test(fullText)) continue;
+    if(SKIP.test(fullText))   continue;
+    if(HEADER.test(fullText)) continue;
 
-    // Tentar match da linha de dados (fim da linha com un qty price total pct)
-    const dm = fullText.match(DATA_RE);
-    if(dm){
-      const prefix = fullText.slice(0, fullText.length - dm[0].length).trim();
-      // Extrair código do prefixo (se existir)
-      const cm = prefix.match(ART_CODE_RE);
-      const code    = cm ? cm[1] : (pendingCode || '');
-      const descPfx = cm ? prefix.slice(cm[0].length) : prefix;
-      pushArtigo(code, [...pendingDesc, descPfx], dm);
-      continue;
+    // ── Classificar cada item da linha pela sua coluna (posição X) ──
+    const cells = { code:[], desc:[], un:[], qty:[], price:[], total:[], pct:[] };
+    for(const item of line.items){
+      const t = item.text; const x = item.x;
+      if     (x <= col.itemEnd)  cells.code.push(t);
+      else if(x <= col.descEnd)  cells.desc.push(t);
+      else if(x <= col.unEnd)    cells.un.push(t);
+      else if(x <= col.qtyEnd)   cells.qty.push(t);
+      else if(x <= col.priceEnd) cells.price.push(t);
+      else if(x <= col.totalEnd) cells.total.push(t);
+      else                       cells.pct.push(t);
     }
 
-    // Capítulo romano
-    const rm = fullText.match(ROMAN_RE);
-    if(rm){
-      if(pendingCode){ pendingCode=null; pendingDesc=[]; }
-      artigos.push({ id:newId(), codigo:rm[1].trim(), descricao:rm[2].trim(), isCapitulo:true, nivel:0, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
-      continue;
-    }
+    // Texto limpo de cada coluna
+    const unT    = cells.un.join('').replace(/[\s ]/g,'').replace(/[€%]/g,'');
+    const qtyT   = cells.qty.join(' ').replace(/[€%]/g,'').trim();
+    const priceT = cells.price.join(' ').replace(/€/g,'').trim();
+    const totalT = cells.total.join(' ').replace(/€/g,'').trim();
+    const pctT   = cells.pct.join('').replace(/[\s ]/g,'');
+    const codeT  = cells.code.join(' ').trim();
+    const descT  = cells.desc.join(' ').trim();
 
-    // Código artigo só (3+ níveis, sem mais conteúdo ou com início de descrição)
-    const am = fullText.match(ART_CODE_RE);
-    if(am){
-      const rest = fullText.slice(am[0].length).trim();
-      // Se há conteúdo após o código → inicio da descrição; senão apenas o código
-      pendingCode = am[1];
-      pendingDesc = rest ? [rest] : [];
-      continue;
-    }
+    // É uma linha de dados se tiver unidade + quantidade + preço
+    const isData = !!(unT && qtyT && priceT);
 
-    // Secção numérica (1 ou 2 níveis)
-    const sm = fullText.match(SECT_RE);
-    if(sm && !pendingCode){
-      artigos.push({ id:newId(), codigo:sm[1].trim(), descricao:sm[2].trim(), isCapitulo:true, nivel:1, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
-      continue;
-    }
+    if(isData){
+      const finalCode = (codeT || pendingCode || '').replace(/\.$/,'').trim();
+      const allDesc   = [...pendingDesc];
+      if(descT) allDesc.push(descT);
 
-    // Linha de continuação de descrição
-    if(pendingCode !== null){
-      // Ignorar linhas que são apenas espaços ou texto de página
-      if(fullText.length > 2) pendingDesc.push(fullText);
+      artigos.push({
+        id:           newId(),
+        codigo:       finalCode,
+        descricao:    allDesc.join(' ').replace(/\s+/g,' ').trim(),
+        unidade:      unT,
+        quantidade:   _puParseNum(qtyT),
+        precoUnit:    _puParseNum(priceT),
+        total:        _puParseNum(totalT),
+        percentTotal: _puParsePct(pctT),
+        isCapitulo:   false,
+        nivel:        3,
+        notas:        '',
+        editado:      false
+      });
+      pendingCode = null;
+      pendingDesc = [];
+
+    } else {
+      // Linha não-dados: capítulo, secção ou continuação de descrição
+      const lineText = [codeT, descT].join(' ').trim() || fullText;
+
+      // Capítulo romano
+      const rm = lineText.match(ROMAN);
+      if(rm){
+        if(pendingCode){ pendingCode=null; pendingDesc=[]; }
+        artigos.push({ id:newId(), codigo:rm[1].trim(), descricao:rm[2].trim(), isCapitulo:true, nivel:0, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
+        continue;
+      }
+
+      // Código de artigo 3+ níveis (sozinho ou com início de descrição)
+      const ac1 = (codeT||lineText).match(ART_CODE);
+      if(ac1){
+        pendingCode = ac1[1];
+        pendingDesc = descT ? [descT] : [];
+        continue;
+      }
+      const ac2 = lineText.match(ART_LINE);
+      if(ac2){
+        pendingCode = ac2[1];
+        pendingDesc = [ac2[2]];
+        continue;
+      }
+
+      // Secção numérica (1-2 níveis)
+      const sc = lineText.match(SECTION);
+      if(sc && !pendingCode){
+        artigos.push({ id:newId(), codigo:sc[1].trim(), descricao:sc[2].trim(), isCapitulo:true, nivel:1, unidade:'', quantidade:0, precoUnit:0, total:0, percentTotal:0, notas:'', editado:false });
+        continue;
+      }
+
+      // Continuação de descrição de artigo em curso
+      if(pendingCode !== null && lineText.length > 2){
+        pendingDesc.push(descT || lineText);
+      }
     }
   }
 
   return artigos;
+}
+
+function _puParsePct(v){
+  if(!v) return 0;
+  return parseFloat(String(v).replace('%','').replace(',','.')) || 0;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
