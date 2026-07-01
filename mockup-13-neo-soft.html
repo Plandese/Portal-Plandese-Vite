@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 13 — Neo Soft</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E7ECF3;--hi:#FFFFFF;--sh:#C3CCDA;
+  --ink:#33415C;--mut:#7B8AA6;--dim:#9AA7BF;
+  --blue:#3B6FF6;--green:#1FB979;--amber:#F5A623;--red:#EF5B6B;--violet:#8A6BF0;--cyan:#25AEC4;
+  --r:22px;
+  --out:6px 6px 14px var(--sh),-6px -6px 14px var(--hi);
+  --out-sm:4px 4px 9px var(--sh),-4px -4px 9px var(--hi);
+  --in:inset 4px 4px 9px var(--sh),inset -4px -4px 9px var(--hi);
+}
+html,body{height:100%;overflow:hidden;font-family:'Nunito',sans-serif;background:#DBE1EA;color:var(--ink);-webkit-font-smoothing:antialiased}
+.shell{height:100vh;display:flex;overflow:hidden}
+.phone{width:392px;flex-shrink:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden;border-right:1px solid #C9D1DE}
+
+/* TOP */
+.topbar{padding:18px 20px 12px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.tb-av{width:48px;height:48px;border-radius:16px;background:var(--bg);box-shadow:var(--out-sm);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:var(--blue)}
+.tb-info{flex:1;min-width:0}
+.tb-hi{font-size:12px;color:var(--mut);font-weight:700}
+.tb-name{font-size:18px;font-weight:900;letter-spacing:-.3px}
+.tb-btn{width:48px;height:48px;border-radius:16px;background:var(--bg);box-shadow:var(--out-sm);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+.tb-btn:active{box-shadow:var(--in)}
+.tb-btn svg{width:21px;height:21px;stroke:var(--ink);fill:none;stroke-width:2}
+.tb-dot{position:absolute;top:11px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--red)}
+
+.scroll{flex:1;overflow-y:auto;padding:8px 20px 18px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* hero: weather + prazo */
+.hero{background:var(--bg);border-radius:26px;box-shadow:var(--out);padding:20px;margin:6px 0 18px;display:flex;align-items:center;gap:16px}
+.wx-orb{width:74px;height:74px;border-radius:50%;background:var(--bg);box-shadow:var(--out);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.wx-orb::after{content:'';position:absolute;inset:9px;border-radius:50%;box-shadow:var(--in)}
+.wx-orb svg{width:34px;height:34px;fill:var(--amber);position:relative;z-index:1;animation:spin 22s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wx-info{flex:1}
+.wx-temp{font-size:32px;font-weight:900;line-height:1;letter-spacing:-1px}
+.wx-desc{font-size:12.5px;color:var(--mut);font-weight:700;margin-top:2px}
+.wx-rain{display:inline-block;font-size:11px;font-weight:800;color:var(--blue);margin-top:6px}
+.prazo{text-align:center;padding-left:16px;border-left:2px solid rgba(150,165,190,.2)}
+.prazo-n{font-size:30px;font-weight:900;color:var(--green);line-height:1}
+.prazo-l{font-size:10px;color:var(--mut);font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+
+/* status toggles */
+.stat-row{display:flex;gap:14px;margin-bottom:20px}
+.stat{flex:1;background:var(--bg);border-radius:18px;box-shadow:var(--out-sm);padding:14px;display:flex;align-items:center;gap:11px}
+.stat.on{box-shadow:var(--in)}
+.st-led{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.st-led.ok{background:var(--green);box-shadow:0 0 0 3px rgba(31,185,121,.18)}
+.st-led.pend{background:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.18)}
+.st-txt{font-size:11px;font-weight:800}
+.st-sub{font-size:10px;color:var(--mut);font-weight:700}
+
+/* big action button (primary) */
+.big-btn{background:linear-gradient(135deg,#3B6FF6,#2F5AE0);border-radius:24px;padding:20px;color:#fff;display:flex;align-items:center;gap:16px;margin-bottom:22px;cursor:pointer;box-shadow:6px 6px 16px rgba(59,111,246,.35),-4px -4px 12px var(--hi);transition:transform .12s}
+.big-btn:active{transform:scale(.98)}
+.bb-orb{width:56px;height:56px;border-radius:18px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:soft 2.6s ease-in-out infinite}
+@keyframes soft{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}50%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
+.bb-orb svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2.3}
+.bb-t{font-size:17px;font-weight:900}
+.bb-s{font-size:12.5px;opacity:.9;font-weight:700;margin-top:1px}
+.bb-go{margin-left:auto;font-size:24px;font-weight:900}
+
+/* section */
+.sec{font-size:14px;font-weight:900;margin:2px 4px 14px;letter-spacing:-.2px}
+
+/* module grid — soft extruded */
+.mods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:22px}
+.mod{background:var(--bg);border-radius:20px;box-shadow:var(--out-sm);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:box-shadow .14s;position:relative}
+.mod:active{box-shadow:var(--in)}
+.mod-ic{width:46px;height:46px;border-radius:15px;background:var(--bg);box-shadow:var(--out-sm);display:flex;align-items:center;justify-content:center}
+.mod-ic svg{width:22px;height:22px;fill:none;stroke-width:2.1}
+.c-blue{stroke:var(--blue)}.c-violet{stroke:var(--violet)}.c-cyan{stroke:var(--cyan)}
+.c-amber{stroke:var(--amber)}.c-green{stroke:var(--green)}.c-red{stroke:var(--red)}
+.mod-t{font-size:11px;font-weight:800;text-align:center;line-height:1.2}
+.mod-badge{position:absolute;top:8px;right:12px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--red);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 5px rgba(239,91,107,.4)}
+
+/* team */
+.team{display:flex;flex-direction:column;gap:12px}
+.member{background:var(--bg);border-radius:18px;box-shadow:var(--out-sm);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.member:active{box-shadow:var(--in)}
+.m-av{width:42px;height:42px;border-radius:14px;background:var(--bg);box-shadow:var(--out-sm);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
+.m-info{flex:1;min-width:0}
+.m-name{font-size:13px;font-weight:800}
+.m-det{font-size:11px;color:var(--mut);font-weight:700;margin-top:1px}
+.m-h{font-size:16px;font-weight:900;color:var(--green)}
+.m-h.warn{color:var(--amber)}.m-h.miss{color:var(--red)}
+
+/* NAV */
+.nav{flex-shrink:0;padding:12px 20px 16px;background:var(--bg)}
+.nav-in{background:var(--bg);border-radius:22px;box-shadow:var(--out);display:flex;align-items:center;justify-content:space-around;padding:8px}
+.nav-i{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:15px;color:var(--dim);cursor:pointer}
+.nav-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.1}
+.nav-i span{font-size:9.5px;font-weight:800}
+.nav-i.active{color:var(--blue);box-shadow:var(--in)}
+
+/* PANEL */
+.panel{flex:1;overflow-y:auto;padding:40px 44px;background:var(--bg)}
+.panel-tag{display:inline-flex;gap:8px;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:var(--blue);background:var(--bg);box-shadow:var(--out-sm);padding:8px 14px;border-radius:20px;margin-bottom:20px}
+.panel h1{font-size:36px;font-weight:900;letter-spacing:-1px;margin-bottom:10px}
+.panel-lead{font-size:15px;color:var(--mut);line-height:1.6;max-width:520px;margin-bottom:28px;font-weight:600}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:560px}
+.feat{background:var(--bg);border-radius:18px;box-shadow:var(--out-sm);padding:18px}
+.feat-ic{width:40px;height:40px;border-radius:13px;background:var(--bg);box-shadow:var(--out-sm);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px}
+.feat-t{font-size:13px;font-weight:900;margin-bottom:5px}
+.feat-d{font-size:12.5px;color:var(--mut);line-height:1.55;font-weight:600}
+.design-tag{position:fixed;top:14px;right:14px;background:var(--bg);box-shadow:var(--out-sm);color:var(--blue);font-size:10px;font-weight:900;padding:7px 13px;border-radius:20px;letter-spacing:.5px;z-index:99}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 13 — NEO SOFT</div>
+<div class="shell">
+  <div class="phone">
+    <div class="topbar">
+      <div class="tb-av">DM</div>
+      <div class="tb-info"><div class="tb-hi">Boa tarde 👷</div><div class="tb-name">David Mosca</div></div>
+      <div class="tb-btn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><div class="tb-dot"></div></div>
+    </div>
+
+    <div class="scroll">
+      <!-- HERO -->
+      <div class="hero">
+        <div class="wx-orb"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><g stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></g></svg></div>
+        <div class="wx-info">
+          <div class="wx-temp">21°</div>
+          <div class="wx-desc">Céu limpo · Setúbal</div>
+          <div class="wx-rain">💧 10% chuva</div>
+        </div>
+        <div class="prazo"><div class="prazo-n">34</div><div class="prazo-l">dias<br>prazo</div></div>
+      </div>
+
+      <!-- STATUS -->
+      <div class="stat-row">
+        <div class="stat on"><div class="st-led ok"></div><div><div class="st-txt">Plandese</div><div class="st-sub">Ponto feito</div></div></div>
+        <div class="stat"><div class="st-led pend"></div><div><div class="st-txt">Aluguer MOA</div><div class="st-sub">Pendente</div></div></div>
+      </div>
+
+      <!-- BIG BUTTON -->
+      <div class="big-btn">
+        <div class="bb-orb"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div><div class="bb-t">Registar ponto</div><div class="bb-s">Edifício Alameda · hoje</div></div>
+        <div class="bb-go">›</div>
+      </div>
+
+      <!-- MODULES -->
+      <div class="sec">Módulos</div>
+      <div class="mods">
+        <div class="mod"><div class="mod-ic"><svg class="c-violet" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div><div class="mod-t">Aluguer MOA</div><div class="mod-badge">!</div></div>
+        <div class="mod"><div class="mod-ic"><svg class="c-cyan" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg></div><div class="mod-t">Equipam.</div></div>
+        <div class="mod"><div class="mod-ic"><svg class="c-amber" viewBox="0 0 24 24"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div><div class="mod-t">Combust.</div></div>
+        <div class="mod"><div class="mod-ic"><svg class="c-green" viewBox="0 0 24 24"><path d="M12 8v13M12 8a4 4 0 00-8 0v13M20 8a4 4 0 00-8 0"/></svg></div><div class="mod-t">Histórico</div></div>
+        <div class="mod"><div class="mod-ic"><svg class="c-red" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="mod-t">Compras</div><div class="mod-badge">2</div></div>
+        <div class="mod"><div class="mod-ic"><svg class="c-blue" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></div><div class="mod-t">Obras</div></div>
+      </div>
+
+      <!-- TEAM -->
+      <div class="sec">Equipa hoje</div>
+      <div class="team">
+        <div class="member"><div class="m-av" style="color:var(--blue)">JS</div><div class="m-info"><div class="m-name">João Silva</div><div class="m-det">Pedreiro · 08:00–17:00</div></div><div class="m-h">8h</div></div>
+        <div class="member"><div class="m-av" style="color:var(--violet)">MF</div><div class="m-info"><div class="m-name">Maria Ferreira</div><div class="m-det">Servente · saída antecipada</div></div><div class="m-h warn">6h</div></div>
+        <div class="member"><div class="m-av" style="color:var(--red)">AC</div><div class="m-info"><div class="m-name">António Costa</div><div class="m-det">Falta justificada</div></div><div class="m-h miss">0h</div></div>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="nav">
+      <div class="nav-in">
+        <div class="nav-i active"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Início</span></div>
+        <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span>Ponto</span></div>
+        <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3"/></svg><span>Equip.</span></div>
+        <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><span>Histórico</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-tag">◐ Direção 13 · Soft UI</div>
+    <h1>Neo Soft</h1>
+    <p class="panel-lead">Neumorfismo tátil: superfícies suaves, extrudidas do próprio fundo, com controlos grandes e generosos. Pensada para dedos e luvas em obra — cada botão parece físico e responde ao toque afundando-se.</p>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🫧</div><div class="feat-t">Superfícies macias</div><div class="feat-d">Sombras duplas (clara + escura) dão a cada elemento um relevo físico e calmo.</div></div>
+      <div class="feat"><div class="feat-ic">👆</div><div class="feat-t">Alvos grandes</div><div class="feat-d">Botões e módulos amplos, fáceis de acertar com luvas ou em movimento.</div></div>
+      <div class="feat"><div class="feat-ic">🔘</div><div class="feat-t">Feedback "afundar"</div><div class="feat-d">Ao premir, o elemento passa a côncavo (inset) — confirmação táctil clara.</div></div>
+      <div class="feat"><div class="feat-ic">💡</div><div class="feat-t">LEDs de estado</div><div class="feat-d">Ponto Plandese e Aluguer como luzes verde/âmbar, leitura instantânea.</div></div>
+      <div class="feat"><div class="feat-ic">🌞</div><div class="feat-t">Orbe de meteo</div><div class="feat-d">Sol que roda lentamente num orbe côncavo, junto aos dias de prazo.</div></div>
+      <div class="feat"><div class="feat-ic">🎯</div><div class="feat-t">Ação principal única</div><div class="feat-d">Um grande botão "Registar ponto" domina o ecrã — sem ambiguidade.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

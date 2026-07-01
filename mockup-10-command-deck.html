@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 10 — Command Deck</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0A0E14;--panel:#111826;--panel-2:#0E141F;--line:#1E2A3C;
+  --txt:#E6EEF8;--mut:#7E90A8;--dim:#4A5A72;
+  --blue:#3B82F6;--cyan:#22D3EE;--green:#34D399;--amber:#FBBF24;--red:#F87171;--violet:#A78BFA;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;font-family:'Space Grotesk',sans-serif;background:#05080D;color:var(--txt);-webkit-font-smoothing:antialiased}
+.shell{height:100vh;display:flex;overflow:hidden}
+
+/* ── PHONE ── */
+.phone{width:392px;flex-shrink:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden;border-right:1px solid var(--line)}
+.phone::before{content:'';position:absolute;inset:0;background:radial-gradient(90% 55% at 50% -5%,rgba(59,130,246,.14),transparent 70%);pointer-events:none}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:44px 44px;opacity:.28;mask-image:linear-gradient(#000,transparent 65%)}
+
+/* ── TOP ── */
+.topbar{position:relative;z-index:2;padding:16px 18px 12px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#3B82F6,#22D3EE);display:flex;align-items:center;justify-content:center;box-shadow:0 0 22px rgba(34,211,238,.4)}
+.logo svg{width:22px;height:22px;stroke:#05080d;fill:none;stroke-width:2.4}
+.tb-info{flex:1;min-width:0}
+.tb-t{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.tb-s{font-size:11px;color:var(--mut);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.live{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-clock{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--cyan)}
+
+/* ── SCROLL ── */
+.scroll{position:relative;z-index:2;flex:1;overflow-y:auto;padding:6px 18px 18px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:16px}
+
+/* KPI RINGS ROW */
+.rings{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:8px 0 14px}
+.ring-card{padding:14px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
+.ring{width:64px;height:64px;position:relative;margin-bottom:8px}
+.ring svg{transform:rotate(-90deg)}
+.ring-track{stroke:var(--line);stroke-width:6;fill:none}
+.ring-fill{stroke-width:6;fill:none;stroke-linecap:round;stroke-dasharray:170;animation:dash 1.6s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes dash{from{stroke-dashoffset:170}}
+.ring-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-num{font-family:var(--mono);font-size:16px;font-weight:700;line-height:1}
+.ring-unit{font-size:8px;color:var(--dim)}
+.ring-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+
+/* PRAZO BANNER */
+.banner{padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.banner::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(59,130,246,.12),transparent);animation:scan 3.4s linear infinite}
+@keyframes scan{to{left:120%}}
+.bn-ic{width:46px;height:46px;border-radius:13px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;color:var(--green);flex-shrink:0}
+.bn-ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.bn-info{flex:1;min-width:0}
+.bn-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.bn-obra{font-size:14px;font-weight:700;margin-top:2px}
+.bn-meta{font-size:11px;color:var(--mut);font-family:var(--mono);margin-top:3px}
+.bn-days{text-align:right;flex-shrink:0}
+.bn-days-n{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--green);line-height:1}
+.bn-days-l{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+
+/* SECTION */
+.sec{display:flex;align-items:center;gap:8px;margin:6px 2px 12px}
+.sec-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut)}
+.sec-ln{flex:1;height:1px;background:var(--line)}
+
+/* MODULE GRID */
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
+.mod{padding:15px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .18s,transform .18s}
+.mod:hover{transform:translateY(-2px)}
+.mod:hover .mod-ic{box-shadow:0 0 18px var(--gl)}
+.mod-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:11px;border:1px solid var(--line);transition:box-shadow .2s}
+.mod-ic svg{width:21px;height:21px;fill:none;stroke-width:1.9}
+.mod-t{font-size:13.5px;font-weight:700}
+.mod-s{font-size:10.5px;color:var(--mut);margin-top:2px;font-family:var(--mono)}
+.mod.blue{--gl:rgba(59,130,246,.4)}.mod.blue .mod-ic{background:rgba(59,130,246,.12);color:var(--blue)}.mod.blue:hover{border-color:var(--blue)}
+.mod.violet{--gl:rgba(167,139,250,.4)}.mod.violet .mod-ic{background:rgba(167,139,250,.12);color:var(--violet)}.mod.violet:hover{border-color:var(--violet)}
+.mod.cyan{--gl:rgba(34,211,238,.4)}.mod.cyan .mod-ic{background:rgba(34,211,238,.12);color:var(--cyan)}.mod.cyan:hover{border-color:var(--cyan)}
+.mod.amber{--gl:rgba(251,191,36,.4)}.mod.amber .mod-ic{background:rgba(251,191,36,.12);color:var(--amber)}.mod.amber:hover{border-color:var(--amber)}
+.mod.green{--gl:rgba(52,211,153,.4)}.mod.green .mod-ic{background:rgba(52,211,153,.12);color:var(--green)}.mod.green:hover{border-color:var(--green)}
+.mod.red{--gl:rgba(248,113,113,.4)}.mod.red .mod-ic{background:rgba(248,113,113,.12);color:var(--red)}.mod.red:hover{border-color:var(--red)}
+.mod-tag{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(248,113,113,.16);color:var(--red)}
+
+/* TELEMETRY / weather feed */
+.feed{padding:14px 16px;margin-bottom:16px}
+.feed-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}
+.feed-row:last-child{border-bottom:none;padding-bottom:0}
+.feed-row:first-child{padding-top:0}
+.feed-ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.feed-txt{flex:1;color:var(--txt)}
+.feed-txt b{font-weight:700}
+.feed-t{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* NAV */
+.nav{position:relative;z-index:2;flex-shrink:0;display:flex;padding:10px 12px 12px;border-top:1px solid var(--line);background:var(--panel-2)}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:var(--dim);cursor:pointer;transition:color .15s;position:relative}
+.nav-i svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9}
+.nav-i span{font-size:9.5px;font-weight:600;font-family:var(--mono)}
+.nav-i.active{color:var(--cyan)}
+.nav-i.active::before{content:'';position:absolute;top:-11px;width:26px;height:3px;border-radius:3px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+
+/* PANEL */
+.panel{flex:1;overflow-y:auto;padding:40px 44px;background:radial-gradient(120% 100% at 100% 0,#0d1526,#05080d 60%)}
+.panel-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--cyan);border:1px solid var(--line);padding:6px 12px;border-radius:8px;margin-bottom:18px}
+.panel h1{font-size:34px;font-weight:700;letter-spacing:-.6px;margin-bottom:10px}
+.panel-lead{font-size:15px;color:var(--mut);line-height:1.6;max-width:520px;margin-bottom:28px}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:560px}
+.feat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.feat-ic{width:38px;height:38px;border-radius:10px;background:rgba(34,211,238,.1);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:10px}
+.feat-t{font-size:13px;font-weight:700;margin-bottom:5px}
+.feat-d{font-size:12.5px;color:var(--mut);line-height:1.55}
+.design-tag{position:fixed;top:14px;right:14px;background:var(--panel);border:1px solid var(--line);color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;padding:6px 12px;border-radius:8px;z-index:99}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 10 — COMMAND DECK</div>
+<div class="shell">
+  <div class="phone">
+    <div class="grid-bg"></div>
+    <!-- TOP -->
+    <div class="topbar">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></div>
+      <div class="tb-info">
+        <div class="tb-t">Central do Encarregado</div>
+        <div class="tb-s"><span class="live"></span> online · sincronizado</div>
+      </div>
+      <div class="tb-clock">14:32</div>
+    </div>
+
+    <div class="scroll">
+      <!-- RINGS -->
+      <div class="rings">
+        <div class="card ring-card">
+          <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle class="ring-track" cx="32" cy="32" r="27"/><circle class="ring-fill" cx="32" cy="32" r="27" stroke="var(--green)" style="stroke-dashoffset:34"/></svg><div class="ring-mid"><div class="ring-num">12</div><div class="ring-unit">/14</div></div></div>
+          <div class="ring-lbl">Presenças</div>
+        </div>
+        <div class="card ring-card">
+          <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle class="ring-track" cx="32" cy="32" r="27"/><circle class="ring-fill" cx="32" cy="32" r="27" stroke="var(--blue)" style="stroke-dashoffset:20"/></svg><div class="ring-mid"><div class="ring-num">96</div><div class="ring-unit">horas</div></div></div>
+          <div class="ring-lbl">Hoje</div>
+        </div>
+        <div class="card ring-card">
+          <div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle class="ring-track" cx="32" cy="32" r="27"/><circle class="ring-fill" cx="32" cy="32" r="27" stroke="var(--amber)" style="stroke-dashoffset:118"/></svg><div class="ring-mid"><div class="ring-num">8</div><div class="ring-unit">extra</div></div></div>
+          <div class="ring-lbl">H. extra</div>
+        </div>
+      </div>
+
+      <!-- PRAZO -->
+      <div class="card banner">
+        <div class="bn-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div class="bn-info">
+          <div class="bn-lbl">Obra ativa</div>
+          <div class="bn-obra">Edifício Alameda</div>
+          <div class="bn-meta">Setúbal · 21° céu limpo · 💧10%</div>
+        </div>
+        <div class="bn-days"><div class="bn-days-n">34</div><div class="bn-days-l">dias</div></div>
+      </div>
+
+      <!-- MODULES -->
+      <div class="sec"><span class="sec-t">Módulos</span><span class="sec-ln"></span></div>
+      <div class="mods">
+        <div class="card mod blue"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="mod-t">Ponto Plandese</div><div class="mod-s">registar horas</div></div>
+        <div class="card mod violet"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div><div class="mod-t">Aluguer MOA</div><div class="mod-s">mão de obra</div><div class="mod-tag">PEND</div></div>
+        <div class="card mod cyan"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg></div><div class="mod-t">Equipamentos</div><div class="mod-s">scan QR · GPS</div></div>
+        <div class="card mod amber"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div><div class="mod-t">Combustível</div><div class="mod-s">abastecer</div></div>
+        <div class="card mod green"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v13M12 8a4 4 0 00-8 0v13M20 8a4 4 0 00-8 0"/></svg></div><div class="mod-t">Histórico</div><div class="mod-s">consultar</div></div>
+        <div class="card mod red"><div class="mod-ic"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="mod-t">Compras</div><div class="mod-s">pedidos</div><div class="mod-tag">2</div></div>
+      </div>
+
+      <!-- FEED -->
+      <div class="sec"><span class="sec-t">Atividade recente</span><span class="sec-ln"></span></div>
+      <div class="card feed">
+        <div class="feed-row"><div class="feed-ic" style="background:rgba(52,211,153,.14);color:var(--green)">✓</div><div class="feed-txt"><b>João Silva</b> registado · 8h</div><div class="feed-t">14:20</div></div>
+        <div class="feed-row"><div class="feed-ic" style="background:rgba(34,211,238,.14);color:var(--cyan)">▤</div><div class="feed-txt">Betoneira <b>EQ-042</b> lida na obra</div><div class="feed-t">13:05</div></div>
+        <div class="feed-row"><div class="feed-ic" style="background:rgba(251,191,36,.14);color:var(--amber)">⛽</div><div class="feed-txt">Gasóleo · <b>45 L</b> depósito obra</div><div class="feed-t">11:40</div></div>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="nav">
+      <div class="nav-i active"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>DECK</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span>PONTO</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3"/></svg><span>EQUIP</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><span>LOG</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg><span>MAIS</span></div>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div class="panel">
+    <div class="panel-tag">▚ Direção 10 · Dark Cockpit</div>
+    <h1>Command Deck</h1>
+    <p class="panel-lead">Um posto de comando escuro e denso em dados, pensado para o encarregado ver o estado da obra num relance. Anéis de progresso, telemetria ao vivo e realces neon — a app parece um painel de controlo, não um formulário.</p>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">◎</div><div class="feat-t">Anéis de KPI animados</div><div class="feat-d">Presenças, horas do dia e horas extra desenhados como gauges que se preenchem ao abrir.</div></div>
+      <div class="feat"><div class="feat-ic">🟢</div><div class="feat-t">Estado ao vivo</div><div class="feat-d">Indicador "online · sincronizado" a pulsar e relógio em tempo real no topo.</div></div>
+      <div class="feat"><div class="feat-ic">📡</div><div class="feat-t">Feed de atividade</div><div class="feat-d">Últimos registos de ponto, equipamentos e combustível em stream, com timestamp.</div></div>
+      <div class="feat"><div class="feat-ic">⏳</div><div class="feat-t">Prazo com scan-line</div><div class="feat-d">Banner da obra com contagem de dias e um varrimento de luz constante.</div></div>
+      <div class="feat"><div class="feat-ic">🔦</div><div class="feat-t">Módulos com glow</div><div class="feat-d">Cada módulo acende a sua cor ao toque — orientação visual rápida em obra.</div></div>
+      <div class="feat"><div class="feat-ic">🌙</div><div class="feat-t">Dark-first</div><div class="feat-d">Ideal para uso ao início da manhã ou ao fim do dia; poupa bateria em ecrãs OLED.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

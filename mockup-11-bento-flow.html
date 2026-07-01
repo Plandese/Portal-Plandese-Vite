@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 11 — Bento Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F1F3F9;--card:#FFFFFF;
+  --ink:#111827;--mut:#6B7280;--dim:#9CA3AF;--line:#EDEFF5;
+  --blue:#2563EB;--blue-s:#EFF4FF;--green:#059669;--green-s:#E7F8F1;
+  --amber:#D97706;--amber-s:#FEF6E7;--violet:#7C3AED;--violet-s:#F3EEFF;
+  --red:#DC2626;--red-s:#FDECEC;--cyan:#0891B2;--cyan-s:#E6F7FB;--pink:#DB2777;--pink-s:#FDEDF6;
+  --r:20px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;background:#E4E8F1;color:var(--ink);-webkit-font-smoothing:antialiased}
+.shell{height:100vh;display:flex;overflow:hidden}
+.phone{width:392px;flex-shrink:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden;border-right:1px solid #D5DAE6}
+
+/* TOP */
+.topbar{padding:18px 18px 10px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.tb-av{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563EB,#7C3AED);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center}
+.tb-info{flex:1;min-width:0}
+.tb-hi{font-size:12px;color:var(--mut);font-weight:500}
+.tb-name{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.tb-btn{width:44px;height:44px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;box-shadow:0 2px 6px rgba(20,30,60,.05)}
+.tb-btn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.9}
+.tb-dot{position:absolute;top:10px;right:11px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--card)}
+
+/* SCROLL / BENTO */
+.scroll{flex:1;overflow-y:auto;padding:8px 16px 18px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-auto-flow:dense}
+.box{background:var(--card);border-radius:var(--r);padding:16px;border:1px solid var(--line);box-shadow:0 4px 14px rgba(20,30,60,.05);position:relative;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s}
+.box:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(20,30,60,.12)}
+.box:active{transform:scale(.98)}
+.col2{grid-column:span 2}
+.tall{grid-row:span 2}
+
+/* weather (2x2) */
+.wx{background:linear-gradient(140deg,#3B82F6,#2563EB);color:#fff;border:none;display:flex;flex-direction:column;justify-content:space-between}
+.wx::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);top:-50px;right:-40px}
+.wx::after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-30px;left:-20px}
+.wx-sun{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.wx-sun svg{width:26px;height:26px;fill:#FFE082}
+.wx-temp{font-size:44px;font-weight:800;line-height:1;position:relative;z-index:1;letter-spacing:-2px}
+.wx-desc{font-size:13px;font-weight:600;opacity:.92;position:relative;z-index:1}
+.wx-rain{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;background:rgba(255,255,255,.2);padding:4px 9px;border-radius:20px;margin-top:8px;align-self:flex-start;position:relative;z-index:1}
+
+/* generic tile head */
+.b-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:26px}
+.b-ic svg{width:21px;height:21px;fill:none;stroke-width:2}
+.b-t{font-size:14px;font-weight:800;letter-spacing:-.2px}
+.b-s{font-size:11px;color:var(--mut);font-weight:500;margin-top:2px}
+.ic-blue{background:var(--blue-s);color:var(--blue)}.ic-green{background:var(--green-s);color:var(--green)}
+.ic-amber{background:var(--amber-s);color:var(--amber)}.ic-violet{background:var(--violet-s);color:var(--violet)}
+.ic-red{background:var(--red-s);color:var(--red)}.ic-cyan{background:var(--cyan-s);color:var(--cyan)}.ic-pink{background:var(--pink-s);color:var(--pink)}
+.b-badge{position:absolute;top:14px;right:14px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.b-pill{position:absolute;top:14px;right:14px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px}
+.pill-ok{background:var(--green-s);color:var(--green)}.pill-pend{background:var(--amber-s);color:var(--amber)}
+
+/* prazo tile */
+.prazo-n{font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--green)}
+.prazo-l{font-size:11px;color:var(--mut);font-weight:600}
+.prazo-obra{font-size:12px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:5px}
+.prazo-obra svg{width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2}
+
+/* chart tile (col2) */
+.chart-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.chart-t{font-size:13px;font-weight:800}
+.chart-sum{font-size:12px;font-weight:700;color:var(--green)}
+.bars{display:flex;align-items:stretch;justify-content:space-between;gap:8px;height:92px}
+.bar-col{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px}
+.bar{width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#3B82F6,#2563EB);transform-origin:bottom;animation:rise .9s cubic-bezier(.2,.8,.2,1) both}
+.bar.today{background:linear-gradient(180deg,#34D399,#059669)}
+.bar.dim{background:#DDE3EE}
+@keyframes rise{from{transform:scaleY(0)}}
+.bar-d{font-size:10px;font-weight:700;color:var(--dim)}
+.bar-col.today .bar-d{color:var(--green)}
+
+/* team mini (col2) */
+.team-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.team-t{font-size:13px;font-weight:800}
+.team-l{font-size:11px;font-weight:700;color:var(--blue)}
+.trow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:none;padding-bottom:0}
+.tav{width:34px;height:34px;border-radius:11px;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tinfo{flex:1;min-width:0}
+.tname{font-size:12.5px;font-weight:700}
+.tdet{font-size:10.5px;color:var(--mut)}
+.th{font-size:14px;font-weight:800}
+.th.warn{color:var(--amber)}.th.miss{color:var(--red)}
+
+/* NAV */
+.nav{flex-shrink:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 10px 12px}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:var(--dim);cursor:pointer}
+.nav-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9}
+.nav-i span{font-size:10px;font-weight:700}
+.nav-i.active{color:var(--blue)}
+.nav-i.active svg{stroke:var(--blue)}
+
+/* PANEL */
+.panel{flex:1;overflow-y:auto;padding:40px 44px;background:linear-gradient(160deg,#fff,#EEF1F8)}
+.panel-tag{display:inline-flex;gap:8px;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--violet);background:var(--violet-s);padding:6px 12px;border-radius:20px;margin-bottom:18px}
+.panel h1{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:10px}
+.panel-lead{font-size:15px;color:var(--mut);line-height:1.6;max-width:520px;margin-bottom:28px}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:560px}
+.feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(20,30,60,.05)}
+.feat-ic{width:38px;height:38px;border-radius:12px;background:var(--blue-s);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:10px}
+.feat-t{font-size:13px;font-weight:800;margin-bottom:5px}
+.feat-d{font-size:12.5px;color:var(--mut);line-height:1.55}
+.design-tag{position:fixed;top:14px;right:14px;background:var(--violet);color:#fff;font-size:10px;font-weight:800;padding:6px 12px;border-radius:20px;letter-spacing:.5px;z-index:99}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 11 — BENTO FLOW</div>
+<div class="shell">
+  <div class="phone">
+    <div class="topbar">
+      <div class="tb-av">DM</div>
+      <div class="tb-info"><div class="tb-hi">Quarta, 1 Julho</div><div class="tb-name">Olá, David 👋</div></div>
+      <div class="tb-btn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><div class="tb-dot"></div></div>
+    </div>
+
+    <div class="scroll">
+      <div class="bento">
+        <!-- WEATHER 2x2 -->
+        <div class="box wx tall">
+          <div class="wx-sun"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><g stroke="#FFE082" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></g></svg></div>
+          <div>
+            <div class="wx-temp">21°</div>
+            <div class="wx-desc">Céu limpo</div>
+            <div style="font-size:11px;opacity:.8;position:relative;z-index:1;margin-top:2px">Setúbal · máx 24° / mín 14°</div>
+            <div class="wx-rain">💧 10% chuva hoje</div>
+          </div>
+        </div>
+
+        <!-- PRAZO -->
+        <div class="box">
+          <div class="prazo-n">34</div>
+          <div class="prazo-l">dias até ao prazo</div>
+          <div class="prazo-obra"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>Ed. Alameda</div>
+        </div>
+
+        <!-- PONTO STATUS -->
+        <div class="box">
+          <div class="b-ic ic-green" style="margin-bottom:10px"><svg viewBox="0 0 24 24" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="b-t">Ponto feito</div>
+          <div class="b-s">Plandese ✓ · Aluguer pendente</div>
+        </div>
+
+        <!-- HORAS SEMANA (col2 chart) -->
+        <div class="box col2">
+          <div class="chart-hd"><div class="chart-t">Horas da semana</div><div class="chart-sum">▲ 41h30</div></div>
+          <div class="bars">
+            <div class="bar-col"><div class="bar" style="height:64%;animation-delay:.05s"></div><div class="bar-d">Seg</div></div>
+            <div class="bar-col"><div class="bar" style="height:80%;animation-delay:.12s"></div><div class="bar-d">Ter</div></div>
+            <div class="bar-col today"><div class="bar today" style="height:72%;animation-delay:.19s"></div><div class="bar-d">Qua</div></div>
+            <div class="bar-col"><div class="bar dim" style="height:30%;animation-delay:.26s"></div><div class="bar-d">Qui</div></div>
+            <div class="bar-col"><div class="bar dim" style="height:22%;animation-delay:.33s"></div><div class="bar-d">Sex</div></div>
+          </div>
+        </div>
+
+        <!-- PONTO PLANDESE -->
+        <div class="box">
+          <div class="b-ic ic-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div class="b-t">Ponto Plandese</div><div class="b-s">Registar horas</div>
+          <div class="b-pill pill-ok">FEITO</div>
+        </div>
+
+        <!-- ALUGUER -->
+        <div class="box">
+          <div class="b-ic ic-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div>
+          <div class="b-t">Aluguer MOA</div><div class="b-s">Mão de obra</div>
+          <div class="b-pill pill-pend">PEND</div>
+        </div>
+
+        <!-- EQUIP -->
+        <div class="box">
+          <div class="b-ic ic-cyan"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg></div>
+          <div class="b-t">Equipamentos</div><div class="b-s">Ler QR + GPS</div>
+        </div>
+
+        <!-- COMBUSTIVEL -->
+        <div class="box">
+          <div class="b-ic ic-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div>
+          <div class="b-t">Combustível</div><div class="b-s">Abastecer</div>
+        </div>
+
+        <!-- TEAM (col2) -->
+        <div class="box col2">
+          <div class="team-hd"><div class="team-t">Equipa hoje · 12</div><div class="team-l">Ver todos →</div></div>
+          <div class="trow"><div class="tav" style="background:#2563EB">JS</div><div class="tinfo"><div class="tname">João Silva</div><div class="tdet">Pedreiro · 08:00–17:00</div></div><div class="th">8h</div></div>
+          <div class="trow"><div class="tav" style="background:#7C3AED">MF</div><div class="tinfo"><div class="tname">Maria Ferreira</div><div class="tdet">Servente · saída antecipada</div></div><div class="th warn">6h</div></div>
+          <div class="trow"><div class="tav" style="background:#D97706">AC</div><div class="tinfo"><div class="tname">António Costa</div><div class="tdet">Falta justificada</div></div><div class="th miss">0h</div></div>
+        </div>
+
+        <!-- COMPRAS + HISTORICO -->
+        <div class="box">
+          <div class="b-ic ic-red"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+          <div class="b-t">Compras</div><div class="b-s">Pedidos de obra</div>
+          <div class="b-badge">2</div>
+        </div>
+        <div class="box">
+          <div class="b-ic ic-pink"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v13M12 8a4 4 0 00-8 0v13M20 8a4 4 0 00-8 0"/></svg></div>
+          <div class="b-t">Histórico</div><div class="b-s">Registos anteriores</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-i active"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Início</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span>Ponto</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3"/></svg><span>Equip.</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><span>Histórico</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg><span>Mais</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-tag">▦ Direção 11 · Bento Grid</div>
+    <h1>Bento Flow</h1>
+    <p class="panel-lead">A tendência bento levada à obra: módulos em tiles de tamanhos diferentes que compõem um painel modular e vivo. Cada bloco tem o seu peso visual — meteo grande, prazo forte, mini-gráfico de horas — para uma leitura rápida e apelativa.</p>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🍱</div><div class="feat-t">Grelha modular</div><div class="feat-d">Tiles 1×1, 2×1 e 2×2 combinam-se num mosaico dinâmico e reorganizável.</div></div>
+      <div class="feat"><div class="feat-ic">📊</div><div class="feat-t">Micro-gráfico de horas</div><div class="feat-d">Barras da semana que crescem ao abrir, com o dia atual em verde.</div></div>
+      <div class="feat"><div class="feat-ic">🌤️</div><div class="feat-t">Meteo em destaque</div><div class="feat-d">Bloco grande com temperatura, máx/mín e alerta de chuva do dia.</div></div>
+      <div class="feat"><div class="feat-ic">🏷️</div><div class="feat-t">Estados por pill</div><div class="feat-d">Cada tile mostra FEITO / PENDENTE / contagem sem abrir o módulo.</div></div>
+      <div class="feat"><div class="feat-ic">🎨</div><div class="feat-t">Cor por função</div><div class="feat-d">Paleta suave por categoria — ponto, equipamentos, combustível, compras.</div></div>
+      <div class="feat"><div class="feat-ic">👥</div><div class="feat-t">Equipa embutida</div><div class="feat-d">Tile largo com os colaboradores do dia e as horas de cada um.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

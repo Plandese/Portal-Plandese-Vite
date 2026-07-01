@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 12 — Vibrant Motion</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0F1226;--card:#FFFFFF;--soft:#F5F6FF;
+  --mut:#6E7191;--dim:#A0A3BD;--line:#ECECF6;
+  --p1:#6D5EF6;--p2:#4F46E5;--acc:#22D3A8;--pink:#FF5DA2;--orange:#FF8A3D;--sky:#3EC5FF;
+  --r:24px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background:#E9EAF6;color:var(--ink);-webkit-font-smoothing:antialiased}
+.shell{height:100vh;display:flex;overflow:hidden}
+.phone{width:392px;flex-shrink:0;height:100vh;display:flex;flex-direction:column;background:var(--soft);position:relative;overflow:hidden;border-right:1px solid #D6D7EC}
+
+/* mesh hero backdrop */
+.hero-wrap{position:relative;flex-shrink:0;padding:18px 20px 30px;color:#fff;overflow:hidden;background:#4F46E5}
+.mesh{position:absolute;inset:0;z-index:0}
+.mesh i{position:absolute;border-radius:50%;filter:blur(30px);opacity:.9}
+.m1{width:220px;height:220px;background:#6D5EF6;top:-70px;left:-40px;animation:m 12s ease-in-out infinite}
+.m2{width:200px;height:200px;background:#FF5DA2;top:-40px;right:-60px;animation:m 15s ease-in-out infinite reverse}
+.m3{width:180px;height:180px;background:#22D3A8;bottom:-70px;left:40%;animation:m 18s ease-in-out infinite}
+.m4{width:160px;height:160px;background:#3EC5FF;bottom:-50px;right:-30px;animation:m 14s ease-in-out infinite reverse}
+@keyframes m{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,25px) scale(1.2)}}
+.hero-in{position:relative;z-index:1}
+.hero-top{display:flex;align-items:center;gap:12px}
+.h-av{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.22);border:1.5px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.h-hi{font-size:12px;opacity:.8;font-weight:500}
+.h-name{font-size:16px;font-weight:700}
+.h-bell{margin-left:auto;width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+.h-bell svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:1.9}
+.h-bell::after{content:'';position:absolute;top:11px;right:12px;width:8px;height:8px;background:var(--orange);border-radius:50%;border:2px solid #4F46E5}
+.hero-big{margin-top:22px}
+.hb-lbl{font-size:13px;opacity:.85;font-weight:500}
+.hb-title{font-size:30px;font-weight:800;letter-spacing:-.8px;line-height:1.1;margin-top:2px}
+.hero-chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.22);padding:7px 12px;border-radius:20px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.chip svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2}
+.chip.warn{background:rgba(255,138,61,.28);border-color:rgba(255,138,61,.4)}
+
+/* pull-up sheet */
+.sheet{flex:1;background:var(--soft);border-radius:26px 26px 0 0;margin-top:-20px;position:relative;z-index:2;overflow-y:auto;padding:8px 18px 16px;scrollbar-width:none;box-shadow:0 -8px 30px rgba(20,20,60,.1)}
+.sheet::-webkit-scrollbar{display:none}
+.grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:6px auto 14px}
+
+/* workflow stepper */
+.flow{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:18px;border:1px solid var(--line);box-shadow:0 6px 20px rgba(30,30,80,.06)}
+.flow-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.flow-t{font-size:14px;font-weight:800}
+.flow-pc{font-size:12px;font-weight:700;color:var(--p1)}
+.steps{display:flex;align-items:center}
+.step{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
+.st-dot{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.st-done{background:var(--acc);color:#fff}
+.st-now{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;box-shadow:0 0 0 5px rgba(109,94,246,.16);animation:beat 1.8s ease-in-out infinite}
+@keyframes beat{0%,100%{box-shadow:0 0 0 5px rgba(109,94,246,.16)}50%{box-shadow:0 0 0 9px rgba(109,94,246,0)}}
+.st-todo{background:var(--soft);color:var(--dim);border:1.5px dashed var(--line)}
+.st-dot svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.5}
+.st-lbl{font-size:10px;font-weight:600;color:var(--mut);white-space:nowrap}
+.st-line{flex:1;height:3px;border-radius:3px;background:var(--line);margin:0 4px 22px;overflow:hidden}
+.st-line.fill{background:var(--acc)}
+.st-line.half::after{content:'';display:block;height:100%;width:50%;background:var(--p1)}
+
+/* big CTA */
+.cta{position:relative;background:linear-gradient(120deg,var(--p1),var(--p2));border-radius:var(--r);padding:20px;color:#fff;overflow:hidden;margin-bottom:20px;cursor:pointer;box-shadow:0 12px 30px rgba(79,70,229,.35)}
+.cta::after{content:'';position:absolute;top:0;left:-70%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);animation:shine 3s ease-in-out infinite}
+@keyframes shine{0%{left:-70%}55%,100%{left:130%}}
+.cta-row{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.cta-ic{width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cta-ic svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2.2}
+.cta-t{font-size:17px;font-weight:800}
+.cta-s{font-size:12.5px;opacity:.85;margin-top:1px}
+.cta-go{margin-left:auto;width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cta-go svg{width:18px;height:18px;stroke:var(--p2);fill:none;stroke-width:2.6}
+
+/* module rail */
+.sec{display:flex;justify-content:space-between;align-items:center;margin:2px 2px 12px}
+.sec-t{font-size:15px;font-weight:800}
+.sec-l{font-size:12px;font-weight:700;color:var(--p1)}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mod{background:var(--card);border-radius:20px;padding:15px;border:1px solid var(--line);cursor:pointer;transition:transform .16s,box-shadow .16s;position:relative;box-shadow:0 4px 14px rgba(30,30,80,.05)}
+.mod:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(30,30,80,.12)}
+.mod:active{transform:scale(.97)}
+.mod-ic{width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.mod-ic svg{width:23px;height:23px;stroke:#fff;fill:none;stroke-width:2}
+.g-violet{background:linear-gradient(135deg,#6D5EF6,#4F46E5)}
+.g-pink{background:linear-gradient(135deg,#FF5DA2,#E5397E)}
+.g-teal{background:linear-gradient(135deg,#22D3A8,#12A985)}
+.g-orange{background:linear-gradient(135deg,#FF8A3D,#F26B1A)}
+.g-sky{background:linear-gradient(135deg,#3EC5FF,#1E9BE0)}
+.g-slate{background:linear-gradient(135deg,#7C89A8,#5A6683)}
+.mod-t{font-size:14px;font-weight:800}
+.mod-s{font-size:11px;color:var(--mut);margin-top:2px;font-weight:500}
+.mod-badge{position:absolute;top:14px;right:14px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--pink);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+/* NAV */
+.nav{flex-shrink:0;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:10px 20px 12px;position:relative}
+.nav-i{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--dim);cursor:pointer}
+.nav-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.nav-i span{font-size:10px;font-weight:700}
+.nav-i.active{color:var(--p1)}
+.fab{width:56px;height:56px;border-radius:20px;background:linear-gradient(135deg,var(--p1),var(--p2));display:flex;align-items:center;justify-content:center;margin-top:-30px;box-shadow:0 12px 26px rgba(79,70,229,.45);cursor:pointer;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.fab svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2.6}
+
+/* PANEL */
+.panel{flex:1;overflow-y:auto;padding:40px 44px;background:linear-gradient(160deg,#fff,#EDEEFA)}
+.panel-tag{display:inline-flex;gap:8px;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,var(--p1),var(--pink));padding:6px 12px;border-radius:20px;margin-bottom:18px}
+.panel h1{font-size:36px;font-weight:900;letter-spacing:-1.2px;margin-bottom:10px}
+.panel-lead{font-size:15px;color:var(--mut);line-height:1.6;max-width:520px;margin-bottom:28px}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:560px}
+.feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(30,30,80,.05)}
+.feat-ic{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#EEF0FF,#F7EEFF);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:10px}
+.feat-t{font-size:13px;font-weight:800;margin-bottom:5px}
+.feat-d{font-size:12.5px;color:var(--mut);line-height:1.55}
+.design-tag{position:fixed;top:14px;right:14px;background:linear-gradient(135deg,var(--p1),var(--pink));color:#fff;font-size:10px;font-weight:800;padding:6px 12px;border-radius:20px;letter-spacing:.5px;z-index:99}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 12 — VIBRANT MOTION</div>
+<div class="shell">
+  <div class="phone">
+    <!-- HERO -->
+    <div class="hero-wrap">
+      <div class="mesh"><i class="m1"></i><i class="m2"></i><i class="m3"></i><i class="m4"></i></div>
+      <div class="hero-in">
+        <div class="hero-top">
+          <div class="h-av">DM</div>
+          <div><div class="h-hi">Boa tarde</div><div class="h-name">David Mosca</div></div>
+          <div class="h-bell"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        </div>
+        <div class="hero-big">
+          <div class="hb-lbl">Obra ativa · Setúbal</div>
+          <div class="hb-title">Edifício Alameda</div>
+        </div>
+        <div class="hero-chips">
+          <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg> 21° céu limpo</div>
+          <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg> 34 dias p/ prazo</div>
+          <div class="chip warn">⏳ Aluguer pendente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHEET -->
+    <div class="sheet">
+      <div class="grab"></div>
+
+      <!-- WORKFLOW -->
+      <div class="flow">
+        <div class="flow-hd"><div class="flow-t">Registo de hoje</div><div class="flow-pc">2 de 3 · 66%</div></div>
+        <div class="steps">
+          <div class="step"><div class="st-dot st-done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="st-lbl">Equipa</div></div>
+          <div class="st-line fill"></div>
+          <div class="step"><div class="st-dot st-done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div><div class="st-lbl">Horas</div></div>
+          <div class="st-line half"></div>
+          <div class="step"><div class="st-dot st-now">3</div><div class="st-lbl">Submeter</div></div>
+        </div>
+      </div>
+
+      <!-- BIG CTA -->
+      <div class="cta">
+        <div class="cta-row">
+          <div class="cta-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div><div class="cta-t">Submeter folha de ponto</div><div class="cta-s">12 colaboradores · 96h registadas</div></div>
+          <div class="cta-go"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+
+      <!-- MODULES -->
+      <div class="sec"><span class="sec-t">Tudo o que precisas</span><span class="sec-l">Editar</span></div>
+      <div class="mods">
+        <div class="mod"><div class="mod-ic g-violet"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div><div class="mod-t">Ponto Plandese</div><div class="mod-s">Folha de horas</div></div>
+        <div class="mod"><div class="mod-ic g-pink"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div><div class="mod-t">Aluguer MOA</div><div class="mod-s">Mão de obra</div><div class="mod-badge">!</div></div>
+        <div class="mod"><div class="mod-ic g-sky"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg></div><div class="mod-t">Equipamentos</div><div class="mod-s">Ler QR + GPS</div></div>
+        <div class="mod"><div class="mod-ic g-orange"><svg viewBox="0 0 24 24"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div><div class="mod-t">Combustível</div><div class="mod-s">Abastecimentos</div></div>
+        <div class="mod"><div class="mod-ic g-teal"><svg viewBox="0 0 24 24"><path d="M12 8v13M12 8a4 4 0 00-8 0v13M20 8a4 4 0 00-8 0"/></svg></div><div class="mod-t">Histórico</div><div class="mod-s">Registos</div></div>
+        <div class="mod"><div class="mod-ic g-slate"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="mod-t">Compras</div><div class="mod-s">Pedidos obra</div><div class="mod-badge">2</div></div>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="nav">
+      <div class="nav-i active"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Início</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span>Ponto</span></div>
+      <div class="fab"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3"/></svg><span>Equip.</span></div>
+      <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><span>Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-tag">✦ Direção 12 · Motion & Color</div>
+    <h1>Vibrant Motion</h1>
+    <p class="panel-lead">Enérgica, colorida e em movimento. Um gradiente mesh vivo no topo, uma folha deslizante para o conteúdo e um fluxo passo-a-passo que guia o encarregado até submeter o ponto. Feita para parecer rápida e satisfatória de usar.</p>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🌈</div><div class="feat-t">Gradiente mesh animado</div><div class="feat-d">Cabeçalho vivo que dá personalidade sem esconder a informação da obra.</div></div>
+      <div class="feat"><div class="feat-ic">📶</div><div class="feat-t">Fluxo passo-a-passo</div><div class="feat-d">Equipa → Horas → Submeter, com o passo atual a pulsar. Reduz erros de registo.</div></div>
+      <div class="feat"><div class="feat-ic">✨</div><div class="feat-t">CTA com brilho</div><div class="feat-d">Botão principal "Submeter" com reflexo animado — impossível de ignorar.</div></div>
+      <div class="feat"><div class="feat-ic">📄</div><div class="feat-t">Folha deslizante</div><div class="feat-d">Conteúdo numa bottom-sheet arredondada, padrão familiar de apps modernas.</div></div>
+      <div class="feat"><div class="feat-ic">🎈</div><div class="feat-t">FAB flutuante</div><div class="feat-d">Botão central que "respira" para chamar à ação de registar ponto.</div></div>
+      <div class="feat"><div class="feat-ic">🧱</div><div class="feat-t">Módulos com gradiente</div><div class="feat-d">Ícones em degradê por cor, tácteis e com feedback ao toque.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
