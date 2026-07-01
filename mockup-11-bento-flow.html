@@ -67,19 +67,6 @@ html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif
 .prazo-obra{font-size:12px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:5px}
 .prazo-obra svg{width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2}
 
-/* chart tile (col2) */
-.chart-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.chart-t{font-size:13px;font-weight:800}
-.chart-sum{font-size:12px;font-weight:700;color:var(--green)}
-.bars{display:flex;align-items:stretch;justify-content:space-between;gap:8px;height:92px}
-.bar-col{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px}
-.bar{width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#3B82F6,#2563EB);transform-origin:bottom;animation:rise .9s cubic-bezier(.2,.8,.2,1) both}
-.bar.today{background:linear-gradient(180deg,#34D399,#059669)}
-.bar.dim{background:#DDE3EE}
-@keyframes rise{from{transform:scaleY(0)}}
-.bar-d{font-size:10px;font-weight:700;color:var(--dim)}
-.bar-col.today .bar-d{color:var(--green)}
-
 /* team mini (col2) */
 .team-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .team-t{font-size:13px;font-weight:800}
@@ -151,18 +138,6 @@ html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif
           <div class="b-s">Plandese ✓ · Aluguer pendente</div>
         </div>
 
-        <!-- HORAS SEMANA (col2 chart) -->
-        <div class="box col2">
-          <div class="chart-hd"><div class="chart-t">Horas da semana</div><div class="chart-sum">▲ 41h30</div></div>
-          <div class="bars">
-            <div class="bar-col"><div class="bar" style="height:64%;animation-delay:.05s"></div><div class="bar-d">Seg</div></div>
-            <div class="bar-col"><div class="bar" style="height:80%;animation-delay:.12s"></div><div class="bar-d">Ter</div></div>
-            <div class="bar-col today"><div class="bar today" style="height:72%;animation-delay:.19s"></div><div class="bar-d">Qua</div></div>
-            <div class="bar-col"><div class="bar dim" style="height:30%;animation-delay:.26s"></div><div class="bar-d">Qui</div></div>
-            <div class="bar-col"><div class="bar dim" style="height:22%;animation-delay:.33s"></div><div class="bar-d">Sex</div></div>
-          </div>
-        </div>
-
         <!-- PONTO PLANDESE -->
         <div class="box">
           <div class="b-ic ic-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
@@ -225,7 +200,7 @@ html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif
     <p class="panel-lead">A tendência bento levada à obra: módulos em tiles de tamanhos diferentes que compõem um painel modular e vivo. Cada bloco tem o seu peso visual — meteo grande, prazo forte, mini-gráfico de horas — para uma leitura rápida e apelativa.</p>
     <div class="feats">
       <div class="feat"><div class="feat-ic">🍱</div><div class="feat-t">Grelha modular</div><div class="feat-d">Tiles 1×1, 2×1 e 2×2 combinam-se num mosaico dinâmico e reorganizável.</div></div>
-      <div class="feat"><div class="feat-ic">📊</div><div class="feat-t">Micro-gráfico de horas</div><div class="feat-d">Barras da semana que crescem ao abrir, com o dia atual em verde.</div></div>
+      <div class="feat"><div class="feat-ic">⏳</div><div class="feat-t">Prazo em destaque</div><div class="feat-d">Tile forte com os dias que faltam até ao prazo da obra ativa.</div></div>
       <div class="feat"><div class="feat-ic">🌤️</div><div class="feat-t">Meteo em destaque</div><div class="feat-d">Bloco grande com temperatura, máx/mín e alerta de chuva do dia.</div></div>
       <div class="feat"><div class="feat-ic">🏷️</div><div class="feat-t">Estados por pill</div><div class="feat-d">Cada tile mostra FEITO / PENDENTE / contagem sem abrir o módulo.</div></div>
       <div class="feat"><div class="feat-ic">🎨</div><div class="feat-t">Cor por função</div><div class="feat-d">Paleta suave por categoria — ponto, equipamentos, combustível, compras.</div></div>
