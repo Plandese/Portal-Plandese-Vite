@@ -55,28 +55,33 @@ export async function doLogin() {
   const p=document.getElementById('lp').value;
   const btn=document.querySelector('.btn-login');
   btn.textContent='A ligar ao Supabase...'; btn.disabled=true;
+  let authedUser=null;
   try {
     mostrarDiag('A ligar ao Supabase...','#1d4ed8');
-    const {data:users,error}=await sb.from('utilizadores').select('*');
+    const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
     if(error)throw error;
+    S.USERS={};
     if(users&&users.length>0){
       mostrarDiag('✓ Supabase ligado — '+users.length+' utilizadores','#15803D');
-      S.USERS={};
-      users.forEach(x=>{S.USERS[x.username]={pass:x.password,nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
-      if(!S.USERS['admin'])S.USERS['admin']=USERS_BASE['admin'];
+      users.forEach(x=>{S.USERS[x.username]={nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
     } else {
-      S.USERS = { 'admin': USERS_BASE['admin'] };
       mostrarDiag('⚠️ Supabase ligado mas sem utilizadores — só o admin pode entrar','#B45309');
     }
+    if(!S.USERS['admin'])S.USERS['admin']={nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role};
+    const {data:authRows,error:authErr}=await sb.rpc('fn_login',{p_username:u,p_password:p});
+    if(authErr)throw authErr;
+    if(authRows&&authRows.length>0)authedUser=authRows[0];
   } catch(e){
-    S.USERS = { 'admin': USERS_BASE['admin'] };
+    S.USERS = { 'admin': {nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role} };
     mostrarDiag('⚠️ Sem ligação ao servidor — apenas admin pode entrar','#B45309');
+    if(u==='admin'&&p===USERS_BASE['admin'].pass){
+      authedUser={username:'admin',nome:USERS_BASE['admin'].nome,role:'admin',initials:USERS_BASE['admin'].initials};
+    }
   }
   btn.textContent='Entrar'; btn.disabled=false;
-  const usr=S.USERS[u];
-  if(usr&&usr.pass===p){
-    S.currentUser={...usr,key:u};
-    localStorage.setItem('plandese_session',JSON.stringify({key:u,nome:usr.nome,role:usr.role,initials:usr.initials||''}));
+  if(authedUser){
+    S.currentUser={nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials,key:authedUser.username};
+    localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
     document.getElementById('login-screen').style.display='none';
     document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:white;margin-top:16px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
     try {
@@ -88,20 +93,20 @@ export async function doLogin() {
     }
     const ls=document.getElementById('loading-screen');if(ls)ls.remove();
     const device=applyDeviceClass();
-    if(usr.role==='encarregado'){
+    if(authedUser.role==='encarregado'){
       document.body.classList.add('enc-mode');
       document.getElementById('enc-app').style.display='flex';
-      document.getElementById('enc-name').textContent=usr.nome;
+      document.getElementById('enc-name').textContent=authedUser.nome;
       await R.initEnc();
     } else {
       document.getElementById('admin-app').style.display='flex';
-      document.getElementById('u-av').textContent=usr.initials;
-      document.getElementById('u-nm').textContent=usr.nome;
-      document.getElementById('u-role').textContent=ROLE_LABELS[usr.role]||usr.role;
-      if(usr.role==='admin')updateDeviceBadge(device);
+      document.getElementById('u-av').textContent=authedUser.initials;
+      document.getElementById('u-nm').textContent=authedUser.nome;
+      document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
+      if(authedUser.role==='admin')updateDeviceBadge(device);
       R.applyStoredPermissions();
       R.initAdmin();
-      R.applyRolePermissions(usr.role);
+      R.applyRolePermissions(authedUser.role);
       R.initNotifications();
     }
   } else {

@@ -32,7 +32,7 @@ export const COLABORADORES_BASE = [
 ];
 
 export const USERS_BASE = {
-  'admin':{pass:'plandese2024',nome:'Administrador',initials:'AD',role:'admin'},
+  'admin':{pass:'admin',nome:'Administrador',initials:'AD',role:'admin'},
 };
 
 export const ROLE_LABELS = {

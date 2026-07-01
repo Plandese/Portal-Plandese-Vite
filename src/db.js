@@ -25,11 +25,11 @@ export async function carregarDados() {
     await R.loadEmpresasMOA?.();
     await R.loadColaboradoresMOA?.();
     // Utilizadores
-    const {data: users} = await sb.from('utilizadores').select('*');
+    const {data: users} = await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
     if (users && users.length > 0) {
       S.USERS = {};
-      users.forEach(u => { S.USERS[u.username] = {pass:u.password, nome:u.nome, initials:u.initials||u.nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), role:u.role}; });
-      if (!S.USERS['admin']) S.USERS['admin'] = USERS_BASE['admin'];
+      users.forEach(u => { S.USERS[u.username] = {nome:u.nome, initials:u.initials||u.nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), role:u.role}; });
+      if (!S.USERS['admin']) S.USERS['admin'] = {nome:USERS_BASE['admin'].nome, initials:USERS_BASE['admin'].initials, role:USERS_BASE['admin'].role};
     }
     // Registos do dia atual e 7 dias anteriores
     const dataMin = new Date(S.currentDate); dataMin.setDate(dataMin.getDate()-7);
@@ -80,7 +80,7 @@ export async function sbSaveColab(c) {
 
 export async function sbSaveUser(key, u) {
   try {
-    await sb.from('utilizadores').upsert({username:key, nome:u.nome, password:u.pass, role:u.role, initials:u.initials}, {onConflict:'username'});
+    await sb.rpc('fn_upsert_user', {p_username:key, p_nome:u.nome, p_role:u.role, p_initials:u.initials, p_password:u.pass||null});
   } catch(e) { console.warn('Erro ao guardar utilizador:', e); }
 }
 

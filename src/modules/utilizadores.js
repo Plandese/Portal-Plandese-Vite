@@ -15,12 +15,12 @@ export function renderUsers(){
     const roleLbl=ROLE_LABELS[u.role]||u.role;
     const badgeCls=ROLE_BADGE[u.role]||'b-gray';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500)">${key}</td><td style="font-weight:500">${u.nome}</td><td><span class="badge ${badgeCls}">${roleLbl}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400)">${u.pass}</td><td><span class="badge b-green">Ativo</span></td><td><button class="btn btn-secondary btn-sm" onclick="editUser('${key}')">Editar</button></td>`;
+    tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500)">${key}</td><td style="font-weight:500">${u.nome}</td><td><span class="badge ${badgeCls}">${roleLbl}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400)">••••••••</td><td><span class="badge b-green">Ativo</span></td><td><button class="btn btn-secondary btn-sm" onclick="editUser('${key}')">Editar</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
-export function editUser(key){const u=S.USERS[key];if(!u)return;document.getElementById('mu-title').textContent='Editar utilizador';document.getElementById('mu-key').value=key;document.getElementById('mu-nome').value=u.nome;document.getElementById('mu-user').value=key;document.getElementById('mu-pass').value=u.pass;document.getElementById('mu-role').value=u.role;document.getElementById('modal-user').classList.add('open');}
+export function editUser(key){const u=S.USERS[key];if(!u)return;document.getElementById('mu-title').textContent='Editar utilizador';document.getElementById('mu-key').value=key;document.getElementById('mu-nome').value=u.nome;document.getElementById('mu-user').value=key;document.getElementById('mu-pass').value='';document.getElementById('mu-pass').placeholder='Deixe em branco para manter a password atual';document.getElementById('mu-role').value=u.role;document.getElementById('modal-user').classList.add('open');}
 
 export async function saveUser(){
   const nome=document.getElementById('mu-nome').value.trim();
@@ -28,11 +28,11 @@ export async function saveUser(){
   const pass=document.getElementById('mu-pass').value.trim();
   const role=document.getElementById('mu-role').value;
   const editKey=document.getElementById('mu-key').value;
-  if(!nome||!user||!pass){alert('Preencha todos os campos.');return;}
+  if(!nome||!user||(!editKey&&!pass)){alert('Preencha todos os campos.');return;}
   const initials=nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
   if(editKey&&editKey!==user)delete S.USERS[editKey];
-  S.USERS[user]={pass,nome,initials,role};
-  await sbSaveUser(user,{pass,nome,initials,role});
+  S.USERS[user]={nome,initials,role};
+  await sbSaveUser(user,{pass:pass||null,nome,initials,role});
   closeModal('modal-user');renderUsers();flashAlert('user-alert');
   R.emitEvent?.({ acao:(editKey?'Utilizador atualizado':'Novo utilizador')+': '+nome, seccao:'utilizadores' });
 }

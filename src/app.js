@@ -346,7 +346,7 @@ window.savePerfil = async function () {
   if (pass) {
     try {
       const { sb } = await import('./supabase.js');
-      await sb.from('utilizadores').update({ nome, password: pass, initials }).eq('username', u.key);
+      await sb.rpc('fn_upsert_user', { p_username: u.key, p_nome: nome, p_role: u.role, p_initials: initials, p_password: pass });
     } catch (e) { showToast('Erro ao guardar no servidor'); return; }
   }
   closePerfil();
