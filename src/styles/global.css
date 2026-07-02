@@ -1843,4 +1843,33 @@ body.dark-mode #enc-app{
 /* barra de contexto (ecrã 2 / aluguer-b) */
 #enc-app .enc-ctx{border-radius:0}
 #enc-app .enc-edit-btn{border-radius:11px}
+
+/* ── FASE 2 — listas de ponto/aluguer, stats, chat, scanner, histórico ── */
+/* stats (ecrã 2 / aluguer-b) */
+#enc-app .mob-stats{gap:9px}
+#enc-app .mob-stat{border:1px solid var(--gray-200);border-radius:14px;box-shadow:0 3px 10px rgba(20,30,60,.04)}
+#enc-app .mob-stat-num{font-family:var(--font);font-weight:800;letter-spacing:-.5px}
+#enc-app .mob-stat-lbl{color:var(--gray-500)}
+/* cartão de colaborador/trabalhador */
+#enc-app .mob-colab-card{border-radius:18px;box-shadow:0 4px 14px rgba(20,30,60,.05)}
+#enc-app .mob-colab-av{border-radius:12px}
+#enc-app .mob-time-inp,#enc-app .mob-tipo-sel,#enc-app .mob-rem-btn{border-radius:10px}
+#enc-app .mob-horas-box{border-radius:10px}
+/* barra adicionar + guardar */
+#enc-app .mob-add-bar{border-radius:18px}
+#enc-app .mob-add-sel,#enc-app .mob-add-btn{border-radius:12px}
+#enc-app .mob-save-btn{border-radius:14px;font-weight:800}
+/* equipamentos / combustível — info + scanner */
+#enc-app .qr-equip-info{border-radius:16px}
+#enc-app .qr-equip-icon{border-radius:12px}
+#enc-app .qr-loc-status{border-radius:12px}
+#enc-app .enc-equip-form-card{border-radius:20px}
+/* chat de compras */
+#enc-app .chat-bubble{border-radius:16px}
+#enc-app .chat-bubble.bot{border-bottom-left-radius:5px}
+#enc-app .chat-bubble.user{border-bottom-right-radius:5px}
+#enc-app .chat-chip{border-radius:20px;font-weight:700}
+#enc-app .chat-input{border-radius:22px}
+#enc-app .chat-send-btn{border-radius:50%}
+/* histórico — cartões gerados com classe .enc-card já herdam radius 20 */
 body.dark-mode #admin-app .dw-date,body.dark-mode #enc-app .dw-date{color:var(--gray-400)}
