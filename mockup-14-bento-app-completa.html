@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup 14 — Bento App Completa</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F1F3F9;--card:#FFFFFF;
+  --ink:#111827;--mut:#6B7280;--dim:#9CA3AF;--line:#EDEFF5;
+  --blue:#2563EB;--blue-s:#EFF4FF;--green:#059669;--green-s:#E7F8F1;
+  --amber:#D97706;--amber-s:#FEF6E7;--violet:#7C3AED;--violet-s:#F3EEFF;
+  --red:#DC2626;--red-s:#FDECEC;--cyan:#0891B2;--cyan-s:#E6F7FB;--pink:#DB2777;--pink-s:#FDEDF6;
+  --r:20px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;background:#E4E8F1;color:var(--ink);-webkit-font-smoothing:antialiased}
+.shell{height:100vh;display:flex;overflow:hidden}
+.phone{width:392px;flex-shrink:0;height:100vh;position:relative;overflow:hidden;border-right:1px solid #D5DAE6;background:var(--bg)}
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ── SCREENS ── */
+.screen{flex:1;min-height:0;display:none;flex-direction:column}
+.screen.active{display:flex;animation:fade .26s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}}
+.scroll{flex:1;overflow-y:auto;padding:8px 16px 18px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── HEADER ── */
+.hdr{padding:16px 16px 8px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.hdr-av{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2563EB,#7C3AED);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center}
+.hdr-back{width:44px;height:44px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(20,30,60,.05);flex-shrink:0}
+.hdr-back svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:2.2}
+.hdr-info{flex:1;min-width:0}
+.hdr-hi{font-size:12px;color:var(--mut);font-weight:600}
+.hdr-name{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.hdr-t{font-size:17px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-s{font-size:11.5px;color:var(--mut);font-weight:600;margin-top:1px}
+.hdr-btn{width:44px;height:44px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;box-shadow:0 2px 6px rgba(20,30,60,.05);flex-shrink:0}
+.hdr-btn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.9}
+.hdr-dot{position:absolute;top:10px;right:11px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--card)}
+.hdr-chip{padding:8px 12px;border-radius:12px;font-size:12px;font-weight:800;flex-shrink:0}
+
+/* ── BENTO ── */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-auto-flow:dense}
+.box{background:var(--card);border-radius:var(--r);padding:16px;border:1px solid var(--line);box-shadow:0 4px 14px rgba(20,30,60,.05);position:relative;overflow:hidden;cursor:pointer;transition:transform .16s,box-shadow .16s}
+.box:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(20,30,60,.12)}
+.box:active{transform:scale(.98)}
+.col2{grid-column:span 2}
+.tall{grid-row:span 2}
+.wx{background:linear-gradient(140deg,#3B82F6,#2563EB);color:#fff;border:none;display:flex;flex-direction:column;justify-content:space-between}
+.wx::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);top:-50px;right:-40px}
+.wx::after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-30px;left:-20px}
+.wx-sun{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.wx-sun svg{width:26px;height:26px;fill:#FFE082}
+.wx-temp{font-size:44px;font-weight:800;line-height:1;position:relative;z-index:1;letter-spacing:-2px}
+.wx-desc{font-size:13px;font-weight:600;opacity:.92;position:relative;z-index:1}
+.wx-rain{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;background:rgba(255,255,255,.2);padding:4px 9px;border-radius:20px;margin-top:8px;align-self:flex-start;position:relative;z-index:1}
+.b-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:26px}
+.b-ic svg{width:21px;height:21px;fill:none;stroke-width:2}
+.b-t{font-size:14px;font-weight:800;letter-spacing:-.2px}
+.b-s{font-size:11px;color:var(--mut);font-weight:500;margin-top:2px}
+.ic-blue{background:var(--blue-s);color:var(--blue)}.ic-green{background:var(--green-s);color:var(--green)}
+.ic-amber{background:var(--amber-s);color:var(--amber)}.ic-violet{background:var(--violet-s);color:var(--violet)}
+.ic-red{background:var(--red-s);color:var(--red)}.ic-cyan{background:var(--cyan-s);color:var(--cyan)}.ic-pink{background:var(--pink-s);color:var(--pink)}
+.b-badge{position:absolute;top:14px;right:14px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.b-pill{position:absolute;top:14px;right:14px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px}
+.pill-ok{background:var(--green-s);color:var(--green)}.pill-pend{background:var(--amber-s);color:var(--amber)}
+.prazo-n{font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--green)}
+.prazo-l{font-size:11px;color:var(--mut);font-weight:600}
+.prazo-obra{font-size:12px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:5px}
+.prazo-obra svg{width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2}
+
+/* team mini */
+.team-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.team-t{font-size:13px;font-weight:800}
+.team-l{font-size:11px;font-weight:700;color:var(--blue)}
+.trow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:none;padding-bottom:0}
+.tav{width:34px;height:34px;border-radius:11px;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tinfo{flex:1;min-width:0}.tname{font-size:12.5px;font-weight:700}.tdet{font-size:10.5px;color:var(--mut)}
+.th{font-size:14px;font-weight:800}.th.warn{color:var(--amber)}.th.miss{color:var(--red)}
+
+/* ── FORM ── */
+.panel-card{background:var(--card);border-radius:var(--r);border:1px solid var(--line);box-shadow:0 4px 14px rgba(20,30,60,.05);padding:16px;margin-bottom:14px}
+.field{margin-bottom:14px}.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.inp{display:flex;align-items:center;gap:9px;background:var(--bg);border:1.5px solid var(--line);border-radius:13px;padding:11px 13px}
+.inp:focus-within{border-color:var(--blue);background:#fff}
+.inp svg{width:17px;height:17px;stroke:var(--dim);fill:none;stroke-width:2;flex-shrink:0}
+.inp input,.inp select,.inp textarea{flex:1;border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);width:100%}
+.inp textarea{resize:none;font-weight:500}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;gap:8px;background:var(--bg);padding:5px;border-radius:14px;border:1px solid var(--line)}
+.seg button{flex:1;border:none;background:transparent;padding:10px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:800;color:var(--mut);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(20,30,60,.1)}
+.seg button.on.g{color:var(--green)}.seg button.on.r{color:var(--red)}
+.cta{width:100%;border:none;background:var(--blue);color:#fff;font-family:inherit;font-size:15px;font-weight:800;padding:16px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 8px 20px rgba(37,99,235,.28);transition:transform .12s}
+.cta:active{transform:scale(.98)}
+.cta svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:2.4}
+.cta.green{background:var(--green);box-shadow:0 8px 20px rgba(5,150,105,.28)}
+.cta.violet{background:var(--violet);box-shadow:0 8px 20px rgba(124,58,237,.28)}
+.cta.amber{background:var(--amber);box-shadow:0 8px 20px rgba(217,119,6,.28)}
+.sec{font-size:13px;font-weight:800;margin:16px 2px 12px;display:flex;align-items:center;justify-content:space-between}
+.sec .lnk{font-size:11px;font-weight:700;color:var(--blue);cursor:pointer}
+
+/* stats row */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 6px;text-align:center;box-shadow:0 3px 10px rgba(20,30,60,.04)}
+.stat-n{font-size:19px;font-weight:800;letter-spacing:-.5px}
+.stat-l{font-size:9.5px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+.stat.b .stat-n{color:var(--blue)}.stat.g .stat-n{color:var(--green)}.stat.a .stat-n{color:var(--amber)}
+
+/* worker card */
+.wcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:10px;box-shadow:0 3px 10px rgba(20,30,60,.04);border-left:4px solid var(--line)}
+.wcard.done{border-left-color:var(--green)}.wcard.curso{border-left-color:var(--blue)}.wcard.falta{border-left-color:var(--red)}
+.wtop{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.wav{width:38px;height:38px;border-radius:12px;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.winfo{flex:1;min-width:0}.wname{font-size:13.5px;font-weight:800}.wfunc{font-size:11px;color:var(--mut);font-weight:600}
+.wbadge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px}
+.wbadge.ok{background:var(--green-s);color:var(--green)}.wbadge.curso{background:var(--blue-s);color:var(--blue)}.wbadge.falta{background:var(--red-s);color:var(--red)}
+.wtimes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.tb label{display:block;font-size:9px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.tb input{width:100%;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 6px;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);text-align:center}
+.tb input.filled{border-color:var(--blue);background:#fff}
+.hbox{border:1.5px solid var(--green-s);background:var(--green-s);border-radius:10px;padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--green)}
+.hbox.empty{border-color:var(--line);background:var(--bg);color:var(--dim)}
+.wbot{display:flex;gap:8px}
+.wbot select{flex:1;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink)}
+.wrem{width:38px;border:1.5px solid var(--red-s);background:var(--red-s);color:var(--red);border-radius:10px;font-size:18px;font-weight:800;cursor:pointer}
+.addbar{background:var(--card);border:1.5px dashed var(--blue);border-radius:16px;padding:13px;margin-bottom:10px}
+.addbar .yday{font-size:11px;font-weight:800;color:var(--violet);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.qchip{padding:6px 11px;border-radius:20px;border:1.5px solid var(--green-s);background:var(--green-s);color:var(--green);font-size:12px;font-weight:700;cursor:pointer}
+.qchip.off{border-color:var(--line);background:var(--bg);color:var(--dim)}
+.addsel{display:flex;gap:8px;margin-top:10px}
+.addsel select{flex:1;border:1.5px solid var(--line);background:var(--bg);border-radius:11px;padding:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink)}
+.addsel button{border:none;background:var(--blue);color:#fff;border-radius:11px;padding:0 16px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
+
+/* summary strip */
+.sumcard{background:linear-gradient(135deg,var(--blue-s),#fff);border:1px solid var(--line);border-radius:16px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.sumcard.violet{background:linear-gradient(135deg,var(--violet-s),#fff)}
+.sum-ic{width:40px;height:40px;border-radius:12px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sumcard.violet .sum-ic{background:var(--violet)}
+.sum-ic svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
+.sum-t{font-size:14px;font-weight:800}.sum-s{font-size:11.5px;color:var(--mut);font-weight:600;margin-top:1px}
+
+/* ── SCANNER ── */
+.scan-wrap{flex:1;display:flex;flex-direction:column;background:#0B1220;padding:20px 18px}
+.scan-title{color:#fff;font-size:16px;font-weight:800;text-align:center;margin-bottom:4px}
+.scan-sub{color:rgba(255,255,255,.55);font-size:12px;text-align:center;margin-bottom:22px}
+.scan-view{flex:1;position:relative;border-radius:22px;background:radial-gradient(circle at 50% 40%,#16203a,#0b1220);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.scan-frame{width:210px;height:210px;position:relative}
+.scan-frame span{position:absolute;width:34px;height:34px;border:4px solid var(--cyan)}
+.sc-tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:14px 0 0 0}
+.sc-tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 14px 0 0}
+.sc-bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 14px}
+.sc-br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 14px 0}
+.scan-line{position:absolute;left:8%;right:8%;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);box-shadow:0 0 12px var(--cyan);top:10%;animation:scanmove 2.4s ease-in-out infinite}
+@keyframes scanmove{0%,100%{top:8%}50%{top:88%}}
+.scan-qr{width:96px;height:96px;opacity:.14}
+.scan-ghost{margin-top:18px;width:100%;border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:14px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-ghost svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
+
+/* gps row */
+.gps{display:flex;align-items:center;gap:9px;background:var(--green-s);border:1px solid #C6EBDA;border-radius:12px;padding:11px 13px;margin-bottom:14px}
+.gps-dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(5,150,105,.15);flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(5,150,105,.15)}50%{box-shadow:0 0 0 7px rgba(5,150,105,0)}}
+.gps-t{font-size:12.5px;font-weight:700;color:var(--green)}
+.eqinfo{display:flex;align-items:center;gap:13px;background:linear-gradient(135deg,var(--cyan-s),#fff);border:1px solid #C7E8EF;border-radius:16px;padding:15px;margin-bottom:14px}
+.eqinfo .ei-ic{width:50px;height:50px;border-radius:14px;background:var(--cyan);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.eqinfo .ei-ic svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2}
+.ei-code{font-size:10px;font-weight:800;color:var(--cyan);text-transform:uppercase;letter-spacing:.6px}
+.ei-name{font-size:16px;font-weight:800}.ei-cat{font-size:11.5px;color:var(--mut);font-weight:600}
+
+/* ── CHAT ── */
+.chat-scroll{flex:1;overflow-y:auto;padding:14px 16px;scrollbar-width:none;display:flex;flex-direction:column}
+.chat-scroll::-webkit-scrollbar{display:none}
+.brow{display:flex;flex-direction:column;margin-bottom:11px}
+.brow.user{align-items:flex-end}
+.bubble{max-width:80%;padding:11px 14px;border-radius:16px;font-size:13px;line-height:1.5}
+.bubble.bot{background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px;box-shadow:0 2px 8px rgba(20,30,60,.05)}
+.bubble.user{background:var(--blue);color:#fff;border-bottom-right-radius:5px}
+.btime{font-size:10px;color:var(--dim);margin-top:4px;font-weight:600}
+.ipreview{background:var(--blue-s);border-radius:11px;padding:9px 11px;margin:7px 0 2px;font-size:12.5px;line-height:1.7}
+.cchips{display:flex;flex-wrap:wrap;gap:7px;padding:2px 16px 10px}
+.cchip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--blue);color:var(--blue);background:var(--blue-s);font-size:12.5px;font-weight:700;cursor:pointer}
+.cchip.green{border-color:var(--green);color:var(--green);background:var(--green-s)}
+.cchip.violet{border-color:var(--violet);color:var(--violet);background:var(--violet-s)}
+.typing{display:flex;gap:4px;padding:3px 2px}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.chat-bar{flex-shrink:0;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:#fff}
+.chat-bar input{flex:1;border:1.5px solid var(--line);background:var(--bg);border-radius:22px;padding:11px 16px;font-family:inherit;font-size:13.5px;font-weight:500;color:var(--ink);outline:none}
+.chat-bar input:focus{border-color:var(--blue);background:#fff}
+.chat-send{width:44px;height:44px;border-radius:50%;background:var(--blue);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.chat-send svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.2}
+
+/* ── HISTÓRICO ── */
+.hcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:11px;box-shadow:0 3px 10px rgba(20,30,60,.04)}
+.hcard .hav{width:36px;height:36px;border-radius:11px;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hcard .hi{flex:1;min-width:0}.hname{font-size:13px;font-weight:800}.hobra{font-size:11px;color:var(--mut);font-weight:600}
+.htot{text-align:right}.htot-h{font-size:14px;font-weight:800;color:var(--blue)}.htot-t{font-size:10px;color:var(--dim);font-weight:600}
+.hcard.moa .htot-h{color:var(--violet)}
+.emoa{font-size:10px;font-weight:800;color:var(--violet);text-transform:uppercase;letter-spacing:.5px;margin:14px 2px 8px}
+
+/* ── NAV ── */
+.nav{flex-shrink:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:9px 6px 11px}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:var(--dim);cursor:pointer}
+.nav-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9}
+.nav-i span{font-size:9.5px;font-weight:700}
+.nav-i.active{color:var(--blue)}.nav-i.active svg{stroke:var(--blue)}
+
+/* toast */
+.toast{position:absolute;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:11px 18px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:all .3s;z-index:50;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── RIGHT PANEL — screen navigator ── */
+.panel{flex:1;overflow-y:auto;padding:36px 40px;background:linear-gradient(160deg,#fff,#EEF1F8)}
+.panel-tag{display:inline-flex;gap:8px;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--violet);background:var(--violet-s);padding:6px 12px;border-radius:20px;margin-bottom:16px}
+.panel h1{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
+.panel-lead{font-size:14px;color:var(--mut);line-height:1.6;max-width:440px;margin-bottom:24px}
+.nav-grp{margin-bottom:18px;max-width:440px}
+.nav-grp-t{font-size:11px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.nav-list-item{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:13px;background:#fff;border:1px solid var(--line);margin-bottom:7px;cursor:pointer;transition:all .14s;box-shadow:0 2px 8px rgba(20,30,60,.04)}
+.nav-list-item:hover{transform:translateX(3px);border-color:var(--blue)}
+.nav-list-item.on{border-color:var(--blue);background:var(--blue-s);box-shadow:0 4px 14px rgba(37,99,235,.14)}
+.nli-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nli-ic svg{width:18px;height:18px;fill:none;stroke-width:2}
+.nli-t{font-size:13.5px;font-weight:800}.nli-s{font-size:11px;color:var(--mut);font-weight:600}
+.design-tag{position:fixed;top:14px;right:14px;background:var(--violet);color:#fff;font-size:10px;font-weight:800;padding:6px 12px;border-radius:20px;letter-spacing:.5px;z-index:99}
+</style>
+</head>
+<body>
+<div class="design-tag">MOCKUP 14 — BENTO APP COMPLETA</div>
+<div class="shell">
+  <div class="phone">
+    <div class="app">
+
+      <!-- ══════════ HOME ══════════ -->
+      <div class="screen active" id="scr-home">
+        <div class="hdr">
+          <div class="hdr-av">DM</div>
+          <div class="hdr-info"><div class="hdr-hi">Quarta, 1 Julho</div><div class="hdr-name">Olá, David 👋</div></div>
+          <div class="hdr-btn"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><div class="hdr-dot"></div></div>
+        </div>
+        <div class="scroll">
+          <div class="bento">
+            <div class="box wx tall">
+              <div class="wx-sun"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><g stroke="#FFE082" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></g></svg></div>
+              <div><div class="wx-temp">21°</div><div class="wx-desc">Céu limpo</div><div style="font-size:11px;opacity:.8;position:relative;z-index:1;margin-top:2px">Setúbal · máx 24° / mín 14°</div><div class="wx-rain">💧 10% chuva hoje</div></div>
+            </div>
+            <div class="box"><div class="prazo-n">34</div><div class="prazo-l">dias até ao prazo</div><div class="prazo-obra"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>Ed. Alameda</div></div>
+            <div class="box"><div class="b-ic ic-green" style="margin-bottom:10px"><svg viewBox="0 0 24 24" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div><div class="b-t">Ponto feito</div><div class="b-s">Plandese ✓ · Aluguer pendente</div></div>
+            <div class="box" onclick="go('ponto')"><div class="b-ic ic-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="b-t">Ponto Plandese</div><div class="b-s">Registar horas</div><div class="b-pill pill-ok">FEITO</div></div>
+            <div class="box" onclick="go('alug')"><div class="b-ic ic-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div><div class="b-t">Aluguer MOA</div><div class="b-s">Mão de obra</div><div class="b-pill pill-pend">PEND</div></div>
+            <div class="box" onclick="go('equip')"><div class="b-ic ic-cyan"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg></div><div class="b-t">Equipamentos</div><div class="b-s">Ler QR + GPS</div></div>
+            <div class="box" onclick="go('comb')"><div class="b-ic ic-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div><div class="b-t">Combustível</div><div class="b-s">Abastecer</div></div>
+            <div class="box col2" onclick="go('ponto-eq')">
+              <div class="team-hd"><div class="team-t">Equipa hoje · 12</div><div class="team-l">Ver todos →</div></div>
+              <div class="trow"><div class="tav" style="background:#2563EB">JS</div><div class="tinfo"><div class="tname">João Silva</div><div class="tdet">Pedreiro · 08:00–17:00</div></div><div class="th">8h</div></div>
+              <div class="trow"><div class="tav" style="background:#7C3AED">MF</div><div class="tinfo"><div class="tname">Maria Ferreira</div><div class="tdet">Servente · saída antecipada</div></div><div class="th warn">6h</div></div>
+              <div class="trow"><div class="tav" style="background:#D97706">AC</div><div class="tinfo"><div class="tname">António Costa</div><div class="tdet">Falta justificada</div></div><div class="th miss">0h</div></div>
+            </div>
+            <div class="box" onclick="go('compras')"><div class="b-ic ic-red"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="b-t">Compras</div><div class="b-s">Pedidos de obra</div><div class="b-badge">2</div></div>
+            <div class="box" onclick="go('historico')"><div class="b-ic ic-pink"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v13M12 8a4 4 0 00-8 0v13M20 8a4 4 0 00-8 0"/></svg></div><div class="b-t">Histórico</div><div class="b-s">Registos anteriores</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ PONTO PLANDESE — SETUP ══════════ -->
+      <div class="screen" id="scr-ponto">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('home')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Ponto Plandese</div><div class="hdr-s">Passo 1 de 2 · Configuração</div></div>
+          <div class="hdr-chip" style="background:var(--blue-s);color:var(--blue)">1/2</div>
+        </div>
+        <div class="scroll">
+          <div class="panel-card">
+            <div class="field"><label>Data do registo</label><div class="inp"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><input type="date" value="2026-07-01"></div></div>
+            <div class="field"><label>Obra</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg><select><option>Edifício Alameda</option><option>Moradia Quinta do Conde</option><option>Armazém Palmela</option></select></div></div>
+            <div class="two">
+              <div class="field"><label>Hora início</label><div class="inp"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><input type="time" value="08:00"></div></div>
+              <div class="field"><label>Hora fim</label><div class="inp"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><input type="time" value="17:00"></div></div>
+            </div>
+          </div>
+          <div class="panel-card" style="background:var(--blue-s);border-color:#CFE0FF">
+            <div style="display:flex;gap:11px;align-items:flex-start"><div style="font-size:20px">💡</div><div style="font-size:12.5px;color:var(--blue);font-weight:600;line-height:1.5">A equipa do último registo será sugerida automaticamente no próximo passo — basta confirmar as horas.</div></div>
+          </div>
+          <button class="cta" onclick="go('ponto-eq')">Continuar para a equipa<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ══════════ PONTO PLANDESE — EQUIPA ══════════ -->
+      <div class="screen" id="scr-ponto-eq">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('ponto')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Equipa & horas</div><div class="hdr-s">Passo 2 de 2 · Edifício Alameda</div></div>
+          <div class="hdr-chip" style="background:var(--blue-s);color:var(--blue)">2/2</div>
+        </div>
+        <div class="scroll">
+          <div class="sumcard"><div class="sum-ic"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></div><div><div class="sum-t">Edifício Alameda</div><div class="sum-s">01/07/2026 · 08:00 – 17:00</div></div></div>
+          <div class="stats">
+            <div class="stat b"><div class="stat-n">12</div><div class="stat-l">Presenças</div></div>
+            <div class="stat"><div class="stat-n">88h</div><div class="stat-l">Normais</div></div>
+            <div class="stat a"><div class="stat-n">8h</div><div class="stat-l">Extra</div></div>
+            <div class="stat g"><div class="stat-n">96h</div><div class="stat-l">Total</div></div>
+          </div>
+          <div class="addbar">
+            <div class="yday">👥 Equipa de 30/06 · adicionar rápido</div>
+            <div class="chips">
+              <div class="qchip off">✓ João</div><div class="qchip off">✓ Maria</div>
+              <div class="qchip">+ Rui</div><div class="qchip">+ Carlos</div><div class="qchip">+ Nuno</div>
+            </div>
+            <div class="addsel"><select><option>— Selecionar colaborador —</option><option>Rui Pereira (Manobrador)</option><option>Carlos Sousa (Carpinteiro)</option></select><button>+</button></div>
+          </div>
+
+          <div class="wcard done">
+            <div class="wtop"><div class="wav" style="background:#2563EB">JS</div><div class="winfo"><div class="wname">João Silva</div><div class="wfunc">Pedreiro</div></div><div class="wbadge ok">✓ 8h</div></div>
+            <div class="wtimes"><div class="tb"><label>Entrada</label><input class="filled" type="time" value="08:00"></div><div class="tb"><label>Saída</label><input class="filled" type="time" value="17:00"></div><div class="tb"><label>Horas</label><div class="hbox">8h</div></div></div>
+            <div class="wbot"><select><option>Presença</option><option>Falta</option><option>Férias</option><option>Baixa</option></select><button class="wrem">×</button></div>
+          </div>
+          <div class="wcard curso">
+            <div class="wtop"><div class="wav" style="background:#7C3AED">MF</div><div class="winfo"><div class="wname">Maria Ferreira</div><div class="wfunc">Servente</div></div><div class="wbadge curso">Em curso</div></div>
+            <div class="wtimes"><div class="tb"><label>Entrada</label><input class="filled" type="time" value="08:00"></div><div class="tb"><label>Saída</label><input type="time" value="14:00"></div><div class="tb"><label>Horas</label><div class="hbox">6h</div></div></div>
+            <div class="wbot"><select><option>Presença</option><option>Falta</option><option>Férias</option><option>Baixa</option></select><button class="wrem">×</button></div>
+          </div>
+          <div class="wcard falta">
+            <div class="wtop"><div class="wav" style="background:#D97706">AC</div><div class="winfo"><div class="wname">António Costa</div><div class="wfunc">Pedreiro</div></div><div class="wbadge falta">Falta</div></div>
+            <div class="wtimes"><div class="tb"><label>Entrada</label><input type="time" value=""></div><div class="tb"><label>Saída</label><input type="time" value=""></div><div class="tb"><label>Horas</label><div class="hbox empty">—</div></div></div>
+            <div class="wbot"><select><option>Falta</option><option>Presença</option><option>Férias</option><option>Baixa</option></select><button class="wrem">×</button></div>
+          </div>
+          <button class="cta" onclick="toast('Folha de ponto submetida ✓'); setTimeout(()=>go('home'),1100)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Submeter folha de ponto</button>
+        </div>
+      </div>
+
+      <!-- ══════════ ALUGUER MOA — SETUP ══════════ -->
+      <div class="screen" id="scr-alug">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('home')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Aluguer MOA</div><div class="hdr-s">Mão de obra · Configuração</div></div>
+          <div class="hdr-chip" style="background:var(--violet-s);color:var(--violet)">1/2</div>
+        </div>
+        <div class="scroll">
+          <div class="panel-card">
+            <div class="field"><label>Empresa cedente</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg><select><option>Construções Silva & Filhos</option><option>MO Rápida Lda</option><option>TrabalhaJá ETT</option></select></div></div>
+            <div class="field"><label>Data do registo</label><div class="inp"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><input type="date" value="2026-07-01"></div></div>
+            <div class="field"><label>Obra</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg><select><option>Edifício Alameda</option><option>Armazém Palmela</option></select></div></div>
+            <div class="two">
+              <div class="field"><label>Hora início</label><div class="inp"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><input type="time" value="08:00"></div></div>
+              <div class="field"><label>Hora fim</label><div class="inp"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><input type="time" value="17:00"></div></div>
+            </div>
+          </div>
+          <button class="cta violet" onclick="go('alug-eq')">Continuar<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ══════════ ALUGUER MOA — TRABALHADORES ══════════ -->
+      <div class="screen" id="scr-alug-eq">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('alug')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Trabalhadores</div><div class="hdr-s">Construções Silva & Filhos</div></div>
+          <div class="hdr-chip" style="background:var(--violet-s);color:var(--violet)">2/2</div>
+        </div>
+        <div class="scroll">
+          <div class="sumcard violet"><div class="sum-ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="sum-t">Edifício Alameda</div><div class="sum-s">01/07/2026 · 08:00 – 17:00</div></div></div>
+          <div class="stats">
+            <div class="stat"><div class="stat-n" style="color:var(--violet)">4</div><div class="stat-l">Trab.</div></div>
+            <div class="stat"><div class="stat-n">30h</div><div class="stat-l">Normais</div></div>
+            <div class="stat a"><div class="stat-n">2h</div><div class="stat-l">Extra</div></div>
+            <div class="stat g"><div class="stat-n">32h</div><div class="stat-l">Total</div></div>
+          </div>
+          <div class="addbar" style="border-color:var(--violet)">
+            <div class="yday">➕ Adicionar trabalhador</div>
+            <div class="addsel"><input style="flex:1;border:1.5px solid var(--line);background:var(--bg);border-radius:11px;padding:10px;font-family:inherit;font-size:13px" placeholder="Nome do trabalhador"><button style="background:var(--violet)">+</button></div>
+          </div>
+          <div style="font-size:10px;font-weight:800;color:var(--violet);text-transform:uppercase;letter-spacing:.5px;margin:4px 2px 10px">Lista pré-carregada · remova os ausentes</div>
+
+          <div class="wcard done">
+            <div class="wtop"><div class="wav" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">P</div><div class="winfo"><div class="wname">Paulo Mendes</div><div class="wfunc">Manobrador</div></div><div class="wbadge ok">8h</div></div>
+            <div class="wtimes" style="grid-template-columns:1fr 1fr"><div class="tb"><label>Entrada</label><input class="filled" type="time" value="08:00"></div><div class="tb"><label>Saída</label><input class="filled" type="time" value="17:00"></div></div>
+          </div>
+          <div class="wcard done">
+            <div class="wtop"><div class="wav" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">V</div><div class="winfo"><div class="wname">Vítor Alves</div><div class="wfunc">Servente</div></div><div class="wbadge ok">8h</div></div>
+            <div class="wtimes" style="grid-template-columns:1fr 1fr"><div class="tb"><label>Entrada</label><input class="filled" type="time" value="08:00"></div><div class="tb"><label>Saída</label><input class="filled" type="time" value="17:00"></div></div>
+          </div>
+          <div class="wcard done">
+            <div class="wtop"><div class="wav" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">H</div><div class="winfo"><div class="wname">Hélder Rocha</div><div class="wfunc">Pedreiro</div></div><div class="wbadge ok">8h</div></div>
+            <div class="wtimes" style="grid-template-columns:1fr 1fr"><div class="tb"><label>Entrada</label><input class="filled" type="time" value="08:00"></div><div class="tb"><label>Saída</label><input class="filled" type="time" value="17:00"></div></div>
+          </div>
+          <button class="cta violet" onclick="toast('4 registos MOA guardados ✓'); setTimeout(()=>go('home'),1100)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Submeter registo</button>
+        </div>
+      </div>
+
+      <!-- ══════════ EQUIPAMENTOS — SCANNER ══════════ -->
+      <div class="screen" id="scr-equip">
+        <div class="hdr" style="background:#0B1220">
+          <div class="hdr-back" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15)" onclick="go('home')"><svg viewBox="0 0 24 24" style="stroke:#fff"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t" style="color:#fff">Equipamentos</div><div class="hdr-s" style="color:rgba(255,255,255,.5)">Ler QR code</div></div>
+        </div>
+        <div class="scan-wrap">
+          <div class="scan-title">Aponte ao QR do equipamento</div>
+          <div class="scan-sub">O registo de localização é automático via GPS</div>
+          <div class="scan-view">
+            <div class="scan-frame">
+              <span class="sc-tl"></span><span class="sc-tr"></span><span class="sc-bl"></span><span class="sc-br"></span>
+              <svg class="scan-qr" viewBox="0 0 24 24" fill="#fff"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm11-2h5v2h-5v-2zm3 3h2v5h-2v-2h-3v-2h3v-1z"/></svg>
+              <span class="scan-line"></span>
+            </div>
+          </div>
+          <button class="scan-ghost" onclick="go('equip-form')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>Simular leitura → registo</button>
+        </div>
+      </div>
+
+      <!-- ══════════ EQUIPAMENTOS — REGISTO ══════════ -->
+      <div class="screen" id="scr-equip-form">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('equip')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Registar equipamento</div><div class="hdr-s">QR lido com sucesso</div></div>
+          <div class="hdr-chip" style="background:var(--cyan-s);color:var(--cyan)">✓</div>
+        </div>
+        <div class="scroll">
+          <div class="eqinfo">
+            <div class="ei-ic"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="7.5" cy="18" r="2"/><circle cx="16.5" cy="18" r="2"/><path d="M3 12h18"/></svg></div>
+            <div><div class="ei-code">EQ-042</div><div class="ei-name">Betoneira 350L</div><div class="ei-cat">Máquina ligeira</div></div>
+          </div>
+          <div class="gps"><div class="gps-dot"></div><div class="gps-t">GPS: 38.52413, -8.89012 · localização obtida</div></div>
+          <div class="panel-card">
+            <div class="field"><label>Obra de destino</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg><select><option>Edifício Alameda</option><option>Armazém Palmela</option><option>Moradia Quinta do Conde</option></select></div></div>
+            <div class="field"><label>Observações</label><div class="inp"><textarea rows="3" placeholder="Estado, notas de entrega…"></textarea></div></div>
+          </div>
+          <button class="cta" style="background:var(--cyan);box-shadow:0 8px 20px rgba(8,145,178,.28)" onclick="toast('Movimento de equipamento registado ✓'); setTimeout(()=>go('home'),1100)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Confirmar registo</button>
+        </div>
+      </div>
+
+      <!-- ══════════ COMBUSTÍVEL — MENU ══════════ -->
+      <div class="screen" id="scr-comb">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('home')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Combustível</div><div class="hdr-s">Escolha o tipo de registo</div></div>
+        </div>
+        <div class="scroll">
+          <div class="box" style="margin-bottom:12px;padding:20px" onclick="go('comb-dep')">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="b-ic ic-amber" style="margin-bottom:0;width:52px;height:52px"><svg viewBox="0 0 24 24" stroke="currentColor" style="width:26px;height:26px"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13M7 8h4M7 12h4"/></svg></div>
+              <div style="flex:1"><div class="b-t" style="font-size:16px">Depósito de obra</div><div class="b-s" style="font-size:12px">Entrada e saída de combustível no depósito</div></div>
+              <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:var(--dim);fill:none;stroke-width:2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+          <div class="box" style="padding:20px" onclick="go('comb-via')">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="b-ic ic-cyan" style="margin-bottom:0;width:52px;height:52px"><svg viewBox="0 0 24 24" stroke="currentColor" style="width:26px;height:26px"><rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="7.5" cy="18" r="2"/><circle cx="16.5" cy="18" r="2"/></svg></div>
+              <div style="flex:1"><div class="b-t" style="font-size:16px">Viatura / Equipamento</div><div class="b-s" style="font-size:12px">Abastecimento via QR ou manual</div></div>
+              <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:var(--dim);fill:none;stroke-width:2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ COMBUSTÍVEL — DEPÓSITO ══════════ -->
+      <div class="screen" id="scr-comb-dep">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('comb')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Depósito de obra</div><div class="hdr-s">Registar movimento</div></div>
+        </div>
+        <div class="scroll">
+          <div class="seg" style="margin-bottom:14px">
+            <button class="on g" onclick="segPick(this)"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.4"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>Entrada</button>
+            <button onclick="segPick(this)"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.4"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>Saída</button>
+          </div>
+          <div class="panel-card">
+            <div class="field"><label>Data</label><div class="inp"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><input type="date" value="2026-07-01"></div></div>
+            <div class="field"><label>Obra do depósito</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg><select><option>Edifício Alameda</option><option>Armazém Palmela</option></select></div></div>
+            <div class="two">
+              <div class="field"><label>Litros</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/></svg><input type="number" value="45" placeholder="0"></div></div>
+              <div class="field"><label>Combustível</label><div class="inp"><select><option>Gasóleo</option><option>Gasolina</option><option>AdBlue</option></select></div></div>
+            </div>
+            <div class="field"><label>Observações</label><div class="inp"><textarea rows="2" placeholder="Notas…"></textarea></div></div>
+          </div>
+          <button class="cta amber" onclick="toast('Movimento no depósito registado ✓'); setTimeout(()=>go('home'),1100)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Registar movimento</button>
+        </div>
+      </div>
+
+      <!-- ══════════ COMBUSTÍVEL — VIATURA ══════════ -->
+      <div class="screen" id="scr-comb-via">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('comb')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Abastecer viatura</div><div class="hdr-s">Camião EQ-018 · lido por QR</div></div>
+          <div class="hdr-chip" style="background:var(--cyan-s);color:var(--cyan)">✓</div>
+        </div>
+        <div class="scroll">
+          <div class="eqinfo">
+            <div class="ei-ic"><svg viewBox="0 0 24 24"><rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h4l3 3v4h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div>
+            <div><div class="ei-code">EQ-018</div><div class="ei-name">Camião Iveco Daily</div><div class="ei-cat">Viatura pesada</div></div>
+          </div>
+          <div class="panel-card">
+            <div class="field"><label>Data</label><div class="inp"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><input type="date" value="2026-07-01"></div></div>
+            <div class="field"><label>Obra (opcional)</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg><select><option>Edifício Alameda</option><option>Sem obra</option></select></div></div>
+            <div class="two">
+              <div class="field"><label>Litros</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M12 2s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/></svg><input type="number" value="60"></div></div>
+              <div class="field"><label>Combustível</label><div class="inp"><select><option>Gasóleo</option><option>Gasolina</option></select></div></div>
+            </div>
+            <div class="field"><label>Fornecedor / Bomba</label><div class="inp"><svg viewBox="0 0 24 24"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/></svg><input type="text" value="Galp Palmela" placeholder="Nome do posto"></div></div>
+            <div class="field"><label>Observações</label><div class="inp"><textarea rows="2" placeholder="Notas…"></textarea></div></div>
+          </div>
+          <button class="cta" style="background:var(--cyan);box-shadow:0 8px 20px rgba(8,145,178,.28)" onclick="toast('Abastecimento registado ✓'); setTimeout(()=>go('home'),1100)"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Registar abastecimento</button>
+        </div>
+      </div>
+
+      <!-- ══════════ COMPRAS — CHAT ══════════ -->
+      <div class="screen" id="scr-compras">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('home')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Pedido de compras</div><div class="hdr-s">Assistente · online</div></div>
+          <div class="hdr-btn" style="background:var(--green-s);border-color:#C6EBDA"><span style="width:9px;height:9px;border-radius:50%;background:var(--green);display:block"></span></div>
+        </div>
+        <div class="chat-scroll" id="chat-msgs">
+          <div class="brow bot"><div class="bubble bot">Olá <strong>David</strong>! 👷 Vou ajudar-te a criar um pedido de compras.<br>O que necessitas?</div><div class="btime">14:20</div></div>
+          <div class="brow user"><div class="bubble user">Cimento CEM II 32,5</div><div class="btime">14:21</div></div>
+          <div class="brow bot"><div class="bubble bot">Qual a quantidade?</div><div class="btime">14:21</div></div>
+          <div class="brow user"><div class="bubble user">50 sacos</div><div class="btime">14:21</div></div>
+          <div class="brow bot"><div class="bubble bot">Adicionado ✅<div class="ipreview">• <strong>Cimento CEM II 32,5</strong> — 50 sacos</div>Para quando necessitas?</div><div class="btime">14:22</div></div>
+          <div class="brow user"><div class="bubble user">Amanhã</div><div class="btime">14:22</div></div>
+          <div class="brow bot"><div class="bubble bot"><div class="typing"><span></span><span></span><span></span></div></div></div>
+        </div>
+        <div class="cchips">
+          <button class="cchip" onclick="toast('Obra selecionada')">Edifício Alameda</button>
+          <button class="cchip" onclick="toast('Obra selecionada')">Armazém Palmela</button>
+          <button class="cchip green" onclick="toast('Novo material')">➕ Mais material</button>
+        </div>
+        <div class="chat-bar">
+          <input placeholder="Escreve a tua mensagem…">
+          <button class="chat-send" onclick="toast('Enviado')"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ══════════ HISTÓRICO ══════════ -->
+      <div class="screen" id="scr-historico">
+        <div class="hdr">
+          <div class="hdr-back" onclick="go('home')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+          <div class="hdr-info"><div class="hdr-t">Histórico</div><div class="hdr-s">Consultar registos</div></div>
+        </div>
+        <div class="scroll">
+          <div class="seg" style="margin-bottom:12px">
+            <button class="on" onclick="segPick(this)">Plandese</button>
+            <button onclick="segPick(this)">Aluguer MOA</button>
+          </div>
+          <div class="panel-card" style="padding:13px"><div class="field" style="margin:0"><label>Data</label><div class="inp"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><input type="date" value="2026-06-30"></div></div></div>
+          <div class="stats" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="stat b"><div class="stat-n">11</div><div class="stat-l">Registos</div></div>
+            <div class="stat g"><div class="stat-n">86h</div><div class="stat-l">Total</div></div>
+            <div class="stat a"><div class="stat-n">6h</div><div class="stat-l">Extra</div></div>
+          </div>
+          <div class="sec">30 de Junho · Edifício Alameda</div>
+          <div class="hcard"><div class="hav" style="background:#2563EB">J</div><div class="hi"><div class="hname">João Silva</div><div class="hobra">Edifício Alameda</div></div><div class="htot"><div class="htot-h">8h</div><div class="htot-t">08:00–17:00</div></div></div>
+          <div class="hcard"><div class="hav" style="background:#7C3AED">M</div><div class="hi"><div class="hname">Maria Ferreira</div><div class="hobra">Edifício Alameda</div></div><div class="htot"><div class="htot-h">8h</div><div class="htot-t">08:00–17:00</div></div></div>
+          <div class="hcard"><div class="hav" style="background:#059669">R</div><div class="hi"><div class="hname">Rui Pereira</div><div class="hobra">Edifício Alameda</div></div><div class="htot"><div class="htot-h">9h</div><div class="htot-t">08:00–18:00</div></div></div>
+          <div class="hcard"><div class="hav" style="background:#D97706">C</div><div class="hi"><div class="hname">Carlos Sousa</div><div class="hobra">Edifício Alameda</div></div><div class="htot"><div class="htot-h">8h</div><div class="htot-t">08:00–17:00</div></div></div>
+        </div>
+      </div>
+
+      <!-- ── TOAST ── -->
+      <div class="toast" id="toast"></div>
+
+      <!-- ══════════ BOTTOM NAV ══════════ -->
+      <div class="nav" id="nav">
+        <div class="nav-i active" data-scr="home" onclick="go('home')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Início</span></div>
+        <div class="nav-i" data-scr="ponto" onclick="go('ponto')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg><span>Ponto</span></div>
+        <div class="nav-i" data-scr="equip" onclick="go('equip')"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg><span>Equip.</span></div>
+        <div class="nav-i" data-scr="comb" onclick="go('comb')"><svg viewBox="0 0 24 24"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13"/></svg><span>Combust.</span></div>
+        <div class="nav-i" data-scr="historico" onclick="go('historico')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg><span>Histórico</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ RIGHT PANEL — NAVEGADOR ══════════ -->
+  <div class="panel">
+    <div class="panel-tag">▦ Mockup 14 · Bento em toda a app</div>
+    <h1>Bento App Completa</h1>
+    <p class="panel-lead">O estilo Bento Flow aplicado a <strong>todas as páginas</strong> da app dos encarregados. Protótipo navegável — clica em qualquer ecrã abaixo (ou usa a barra inferior e os tiles) para percorrer o fluxo real.</p>
+
+    <div class="nav-grp">
+      <div class="nav-grp-t">Início</div>
+      <div class="nav-list-item on" data-scr="home" onclick="go('home')"><div class="nli-ic ic-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div><div><div class="nli-t">Dashboard bento</div><div class="nli-s">Meteo, prazo, estado, equipa, atalhos</div></div></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-t">Folhas de ponto</div>
+      <div class="nav-list-item" data-scr="ponto" onclick="go('ponto')"><div class="nli-ic ic-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div><div><div class="nli-t">Ponto Plandese · setup</div><div class="nli-s">Data, obra, horas</div></div></div>
+      <div class="nav-list-item" data-scr="ponto-eq" onclick="go('ponto-eq')"><div class="nli-ic ic-green"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="nli-t">Ponto Plandese · equipa</div><div class="nli-s">Colaboradores, horas, stats</div></div></div>
+      <div class="nav-list-item" data-scr="alug" onclick="go('alug')"><div class="nli-ic ic-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></div><div><div class="nli-t">Aluguer MOA · setup</div><div class="nli-s">Empresa cedente, obra</div></div></div>
+      <div class="nav-list-item" data-scr="alug-eq" onclick="go('alug-eq')"><div class="nli-ic ic-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="nli-t">Aluguer MOA · trabalhadores</div><div class="nli-s">Lista pré-carregada</div></div></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-t">Operações em obra</div>
+      <div class="nav-list-item" data-scr="equip" onclick="go('equip')"><div class="nli-ic ic-cyan"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3"/></svg></div><div><div class="nli-t">Equipamentos · scanner QR</div><div class="nli-s">Leitura + GPS</div></div></div>
+      <div class="nav-list-item" data-scr="equip-form" onclick="go('equip-form')"><div class="nli-ic ic-cyan"><svg viewBox="0 0 24 24" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="nli-t">Equipamentos · registo</div><div class="nli-s">Obra, GPS, observações</div></div></div>
+      <div class="nav-list-item" data-scr="comb" onclick="go('comb')"><div class="nli-ic ic-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/><path d="M14 9h3a2 2 0 012 2v7a2 2 0 01-2 2M2 22h13"/></svg></div><div><div class="nli-t">Combustível · menu</div><div class="nli-s">Depósito ou viatura</div></div></div>
+      <div class="nav-list-item" data-scr="comb-dep" onclick="go('comb-dep')"><div class="nli-ic ic-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 22V4a1 1 0 011-1h9a1 1 0 011 1v18"/></svg></div><div><div class="nli-t">Combustível · depósito</div><div class="nli-s">Entrada/saída, litros</div></div></div>
+      <div class="nav-list-item" data-scr="comb-via" onclick="go('comb-via')"><div class="nli-ic ic-cyan"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h4l3 3v4h-7z"/></svg></div><div><div class="nli-t">Combustível · viatura</div><div class="nli-s">Abastecimento QR/manual</div></div></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-t">Compras & Histórico</div>
+      <div class="nav-list-item" data-scr="compras" onclick="go('compras')"><div class="nli-ic ic-red"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div><div class="nli-t">Compras · chat assistente</div><div class="nli-s">Material → quantidade → prazo → obra</div></div></div>
+      <div class="nav-list-item" data-scr="historico" onclick="go('historico')"><div class="nli-ic ic-pink"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></div><div><div class="nli-t">Histórico</div><div class="nli-s">Plandese / MOA por data</div></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var NO_NAV = ['equip','compras'];
+  function go(id){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    var el = document.getElementById('scr-'+id);
+    if(!el) return;
+    el.classList.add('active');
+    var sc = el.querySelector('.scroll,.chat-scroll'); if(sc) sc.scrollTop = 0;
+    // bottom nav visibility + active state
+    var nav = document.getElementById('nav');
+    nav.style.display = NO_NAV.indexOf(id) >= 0 ? 'none' : 'flex';
+    var navMap = {home:'home',ponto:'ponto','ponto-eq':'ponto',alug:'ponto','alug-eq':'ponto',equip:'equip','equip-form':'equip',comb:'comb','comb-dep':'comb','comb-via':'comb',compras:'home',historico:'historico'};
+    var target = navMap[id] || id;
+    document.querySelectorAll('.nav-i').forEach(function(n){ n.classList.toggle('active', n.dataset.scr === target); });
+    document.querySelectorAll('.nav-list-item').forEach(function(n){ n.classList.toggle('on', n.dataset.scr === id); });
+  }
+  function segPick(btn){
+    var wasG = btn.classList.contains('g') || btn.textContent.trim().indexOf('Entrada')===0;
+    btn.parentNode.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+  }
+  var _tt;
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(_tt); _tt = setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+</script>
+</body>
+</html>
