@@ -1759,4 +1759,88 @@ body.dark-mode .lmb-card-title{color:var(--gray-100)}
 body.dark-mode .lmb-card-desc{color:var(--gray-400)}
 body.dark-mode .lmb-col-title{color:var(--gray-300)}
 body.dark-mode .lmb-add-card-btn{border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.3)}
+
+/* ═══════════════════════════════════════════════════════
+   ENCARREGADO — TEMA "BENTO FLOW" (escopado a #enc-app)
+   Reestiliza os ecrãs do encarregado mantendo IDs/handlers.
+   Usa as variáveis existentes (--white, --gray-*, --blue-*)
+   para funcionar em claro e escuro automaticamente.
+═══════════════════════════════════════════════════════ */
+#enc-app{
+  --eb-v:#7c3aed;--eb-vs:#f3eeff;   /* violeta (aluguer) */
+  --eb-c:#0891b2;--eb-cs:#e6f7fb;   /* cyan (equipamentos) */
+  --eb-pk:#db2777;--eb-pks:#fdedf6; /* rosa (histórico) */
+}
+body.dark-mode #enc-app{
+  --eb-vs:rgba(124,58,237,.18);--eb-cs:rgba(8,145,178,.18);--eb-pks:rgba(219,39,119,.18);
+}
+
+/* ── HOME BENTO ── */
+#enc-app .enc-bento-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px clamp(12px,3.5vw,18px) 26px;background:transparent}
+#enc-app .enc-greet{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 13px}
+#enc-app .enc-greet-date{font-size:15px;font-weight:800;color:var(--gray-900);letter-spacing:-.3px}
+#enc-app .enc-greet-time{font-size:13px;font-weight:700;color:var(--gray-500)}
+#enc-app .enc-bento{display:grid;grid-template-columns:1fr 1fr;gap:11px;grid-auto-flow:dense}
+#enc-app .eb-box{background:var(--white);border:1px solid var(--gray-200);border-radius:20px;padding:15px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer;text-align:left;font-family:var(--font);width:100%;color:var(--gray-900);transition:transform .16s,box-shadow .16s}
+#enc-app .eb-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+#enc-app .eb-box:active{transform:scale(.98)}
+#enc-app .eb-tall{grid-row:span 2}
+#enc-app .eb-col2{grid-column:span 2}
+#enc-app .eb-ic{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+#enc-app .eb-ic svg{width:21px;height:21px}
+#enc-app .eb-ic.ic-blue{background:var(--blue-50);color:var(--blue-500)}
+#enc-app .eb-ic.ic-green{background:var(--green-bg);color:var(--green)}
+#enc-app .eb-ic.ic-amber{background:var(--orange-bg);color:var(--orange)}
+#enc-app .eb-ic.ic-violet{background:var(--eb-vs);color:var(--eb-v)}
+#enc-app .eb-ic.ic-cyan{background:var(--eb-cs);color:var(--eb-c)}
+#enc-app .eb-ic.ic-pink{background:var(--eb-pks);color:var(--eb-pk)}
+#enc-app .eb-ic.ic-red{background:var(--red-bg);color:var(--red)}
+#enc-app .eb-t{font-size:14px;font-weight:800;color:var(--gray-900);letter-spacing:-.2px}
+#enc-app .eb-s{font-size:11px;color:var(--gray-500);font-weight:500;margin-top:2px;line-height:1.35}
+#enc-app .eb-mod{min-height:120px;display:flex;flex-direction:column}
+#enc-app .eb-mod .eb-ic{margin-bottom:auto}
+#enc-app .eb-done{display:none;position:absolute;top:13px;right:13px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;background:var(--green-bg);color:var(--green);align-items:center;gap:3px}
+#enc-app .eb-done.visible{display:inline-flex}
+#enc-app .eb-done svg{width:11px;height:11px}
+/* stat tile (prazo) */
+#enc-app .eb-stat{display:flex;flex-direction:column;justify-content:center;min-height:120px}
+#enc-app .eb-stat-n{font-size:36px;font-weight:800;color:var(--green);line-height:1;letter-spacing:-1.5px}
+#enc-app .eb-stat-l{font-size:11px;color:var(--gray-500);font-weight:600;margin-top:4px}
+#enc-app #enc-obra-prazo-icon{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+#enc-app #enc-obra-prazo-icon svg{width:17px;height:17px}
+/* status tile */
+#enc-app .eb-status{min-height:120px;display:flex;flex-direction:column}
+#enc-app .eb-status .enc-ctx-status{align-self:flex-start;margin-top:auto}
+/* weather tile */
+#enc-app .eb-wx{background:linear-gradient(140deg,#3b82f6,#2563eb);border:none;color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:150px}
+#enc-app .eb-wx::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);top:-50px;right:-40px}
+#enc-app .eb-wx::after{content:'';position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-30px;left:-20px}
+#enc-app #enc-weather-icon.eb-wx-ic{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.2)!important;color:#FFE082!important;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;margin:0}
+#enc-app .eb-wx-ic svg{width:26px;height:26px}
+#enc-app .eb-wx-temp{font-size:40px;font-weight:800;line-height:1;letter-spacing:-2px;position:relative;z-index:1}
+#enc-app .eb-wx-desc{font-size:12.5px;font-weight:600;opacity:.92;position:relative;z-index:1;margin-top:2px}
+#enc-app .eb-wx .enc-widget-rain-alert{color:#fff;background:rgba(255,255,255,.2);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:700;margin-top:8px;position:relative;z-index:1}
+#enc-app .eb-wx .enc-widget-rain-alert.visible{display:inline-flex}
+
+/* ── SUB-ECRÃS — polish partilhado ── */
+#enc-app .enc-card{border-radius:20px;border:1px solid var(--gray-200);box-shadow:var(--shadow)}
+#enc-app .enc-card-title{font-weight:800;letter-spacing:-.2px}
+#enc-app .enc-field label{font-size:11px;font-weight:800;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px}
+#enc-app .enc-input,#enc-app .enc-select,#enc-app .enc-time{border-radius:13px;border:1.5px solid var(--gray-200);background:var(--gray-50);font-weight:600}
+#enc-app .enc-input:focus,#enc-app .enc-select:focus,#enc-app .enc-time:focus{border-color:var(--blue-500);background:var(--white)}
+#enc-app .enc-btn{border-radius:14px;font-weight:800;box-shadow:0 8px 20px rgba(37,99,235,.22)}
+#enc-app .enc-hint{border-radius:12px}
+/* botões "voltar" nos cabeçalhos → estilo bento (pílula com sombra suave) */
+#enc-app .enc-equip-body>div:first-child button,
+#enc-app #enc-screen-combustivel>div:first-child button,
+#enc-app #enc-screen-comb-deposito>div:first-child button,
+#enc-app #enc-screen1>div:first-child button,
+#enc-app #enc-screen-aluguer>div:first-child button{
+  border-radius:12px!important;box-shadow:0 2px 6px rgba(20,30,60,.06)!important;
+}
+/* mode cards (combustível) */
+#enc-app .enc-mode-card{border-radius:18px}
+/* barra de contexto (ecrã 2 / aluguer-b) */
+#enc-app .enc-ctx{border-radius:0}
+#enc-app .enc-edit-btn{border-radius:11px}
 body.dark-mode #admin-app .dw-date,body.dark-mode #enc-app .dw-date{color:var(--gray-400)}
