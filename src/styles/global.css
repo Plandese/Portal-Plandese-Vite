@@ -615,21 +615,7 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 /* ─────────────────────────────────────────────────────
    ENCARREGADO — ECRÃ HOME (escolha de módulo)
 ───────────────────────────────────────────────────── */
-.enc-home-body{
-  background:var(--white);flex:1;display:flex;flex-direction:column;
-  overflow-y:auto;overflow-x:hidden;
-}
-.enc-home-body::before,.enc-home-body::after{display:none}
-.enc-home-top{
-  background:var(--white);border-bottom:1px solid var(--gray-200);
-  padding:18px clamp(16px,4vw,24px) 16px;
-}
-.enc-home-greeting{font-size:17px;font-weight:700;color:var(--gray-900);letter-spacing:-.3px}
-.enc-home-sub{font-size:12px;color:var(--gray-500);margin-top:3px}
-.enc-home-cards{
-  padding:12px clamp(14px,3.5vw,20px) clamp(20px,5vw,32px);
-  display:flex;flex-direction:column;gap:8px;
-}
+/* (home antiga removida — grelha bento no fim do ficheiro, secção "BENTO FLOW") */
 .enc-mode-card{
   background:var(--white);border-radius:var(--radius-lg);padding:15px 16px;
   box-shadow:var(--shadow);border:1px solid var(--gray-200);
@@ -661,12 +647,6 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .enc-back-btn:hover{background:var(--gray-50)}
 .enc-sub-title{font-size:15px;font-weight:700;color:var(--gray-900)}
 /* ── Context bar (data/hora + estado ponto) ── */
-.enc-ctx-bar{
-  background:var(--white);border-top:1px solid var(--gray-200);
-  padding:10px clamp(14px,3.5vw,20px);
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
-  position:sticky;bottom:0;z-index:2;
-}
 .enc-ctx-date{font-size:13px;font-weight:600;color:var(--gray-700)}
 .enc-ctx-time{font-size:11px;color:var(--gray-500);margin-top:1px;display:none}
 .enc-ctx-status{
@@ -677,26 +657,7 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .enc-ctx-status.ok{background:var(--green-bg);color:var(--green)}
 .enc-ctx-status.pending{background:var(--orange-bg);color:var(--orange)}
 .enc-ctx-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
-/* ── Home widgets (trabalhadores + meteorologia) ── */
-.enc-home-widgets{
-  display:grid;grid-template-columns:1fr 1fr;gap:8px;
-  padding:10px clamp(14px,3.5vw,20px) 2px;flex-shrink:0;
-}
-.enc-widget{
-  background:var(--white);border:1px solid var(--gray-200);border-radius:14px;
-  padding:13px 12px;display:flex;align-items:center;gap:10px;
-  box-shadow:0 1px 3px rgba(0,0,0,.04);
-}
-.enc-widget-icon{
-  width:36px;height:36px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.enc-widget-icon svg{width:17px;height:17px}
-.enc-widget-value{
-  font-size:22px;font-weight:800;color:var(--gray-900);
-  line-height:1;letter-spacing:-.5px;
-}
-.enc-widget-label{font-size:10px;color:var(--gray-500);margin-top:3px;line-height:1.3}
+/* ── (widgets antigos da home removidos — ver tema Bento) ── */
 .enc-widget-rain-alert{
   display:none;align-items:center;gap:3px;
   margin-top:4px;font-size:10px;font-weight:700;color:#2563eb;
@@ -743,47 +704,7 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .enc-forecast-precip.dry{color:var(--gray-300)}
 .enc-forecast-temp{font-size:13px;font-weight:700;color:var(--gray-900);flex-shrink:0;min-width:54px;text-align:right}
 .enc-forecast-temp span{font-size:11px;font-weight:500;color:var(--gray-400)}
-/* ── Section label ── */
-.enc-sec-label{
-  font-size:10px;font-weight:700;color:var(--gray-500);
-  letter-spacing:.8px;text-transform:uppercase;padding:0 2px;margin-bottom:6px;
-}
-/* ── Primary card com acento lateral ── */
-.enc-card-p{
-  background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--gray-200);
-  cursor:pointer;display:flex;align-items:stretch;overflow:hidden;
-  font-family:var(--font);text-align:left;width:100%;
-  transition:background .12s,box-shadow .12s;box-shadow:var(--shadow);
-}
-.enc-card-p:hover{background:var(--gray-50);box-shadow:var(--shadow-md)}
-.enc-card-p:active{background:var(--gray-100);box-shadow:none}
-.enc-card-p-accent{width:4px;flex-shrink:0;align-self:stretch}
-.enc-card-p-inner{display:flex;align-items:center;gap:12px;padding:15px 14px;flex:1;min-width:0}
-.enc-card-p-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.enc-card-p-icon svg{width:23px;height:23px}
-.enc-card-p-info{flex:1;min-width:0}
-.enc-card-p-title{font-size:14px;font-weight:700;color:var(--gray-900);letter-spacing:-.1px}
-.enc-card-p-desc{font-size:12px;color:var(--gray-500);margin-top:2px;line-height:1.4}
-.enc-card-p-done{display:none;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--green);margin-top:5px}
-.enc-card-p-done.visible{display:flex}
-.enc-card-p-done svg{width:11px;height:11px;flex-shrink:0}
-.enc-card-p-arrow{color:var(--gray-300);flex-shrink:0}
-.enc-card-p-arrow svg{width:18px;height:18px}
-/* ── Secondary compact row ── */
-.enc-sec-row{display:flex;gap:8px}
-.enc-card-s{
-  flex:1;background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--gray-200);
-  padding:12px 10px;cursor:pointer;
-  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
-  font-family:var(--font);text-align:left;
-  transition:background .12s;box-shadow:var(--shadow);
-}
-.enc-card-s:hover{background:var(--gray-50)}
-.enc-card-s:active{background:var(--gray-100)}
-.enc-card-s-label{font-size:11.5px;font-weight:600;color:var(--gray-700)}
-.enc-card-s-sub{font-size:10.5px;color:var(--gray-500);margin-top:-3px}
-.enc-mode-icon.sm{width:34px;height:34px;border-radius:9px}
-.enc-mode-icon.sm svg{width:17px;height:17px}
+/* (cartões da home antiga removidos — módulos agora em grelha bento) */
 
 /* ─────────────────────────────────────────────────────
    CHAT — ASSISTENTE DE COMPRAS
@@ -1332,7 +1253,6 @@ body.dark-mode .dw-cal-day.other-month{color:var(--gray-300)}
 /* ── Toast ── */
 body.dark-mode .toast{background:rgba(40,52,77,.95);color:#eef2fb}
 /* ── Enc home ── */
-body.dark-mode .enc-home-body{background:transparent}
 body.dark-mode .enc-home-top{background:rgba(10,16,30,.55);border-color:rgba(255,255,255,.08)}
 body.dark-mode .enc-home-greeting{color:#eef2fb}
 body.dark-mode .enc-home-sub{color:var(--gray-500)}
@@ -1872,4 +1792,27 @@ body.dark-mode #enc-app{
 #enc-app .chat-input{border-radius:22px}
 #enc-app .chat-send-btn{border-radius:50%}
 /* histórico — cartões gerados com classe .enc-card já herdam radius 20 */
+
+/* ── FASE 3 — barra de navegação, acento lateral, chat azul ── */
+/* Barra de navegação inferior */
+#enc-app .enc-nav{flex-shrink:0;display:flex;background:var(--white);border-top:1px solid var(--gray-200);padding:8px 6px 10px;box-shadow:0 -4px 16px rgba(20,30,60,.06);position:relative;z-index:40}
+#enc-app .enc-nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;background:none;border:none;cursor:pointer;color:var(--gray-400);font-family:var(--font)}
+#enc-app .enc-nav-i svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9}
+#enc-app .enc-nav-i span{font-size:9.5px;font-weight:700}
+#enc-app .enc-nav-i.active{color:var(--blue-500)}
+#enc-app .enc-nav-i:active{transform:scale(.94)}
+/* Cartão de colaborador — acento lateral por estado */
+#enc-app .mob-colab-card{border:1px solid var(--gray-200);border-left-width:4px;border-left-color:var(--gray-200)}
+#enc-app .mob-colab-card.completo{border-left-color:var(--green)}
+#enc-app .mob-colab-card.parcial{border-left-color:var(--blue-500)}
+#enc-app .mob-colab-card.ausente{border-left-color:var(--red);opacity:1}
+/* Trabalhadores de aluguer — acento violeta */
+#enc-app #enc-alug-list .mob-colab-card{border-left-color:var(--eb-v)}
+/* Chat de compras — tema azul (em vez de verde) */
+#enc-app .chat-header{background:linear-gradient(135deg,var(--blue-700),var(--blue-500))}
+#enc-app .chat-bubble.user{background:linear-gradient(135deg,var(--blue-600),var(--blue-500))}
+#enc-app .chat-chip:hover,#enc-app .chat-chip:active,#enc-app .chat-chip.green{background:var(--blue-50);border-color:var(--blue-400);color:var(--blue-700)}
+#enc-app .chat-input:focus{border-color:var(--blue-500)}
+#enc-app .chat-send-btn{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));box-shadow:0 2px 8px rgba(37,99,235,.35)}
+#enc-app .chat-items-preview{background:var(--blue-50);border-color:var(--blue-100);color:var(--blue-700)}
 body.dark-mode #admin-app .dw-date,body.dark-mode #enc-app .dw-date{color:var(--gray-400)}

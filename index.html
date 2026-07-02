@@ -752,6 +752,30 @@
 
   </div>
 
+  <!-- BARRA DE NAVEGAÇÃO INFERIOR -->
+  <div class="enc-nav" id="enc-nav" style="display:none">
+    <button class="enc-nav-i" data-nav="home" onclick="encVoltarHome()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>Início</span>
+    </button>
+    <button class="enc-nav-i" data-nav="ponto" onclick="encGoFolhaPontoPlandese()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Ponto</span>
+    </button>
+    <button class="enc-nav-i" data-nav="equip" onclick="encGoEquipamentos()">
+      <svg viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M4 7V5a1 1 0 011-1h3M20 7V5a1 1 0 00-1-1h-3M4 17v2a1 1 0 001 1h3M20 17v2a1 1 0 01-1 1h-3"/></svg>
+      <span>Equip.</span>
+    </button>
+    <button class="enc-nav-i" data-nav="comb" onclick="encGoCombustivel()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span>Combust.</span>
+    </button>
+    <button class="enc-nav-i" data-nav="hist" onclick="encGoHistoricoEnc()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+      <span>Histórico</span>
+    </button>
+  </div>
+
   <!-- Modal: Previsão do Tempo -->
   <div id="enc-weather-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:flex-end" onclick="encCloseWeatherModal()">
     <div class="enc-weather-sheet" onclick="event.stopPropagation()">
@@ -3321,5 +3345,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="/artigos-data.js"></script>
+    <!-- Barra de navegação do encarregado: mostra/esconde + item ativo conforme o ecrã visível -->
+    <script>
+    (function(){
+      var HIDE={'enc-screen2':1,'enc-screen-aluguer':1,'enc-screen-equip':1,'enc-screen-comb-viatura':1,'enc-screen-compras-chat':1};
+      var ACT={'enc-screen0':'home','enc-screen1':'ponto','enc-screen-combustivel':'comb','enc-screen-comb-deposito':'comb','enc-screen-historico-enc':'hist'};
+      var IDS=['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-compras-chat','enc-screen-historico-enc','enc-screen-aluguer'];
+      function cur(){for(var i=0;i<IDS.length;i++){var e=document.getElementById(IDS[i]);if(e&&e.style.display!=='none')return IDS[i];}return null;}
+      function upd(){
+        var nav=document.getElementById('enc-nav');if(!nav)return;
+        var c=cur();
+        nav.style.display=(!c||HIDE[c])?'none':'flex';
+        var a=c?ACT[c]:null;
+        var items=nav.querySelectorAll('.enc-nav-i');
+        for(var i=0;i<items.length;i++) items[i].classList.toggle('active',items[i].getAttribute('data-nav')===a);
+      }
+      function init(){
+        var o=new MutationObserver(upd);
+        for(var i=0;i<IDS.length;i++){var e=document.getElementById(IDS[i]);if(e)o.observe(e,{attributes:true,attributeFilter:['style']});}
+        upd();
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+    })();
+    </script>
     <script type="module" src="/src/main.js"></script>
 </body>
