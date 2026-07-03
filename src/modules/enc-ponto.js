@@ -155,6 +155,9 @@ async function initEnc(){
    'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
    'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const _nav=document.getElementById('enc-nav');
+  if(_nav) _nav.style.display='flex';
+  _encSetNav('home');
   _encUpdateCtxBar();
   // Preencher data com hoje (campo existe em enc-screen1)
   const _dataEl = document.getElementById('enc-data-sel');
@@ -502,6 +505,7 @@ function encGoFolhaPontoPlandese(){
   _encHideAll();
   document.getElementById('enc-screen1').style.display='flex';
   document.getElementById('enc-screen1').style.flexDirection='column';
+  _encSetNav('ponto');
 }
 
 // Manter compatibilidade com chamadas antigas
@@ -511,6 +515,7 @@ function encGoHistoricoEnc(){
   _encHideAll();
   const s=document.getElementById('enc-screen-historico-enc');
   s.style.display='flex'; s.style.flexDirection='column';
+  _encSetNav('hist');
   // preencher data com hoje
   const di=document.getElementById('enc-hist-data');
   if(di && !di.value) di.value=fmt(new Date());
@@ -585,6 +590,7 @@ async function encGoFolhaPontoAluguer(){
   _encHideAll();
   const s=document.getElementById('enc-screen-aluguer');
   s.style.display='flex'; s.style.flexDirection='column';
+  _encSetNav('ponto');
   // Resetar ao ecrã A
   document.getElementById('enc-alug-screen-a').style.display='block';
   const screenB=document.getElementById('enc-alug-screen-b');
@@ -606,6 +612,7 @@ function encGoEquipamentos(){
   _encHideAll();
   const s=document.getElementById('enc-screen-equip');
   s.style.display='flex'; s.style.flexDirection='column';
+  _encSetNav('equip');
   _encEquipShowState('scanner');
   setTimeout(()=>startEncQrScanner(), 350);
 }
@@ -617,6 +624,7 @@ function encGoCombustivel(){
   _encHideAll();
   const el = document.getElementById('enc-screen-combustivel');
   if(el){ el.style.display='flex'; el.style.flexDirection='column'; }
+  _encSetNav('comb');
 }
 
 function encVoltarHome(){
@@ -625,7 +633,14 @@ function encVoltarHome(){
   _encHideAll();
   document.getElementById('enc-screen0').style.display='flex';
   document.getElementById('enc-screen0').style.flexDirection='column';
+  _encSetNav('home');
   _encUpdateCtxBar();
+}
+
+function _encSetNav(key){
+  document.querySelectorAll('#enc-nav .enc-nav-i').forEach(b=>{
+    b.classList.toggle('active', b.dataset.nav===key);
+  });
 }
 
 function _encHideAll(){

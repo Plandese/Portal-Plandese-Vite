@@ -1696,7 +1696,8 @@ body.dark-mode #enc-app{
 }
 
 /* ── HOME BENTO ── */
-#enc-app .enc-bento-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px clamp(12px,3.5vw,18px) 26px;background:transparent}
+#enc-app #enc-screen0{min-height:0}
+#enc-app .enc-bento-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px clamp(12px,3.5vw,18px) 26px;background:transparent}
 #enc-app .enc-greet{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 13px}
 #enc-app .enc-greet-date{font-size:15px;font-weight:800;color:var(--gray-900);letter-spacing:-.3px}
 #enc-app .enc-greet-time{font-size:13px;font-weight:700;color:var(--gray-500)}
@@ -1815,4 +1816,27 @@ body.dark-mode #enc-app{
 #enc-app .chat-input:focus{border-color:var(--blue-500)}
 #enc-app .chat-send-btn{background:linear-gradient(135deg,var(--blue-600),var(--blue-500));box-shadow:0 2px 8px rgba(37,99,235,.35)}
 #enc-app .chat-items-preview{background:var(--blue-50);border-color:var(--blue-100);color:var(--blue-700)}
+
+/* ═══ Cabeçalho Bento Flow (mockup-14) ═══ */
+#enc-app .enc-hdr{padding:16px clamp(14px,4vw,22px) 8px;display:flex;align-items:center;gap:12px;flex-shrink:0;background:transparent}
+#enc-app .enc-hdr-back{width:44px;height:44px;border-radius:14px;background:var(--white);border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(20,30,60,.05);flex-shrink:0;padding:0}
+#enc-app .enc-hdr-back svg{width:20px;height:20px;stroke:var(--gray-900);fill:none;stroke-width:2.2}
+#enc-app .enc-hdr-info{flex:1;min-width:0}
+#enc-app .enc-hdr-t{font-size:17px;font-weight:800;letter-spacing:-.3px;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#enc-app .enc-hdr-s{font-size:11.5px;color:var(--gray-500);font-weight:600;margin-top:1px}
+#enc-app .enc-hdr-chip{padding:8px 12px;border-radius:12px;font-size:12px;font-weight:800;flex-shrink:0}
+#enc-app .enc-hdr-chip.blue{background:var(--blue-50);color:var(--blue-600)}
+#enc-app .enc-hdr-chip.green{background:rgba(5,150,105,.1);color:var(--green)}
+#enc-app .enc-hdr-chip.amber{background:rgba(217,119,6,.1);color:#b45309}
+#enc-app .enc-hdr-chip.violet{background:rgba(124,58,237,.1);color:var(--eb-v)}
+#enc-app .enc-hdr-chip.cyan{background:rgba(8,145,178,.1);color:#0891b2}
+
+/* Cartão-dica (tip) */
+#enc-app .enc-tip{display:flex;gap:10px;align-items:flex-start;background:var(--blue-50);border:1px solid var(--blue-100);border-radius:16px;padding:13px 14px;margin-bottom:14px}
+#enc-app .enc-tip svg{width:18px;height:18px;stroke:var(--blue-600);fill:none;stroke-width:2;flex-shrink:0;margin-top:1px}
+#enc-app .enc-tip-t{font-size:12.5px;font-weight:800;color:var(--blue-700);margin-bottom:2px}
+#enc-app .enc-tip-s{font-size:11.5px;font-weight:600;color:var(--blue-600);line-height:1.45}
+#enc-app .enc-tip.violet{background:rgba(124,58,237,.07);border-color:rgba(124,58,237,.18)}
+#enc-app .enc-tip.violet svg{stroke:var(--eb-v)}
+#enc-app .enc-tip.violet .enc-tip-t,#enc-app .enc-tip.violet .enc-tip-s{color:var(--eb-v)}
 body.dark-mode #admin-app .dw-date,body.dark-mode #enc-app .dw-date{color:var(--gray-400)}
