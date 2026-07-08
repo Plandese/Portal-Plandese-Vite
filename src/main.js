@@ -12,6 +12,10 @@ window.L = L;
 import * as XLSX from 'xlsx';
 window.XLSX = XLSX;
 
+// ExcelJS — exposto como global para exports Excel com formatação (folha de ponto, folha de fecho)
+import ExcelJS from 'exceljs';
+window.ExcelJS = ExcelJS;
+
 // Html5Qrcode — exposto como global para compatibilidade com app.js (usa Html5Qrcode para QR scanner)
 import { Html5Qrcode } from 'html5-qrcode';
 window.Html5Qrcode = Html5Qrcode;
