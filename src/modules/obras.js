@@ -76,10 +76,11 @@ export async function saveObra(){
   const prazo=document.getElementById('mo-prazo').value||null;
   const encarregado_id=document.getElementById('mo-encarregado').value||null;
   const diretor_id=document.getElementById('mo-diretor').value||null;
-  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa:true,prazo,encarregado_id,diretor_id};
+  const ativa=existing>=0?S.OBRAS[existing].ativa:true;
+  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa,prazo,encarregado_id,diretor_id};
   try {
     const {error} = await sb.from('obras').upsert({
-      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa:true,
+      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa,
       prazo:prazo||null, encarregado_id:encarregado_id||null, diretor_id:diretor_id||null
     });
     if(error) throw error;
