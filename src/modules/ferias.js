@@ -268,8 +268,8 @@ function _renderTabela() {
           ${_filtroFuncs.size ? `<button type="button" onclick="feriasLimparFuncs()" style="border:none;background:none;color:var(--blue-500);font-size:12px;cursor:pointer;padding:0">Limpar</button>` : ''}
         </div>
         ${funcs.map(f => `
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13px;color:var(--gray-700);cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
-            <input type="checkbox" ${_filtroFuncs.has(f) ? 'checked' : ''} onchange="feriasToggleFunc('${f}')" style="accent-color:var(--blue-500);cursor:pointer"/> ${f}
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin:0;font-size:13px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--gray-700);cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+            <input type="checkbox" ${_filtroFuncs.has(f) ? 'checked' : ''} onchange="feriasToggleFunc('${f}')" style="-webkit-appearance:checkbox;appearance:checkbox;width:14px;height:14px;min-width:14px;padding:0;margin:0;border:none;border-radius:0;background:none;accent-color:var(--blue-500);cursor:pointer;flex-shrink:0"/> ${f}
           </label>
         `).join('')}
       </div>
