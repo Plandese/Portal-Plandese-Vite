@@ -1,23 +1,8 @@
 // ═══════════════════════════════════════
 //  PERMISSÕES DE ACESSO
 // ═══════════════════════════════════════
-import { ROLE_ACCESS } from '../config.js';
+import { ROLE_ACCESS, NAV_CHAPTERS } from '../config.js';
 import { showToast } from './navigation.js';
-
-const ALL_SECTIONS = [
-  {id:'painel',             label:'Painel Principal'},
-  {id:'historico',          label:'Folha de Ponto'},
-  {id:'semana',             label:'Fecho Semanal'},
-  {id:'compras',            label:'Pedidos de Compra'},
-  {id:'mapas-comparativos', label:'Mapas Comparativos'},
-  {id:'faturas',            label:'Faturas'},
-  {id:'equipamentos',       label:'Equipamentos'},
-  {id:'producao',           label:'Controlo de Obras'},
-  {id:'obras',              label:'Gerir Obras'},
-  {id:'colaboradores',      label:'Colaboradores'},
-  {id:'utilizadores',       label:'Utilizadores'},
-  {id:'fornecedores',       label:'Lista de Fornecedores'},
-];
 
 const CONFIGURABLE_ROLES = [
   {key:'diretor_obra', label:'Diretor de Obra'},
@@ -26,12 +11,13 @@ const CONFIGURABLE_ROLES = [
 ];
 
 const DEFAULT_PERMISSIONS = {
-  diretor_obra: ['painel','historico','semana','compras','faturas','equipamentos','producao','obras','colaboradores'],
-  compras:      ['painel','compras'],
-  financeiro:   ['painel','faturas','compras'],
+  diretor_obra: ['rh','cmp','fin','log','prod'],
+  compras:      ['cmp'],
+  financeiro:   ['fin','cmp'],
 };
 
-const PERM_STORAGE_KEY = 'plandese_role_permissions_v1';
+// v2: granularidade por capítulo (rh/cmp/fin/log/prod/def) em vez de por secção individual
+const PERM_STORAGE_KEY = 'plandese_role_permissions_v2';
 
 export function loadPermissions(){
   try {
@@ -46,8 +32,8 @@ export function savePermissions(){
   try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(perms)); } catch(e){}
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
-      ROLE_ACCESS[r.key].sections = perms[r.key] || [];
-      ROLE_ACCESS[r.key].default  = perms[r.key]?.[0] || null;
+      ROLE_ACCESS[r.key].chapters = perms[r.key] || [];
+      ROLE_ACCESS[r.key].default  = 'painel';
     }
   });
   const msg = document.getElementById('perm-saved-msg');
@@ -60,8 +46,8 @@ export function resetPermissions(){
   try { localStorage.removeItem(PERM_STORAGE_KEY); } catch(e){}
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
-      ROLE_ACCESS[r.key].sections = [...(DEFAULT_PERMISSIONS[r.key]||[])];
-      ROLE_ACCESS[r.key].default  = ROLE_ACCESS[r.key].sections[0]||null;
+      ROLE_ACCESS[r.key].chapters = [...(DEFAULT_PERMISSIONS[r.key]||[])];
+      ROLE_ACCESS[r.key].default  = 'painel';
     }
   });
   renderPermMatrix();
@@ -74,8 +60,8 @@ export function readPermMatrixState(){
   document.querySelectorAll('.perm-chk').forEach(chk=>{
     if(chk.checked){
       const role = chk.dataset.role;
-      const sec  = chk.dataset.sec;
-      if(perms[role]) perms[role].push(sec);
+      const ch   = chk.dataset.ch;
+      if(perms[role]) perms[role].push(ch);
     }
   });
   return perms;
@@ -86,17 +72,17 @@ export function renderPermMatrix(){
   const thead = document.getElementById('perm-matrix-head');
   if(!thead) return;
   thead.innerHTML = '<tr><th>Perfil</th>' +
-    ALL_SECTIONS.map(s=>`<th>${s.label}</th>`).join('') +
+    NAV_CHAPTERS.map(c=>`<th>${c.label}</th>`).join('') +
     '</tr>';
   const tbody = document.getElementById('perm-matrix-body');
   tbody.innerHTML = CONFIGURABLE_ROLES.map(role=>{
-    const roleSecs = perms[role.key] || [];
-    const cells = ALL_SECTIONS.map(sec=>{
-      const checked = roleSecs.includes(sec.id);
+    const roleChapters = perms[role.key] || [];
+    const cells = NAV_CHAPTERS.map(ch=>{
+      const checked = roleChapters.includes(ch.id);
       return `<td>
         <label class="perm-toggle" title="${checked?'Acesso permitido':'Acesso bloqueado'}">
           <input type="checkbox" class="perm-chk"
-            data-role="${role.key}" data-sec="${sec.id}"
+            data-role="${role.key}" data-ch="${ch.id}"
             ${checked?'checked':''}
             onchange="onPermChange(this)"/>
           <span class="perm-slider"></span>
@@ -105,7 +91,7 @@ export function renderPermMatrix(){
     }).join('');
     return `<tr><td>${role.label}</td>${cells}</tr>`;
   }).join('');
-  const adminCells = ALL_SECTIONS.map(()=>`<td>
+  const adminCells = NAV_CHAPTERS.map(()=>`<td>
     <label class="perm-toggle">
       <input type="checkbox" checked disabled/>
       <span class="perm-slider"></span>
@@ -134,23 +120,37 @@ export function applyStoredPermissions(){
   const perms = loadPermissions();
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
-      const secs = perms[r.key];
-      if(secs && secs.length >= 0){
-        ROLE_ACCESS[r.key].sections = secs;
-        ROLE_ACCESS[r.key].default  = secs[0] || null;
+      const chs = perms[r.key];
+      if(chs){
+        ROLE_ACCESS[r.key].chapters = chs;
+        ROLE_ACCESS[r.key].default  = 'painel';
       }
     }
   });
 }
 
+function chapterOfSection(sec){
+  const ch = NAV_CHAPTERS.find(c=>c.sections.includes(sec));
+  return ch ? ch.id : null;
+}
+
 export function applyRolePermissions(role){
+  // repor tudo visível antes de reaplicar (necessário ao trocar de utilizador sem recarregar a página)
+  document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick]').forEach(el=>{ el.style.display=''; });
   if(role === 'admin') return; // admin vê tudo
   const access = ROLE_ACCESS[role];
   if(!access) return;
-  const allowed = access.sections || [];
-  // Esconder botões de nav não permitidos
-  document.querySelectorAll('.nav-btn[data-section],.bnav-btn[data-section]').forEach(btn=>{
-    const sec = btn.getAttribute('data-section');
-    if(sec && !allowed.includes(sec)) btn.style.display='none';
+  const allowed = access.chapters || [];
+  // Esconder capítulos inteiros (grupo + toggle) não permitidos na sidebar
+  NAV_CHAPTERS.forEach(ch=>{
+    if(allowed.includes(ch.id)) return;
+    document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
+  });
+  // Esconder atalhos da barra de navegação inferior (mobile) cujo capítulo não é permitido
+  document.querySelectorAll('.bnav-btn[onclick]').forEach(btn=>{
+    const m = btn.getAttribute('onclick').match(/goTo\('([^']+)'/);
+    const sec = m && m[1];
+    const chId = sec && chapterOfSection(sec);
+    if(chId && !allowed.includes(chId)) btn.style.display='none';
   });
 }

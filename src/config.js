@@ -63,10 +63,10 @@ export const ROLE_LABELS = {
 };
 
 export const ROLE_ACCESS = {
-  'admin':        {sections:['painel','historico','compras','faturas','equipamentos','combustivel','producao','obras','colaboradores','utilizadores','empresas-moa'], default:'painel'},
-  'diretor_obra': {sections:['painel','historico','compras','faturas','equipamentos','combustivel','producao','obras','colaboradores','empresas-moa'], default:'painel'},
-  'compras':      {sections:['painel','compras'], default:'painel'},
-  'financeiro':   {sections:['painel','faturas','compras'], default:'painel'},
+  'admin':        {chapters:['rh','cmp','fin','log','prod','def'], default:'painel'},
+  'diretor_obra': {chapters:['rh','cmp','fin','log','prod'],       default:'painel'},
+  'compras':      {chapters:['cmp'],                               default:'painel'},
+  'financeiro':   {chapters:['fin','cmp'],                         default:'painel'},
 };
 
 // Secções que emitem notificações (chave → rótulo legível).
@@ -84,15 +84,16 @@ export const NOTIF_SECTIONS = {
   'mapa-ferias':  'Férias',
 };
 
-export const NAV_GROUP_SECTIONS = {
-  'pnl': ['painel'],
-  'rh':  ['historico'],
-  'cmp': ['compras'],
-  'fin': ['faturas'],
-  'log': ['equipamentos','combustivel'],
-  'prod':['producao'],
-  'def': ['obras','colaboradores','utilizadores','empresas-moa'],
-};
+// Capítulos da sidebar — fonte única de verdade para o agrupamento de secções
+// e para a matriz de "Permissões de Acesso" em Gerir Utilizadores.
+export const NAV_CHAPTERS = [
+  {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','colaboradores']},
+  {id:'cmp',  label:'Compras',                   sections:['compras','mapas-comparativos']},
+  {id:'fin',  label:'Financeiro',                sections:['faturas']},
+  {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
+  {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios']},
+  {id:'def',  label:'Definições',                sections:['obras','utilizadores','empresas-moa','fornecedores']},
+];
 
 export const TIPOS = ['Presença','Falta Injust.','Falta Just.','Férias'];
 export const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
