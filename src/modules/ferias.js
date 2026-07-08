@@ -28,6 +28,46 @@ document.addEventListener('mousedown', (e) => {
   }
 });
 
+// Fecha ao fazer scroll (a dropdown é position:fixed, calculada a partir do
+// botão — sem isto ficaria "descolada" do botão ao rolar a página/tabela).
+document.addEventListener('scroll', () => {
+  if (_funcDropdownOpen) {
+    _funcDropdownOpen = false;
+    _renderTabela();
+  }
+}, true);
+
+// ── Dropdown do filtro de função ───────────────────────────────
+// Anexada diretamente ao <body> (position:fixed, posição calculada a partir
+// do botão) para nunca ficar tapada por overflow/stacking context de
+// ancestrais da tabela (ex.: colunas fixas com position:sticky).
+function _renderFuncDropdown(funcs) {
+  const btn = document.getElementById('ferias-func-btn');
+  if (!btn) return;
+
+  let dd = document.getElementById('ferias-func-dd');
+  if (!dd) {
+    dd = document.createElement('div');
+    dd.id = 'ferias-func-dd';
+    document.body.appendChild(dd);
+  }
+
+  dd.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px;border-bottom:1px solid var(--gray-100);margin-bottom:4px">
+      <span style="font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Funções</span>
+      ${_filtroFuncs.size ? `<button type="button" onclick="feriasLimparFuncs()" style="border:none;background:none;color:var(--blue-500);font-size:12px;cursor:pointer;padding:0">Limpar</button>` : ''}
+    </div>
+    ${funcs.map(f => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin:0;font-size:13px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--gray-700);cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${_filtroFuncs.has(f) ? 'checked' : ''} onchange="feriasToggleFunc('${f}')" style="-webkit-appearance:checkbox;appearance:checkbox;width:14px;height:14px;min-width:14px;padding:0;margin:0;border:none;border-radius:0;background:none;accent-color:var(--blue-500);cursor:pointer;flex-shrink:0"/> ${f}
+      </label>
+    `).join('')}
+  `;
+
+  const rect = btn.getBoundingClientRect();
+  dd.style.cssText = `display:${_funcDropdownOpen ? 'block' : 'none'};position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;min-width:${rect.width}px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:1500;max-height:260px;overflow-y:auto;padding:6px`;
+}
+
 const NAME_W = 160;
 const TOT_W  = 52;
 // Fundo dos fins de semana — listras diagonais subtis para realçar
@@ -256,26 +296,19 @@ function _renderTabela() {
   filtroBar.className = 'filter-bar';
   filtroBar.style.marginBottom = '12px';
   filtroBar.innerHTML = `
-    <div class="field" style="position:relative;margin:0">
+    <div class="field" style="margin:0">
       <label>Função</label>
       <button type="button" id="ferias-func-btn" onclick="feriasToggleFuncDropdown()" style="min-width:180px;text-align:left;padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);background:var(--white);color:var(--gray-900);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px">
         <span>${btnLabel}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;opacity:.6"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div id="ferias-func-dd" style="display:${_funcDropdownOpen ? 'block' : 'none'};position:absolute;top:100%;left:0;margin-top:4px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:20;min-width:220px;max-height:260px;overflow-y:auto;padding:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px;border-bottom:1px solid var(--gray-100);margin-bottom:4px">
-          <span style="font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Funções</span>
-          ${_filtroFuncs.size ? `<button type="button" onclick="feriasLimparFuncs()" style="border:none;background:none;color:var(--blue-500);font-size:12px;cursor:pointer;padding:0">Limpar</button>` : ''}
-        </div>
-        ${funcs.map(f => `
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin:0;font-size:13px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--gray-700);cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
-            <input type="checkbox" ${_filtroFuncs.has(f) ? 'checked' : ''} onchange="feriasToggleFunc('${f}')" style="-webkit-appearance:checkbox;appearance:checkbox;width:14px;height:14px;min-width:14px;padding:0;margin:0;border:none;border-radius:0;background:none;accent-color:var(--blue-500);cursor:pointer;flex-shrink:0"/> ${f}
-          </label>
-        `).join('')}
-      </div>
     </div>
   `;
   cont.appendChild(filtroBar);
+
+  // A dropdown vive fora da hierarquia da tabela (anexada ao <body>, position:fixed)
+  // para nunca ficar tapada por contextos de empilhamento/overflow de ancestrais da tabela.
+  _renderFuncDropdown(funcs);
 
   // ── Tabela ────────────────────────────────────────────────────
   const wrapper = document.createElement('div');
