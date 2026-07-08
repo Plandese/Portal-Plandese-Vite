@@ -19,13 +19,10 @@ export function novaObra(){
   document.getElementById('modal-obra').classList.add('open');
 }
 
-let _obrView='lista';
+let _obrHideInativas=false;
 
-export function obrSetView(mode){
-  _obrView=mode;
-  ['lista','cards'].forEach(m=>{
-    document.getElementById('obr-vbtn-'+m)?.classList.toggle('active', m===mode);
-  });
+export function obrToggleHideInativas(){
+  _obrHideInativas=document.getElementById('obr-hide-inativas').checked;
   renderObras();
 }
 
@@ -36,21 +33,10 @@ function _pessoas(o){
   };
 }
 
-function _renderObrasCards(){
-  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px';
-  S.OBRAS.forEach(o=>{
-    const {diretorNome,encNome}=_pessoas(o);
-    const pessoasHtml = (diretorNome || encNome) ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);display:flex;flex-direction:column;gap:4px">${diretorNome?`<div style="font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--gray-400);min-width:80px">Diretor</span>${diretorNome}</div>`:''}${encNome?`<div style="font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--gray-400);min-width:80px">Encarregado</span>${encNome}</div>`:''}</div>` : '';
-    const card=document.createElement('div');card.className='card';card.style.padding='16px';card.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px"><div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:10px;height:10px;border-radius:50%;background:${o.ativa?'var(--green)':'var(--gray-300)'};flex-shrink:0;margin-top:3px"></div><div><div style="font-weight:600;font-size:14px">${o.nome}</div>${o.local?`<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${o.local}</div>`:''}</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm" style="background:${o.ativa?'var(--yellow-bg)':'var(--green-bg)'};color:${o.ativa?'var(--yellow)':'var(--green)'};border:1px solid ${o.ativa?'#FDE68A':'var(--green-light)'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div></div>${pessoasHtml}`;
-    grid.appendChild(card);
-  });
-  return grid;
-}
-
-function _renderObrasLista(){
+function _renderObrasLista(lista){
   const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='padding:0;overflow:hidden';
   const tblWrap=document.createElement('div');tblWrap.className='tbl-wrap';
-  const rows=S.OBRAS.map(o=>{
+  const rows=lista.map(o=>{
     const {diretorNome,encNome}=_pessoas(o);
     return `<tr>
       <td><span style="width:8px;height:8px;border-radius:50%;background:${o.ativa?'var(--green)':'var(--gray-300)'};display:inline-block;margin-right:8px"></span><span style="font-weight:500">${o.nome}</span></td>
@@ -69,9 +55,11 @@ function _renderObrasLista(){
 
 export function renderObras(){
   const cont=document.getElementById('obras-list');cont.innerHTML='';
-  if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';document.getElementById('nb-obras').textContent=0;return;}
-  cont.appendChild(_obrView==='cards' ? _renderObrasCards() : _renderObrasLista());
   document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
+  if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';return;}
+  const lista=_obrHideInativas ? S.OBRAS.filter(o=>o.ativa) : S.OBRAS;
+  if(!lista.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra ativa.</div>';return;}
+  cont.appendChild(_renderObrasLista(lista));
 }
 
 export function editObra(id){

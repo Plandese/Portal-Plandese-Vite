@@ -16,7 +16,7 @@ import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, cl
 import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
-import { renderObras, editObra, saveObra, toggleObra, novaObra, obrSetView } from './modules/obras.js';
+import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
 import { renderColabs, editColab, saveColab, toggleColab } from './modules/colaboradores.js';
 import { renderUsers, editUser, saveUser } from './modules/utilizadores.js';
 
@@ -141,7 +141,7 @@ Object.assign(window, {
   applyMOAFilter, navMOASemana, exportMOAExcel,
 
   // Obras
-  renderObras, saveObra, editObra, toggleObra, novaObra, obrSetView, saveObraExtra,
+  renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, saveObraExtra,
 
   // Colaboradores
   renderColabs, saveColab, editColab, toggleColab,

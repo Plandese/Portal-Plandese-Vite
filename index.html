@@ -1250,17 +1250,11 @@
       <section id="sec-obras" class="section">
         <div class="pg-hdr">
           <div><div class="pg-title">Lista de Obras</div><div class="pg-sub">Obras disponíveis para os encarregados</div></div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="display:flex;gap:2px;background:var(--gray-100);border-radius:8px;padding:3px;flex-shrink:0">
-              <button id="obr-vbtn-lista" onclick="obrSetView('lista')" class="cmp-view-btn active" title="Vista lista">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                Lista
-              </button>
-              <button id="obr-vbtn-cards" onclick="obrSetView('cards')" class="cmp-view-btn" title="Vista cartões">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                Cartões
-              </button>
-            </div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none">
+              <input type="checkbox" id="obr-hide-inativas" onchange="obrToggleHideInativas()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
+              Ocultar inativas
+            </label>
             <button class="btn btn-primary" onclick="novaObra()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nova obra
