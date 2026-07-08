@@ -333,6 +333,8 @@ body{font-family:var(--font);color:var(--gray-900);height:100%;overflow:hidden;f
 .alert-ok{background:var(--green-bg);color:var(--green);border-left:3px solid var(--green)}
 .alert.show{display:block}
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.hp-cell{cursor:pointer;transition:background .12s}
+.hp-cell:hover{background:var(--blue-50)}
 table{width:100%;border-collapse:collapse}
 thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);border-bottom:1px solid var(--gray-200);background:var(--gray-50);white-space:nowrap}
 tbody td{padding:9px 12px;font-size:13px;color:var(--gray-700);border-bottom:1px solid var(--gray-100);vertical-align:middle}

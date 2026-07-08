@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
-import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
+import { fmt, fmtPT, calcH, fmtH, getMonday } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
 
 // ── MOA — Estado ──────────────────────
@@ -384,7 +384,8 @@ async function loadMOAWeek(){
   document.getElementById('moa-week-nav').style.display='flex';
   document.getElementById('moa-week-title').textContent=`Semana de ${fmtPT(fmtMon)} a ${fmtPT(fmtSun)}`;
   document.getElementById('moa-week-sub').textContent='';
-  document.getElementById('btn-export-moa').style.display='flex';
+  const btnExp=document.getElementById('btn-export-moa');
+  if(btnExp) btnExp.style.display='flex';
   const res=document.getElementById('moa-resultado');
   res.innerHTML='<div style="padding:32px;text-align:center;color:var(--gray-400)">A carregar…</div>';
   try{
@@ -401,7 +402,10 @@ async function loadMOAWeek(){
 
 function renderMOAResultado(rows){
   const res=document.getElementById('moa-resultado');
+  _moaRowsIndex={};
+  _moaClosePopover();
   if(!rows.length){res.innerHTML='<div style="padding:48px;text-align:center;color:var(--gray-400);font-size:14px">Nenhum registo encontrado para este período.</div>';return;}
+  rows.forEach(r=>{_moaRowsIndex[r.id]=r;});
   // Agrupar por empresa
   const byEmp={};
   rows.forEach(r=>{
@@ -419,7 +423,7 @@ function renderMOAResultado(rows){
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Data</th><th>Trabalhador</th><th>Função</th><th>Obra</th><th>Entrada</th><th>Saída</th><th>Horas N.</th><th>Horas E.</th><th>Total</th></tr></thead>
+          <thead><tr><th>Data</th><th>Trabalhador</th><th>Função</th><th>Obra</th><th>Entrada</th><th>Saída</th><th>Horas N.</th><th>Horas E.</th><th>Total</th><th>Ações</th></tr></thead>
           <tbody>
             ${regs.map(r=>{
               const dateObj=new Date(r.data+'T12:00:00');
@@ -435,6 +439,7 @@ function renderMOAResultado(rows){
                 <td>${fmtH(h.n)||'—'}</td>
                 <td>${fmtH(h.e)||'—'}</td>
                 <td style="font-weight:600">${fmtH(h.t)||'—'}</td>
+                <td><button class="btn btn-secondary btn-sm moa-edit-btn" onclick="moaEditRow(event,${r.id})">Editar</button></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -446,6 +451,102 @@ function renderMOAResultado(rows){
 }
 
 function exportMOAExcel(){showToast('Exportação Excel MOA em breve!');}
+
+// ── MOA Admin — edição/anulação de um registo (popover) ─────────────────────
+let _moaCurrent=null;   // {id, row} do registo aberto no popover
+let _moaRowsIndex={};   // id → row, repovoado a cada render
+
+document.addEventListener('mousedown', (e) => {
+  if (!_moaCurrent) return;
+  const pop = document.getElementById('moa-editor');
+  if (pop && !pop.contains(e.target) && !e.target.closest('.moa-edit-btn')) _moaClosePopover();
+});
+document.addEventListener('scroll', () => { if (_moaCurrent) _moaClosePopover(); }, true);
+
+function moaEditRow(evt, id) {
+  const row = _moaRowsIndex[id];
+  if (!row) return;
+  evt.stopPropagation();
+  _moaCurrent = { id, row };
+  _moaRenderPopover(evt.currentTarget);
+}
+
+function _moaRenderPopover(anchorEl) {
+  const { row } = _moaCurrent;
+  let pop = document.getElementById('moa-editor');
+  if (!pop) { pop = document.createElement('div'); pop.id = 'moa-editor'; document.body.appendChild(pop); }
+  pop.innerHTML = `
+    <div style="font-weight:700;color:var(--gray-900);margin-bottom:2px">${row.trabalhador_nome || ''}</div>
+    <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">${fmtPT(row.data)} · ${row.empresa_moa_nome || ''}</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1"><label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Entrada</label>
+        <input type="time" id="moa-entrada" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font)"/></div>
+      <div style="flex:1"><label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Saída</label>
+        <input type="time" id="moa-saida" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font)"/></div>
+    </div>
+    <div id="moa-audit" style="font-size:10px;color:var(--gray-400);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="moaSaveRow()">Guardar</button>
+      <button class="btn btn-secondary btn-sm" onclick="_moaClosePopover()">Cancelar</button>
+    </div>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red-bg);color:var(--red)" onclick="moaAnularRow()">Anular registo</button>
+  `;
+  document.getElementById('moa-entrada').value = row.entrada?.slice(0, 5) || '';
+  document.getElementById('moa-saida').value = row.saida?.slice(0, 5) || '';
+  const auditEl = document.getElementById('moa-audit');
+  if (row.editado_por) {
+    auditEl.style.display = 'block';
+    const dt = row.editado_em ? new Date(row.editado_em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    auditEl.textContent = `Editado por ${row.editado_por}${dt ? ' em ' + dt : ''}`;
+  } else auditEl.style.display = 'none';
+  pop.style.cssText = 'display:block;position:fixed;z-index:1500;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:0 8px 28px rgba(0,0,0,.2);padding:14px;width:230px;font-size:13px';
+  const rect = anchorEl.getBoundingClientRect();
+  const maxLeft = window.innerWidth - 246;
+  const left = Math.max(8, Math.min(rect.left, maxLeft));
+  let top = rect.bottom + 6;
+  if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 226);
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+}
+
+function _moaClosePopover() {
+  const pop = document.getElementById('moa-editor');
+  if (pop) pop.style.display = 'none';
+  _moaCurrent = null;
+}
+
+async function moaSaveRow() {
+  if (!_moaCurrent) return;
+  const entrada = document.getElementById('moa-entrada').value || null;
+  const saida = document.getElementById('moa-saida').value || null;
+  try {
+    const { error } = await sb.from('registos_ponto_moa').update({
+      entrada, saida,
+      editado_por: S.currentUser?.nome || S.currentUser?.key || '—',
+      editado_em: new Date().toISOString(),
+    }).eq('id', _moaCurrent.id);
+    if (error) throw error;
+    showToast('Registo atualizado ✓');
+    _moaClosePopover();
+    await loadMOAWeek();
+  } catch (e) {
+    showToast('Erro ao guardar: ' + (e.message || e));
+  }
+}
+
+async function moaAnularRow() {
+  if (!_moaCurrent) return;
+  if (!confirm('Anular este registo de ponto? Esta ação remove a linha e não pode ser revertida.')) return;
+  try {
+    const { error } = await sb.from('registos_ponto_moa').delete().eq('id', _moaCurrent.id);
+    if (error) throw error;
+    showToast('Registo anulado');
+    _moaClosePopover();
+    await loadMOAWeek();
+  } catch (e) {
+    showToast('Erro ao anular: ' + (e.message || e));
+  }
+}
 
 async function initMOAFilters(){
   // Preencher empresas no filtro do admin
@@ -467,5 +568,6 @@ export {
   renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA,
   encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador,
   buildAlugList, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
-  applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters
+  applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters,
+  moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover
 };

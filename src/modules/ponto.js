@@ -4,13 +4,148 @@
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { fmt, fmtPT, isWeekend, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
-import { MESES_PT, DIAS_PT_EXP } from '../config.js';
+import { MESES_PT, DIAS_PT_EXP, TIPOS } from '../config.js';
 import { showToast } from './navigation.js';
 
 // ═══════════════════════════════════════
 //  ADMIN — HISTÓRICO SEMANAL
 // ═══════════════════════════════════════
 let histSemanaRef = new Date(); // data de referência da semana atual no hist
+
+// ── Edição/anulação de um registo (popover por célula) ──────────────────────
+// Anexado ao <body> (position:fixed) para nunca ficar tapado pelo overflow-x
+// da tabela — mesmo motivo do dropdown de função em ferias.js.
+let _hpCurrent = null;    // {obraId, colabN, dateStr, dateObj, reg, colab} da célula aberta
+let _histCellIndex = {};  // cellKey → contexto da célula, repovoado a cada render
+
+document.addEventListener('mousedown', (e) => {
+  if (!_hpCurrent) return;
+  const pop = document.getElementById('hp-editor');
+  if (pop && !pop.contains(e.target) && !e.target.closest('.hp-cell')) _hpClosePopover();
+});
+document.addEventListener('scroll', () => { if (_hpCurrent) _hpClosePopover(); }, true);
+
+export function hpEditCell(evt, cellKey) {
+  const ctx = _histCellIndex[cellKey];
+  if (!ctx) return;
+  evt.stopPropagation();
+  _hpCurrent = ctx;
+  _hpRenderPopover(evt.currentTarget);
+}
+
+function _hpRenderPopover(anchorEl) {
+  const ctx = _hpCurrent;
+  let pop = document.getElementById('hp-editor');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'hp-editor';
+    document.body.appendChild(pop);
+  }
+  const tiposOpts = [...TIPOS, 'Anulado'];
+  const tipoAtual = ctx.reg?.tipo || 'Presença';
+  pop.innerHTML = `
+    <div style="font-weight:700;color:var(--gray-900);margin-bottom:2px" id="hp-nome"></div>
+    <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px" id="hp-data"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1"><label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Entrada</label>
+        <input type="time" id="hp-entrada" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font)"/></div>
+      <div style="flex:1"><label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Saída</label>
+        <input type="time" id="hp-saida" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font)"/></div>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Tipo</label>
+      <select id="hp-tipo" onchange="hpTipoChange()" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font);background:var(--white)">
+        ${tiposOpts.map(t => `<option${tipoAtual === t ? ' selected' : ''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div id="hp-audit" style="font-size:10px;color:var(--gray-400);margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="hpSaveCell()">Guardar</button>
+      <button class="btn btn-secondary btn-sm" onclick="_hpClosePopover()">Cancelar</button>
+    </div>
+    <button id="hp-anular-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red-bg);color:var(--red)" onclick="hpAnularCell()">Anular registo</button>
+  `;
+  document.getElementById('hp-nome').textContent = ctx.colab?.nome || '';
+  document.getElementById('hp-data').textContent = fmtPT(ctx.dateStr);
+  document.getElementById('hp-entrada').value = ctx.reg?.entrada?.slice(0, 5) || '';
+  document.getElementById('hp-saida').value = ctx.reg?.saida?.slice(0, 5) || '';
+  document.getElementById('hp-anular-btn').style.display = (ctx.reg && ctx.reg.tipo !== 'Anulado') ? 'flex' : 'none';
+  const auditEl = document.getElementById('hp-audit');
+  if (ctx.reg?.editado_por) {
+    auditEl.style.display = 'block';
+    const dt = ctx.reg.editado_em ? new Date(ctx.reg.editado_em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    auditEl.textContent = `Editado por ${ctx.reg.editado_por}${dt ? ' em ' + dt : ''}`;
+  } else auditEl.style.display = 'none';
+  hpTipoChange();
+  pop.style.cssText = 'display:block;position:fixed;z-index:1500;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:0 8px 28px rgba(0,0,0,.2);padding:14px;width:230px;font-size:13px';
+  const rect = anchorEl.getBoundingClientRect();
+  const maxLeft = window.innerWidth - 246;
+  const left = Math.max(8, Math.min(rect.left, maxLeft));
+  let top = rect.bottom + 6;
+  if (top + 260 > window.innerHeight) top = Math.max(8, rect.top - 266);
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+}
+
+export function hpTipoChange() {
+  const tipo = document.getElementById('hp-tipo')?.value;
+  const isPresenca = tipo === 'Presença';
+  ['hp-entrada', 'hp-saida'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !isPresenca;
+    if (!isPresenca) el.value = '';
+  });
+}
+
+export function _hpClosePopover() {
+  const pop = document.getElementById('hp-editor');
+  if (pop) pop.style.display = 'none';
+  _hpCurrent = null;
+}
+
+async function _hpUpsert(extra) {
+  const ctx = _hpCurrent;
+  if (!ctx) return;
+  const payload = {
+    data: ctx.dateStr, colab_numero: ctx.colabN,
+    obra_id: ctx.obraId === '_sem' ? null : ctx.obraId,
+    editado_por: S.currentUser?.nome || S.currentUser?.key || '—',
+    editado_em: new Date().toISOString(),
+    ...extra,
+  };
+  const { error } = await sb.from('registos_ponto').upsert(payload, { onConflict: 'data,colab_numero' });
+  if (error) throw error;
+}
+
+export async function hpSaveCell() {
+  if (!_hpCurrent) return;
+  const tipo = document.getElementById('hp-tipo').value;
+  const isPresenca = tipo === 'Presença';
+  const entrada = isPresenca ? (document.getElementById('hp-entrada').value || null) : null;
+  const saida = isPresenca ? (document.getElementById('hp-saida').value || null) : null;
+  try {
+    await _hpUpsert({ entrada, saida, tipo });
+    showToast('Registo atualizado ✓');
+    _hpClosePopover();
+    await renderHistSemana();
+  } catch (e) {
+    showToast('Erro ao guardar: ' + (e.message || e));
+  }
+}
+
+export async function hpAnularCell() {
+  if (!_hpCurrent?.reg) return;
+  if (!confirm('Anular este registo de ponto? O dia fica marcado como "Anulado" e deixa de contar horas.')) return;
+  try {
+    await _hpUpsert({ entrada: null, saida: null, tipo: 'Anulado' });
+    showToast('Registo anulado');
+    _hpClosePopover();
+    await renderHistSemana();
+  } catch (e) {
+    showToast('Erro ao anular: ' + (e.message || e));
+  }
+}
 
 export async function applyFilter(){
   const ds = document.getElementById('f-semana').value;
@@ -25,6 +160,10 @@ export function navSemana(delta){
   document.getElementById('f-semana').value = fmt(histSemanaRef);
   renderHistSemana();
 }
+
+// Alguns elementos de exportação (export-btns-plandese, mes-mensal-sel) já não existem
+// no HTML atual — esta função evita que o resto do render pare por causa disso.
+function _elStyle(id){ const el=document.getElementById(id); return el?el.style:{}; }
 
 export async function renderHistSemana(){
   const mon = getMonday(histSemanaRef);
@@ -55,13 +194,13 @@ export async function renderHistSemana(){
     regs = data;
   } catch(e) {
     cont.innerHTML=`<div class="card" style="text-align:center;color:var(--red);padding:32px;font-size:13px">⚠️ Erro ao carregar dados: ${e.message||'Verifique a ligação ao Supabase.'}</div>`;
-    document.getElementById('export-btns-plandese').style.display='none';
+    _elStyle('export-btns-plandese').display='none';
     return;
   }
 
   if(!regs||!regs.length){
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Sem registos para esta semana.</div>';
-    document.getElementById('export-btns-plandese').style.display='none';
+    _elStyle('export-btns-plandese').display='none';
     return;
   }
 
@@ -77,6 +216,8 @@ export async function renderHistSemana(){
 
   cont.innerHTML='';
   let grandN=0,grandE=0,grandT=0;
+  _histCellIndex={};
+  _hpClosePopover();
 
   Object.keys(obraMap).sort().forEach(obraId=>{
     const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
@@ -129,17 +270,23 @@ export async function renderHistSemana(){
       let rN=0,rE=0,rT=0;
       let dayCells='';
       obraData[n].forEach((r,i)=>{
-        if(!r){dayCells+=`<td style="text-align:center;color:var(--gray-200);border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100);font-size:11px">—</td>`;return;}
+        const cellKey=`${obraId}__${n}__${i}`;
+        _histCellIndex[cellKey]={obraId,colabN:n,dateStr:dStrs[i],dateObj:days[i],reg:r||null,colab:c};
+        const cellAttrs=`class="hp-cell" onclick="hpEditCell(event,'${cellKey}')" title="Clique para editar"`;
+        if(!r){dayCells+=`<td ${cellAttrs} style="text-align:center;color:var(--gray-200);border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100);font-size:11px">—</td>`;return;}
         const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);
         rN+=h.n;rE+=h.e;rT+=h.t;
         const isFalta=r.tipo?.includes('Falta');
         const isFolga=r.tipo==='Folga';
-        if(isFalta){
-          dayCells+=`<td style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
+        const isAnulado=r.tipo==='Anulado';
+        if(isAnulado){
+          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span></td>`;
+        } else if(isFalta){
+          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
         } else if(isFolga){
-          dayCells+=`<td style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
+          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
         } else {
-          dayCells+=`<td style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;font-weight:600;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)">${h.t>0?fmtH(h.t):'—'}</td>`;
+          dayCells+=`<td ${cellAttrs} style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;font-weight:600;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)">${h.t>0?fmtH(h.t):'—'}</td>`;
         }
       });
       totN+=rN;totE+=rE;totT+=rT;
@@ -173,9 +320,10 @@ export async function renderHistSemana(){
   });
 
   window._histExportData={obraMap,days,dStrs,dayNames,semLabel,grandN,grandE,grandT};
-  document.getElementById('export-btns-plandese').style.display='flex';
+  _elStyle('export-btns-plandese').display='flex';
   const curM=new Date().getMonth()+1;
-  document.getElementById('mes-mensal-sel').value=String(curM);
+  const mesSel=document.getElementById('mes-mensal-sel');
+  if(mesSel) mesSel.value=String(curM);
 }
 
 // ── ExcelJS helpers ─────────────────────────────────────────────────────────
@@ -530,6 +678,7 @@ export function exportHistSemana(){
         if(!r)return['','',''];
         const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);
         rN+=h.n;rE+=h.e;rT+=h.t;
+        if(r.tipo==='Anulado')return['Anulado','',''];
         if(r.tipo?.includes('Falta'))return[r.tipo,'',''];
         if(r.tipo==='Folga')return['Folga','',''];
         return[h.n||'',h.e||'',h.t||''];
@@ -615,7 +764,7 @@ export function exportSemanaExcel(obraNome,obraData,days,semLabel){
   Object.keys(obraData).forEach(nStr=>{
     const n=parseInt(nStr),c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
     let rN=0,rE=0,rT=0;
-    const dc=obraData[n].map((r,i)=>{if(!r)return'';const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;if(r.tipo?.includes('Falta'))return r.tipo;if(r.tipo==='Folga')return'Folga';return h.t>0?fmtH(h.t):'';});
+    const dc=obraData[n].map((r,i)=>{if(!r)return'';const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;if(r.tipo==='Anulado')return'Anulado';if(r.tipo?.includes('Falta'))return r.tipo;if(r.tipo==='Folga')return'Folga';return h.t>0?fmtH(h.t):'';});
     totN+=rN;totE+=rE;totT+=rT;
     wd.push([n,c.nome,c.func,...dc,rN||'',rE||'',rT||'']);
   });

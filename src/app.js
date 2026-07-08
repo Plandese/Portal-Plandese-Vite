@@ -13,7 +13,7 @@ import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout } f
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
 
 // Ponto admin
-import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel } from './modules/ponto.js';
+import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
@@ -49,7 +49,7 @@ import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
 import { depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
-import { loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters } from './modules/enc-aluguer.js';
+import { loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover } from './modules/enc-aluguer.js';
 
 // Produção
 import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
@@ -137,9 +137,11 @@ Object.assign(window, {
   // Histórico / Ponto
   applyFilter, navSemana, exportHistSemana, exportMensal,
   switchFPTab, loadWeek,
+  hpEditCell, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover,
 
   // MOA
   applyMOAFilter, navMOASemana, exportMOAExcel,
+  moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
 
   // Obras
   renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, saveObraExtra,
