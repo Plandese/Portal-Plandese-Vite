@@ -5,6 +5,7 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { sbToggleObra } from '../db.js';
 import { closeModal, populateFilterSelects, flashAlert } from './navigation.js';
+import { fmtPT } from '../utils/helpers.js';
 
 export function novaObra(){
   document.getElementById('mo-title').textContent='Nova obra';
@@ -18,18 +19,59 @@ export function novaObra(){
   document.getElementById('modal-obra').classList.add('open');
 }
 
-export function renderObras(){
-  const cont=document.getElementById('obras-list');cont.innerHTML='';
-  if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';document.getElementById('nb-obras').textContent=0;return;}
+let _obrView='lista';
+
+export function obrSetView(mode){
+  _obrView=mode;
+  ['lista','cards'].forEach(m=>{
+    document.getElementById('obr-vbtn-'+m)?.classList.toggle('active', m===mode);
+  });
+  renderObras();
+}
+
+function _pessoas(o){
+  return {
+    diretorNome: o.diretor_id ? (S.USERS[o.diretor_id]?.nome || o.diretor_id) : null,
+    encNome: o.encarregado_id ? (S.USERS[o.encarregado_id]?.nome || o.encarregado_id) : null
+  };
+}
+
+function _renderObrasCards(){
   const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px';
   S.OBRAS.forEach(o=>{
-    const diretorNome = o.diretor_id ? (S.USERS[o.diretor_id]?.nome || o.diretor_id) : null;
-    const encNome = o.encarregado_id ? (S.USERS[o.encarregado_id]?.nome || o.encarregado_id) : null;
+    const {diretorNome,encNome}=_pessoas(o);
     const pessoasHtml = (diretorNome || encNome) ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);display:flex;flex-direction:column;gap:4px">${diretorNome?`<div style="font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--gray-400);min-width:80px">Diretor</span>${diretorNome}</div>`:''}${encNome?`<div style="font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--gray-400);min-width:80px">Encarregado</span>${encNome}</div>`:''}</div>` : '';
     const card=document.createElement('div');card.className='card';card.style.padding='16px';card.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px"><div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:10px;height:10px;border-radius:50%;background:${o.ativa?'var(--green)':'var(--gray-300)'};flex-shrink:0;margin-top:3px"></div><div><div style="font-weight:600;font-size:14px">${o.nome}</div>${o.local?`<div style="font-size:12px;color:var(--gray-400);margin-top:2px">${o.local}</div>`:''}</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm" style="background:${o.ativa?'var(--yellow-bg)':'var(--green-bg)'};color:${o.ativa?'var(--yellow)':'var(--green)'};border:1px solid ${o.ativa?'#FDE68A':'var(--green-light)'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div></div>${pessoasHtml}`;
     grid.appendChild(card);
   });
-  cont.appendChild(grid);document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
+  return grid;
+}
+
+function _renderObrasLista(){
+  const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='padding:0;overflow:hidden';
+  const tblWrap=document.createElement('div');tblWrap.className='tbl-wrap';
+  const rows=S.OBRAS.map(o=>{
+    const {diretorNome,encNome}=_pessoas(o);
+    return `<tr>
+      <td><span style="width:8px;height:8px;border-radius:50%;background:${o.ativa?'var(--green)':'var(--gray-300)'};display:inline-block;margin-right:8px"></span><span style="font-weight:500">${o.nome}</span></td>
+      <td style="color:var(--gray-500)">${o.local||'—'}</td>
+      <td style="color:var(--gray-500)">${o.prazo?fmtPT(o.prazo):'—'}</td>
+      <td style="color:var(--gray-500)">${diretorNome||'—'}</td>
+      <td style="color:var(--gray-500)">${encNome||'—'}</td>
+      <td><span class="badge ${o.ativa?'b-green':'b-gray'}">${o.ativa?'Ativa':'Inativa'}</span></td>
+      <td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm" style="background:${o.ativa?'var(--yellow-bg)':'var(--green-bg)'};color:${o.ativa?'var(--yellow)':'var(--green)'};border:1px solid ${o.ativa?'#FDE68A':'var(--green-light)'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div></td>
+    </tr>`;
+  }).join('');
+  tblWrap.innerHTML=`<table><thead><tr><th>Nome</th><th>Local</th><th>Prazo</th><th>Diretor</th><th>Encarregado</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.appendChild(tblWrap);
+  return wrap;
+}
+
+export function renderObras(){
+  const cont=document.getElementById('obras-list');cont.innerHTML='';
+  if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';document.getElementById('nb-obras').textContent=0;return;}
+  cont.appendChild(_obrView==='cards' ? _renderObrasCards() : _renderObrasLista());
+  document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
 }
 
 export function editObra(id){
