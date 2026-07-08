@@ -16,7 +16,7 @@ import { stopCombQrScanner } from './enc-combustivel.js';
 // ── ENCARREGADO — ESTADO ──────────────────────────────────────
 
 function _encUpdatePrazoWidget(){
-  const username=S.currentUser?.username||S.currentUser?.nome;
+  const username=S.currentUser?.key;
   const obra=S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.prazo)
     .find(o=>o.encarregado_id===username);
   const valEl=document.getElementById('enc-obra-prazo-days');
@@ -25,6 +25,7 @@ function _encUpdatePrazoWidget(){
   if(!valEl||!lblEl||!iconEl) return;
   if(!obra){
     valEl.textContent='—';
+    valEl.style.color='';
     lblEl.textContent='sem obra atribuída';
     iconEl.style.background='#f9fafb'; iconEl.style.color='#9ca3af';
     return;
@@ -32,8 +33,9 @@ function _encUpdatePrazoWidget(){
   const today=new Date(); today.setHours(0,0,0,0);
   const prazoDate=new Date(obra.prazo+'T00:00:00');
   const days=Math.ceil((prazoDate-today)/(1000*60*60*24));
-  valEl.textContent=days>0?days:'0';
-  lblEl.textContent=`dias · ${obra.nome}`;
+  valEl.textContent=`Faltam ${days>0?days:0} dias`;
+  valEl.style.color='var(--red)';
+  lblEl.textContent=obra.nome;
   if(days<=7){iconEl.style.background='#fef2f2';iconEl.style.color='#dc2626';}
   else if(days<=21){iconEl.style.background='#fff7ed';iconEl.style.color='#ea580c';}
   else{iconEl.style.background='#f0fdf4';iconEl.style.color='#16a34a';}

@@ -1726,6 +1726,7 @@ body.dark-mode #enc-app{
 /* stat tile (prazo) */
 #enc-app .eb-stat{display:flex;flex-direction:column;justify-content:center;min-height:120px}
 #enc-app .eb-stat-n{font-size:36px;font-weight:800;color:var(--green);line-height:1;letter-spacing:-1.5px}
+#enc-app #enc-obra-prazo-days{font-size:17px;letter-spacing:-.2px;line-height:1.2}
 #enc-app .eb-stat-l{font-size:11px;color:var(--gray-500);font-weight:600;margin-top:4px}
 #enc-app #enc-obra-prazo-icon{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}
 #enc-app #enc-obra-prazo-icon svg{width:17px;height:17px}
