@@ -28,13 +28,17 @@ document.addEventListener('mousedown', (e) => {
   }
 });
 
-// Fecha ao fazer scroll (a dropdown é position:fixed, calculada a partir do
-// botão — sem isto ficaria "descolada" do botão ao rolar a página/tabela).
-document.addEventListener('scroll', () => {
-  if (_funcDropdownOpen) {
-    _funcDropdownOpen = false;
-    _renderTabela();
-  }
+// Fecha ao fazer scroll da página/tabela (a dropdown é position:fixed,
+// calculada a partir do botão — sem isto ficaria "descolada" do botão).
+// Usa capture para apanhar o scroll de qualquer contentor (ex.: a tabela
+// com scroll horizontal), mas ignora o scroll dentro da própria dropdown
+// (a lista de funções tem overflow-y:auto e pode precisar de scroll).
+document.addEventListener('scroll', (e) => {
+  if (!_funcDropdownOpen) return;
+  const dd = document.getElementById('ferias-func-dd');
+  if (dd && (e.target === dd || dd.contains(e.target))) return;
+  _funcDropdownOpen = false;
+  _renderTabela();
 }, true);
 
 // ── Dropdown do filtro de função ───────────────────────────────
