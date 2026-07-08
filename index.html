@@ -1275,6 +1275,14 @@
           </button>
         </div>
         <div class="alert alert-ok" id="colab-alert">Colaborador guardado.</div>
+        <div class="filter-bar">
+          <div class="field"><label>Pesquisa</label><input type="text" id="colab-f-search" placeholder="Nome ou nº…" oninput="renderColabs()"/></div>
+          <div class="field"><label>Função</label>
+            <select id="colab-f-func" onchange="renderColabs()" style="padding:7px 10px;font-size:13px">
+              <option value="">Todas</option>
+            </select>
+          </div>
+        </div>
         <div class="card" style="padding:0;overflow:hidden">
           <div class="tbl-wrap">
             <table>
