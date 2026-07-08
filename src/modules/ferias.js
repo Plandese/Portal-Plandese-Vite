@@ -10,9 +10,23 @@ const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho
 
 let _ano = new Date().getFullYear();
 let _locked = true;
-let _filtroFunc = null;
+let _filtroFuncs = new Set(); // vazio = todas as funções
+let _funcDropdownOpen = false;
 let _feriasUtilizadas = new Set(); // 'colab_numero|YYYY-MM-DD' — vêm das folhas de ponto
 let _feriasPrevistas  = new Set(); // 'colab_numero|YYYY-MM-DD' — planeadas, editáveis
+
+// Fecha o dropdown de função ao clicar fora dele.
+// Usa 'mousedown' (não 'click'): corre antes do re-render disparado pelo
+// próprio clique no botão/checkboxes, evitando fechar-se a si mesmo assim que abre.
+document.addEventListener('mousedown', (e) => {
+  if (!_funcDropdownOpen) return;
+  const dd = document.getElementById('ferias-func-dd');
+  const btn = document.getElementById('ferias-func-btn');
+  if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+    _funcDropdownOpen = false;
+    _renderTabela();
+  }
+});
 
 const NAME_W = 160;
 const TOT_W  = 52;
@@ -32,9 +46,20 @@ export function feriasToggleLock() {
   _renderTabela();
 }
 
-// ── Filtro por função — apenas re-render, sem novo fetch ─────
-export function feriasSetFiltro(func) {
-  _filtroFunc = (_filtroFunc === func) ? null : func;
+// ── Filtro por função (multi-seleção) — apenas re-render, sem novo fetch ─────
+export function feriasToggleFuncDropdown() {
+  _funcDropdownOpen = !_funcDropdownOpen;
+  _renderTabela();
+}
+
+export function feriasToggleFunc(func) {
+  if (_filtroFuncs.has(func)) _filtroFuncs.delete(func);
+  else _filtroFuncs.add(func);
+  _renderTabela();
+}
+
+export function feriasLimparFuncs() {
+  _filtroFuncs.clear();
   _renderTabela();
 }
 
@@ -215,37 +240,41 @@ function _renderTabela() {
     return;
   }
 
-  const funcs = [...new Set(allColabs.map(c => c.func))].sort();
-  const colabs = _filtroFunc ? allColabs.filter(c => c.func === _filtroFunc) : allColabs;
+  const funcs = [...new Set(allColabs.map(c => c.func))].sort((a, b) => a.localeCompare(b, 'pt'));
+  const colabs = _filtroFuncs.size ? allColabs.filter(c => _filtroFuncs.has(c.func)) : allColabs;
 
   cont.innerHTML = '';
 
-  // ── Barra de filtro por função ────────────────────────────────
+  // ── Barra de filtro por função (multi-seleção) ────────────────
+  const btnLabel = _filtroFuncs.size === 0
+    ? 'Todas'
+    : _filtroFuncs.size === 1
+      ? [...(_filtroFuncs)][0]
+      : `${_filtroFuncs.size} selecionadas`;
+
   const filtroBar = document.createElement('div');
-  filtroBar.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap';
-
-  const filtroLbl = document.createElement('span');
-  filtroLbl.style.cssText = 'font-size:12px;font-weight:500;color:var(--gray-500);white-space:nowrap';
-  filtroLbl.textContent = 'Função:';
-  filtroBar.appendChild(filtroLbl);
-
-  const chipStyle = (active) =>
-    `padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:500;border:1px solid ${active ? 'var(--primary)' : 'var(--gray-200)'};background:${active ? 'var(--primary)' : 'white'};color:${active ? 'white' : 'var(--gray-600)'};cursor:pointer;transition:all .15s`;
-
-  const chipTodos = document.createElement('button');
-  chipTodos.style.cssText = chipStyle(!_filtroFunc);
-  chipTodos.textContent = 'Todos';
-  chipTodos.onclick = () => { _filtroFunc = null; _renderTabela(); };
-  filtroBar.appendChild(chipTodos);
-
-  for (const f of funcs) {
-    const chip = document.createElement('button');
-    chip.style.cssText = chipStyle(_filtroFunc === f);
-    chip.textContent = f;
-    chip.onclick = () => feriasSetFiltro(f);
-    filtroBar.appendChild(chip);
-  }
-
+  filtroBar.className = 'filter-bar';
+  filtroBar.style.marginBottom = '12px';
+  filtroBar.innerHTML = `
+    <div class="field" style="position:relative;margin:0">
+      <label>Função</label>
+      <button type="button" id="ferias-func-btn" onclick="feriasToggleFuncDropdown()" style="min-width:180px;text-align:left;padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);background:var(--white);color:var(--gray-900);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span>${btnLabel}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;opacity:.6"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="ferias-func-dd" style="display:${_funcDropdownOpen ? 'block' : 'none'};position:absolute;top:100%;left:0;margin-top:4px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:20;min-width:220px;max-height:260px;overflow-y:auto;padding:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px;border-bottom:1px solid var(--gray-100);margin-bottom:4px">
+          <span style="font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px">Funções</span>
+          ${_filtroFuncs.size ? `<button type="button" onclick="feriasLimparFuncs()" style="border:none;background:none;color:var(--blue-500);font-size:12px;cursor:pointer;padding:0">Limpar</button>` : ''}
+        </div>
+        ${funcs.map(f => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:13px;color:var(--gray-700);cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+            <input type="checkbox" ${_filtroFuncs.has(f) ? 'checked' : ''} onchange="feriasToggleFunc('${f}')" style="accent-color:var(--blue-500);cursor:pointer"/> ${f}
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `;
   cont.appendChild(filtroBar);
 
   // ── Tabela ────────────────────────────────────────────────────

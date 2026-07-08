@@ -67,7 +67,7 @@ import { sbLoadMapasComp, renderMapasComp, openModalMapa, openModalMapaFromLPU, 
 import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './modules/dropbox.js';
 
 // Férias
-import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro } from './modules/ferias.js';
+import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs } from './modules/ferias.js';
 
 // Preços Unitários
 import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave, puExportExcel, puLimpar, puEditCell, puToggleNota, puSaveNota, _puRefreshDetail, puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp } from './modules/precos-unitarios.js';
@@ -262,7 +262,7 @@ Object.assign(window, {
   encGoComprasChat, chatSend, chatOnInput,
 
   // Férias
-  renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasSetFiltro,
+  renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs,
 
   // Lembretes
   renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar,
