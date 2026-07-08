@@ -1282,11 +1282,15 @@
               <option value="">Todas</option>
             </select>
           </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none;align-self:flex-end;padding-bottom:8px">
+            <input type="checkbox" id="colab-hide-inativos" onchange="colabToggleHideInativos()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
+            Ocultar inativos
+          </label>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <div class="tbl-wrap">
             <table>
-              <thead><tr><th>Nº</th><th>Nome</th><th>Função</th><th id="th-colab-remun" hidden>Valor/Hora</th><th>Estado</th><th></th></tr></thead>
+              <thead><tr><th>Nº</th><th>Nome</th><th>Função</th><th>Estado</th><th></th></tr></thead>
               <tbody id="colab-tbody"></tbody>
             </table>
           </div>
@@ -2583,7 +2587,6 @@
     <div class="field"><label>Função *</label>
       <select id="mc-func"><option>Administrador</option><option>Administraivo de Obra</option><option>Aj. Canalizador</option><option>Ajudante Canalizador</option><option>Assessor Financeiro</option><option>Assistente DF &amp; RH</option><option>Assistente Dep Comercial</option><option>Assistente Logistica</option><option>Calceteiro</option><option>Canalizador</option><option>Condutor Manobrador</option><option>Diretor de Obra</option><option>Diretor de Obra Júnior</option><option>Encarregado</option><option>Manobrador</option><option>Motorista</option><option>Pedreiro</option><option>Responsável Dep. Comercial</option><option>Responsável Depto. Compras</option><option>Servente</option><option>Téc. Sup.Seg. e Saúde no Trabalho</option><option>Técn. Administrativo</option><option>Outro</option></select>
     </div>
-    <div class="field" id="mc-remun-field" hidden><label>Valor/Hora (€)</label><input type="number" id="mc-remun" step="0.01" min="0" placeholder="10.00"/></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-colab')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveColab()">Guardar</button>

@@ -2,19 +2,21 @@
 //  ADMIN — COLABORADORES
 // ═══════════════════════════════════════
 import { S, R } from '../state.js';
-import { sbSaveColab, sbToggleColab, sbLoadColabRemuneracoes } from '../db.js';
+import { sbSaveColab, sbToggleColab } from '../db.js';
 import { closeModal, flashAlert } from './navigation.js';
+
+let _colabHideInativos=false;
+
+export function colabToggleHideInativos(){
+  _colabHideInativos=document.getElementById('colab-hide-inativos').checked;
+  renderColabs();
+}
 
 export async function renderColabs(){
   const tbody=document.getElementById('colab-tbody');tbody.innerHTML='';
   const ativos=S.COLABORADORES.filter(c=>c.ativo).length;
   document.getElementById('nb-colab').textContent=ativos;
   document.getElementById('colab-count-sub').textContent=`${S.COLABORADORES.length} colaboradores (${ativos} ativos)`;
-  const isAdmin=S.currentUser?.role==='admin';
-  const thRemun=document.getElementById('th-colab-remun');
-  if(thRemun) thRemun.hidden=!isAdmin;
-  const remunMap = isAdmin ? await sbLoadColabRemuneracoes() : {};
-  const remunCell = c => isAdmin ? `<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500)">${remunMap[c.n]!=null?remunMap[c.n].toFixed(2)+' €':'—'}</td>` : '';
   const funcSel=document.getElementById('colab-f-func');
   if(funcSel){
     const funcs=[...new Set(S.COLABORADORES.map(c=>c.func).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
@@ -26,11 +28,11 @@ export async function renderColabs(){
   const func=(funcSel||{value:''}).value;
   const list=S.COLABORADORES.filter(c=>{
     const txt=(c.n+' '+c.nome).toLowerCase();
-    return (!search||txt.includes(search))&&(!func||c.func===func);
+    return (!search||txt.includes(search))&&(!func||c.func===func)&&(!_colabHideInativos||c.ativo);
   });
   [...list].sort((a,b)=>a.n-b.n).forEach(c=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400);font-weight:600">${c.n}</td><td style="font-weight:500">${c.nome}</td><td><span class="badge b-gray">${c.func}</span></td>${remunCell(c)}<td><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editColab(${c.n})">Editar</button><button class="btn btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A" onclick="openAdvertencias(${c.n})" title="Advertências"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Advert.</button><button class="btn btn-sm" style="background:${c.ativo?'var(--yellow-bg)':'var(--green-bg)'};color:${c.ativo?'var(--yellow)':'var(--green)'};border:1px solid ${c.ativo?'#FDE68A':'var(--green-light)'}" onclick="toggleColab(${c.n})">${c.ativo?'Desativar':'Ativar'}</button></div></td>`;
+    tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400);font-weight:600">${c.n}</td><td style="font-weight:500">${c.nome}</td><td><span class="badge b-gray">${c.func}</span></td><td><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editColab(${c.n})">Editar</button><button class="btn btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A" onclick="openAdvertencias(${c.n})" title="Advertências"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Advert.</button><button class="btn btn-sm" style="background:${c.ativo?'var(--yellow-bg)':'var(--green-bg)'};color:${c.ativo?'var(--yellow)':'var(--green)'};border:1px solid ${c.ativo?'#FDE68A':'var(--green-light)'}" onclick="toggleColab(${c.n})">${c.ativo?'Desativar':'Ativar'}</button></div></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -42,13 +44,6 @@ export async function editColab(n){
   document.getElementById('mc-num').value=c.n;
   document.getElementById('mc-nome').value=c.nome;
   document.getElementById('mc-func').value=c.func;
-  const remunField=document.getElementById('mc-remun-field');
-  const isAdmin=S.currentUser?.role==='admin';
-  if(remunField) remunField.hidden=!isAdmin;
-  if(isAdmin){
-    const map=await sbLoadColabRemuneracoes();
-    document.getElementById('mc-remun').value=map[n]!=null?map[n]:'';
-  }
   document.getElementById('modal-colab').classList.add('open');
 }
 
@@ -63,11 +58,6 @@ export async function saveColab(){
   if(idEdit){const idx=S.COLABORADORES.findIndex(c=>c.n===idEdit);if(idx>=0){ativo=S.COLABORADORES[idx].ativo;S.COLABORADORES[idx].n=num;S.COLABORADORES[idx].nome=nome;S.COLABORADORES[idx].func=func;}}
   else S.COLABORADORES.push({n:num,nome,func,ativo:true});
   const payload={n:num,nome,func,ativo};
-  const remunField=document.getElementById('mc-remun-field');
-  if(remunField && !remunField.hidden){
-    const remunVal=document.getElementById('mc-remun').value;
-    if(remunVal!=='') payload.remun=parseFloat(remunVal);
-  }
   await sbSaveColab(payload);
   closeModal('modal-colab');renderColabs();flashAlert('colab-alert');
   R.emitEvent?.({ acao:(idEdit?'Colaborador atualizado':'Novo colaborador')+': '+nome, seccao:'colaboradores' });

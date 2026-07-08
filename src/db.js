@@ -11,7 +11,6 @@ import { USERS_BASE } from './config.js';
 // ═══════════════════════════════════════
 export async function carregarDados() {
   try {
-    // Colaboradores (sem remuneracao_hora — carregada à parte, só para admin)
     const {data: colabs} = await sb.from('colaboradores').select('numero,nome,funcao,ativo').order('numero');
     if (colabs && colabs.length > 0) {
       S.COLABORADORES = colabs.map(c => ({n:c.numero, nome:c.nome, func:c.funcao, ativo:c.ativo}));
@@ -75,19 +74,8 @@ export async function sbSaveObra(rec) {
 export async function sbSaveColab(c) {
   try {
     const payload = {numero:c.n, nome:c.nome, funcao:c.func, ativo:c.ativo};
-    if (c.remun !== undefined) payload.remuneracao_hora = c.remun;
     await sb.from('colaboradores').upsert(payload, {onConflict:'numero'});
   } catch(e) { console.warn('Erro ao guardar colaborador:', e); }
-}
-
-// Valor/hora — só deve ser pedido para utilizadores admin (dado sensível)
-export async function sbLoadColabRemuneracoes() {
-  try {
-    const {data} = await sb.from('colaboradores').select('numero,remuneracao_hora');
-    const map = {};
-    (data||[]).forEach(c => { map[c.numero] = c.remuneracao_hora; });
-    return map;
-  } catch(e) { console.warn('Erro ao carregar valores/hora:', e); return {}; }
 }
 
 export async function sbSaveUser(key, u) {
