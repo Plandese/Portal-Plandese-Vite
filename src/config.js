@@ -95,6 +95,17 @@ export const NAV_CHAPTERS = [
   {id:'def',  label:'Definições',                sections:['obras','utilizadores','empresas-moa','fornecedores']},
 ];
 
+// Módulos da app do encarregado — fonte única de verdade para os checkboxes
+// em Gerir Utilizadores e para a ocultação em initEnc()/_applyEncModulePermissions().
+export const ENC_MODULES = [
+  {id:'ponto',        label:'MO Plandese',   nav:'ponto'},
+  {id:'aluguer',       label:'MO Aluguer',    nav:null},
+  {id:'equipamentos',  label:'Equipamentos',  nav:'equip'},
+  {id:'combustivel',   label:'Combustível',   nav:'comb'},
+  {id:'compras',       label:'Compras',       nav:null},
+  {id:'historico',     label:'Histórico',     nav:'hist'},
+];
+
 export const TIPOS = ['Presença','Falta Injust.','Falta Just.','Férias'];
 export const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 export const DIAS_PT_EXP = ['Segunda-Feira','Terça-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sábado','Domingo'];

@@ -58,7 +58,7 @@ export function populateFilterSelects(){
 export function openModal(id){
   if(id==='modal-obra'){document.getElementById('mo-title').textContent='Nova obra';['mo-id','mo-nome','mo-local','mo-desc'].forEach(i=>document.getElementById(i).value='');}
   if(id==='modal-colab'){document.getElementById('mc-title').textContent='Novo colaborador';['mc-id','mc-num','mc-nome'].forEach(i=>document.getElementById(i).value='');document.getElementById('mc-func').value='Encarregado';}
-  if(id==='modal-user'){document.getElementById('mu-title').textContent='Novo utilizador';['mu-key','mu-nome','mu-user','mu-pass'].forEach(i=>document.getElementById(i).value='');document.getElementById('mu-pass').placeholder='password';document.getElementById('mu-role').value='encarregado';}
+  if(id==='modal-user'){document.getElementById('mu-title').textContent='Novo utilizador';['mu-key','mu-nome','mu-user','mu-pass'].forEach(i=>document.getElementById(i).value='');document.getElementById('mu-pass').placeholder='password';document.getElementById('mu-role').value='encarregado';R.renderEncModsCheckboxes?.(null);document.getElementById('mu-enc-mods-wrap').hidden=false;}
   if(id==='modal-empresa-moa'){document.getElementById('memoa-title').textContent='Nova Empresa MOA';['memoa-id','memoa-nome','memoa-nif','memoa-contacto'].forEach(i=>document.getElementById(i).value='');}
   document.getElementById(id).classList.add('open');
 }

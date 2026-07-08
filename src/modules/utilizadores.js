@@ -2,9 +2,9 @@
 //  ADMIN — UTILIZADORES
 // ═══════════════════════════════════════
 import { S, R } from '../state.js';
-import { sbSaveUser } from '../db.js';
+import { sbSaveUser, sbSaveEncModulos } from '../db.js';
 import { closeModal, flashAlert } from './navigation.js';
-import { ROLE_LABELS } from '../config.js';
+import { ROLE_LABELS, ENC_MODULES } from '../config.js';
 
 export function renderUsers(){
   const ROLE_BADGE={admin:'b-blue',diretor_obra:'b-blue',compras:'b-orange',financeiro:'b-green',comercial:'b-gray',encarregado:'b-gray'};
@@ -20,7 +20,44 @@ export function renderUsers(){
   });
 }
 
-export function editUser(key){const u=S.USERS[key];if(!u)return;document.getElementById('mu-title').textContent='Editar utilizador';document.getElementById('mu-key').value=key;document.getElementById('mu-nome').value=u.nome;document.getElementById('mu-user').value=key;document.getElementById('mu-pass').value='';document.getElementById('mu-pass').placeholder='Deixe em branco para manter a password atual';document.getElementById('mu-role').value=u.role;document.getElementById('modal-user').classList.add('open');}
+// modulos = array de ids permitidos, ou null/undefined (sem restrição = todos marcados)
+export function renderEncModsCheckboxes(modulos){
+  const grid=document.getElementById('mu-enc-mods-grid');
+  if(!grid)return;
+  grid.innerHTML=ENC_MODULES.map(m=>{
+    const checked=!modulos||modulos.includes(m.id);
+    return `<label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:400;color:var(--gray-700);cursor:pointer">
+      <input type="checkbox" class="mu-enc-mod" value="${m.id}" ${checked?'checked':''} style="width:15px;height:15px;flex-shrink:0"/>
+      ${m.label}
+    </label>`;
+  }).join('');
+}
+
+function readEncModsCheckboxes(){
+  const boxes=Array.from(document.querySelectorAll('.mu-enc-mod'));
+  const checked=boxes.filter(b=>b.checked).map(b=>b.value);
+  return checked.length===boxes.length ? null : checked; // null = sem restrições
+}
+
+export function onUserRoleChange(){
+  const role=document.getElementById('mu-role').value;
+  const wrap=document.getElementById('mu-enc-mods-wrap');
+  if(wrap) wrap.hidden = role!=='encarregado';
+}
+
+export function editUser(key){
+  const u=S.USERS[key];if(!u)return;
+  document.getElementById('mu-title').textContent='Editar utilizador';
+  document.getElementById('mu-key').value=key;
+  document.getElementById('mu-nome').value=u.nome;
+  document.getElementById('mu-user').value=key;
+  document.getElementById('mu-pass').value='';
+  document.getElementById('mu-pass').placeholder='Deixe em branco para manter a password atual';
+  document.getElementById('mu-role').value=u.role;
+  renderEncModsCheckboxes(u.encModulos);
+  onUserRoleChange();
+  document.getElementById('modal-user').classList.add('open');
+}
 
 export async function saveUser(){
   const nome=document.getElementById('mu-nome').value.trim();
@@ -30,9 +67,11 @@ export async function saveUser(){
   const editKey=document.getElementById('mu-key').value;
   if(!nome||!user||(!editKey&&!pass)){alert('Preencha todos os campos.');return;}
   const initials=nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  const encModulos=role==='encarregado' ? readEncModsCheckboxes() : null;
   if(editKey&&editKey!==user)delete S.USERS[editKey];
-  S.USERS[user]={nome,initials,role};
+  S.USERS[user]={nome,initials,role,encModulos};
   await sbSaveUser(user,{pass:pass||null,nome,initials,role});
+  await sbSaveEncModulos(user,encModulos);
   closeModal('modal-user');renderUsers();flashAlert('user-alert');
   R.emitEvent?.({ acao:(editKey?'Utilizador atualizado':'Novo utilizador')+': '+nome, seccao:'utilizadores' });
 }

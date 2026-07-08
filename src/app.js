@@ -18,7 +18,7 @@ import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSeman
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
 import { renderColabs, editColab, saveColab, toggleColab } from './modules/colaboradores.js';
-import { renderUsers, editUser, saveUser } from './modules/utilizadores.js';
+import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
 import { loadPermissions, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions } from './modules/permissions.js';
@@ -92,6 +92,7 @@ Object.assign(R, {
   renderFechoMes, applyFilter, renderEmpresasMOA,
   loadEmpresasMOA, loadColaboradoresMOA,
   initCompras, initMOAFilters,
+  renderEncModsCheckboxes,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -150,7 +151,7 @@ Object.assign(window, {
   openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF,
 
   // Utilizadores
-  renderUsers, saveUser, editUser, switchUtilTab,
+  renderUsers, saveUser, editUser, switchUtilTab, onUserRoleChange,
 
   // Permissões
   savePermissions, resetPermissions, onPermChange,

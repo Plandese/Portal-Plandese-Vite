@@ -25,10 +25,10 @@ export async function carregarDados() {
     await R.loadEmpresasMOA?.();
     await R.loadColaboradoresMOA?.();
     // Utilizadores
-    const {data: users} = await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
+    const {data: users} = await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config,enc_modulos');
     if (users && users.length > 0) {
       S.USERS = {};
-      users.forEach(u => { S.USERS[u.username] = {nome:u.nome, initials:u.initials||u.nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), role:u.role}; });
+      users.forEach(u => { S.USERS[u.username] = {nome:u.nome, initials:u.initials||u.nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), role:u.role, encModulos:u.enc_modulos||null}; });
       if (!S.USERS['admin']) S.USERS['admin'] = {nome:USERS_BASE['admin'].nome, initials:USERS_BASE['admin'].initials, role:USERS_BASE['admin'].role};
     }
     // Registos do dia atual e 7 dias anteriores
@@ -94,6 +94,13 @@ export async function sbSaveUser(key, u) {
   try {
     await sb.rpc('fn_upsert_user', {p_username:key, p_nome:u.nome, p_role:u.role, p_initials:u.initials, p_password:u.pass||null});
   } catch(e) { console.warn('Erro ao guardar utilizador:', e); }
+}
+
+// modulos = array de ids ENC_MODULES permitidos, ou null (sem restrição, tudo visível)
+export async function sbSaveEncModulos(username, modulos) {
+  try {
+    await sb.from('utilizadores').update({enc_modulos: modulos}).eq('username', username);
+  } catch(e) { console.warn('Erro ao guardar módulos do encarregado:', e); }
 }
 
 export async function sbToggleObra(id, ativa) {

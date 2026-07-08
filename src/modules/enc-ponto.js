@@ -4,7 +4,7 @@
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
-import { TIPOS } from '../config.js';
+import { TIPOS, ENC_MODULES } from '../config.js';
 import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
 import { _encEquipShowState, startEncQrScanner, stopEncQrScanner } from './enc-equip.js';
@@ -148,11 +148,26 @@ function encCloseWeatherModal(){
   if(modal) modal.style.display='none';
 }
 
+// Esconde os módulos do bento/bottom-nav que o admin desativou para este encarregado
+// (S.USERS já vem atualizado de carregarDados(), chamado antes de initEnc() no login).
+function _applyEncModulePermissions(){
+  const allowed = S.USERS[S.currentUser?.key]?.encModulos || null; // null = tudo visível
+  ENC_MODULES.forEach(m=>{
+    const tile = document.querySelector('.eb-mod[data-mod="'+m.id+'"]');
+    if(tile) tile.style.display = (!allowed || allowed.includes(m.id)) ? '' : 'none';
+    if(m.nav){
+      const navBtn = document.querySelector('.enc-nav-i[data-nav="'+m.nav+'"]');
+      if(navBtn) navBtn.style.display = (!allowed || allowed.includes(m.id)) ? '' : 'none';
+    }
+  });
+}
+
 async function initEnc(){
   // Mostrar home imediatamente (antes das chamadas async ao Supabase)
   const _nomeEl = document.getElementById('enc-home-nome');
   if (_nomeEl) _nomeEl.textContent = S.currentUser?.nome?.split(' ')[0] || 'Encarregado';
   document.getElementById('enc-screen0').style.display='flex';
+  _applyEncModulePermissions();
   ['enc-screen1','enc-screen2','enc-screen-equip',
    'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
    'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat']
