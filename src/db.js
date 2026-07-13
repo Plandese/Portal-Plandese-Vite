@@ -24,7 +24,7 @@ export async function carregarDados() {
     await R.loadEmpresasMOA?.();
     await R.loadColaboradoresMOA?.();
     // Utilizadores
-    const {data: users} = await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config,enc_modulos');
+    const {data: users} = await sb.from('utilizadores').select('username,nome,role,initials,painel_config,enc_modulos');
     if (users && users.length > 0) {
       S.USERS = {};
       users.forEach(u => { S.USERS[u.username] = {nome:u.nome, initials:u.initials||u.nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(), role:u.role, encModulos:u.enc_modulos||null}; });

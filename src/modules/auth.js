@@ -58,7 +58,7 @@ export async function doLogin() {
   let authedUser=null;
   try {
     mostrarDiag('A ligar ao Supabase...','#1d4ed8');
-    const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
+    const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,painel_config');
     if(error)throw error;
     S.USERS={};
     if(users&&users.length>0){
