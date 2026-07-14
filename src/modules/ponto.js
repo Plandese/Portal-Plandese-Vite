@@ -278,11 +278,14 @@ export async function renderHistSemana(){
         rN+=h.n;rE+=h.e;rT+=h.t;
         const isFalta=r.tipo?.includes('Falta');
         const isFolga=r.tipo==='Folga';
+        const isFerias=r.tipo==='Férias';
         const isAnulado=r.tipo==='Anulado';
         if(isAnulado){
           dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span></td>`;
         } else if(isFalta){
           dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
+        } else if(isFerias){
+          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-blue" style="font-size:10px">Férias</span></td>`;
         } else if(isFolga){
           dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
         } else {
@@ -680,6 +683,7 @@ export function exportHistSemana(){
         rN+=h.n;rE+=h.e;rT+=h.t;
         if(r.tipo==='Anulado')return['Anulado','',''];
         if(r.tipo?.includes('Falta'))return[r.tipo,'',''];
+        if(r.tipo==='Férias')return['Férias','',''];
         if(r.tipo==='Folga')return['Folga','',''];
         return[h.n||'',h.e||'',h.t||''];
       });
@@ -745,6 +749,7 @@ export async function loadWeek(){
         if(!r)return`<td style="color:var(--gray-200);text-align:center">—</td>`;
         const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;
         if(r.tipo?.includes('Falta'))return`<td style="text-align:center"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
+        if(r.tipo==='Férias')return`<td style="text-align:center"><span class="badge b-blue" style="font-size:10px">Férias</span></td>`;
         if(r.tipo==='Folga')return`<td style="text-align:center"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
         return`<td style="text-align:center;font-family:'DM Mono',monospace;font-size:11px">${h.t>0?fmtH(h.t):'—'}</td>`;
       }).join('');
@@ -764,7 +769,7 @@ export function exportSemanaExcel(obraNome,obraData,days,semLabel){
   Object.keys(obraData).forEach(nStr=>{
     const n=parseInt(nStr),c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
     let rN=0,rE=0,rT=0;
-    const dc=obraData[n].map((r,i)=>{if(!r)return'';const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;if(r.tipo==='Anulado')return'Anulado';if(r.tipo?.includes('Falta'))return r.tipo;if(r.tipo==='Folga')return'Folga';return h.t>0?fmtH(h.t):'';});
+    const dc=obraData[n].map((r,i)=>{if(!r)return'';const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;if(r.tipo==='Anulado')return'Anulado';if(r.tipo?.includes('Falta'))return r.tipo;if(r.tipo==='Férias')return'Férias';if(r.tipo==='Folga')return'Folga';return h.t>0?fmtH(h.t):'';});
     totN+=rN;totE+=rE;totT+=rT;
     wd.push([n,c.nome,c.func,...dc,rN||'',rE||'',rT||'']);
   });
