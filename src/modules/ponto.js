@@ -30,7 +30,17 @@ export function hpEditCell(evt, cellKey) {
   if (!ctx) return;
   evt.stopPropagation();
   _hpCurrent = ctx;
+  _hpCurrent._anchor = evt.currentTarget;
+  // Se a célula tiver >1 registo, começa por editar o primeiro (o utilizador pode trocar no seletor).
+  _hpCurrent.reg = (ctx.regs && ctx.regs.length) ? ctx.regs[0] : (ctx.reg || null);
   _hpRenderPopover(evt.currentTarget);
+}
+
+// Seleciona qual registo da célula (quando há vários) está a ser editado
+export function hpPickReg(idx) {
+  if (!_hpCurrent || !_hpCurrent.regs) return;
+  _hpCurrent.reg = _hpCurrent.regs[idx] || null;
+  _hpRenderPopover(_hpCurrent._anchor);
 }
 
 function _hpRenderPopover(anchorEl) {
@@ -43,9 +53,23 @@ function _hpRenderPopover(anchorEl) {
   }
   const tiposOpts = [...TIPOS, 'Anulado'];
   const tipoAtual = ctx.reg?.tipo || 'Presença';
+  // Seletor de registo quando a célula tem vários (ex.: dois encarregados)
+  let chooserHTML = '';
+  if (ctx.regs && ctx.regs.length > 1) {
+    const opts = ctx.regs.map((r, idx) => {
+      const encNome = r.encarregado_id ? (S.USERS[r.encarregado_id]?.nome || r.encarregado_id) : 'sem encarregado';
+      const hor = (r.entrada && r.saida) ? `${r.entrada.slice(0,5)}–${r.saida.slice(0,5)}` : (r.tipo && r.tipo !== 'Presença' ? r.tipo : '—');
+      const sel = r === ctx.reg;
+      return `<button onclick="hpPickReg(${idx})" style="text-align:left;padding:5px 8px;font-size:11px;font-family:var(--font);border:1px solid ${sel?'var(--blue-500,#3b82f6)':'var(--gray-200)'};background:${sel?'var(--blue-50,#eff6ff)':'var(--white)'};color:var(--gray-800);border-radius:6px;cursor:pointer">${encNome} · ${hor}</button>`;
+    }).join('');
+    chooserHTML = `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:7px 8px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:#9a3412;margin-bottom:5px">⚠ ${ctx.regs.length} registos neste dia — escolha qual editar</div>
+      <div style="display:flex;flex-direction:column;gap:4px">${opts}</div></div>`;
+  }
   pop.innerHTML = `
     <div style="font-weight:700;color:var(--gray-900);margin-bottom:2px" id="hp-nome"></div>
     <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px" id="hp-data"></div>
+    ${chooserHTML}
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <div style="flex:1"><label style="font-size:10px;color:var(--gray-500);display:block;margin-bottom:3px">Entrada</label>
         <input type="time" id="hp-entrada" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--gray-200);border-radius:6px;font-family:var(--font)"/></div>
@@ -110,11 +134,12 @@ async function _hpUpsert(extra) {
   const payload = {
     data: ctx.dateStr, colab_numero: ctx.colabN,
     obra_id: ctx.obraId === '_sem' ? null : ctx.obraId,
+    encarregado_id: ctx.reg?.encarregado_id ?? null,
     editado_por: S.currentUser?.nome || S.currentUser?.key || '—',
     editado_em: new Date().toISOString(),
     ...extra,
   };
-  const { error } = await sb.from('registos_ponto').upsert(payload, { onConflict: 'data,colab_numero' });
+  const { error } = await sb.from('registos_ponto').upsert(payload, { onConflict: 'data,colab_numero,obra_id,encarregado_id' });
   if (error) throw error;
 }
 
@@ -204,20 +229,48 @@ export async function renderHistSemana(){
     return;
   }
 
-  // Agrupar por obra → colaborador → dia
+  // Agrupar por obra → colaborador → dia. Cada célula é uma LISTA de registos
+  // (o mesmo colab/obra/dia pode ter >1 registo — ex.: dois encarregados).
   const obraMap={};
+  const dupByDay={}; // dateStr -> { colab_numero: nº de registos nesse dia (todas as obras) }
   regs.forEach(r=>{
     const oId=r.obra_id||'_sem';
     if(!obraMap[oId]) obraMap[oId]={};
-    if(!obraMap[oId][r.colab_numero]) obraMap[oId][r.colab_numero]=Array(6).fill(null);
+    if(!obraMap[oId][r.colab_numero]) obraMap[oId][r.colab_numero]=Array.from({length:6},()=>[]);
     const di=dStrs.indexOf(r.data);
-    if(di>=0) obraMap[oId][r.colab_numero][di]=r;
+    if(di>=0) obraMap[oId][r.colab_numero][di].push(r);
+    if(!dupByDay[r.data]) dupByDay[r.data]={};
+    dupByDay[r.data][r.colab_numero]=(dupByDay[r.data][r.colab_numero]||0)+1;
+  });
+  // Colaboradores com ≥2 registos no mesmo dia → precisam de verificação
+  const dupResumo=[]; // {nome, data}
+  Object.keys(dupByDay).forEach(ds=>{
+    Object.keys(dupByDay[ds]).forEach(cn=>{
+      if(dupByDay[ds][cn]>=2){
+        const cc=S.COLABORADORES.find(x=>x.n===parseInt(cn));
+        dupResumo.push({nome:cc?.nome||('Nº '+cn), data:ds});
+      }
+    });
   });
 
   cont.innerHTML='';
   let grandN=0,grandE=0,grandT=0;
   _histCellIndex={};
   _hpClosePopover();
+
+  if(dupResumo.length){
+    const itens=dupResumo
+      .sort((a,b)=>a.data.localeCompare(b.data)||a.nome.localeCompare(b.nome))
+      .map(d=>`<span style="display:inline-block;background:var(--white);border:1px solid var(--orange,#ea580c);color:var(--orange,#ea580c);border-radius:12px;padding:2px 9px;font-size:11px;font-weight:600;margin:2px 4px 2px 0">${d.nome} · ${fmtPT(d.data)}</span>`)
+      .join('');
+    const banner=document.createElement('div');
+    banner.className='card';
+    banner.style.cssText='margin-bottom:12px;background:#fff7ed;border-color:#fed7aa;padding:12px 14px';
+    banner.innerHTML=`<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:6px">⚠ Registos a verificar</div>
+      <div style="font-size:12px;color:#9a3412;margin-bottom:8px">Estes colaboradores têm mais do que um registo no mesmo dia (várias obras ou vários encarregados). Confirme se está correto.</div>
+      <div>${itens}</div>`;
+    cont.appendChild(banner);
+  }
 
   Object.keys(obraMap).sort().forEach(obraId=>{
     const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
@@ -269,27 +322,31 @@ export async function renderHistSemana(){
       const c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
       let rN=0,rE=0,rT=0;
       let dayCells='';
-      obraData[n].forEach((r,i)=>{
+      obraData[n].forEach((cellRegs,i)=>{
         const cellKey=`${obraId}__${n}__${i}`;
-        _histCellIndex[cellKey]={obraId,colabN:n,dateStr:dStrs[i],dateObj:days[i],reg:r||null,colab:c};
+        _histCellIndex[cellKey]={obraId,colabN:n,dateStr:dStrs[i],dateObj:days[i],regs:cellRegs,reg:cellRegs[0]||null,colab:c};
+        const isDupDay=(dupByDay[dStrs[i]]?.[n]||0)>=2;
+        const warn=isDupDay?`<span title="Colaborador com vários registos neste dia — verificar" style="color:var(--orange,#ea580c);font-weight:800;margin-left:3px">⚠</span>`:'';
         const cellAttrs=`class="hp-cell" onclick="hpEditCell(event,'${cellKey}')" title="Clique para editar"`;
-        if(!r){dayCells+=`<td ${cellAttrs} style="text-align:center;color:var(--gray-200);border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100);font-size:11px">—</td>`;return;}
-        const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);
+        const baseStyle='text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)';
+        if(!cellRegs.length){dayCells+=`<td ${cellAttrs} style="${baseStyle};color:var(--gray-200);font-size:11px">—</td>`;return;}
+        // Somar horas de todos os registos da célula (faltas/férias/folga/anulado não têm horas)
+        let h={n:0,e:0,t:0};
+        cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
         rN+=h.n;rE+=h.e;rT+=h.t;
-        const isFalta=r.tipo?.includes('Falta');
-        const isFolga=r.tipo==='Folga';
-        const isFerias=r.tipo==='Férias';
-        const isAnulado=r.tipo==='Anulado';
-        if(isAnulado){
-          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span></td>`;
-        } else if(isFalta){
-          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
-        } else if(isFerias){
-          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-blue" style="font-size:10px">Férias</span></td>`;
-        } else if(isFolga){
-          dayCells+=`<td ${cellAttrs} style="text-align:center;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
+        if(h.t>0){
+          dayCells+=`<td ${cellAttrs} style="font-family:'DM Mono',monospace;font-size:11px;font-weight:600;${baseStyle}">${fmtH(h.t)}${warn}</td>`;
         } else {
-          dayCells+=`<td ${cellAttrs} style="font-family:'DM Mono',monospace;font-size:11px;text-align:center;font-weight:600;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)">${h.t>0?fmtH(h.t):'—'}</td>`;
+          // Sem horas: mostrar o badge do tipo especial mais relevante
+          const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+          const tp=special?.tipo||'';
+          let badge;
+          if(tp==='Anulado') badge=`<span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span>`;
+          else if(tp.includes('Falta')) badge=`<span class="badge b-red" style="font-size:10px">${tp}</span>`;
+          else if(tp==='Férias') badge=`<span class="badge b-blue" style="font-size:10px">Férias</span>`;
+          else if(tp==='Folga') badge=`<span class="badge b-yellow" style="font-size:10px">Folga</span>`;
+          else badge=`<span style="color:var(--gray-200);font-size:11px">—</span>`;
+          dayCells+=`<td ${cellAttrs} style="${baseStyle}">${badge}${warn}</td>`;
         }
       });
       totN+=rN;totE+=rE;totT+=rT;
@@ -372,7 +429,7 @@ export async function exportMensal(){
   showToast('A carregar dados do servidor...');
   const {data:regs}=await sb.from('registos_ponto').select('*').gte('data',dStrs[0]).lte('data',dStrs[dStrs.length-1]);
   const regMap={};
-  (regs||[]).forEach(r=>{ if(!regMap[r.data])regMap[r.data]={}; regMap[r.data][r.colab_numero]=r; });
+  (regs||[]).forEach(r=>{ if(!regMap[r.data])regMap[r.data]={}; if(!regMap[r.data][r.colab_numero])regMap[r.data][r.colab_numero]=[]; regMap[r.data][r.colab_numero].push(r); });
 
   showToast('A formatar ficheiro Excel...');
   const workbook=new ExcelJS.Workbook();
@@ -474,24 +531,35 @@ export async function exportMensal(){
       cell=ws.getCell(row,4); cell.value=diaNome;
       cell.font=exFont(false,9); cell.alignment=exAlign(); cell.border=bDay;
 
-      const reg=(regMap[dStr]||{})[n];
-      let normH='',extraH='',totalH='',ferV='',faltInjV='',faltJustV='',obraNome='';
-
-      if(reg){
+      // Vários registos por colaborador/dia (várias obras ou encarregados): somar
+      const dayRegs=(regMap[dStr]||{})[n]||[];
+      let ferV='',faltInjV='',faltJustV='';
+      let dayN=0,dayE=0,worked=false;
+      const dayObras=[]; // {nome,n,e} por obra nesse dia
+      dayRegs.forEach(reg=>{
         const tipo=reg.tipo||'Presença';
-        const ent=(reg.entrada||'').slice(0,5); const sai=(reg.saida||'').slice(0,5);
-        obraNome=S.OBRAS.find(o=>o.id===reg.obra_id)?.nome||'';
-        const hc=calcH(ent,sai,d);
-        if(tipo==='Férias'){ferV=1;dFer++;}
-        else if(tipo==='Falta Injust.'){faltInjV=1;dFaltInj++;}
-        else if(tipo==='Falta Just.'){faltJustV=1;dFaltJust++;}
-        else if(tipo&&tipo.includes('Falta')){faltInjV=1;dFaltInj++;} // compat. registos antigos
+        if(tipo==='Férias'){ferV=1;}
+        else if(tipo==='Falta Injust.'){faltInjV=1;}
+        else if(tipo==='Falta Just.'){faltJustV=1;}
+        else if(tipo.includes('Falta')){faltInjV=1;} // compat. registos antigos
+        else if(tipo==='Anulado'){/* não conta */}
         else {
-          if(hc.t>0){normH=hc.n||'';extraH=hc.e||'';totalH=hc.t;totN+=hc.n;totE+=hc.e;dTrab++;
+          const hc=calcH((reg.entrada||'').slice(0,5),(reg.saida||'').slice(0,5),d);
+          if(hc.t>0){
+            worked=true; dayN+=hc.n; dayE+=hc.e;
+            const nome=S.OBRAS.find(o=>o.id===reg.obra_id)?.nome||'';
+            let slot=dayObras.find(x=>x.nome===nome);
+            if(!slot){slot={nome,n:0,e:0};dayObras.push(slot);}
+            slot.n+=hc.n; slot.e+=hc.e;
             if(reg.obra_id){if(!obraHoras[reg.obra_id])obraHoras[reg.obra_id]={n:0,e:0};obraHoras[reg.obra_id].n+=hc.n;obraHoras[reg.obra_id].e+=hc.e;}
           }
         }
-      }
+      });
+      // Contar o dia uma única vez (trabalho tem prioridade sobre ausências)
+      if(worked){ totN+=dayN; totE+=dayE; dTrab++; }
+      else if(ferV){ dFer++; }
+      else if(faltInjV){ dFaltInj++; }
+      else if(faltJustV){ dFaltJust++; }
 
       function dc(col,val,argb,fillHex){
         cell=ws.getCell(row,col); cell.value=(val!==''&&val!==null&&val!==undefined)?val:null;
@@ -499,11 +567,16 @@ export async function exportMensal(){
         if(fillHex) cell.fill=exFill(fillHex);
       }
 
-      dc(5,obraNome,CC_C);   dc(6,normH||null,H_C);
-      dc(7,'',CC_C);         dc(8,'',H_C);
-      dc(9,'',CC_C);         dc(10,'',H_C);
-      dc(11,'',CC_C);        dc(12,extraH||null,H_C);
-      dc(13,totalH||null,TOT_C); dc(14,normH||null,NORM_C); dc(15,extraH||null,EXTRA_C);
+      // CC1..CC4: nome da obra + horas totais nessa obra (até 4 obras no mesmo dia)
+      const pairCols=[[5,6],[7,8],[9,10],[11,12]];
+      for(let k=0;k<4;k++){
+        const [cN,cH]=pairCols[k]; const ob=dayObras[k];
+        dc(cN, ob?ob.nome:'', CC_C);
+        dc(cH, ob?(Math.round((ob.n+ob.e)*100)/100||null):null, H_C);
+      }
+      dc(13, worked?(Math.round((dayN+dayE)*100)/100):null, TOT_C);
+      dc(14, worked?(Math.round(dayN*100)/100||null):null, NORM_C);
+      dc(15, worked?(Math.round(dayE*100)/100||null):null, EXTRA_C);
 
       cell=ws.getCell(row,16); cell.value=ferV||null; cell.alignment=exAlign(); cell.border=bData;
       if(ferV) cell.fill=exFill(F_FER);
@@ -677,15 +750,19 @@ export function exportHistSemana(){
     Object.keys(obraData).sort().forEach(nStr=>{
       const n=parseInt(nStr),c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
       let rN=0,rE=0,rT=0;
-      const dc=obraData[n].flatMap((r,i)=>{
-        if(!r)return['','',''];
-        const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);
+      const dc=obraData[n].flatMap((cellRegs,i)=>{
+        if(!cellRegs||!cellRegs.length)return['','',''];
+        let h={n:0,e:0,t:0};
+        cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
         rN+=h.n;rE+=h.e;rT+=h.t;
-        if(r.tipo==='Anulado')return['Anulado','',''];
-        if(r.tipo?.includes('Falta'))return[r.tipo,'',''];
-        if(r.tipo==='Férias')return['Férias','',''];
-        if(r.tipo==='Folga')return['Folga','',''];
-        return[h.n||'',h.e||'',h.t||''];
+        if(h.t>0)return[h.n||'',h.e||'',h.t||''];
+        const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+        const tp=special?.tipo||'';
+        if(tp==='Anulado')return['Anulado','',''];
+        if(tp.includes('Falta'))return[tp,'',''];
+        if(tp==='Férias')return['Férias','',''];
+        if(tp==='Folga')return['Folga','',''];
+        return['','',''];
       });
       totN+=rN;totE+=rE;totT+=rT;
       wd.push([n,c.nome,c.func,...dc,rN||'',rE||'',rT||'']);
@@ -721,8 +798,8 @@ export async function loadWeek(){
     if(obraFilter&&obraId!==obraFilter)return;
     const i=dStrs.indexOf(r.data);if(i<0)return;
     if(!obraMap[obraId])obraMap[obraId]={};
-    if(!obraMap[obraId][r.colab_numero])obraMap[obraId][r.colab_numero]=Array(7).fill(null);
-    obraMap[obraId][r.colab_numero][i]=r;
+    if(!obraMap[obraId][r.colab_numero])obraMap[obraId][r.colab_numero]=Array.from({length:7},()=>[]);
+    obraMap[obraId][r.colab_numero][i].push(r);
   });
   cont.innerHTML='';
   if(!Object.keys(obraMap).length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Sem registos para esta semana.</div>';return;}
@@ -745,13 +822,20 @@ export async function loadWeek(){
     Object.keys(obraData).forEach(nStr=>{
       const n=parseInt(nStr),c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
       let rN=0,rE=0,rT=0;
-      const dCells=obraData[n].map((r,i)=>{
-        if(!r)return`<td style="color:var(--gray-200);text-align:center">—</td>`;
-        const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;
-        if(r.tipo?.includes('Falta'))return`<td style="text-align:center"><span class="badge b-red" style="font-size:10px">${r.tipo}</span></td>`;
-        if(r.tipo==='Férias')return`<td style="text-align:center"><span class="badge b-blue" style="font-size:10px">Férias</span></td>`;
-        if(r.tipo==='Folga')return`<td style="text-align:center"><span class="badge b-yellow" style="font-size:10px">Folga</span></td>`;
-        return`<td style="text-align:center;font-family:'DM Mono',monospace;font-size:11px">${h.t>0?fmtH(h.t):'—'}</td>`;
+      const dCells=obraData[n].map((cellRegs,i)=>{
+        if(!cellRegs||!cellRegs.length)return`<td style="color:var(--gray-200);text-align:center">—</td>`;
+        let h={n:0,e:0,t:0};
+        cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
+        rN+=h.n;rE+=h.e;rT+=h.t;
+        const warn=cellRegs.length>1?`<span title="Vários registos" style="color:var(--orange,#ea580c);font-weight:800">⚠</span>`:'';
+        if(h.t>0)return`<td style="text-align:center;font-family:'DM Mono',monospace;font-size:11px">${fmtH(h.t)}${warn}</td>`;
+        const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+        const tp=special?.tipo||'';
+        if(tp.includes('Falta'))return`<td style="text-align:center"><span class="badge b-red" style="font-size:10px">${tp}</span>${warn}</td>`;
+        if(tp==='Férias')return`<td style="text-align:center"><span class="badge b-blue" style="font-size:10px">Férias</span>${warn}</td>`;
+        if(tp==='Folga')return`<td style="text-align:center"><span class="badge b-yellow" style="font-size:10px">Folga</span>${warn}</td>`;
+        if(tp==='Anulado')return`<td style="text-align:center"><span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span>${warn}</td>`;
+        return`<td style="text-align:center;color:var(--gray-200)">—</td>`;
       }).join('');
       otN+=rN;otE+=rE;otT+=rT;
       tbody+=`<tr><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-400)">${n}</td><td style="font-weight:500;font-size:13px">${c.nome}</td><td style="font-size:11px;color:var(--gray-500)">${c.func}</td>${dCells}<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--green);font-weight:600">${fmtH(rN)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--orange);font-weight:600">${fmtH(rE)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${fmtH(rT)}</td></tr>`;
@@ -769,7 +853,16 @@ export function exportSemanaExcel(obraNome,obraData,days,semLabel){
   Object.keys(obraData).forEach(nStr=>{
     const n=parseInt(nStr),c=S.COLABORADORES.find(x=>x.n===n);if(!c)return;
     let rN=0,rE=0,rT=0;
-    const dc=obraData[n].map((r,i)=>{if(!r)return'';const h=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);rN+=h.n;rE+=h.e;rT+=h.t;if(r.tipo==='Anulado')return'Anulado';if(r.tipo?.includes('Falta'))return r.tipo;if(r.tipo==='Férias')return'Férias';if(r.tipo==='Folga')return'Folga';return h.t>0?fmtH(h.t):'';});
+    const dc=obraData[n].map((cellRegs,i)=>{
+      if(!cellRegs||!cellRegs.length)return'';
+      let h={n:0,e:0,t:0};
+      cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[i]);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
+      rN+=h.n;rE+=h.e;rT+=h.t;
+      if(h.t>0)return fmtH(h.t);
+      const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+      const tp=special?.tipo||'';
+      if(tp==='Anulado')return'Anulado';if(tp.includes('Falta'))return tp;if(tp==='Férias')return'Férias';if(tp==='Folga')return'Folga';return'';
+    });
     totN+=rN;totE+=rE;totT+=rT;
     wd.push([n,c.nome,c.func,...dc,rN||'',rE||'',rT||'']);
   });

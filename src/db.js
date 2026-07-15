@@ -40,7 +40,7 @@ export async function carregarDados() {
         const dk = r.data;
         if (!S.REGISTOS[dk]) S.REGISTOS[dk] = [];
         if (!S.activeRows[dk]) S.activeRows[dk] = [];
-        S.REGISTOS[dk].push({colabN:r.colab_numero, obra:r.obra_id, entrada:r.entrada?.slice(0,5)||'', saida:r.saida?.slice(0,5)||'', tipo:r.tipo||'Presença'});
+        S.REGISTOS[dk].push({colabN:r.colab_numero, obra:r.obra_id, encarregado_id:r.encarregado_id||null, entrada:r.entrada?.slice(0,5)||'', saida:r.saida?.slice(0,5)||'', tipo:r.tipo||'Presença'});
         if (!S.activeRows[dk].includes(r.colab_numero)) S.activeRows[dk].push(r.colab_numero);
       });
     }
@@ -58,10 +58,11 @@ export async function sbSaveRegisto(dk, n) {
       data: dk,
       colab_numero: n,
       obra_id: r.obra||null,
+      encarregado_id: r.encarregado_id ?? (S.currentUser?.key||null),
       entrada: r.entrada||null,
       saida: r.saida||null,
       tipo: r.tipo||'Normal'
-    }, {onConflict: 'data,colab_numero'});
+    }, {onConflict: 'data,colab_numero,obra_id,encarregado_id'});
   } catch(e) { console.warn('Erro ao guardar registo:', e); }
 }
 

@@ -218,9 +218,13 @@ async function encPassarColaboradores(){
   // Atualizar S.currentDate com a data selecionada
   S.currentDate=new Date(data+'T12:00:00');
   const dk=S.encDataSel;
-  // Carregar registos existentes para esta data
+  const encId=S.currentUser?.key||null;
+  // Carregar registos existentes SÓ desta obra e deste encarregado (não misturar
+  // com folhas de outras obras/encarregados — senão ao submeter sobrescrevíamos-las).
   try {
-    const {data:regs}=await sb.from('registos_ponto').select('*').eq('data',dk);
+    let q=sb.from('registos_ponto').select('*').eq('data',dk).eq('obra_id',obraId);
+    q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
+    const {data:regs}=await q;
     if(regs&&regs.length>0){
       S.REGISTOS[dk]=regs.map(r=>({colabN:r.colab_numero,obra:r.obra_id,entrada:r.entrada?.slice(0,5)||'',saida:r.saida?.slice(0,5)||'',tipo:r.tipo||'Presença'}));
       S.activeRows[dk]=regs.map(r=>r.colab_numero);
@@ -315,8 +319,9 @@ async function sbSaveRegistoEnc(dk,n){
   try {
     await sb.from('registos_ponto').upsert({
       data:dk, colab_numero:n, obra_id:r.obra||null,
+      encarregado_id:S.currentUser?.key||null,
       entrada:r.entrada||null, saida:r.saida||null, tipo:r.tipo||'Presença'
-    },{onConflict:'data,colab_numero'});
+    },{onConflict:'data,colab_numero,obra_id,encarregado_id'});
   } catch(e){console.warn('save registo:',e);}
 }
 
@@ -438,7 +443,12 @@ async function encRemColab(n){
   const dk=S.encDataSel;
   S.activeRows[dk]=(S.activeRows[dk]||[]).filter(x=>x!==n);
   if(S.REGISTOS[dk])S.REGISTOS[dk]=S.REGISTOS[dk].filter(r=>r.colabN!==n);
-  try{await sb.from('registos_ponto').delete().eq('data',dk).eq('colab_numero',n);}catch(e){}
+  try{
+    const encId=S.currentUser?.key||null;
+    let dq=sb.from('registos_ponto').delete().eq('data',dk).eq('colab_numero',n).eq('obra_id',S.encObraId);
+    dq = encId!=null ? dq.eq('encarregado_id',encId) : dq.is('encarregado_id',null);
+    await dq;
+  }catch(e){}
   buildEncList();
   // Reativar chip anterior se existir
   const box=document.getElementById('ontem-box');
@@ -550,17 +560,21 @@ async function encLoadHistorico(){
       const {data:rows}=await sb.from('registos_ponto').select('*').eq('data',data).order('colab_numero');
       if(!rows||!rows.length){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:14px">Sem registos para este dia.</div>';return;}
       const dateObj=new Date(data+'T12:00:00');
+      // Colaboradores com ≥2 registos neste dia → assinalar para verificação
+      const dupCount={};
+      rows.forEach(r=>{dupCount[r.colab_numero]=(dupCount[r.colab_numero]||0)+1;});
       let html='<div style="display:flex;flex-direction:column;gap:10px">';
       rows.forEach(r=>{
         const c=S.COLABORADORES.find(x=>x.n===r.colab_numero);
         const nome=c?c.nome:(r.colab_numero||'—');
         const ob=S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
         const h=calcH(r.entrada?.slice(0,5)||'',r.saida?.slice(0,5)||'',dateObj);
+        const dupBadge=(dupCount[r.colab_numero]>=2)?`<span title="Vários registos neste dia — verificar" style="display:inline-block;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:6px">⚠ verificar</span>`:'';
         html+=`<div class="enc-card" style="margin:0;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:34px;height:34px;border-radius:50%;background:var(--blue-100);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--blue-600);flex-shrink:0">${nome.charAt(0)}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:700;font-size:14px;color:var(--gray-900)">${nome}</div>
+              <div style="font-weight:700;font-size:14px;color:var(--gray-900)">${nome}${dupBadge}</div>
               <div style="font-size:12px;color:var(--gray-500)">${ob}</div>
             </div>
             <div style="text-align:right">

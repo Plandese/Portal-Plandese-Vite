@@ -13,7 +13,7 @@ import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout } f
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
 
 // Ponto admin
-import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover } from './modules/ponto.js';
+import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
@@ -137,7 +137,7 @@ Object.assign(window, {
   // Histórico / Ponto
   applyFilter, navSemana, exportHistSemana, exportMensal,
   switchFPTab, loadWeek,
-  hpEditCell, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover,
+  hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, _hpClosePopover,
 
   // MOA
   applyMOAFilter, navMOASemana, exportMOAExcel,
