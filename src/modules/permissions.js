@@ -3,6 +3,10 @@
 // ═══════════════════════════════════════
 import { ROLE_ACCESS, NAV_CHAPTERS } from '../config.js';
 import { showToast } from './navigation.js';
+import { sb } from '../supabase.js';
+
+// Chave (linha) na tabela app_config onde a matriz de permissões é partilhada entre dispositivos
+const PERM_CONFIG_KEY = 'role_permissions';
 
 const CONFIGURABLE_ROLES = [
   {key:'diretor_obra', label:'Diretor de Obra'},
@@ -27,7 +31,22 @@ export function loadPermissions(){
   return JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS));
 }
 
-export function savePermissions(){
+// Lê a matriz partilhada do Supabase e sincroniza para o localStorage local.
+// O servidor é a fonte de verdade — chamado no login para todos os dispositivos verem o mesmo.
+export async function loadPermissionsFromServer(){
+  try {
+    const { data, error } = await sb.from('app_config')
+      .select('value').eq('key', PERM_CONFIG_KEY).maybeSingle();
+    if(error) throw error;
+    if(data && data.value && typeof data.value === 'object'){
+      try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(data.value)); } catch(e){}
+      return data.value;
+    }
+  } catch(e){ /* sem ligação — cai no localStorage/default */ }
+  return null;
+}
+
+export async function savePermissions(){
   const perms = readPermMatrixState();
   try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(perms)); } catch(e){}
   CONFIGURABLE_ROLES.forEach(r=>{
@@ -36,12 +55,20 @@ export function savePermissions(){
       ROLE_ACCESS[r.key].default  = 'painel';
     }
   });
+  let serverOk = true;
+  try {
+    const { error } = await sb.from('app_config').upsert(
+      { key: PERM_CONFIG_KEY, value: perms, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+    if(error) throw error;
+  } catch(e){ serverOk = false; }
   const msg = document.getElementById('perm-saved-msg');
   if(msg){ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'),2500); }
-  showToast('Permissões guardadas ✓');
+  showToast(serverOk ? 'Permissões guardadas ✓' : '⚠️ Guardado localmente — falhou no servidor');
 }
 
-export function resetPermissions(){
+export async function resetPermissions(){
   if(!confirm('Repor todas as permissões para os valores predefinidos?')) return;
   try { localStorage.removeItem(PERM_STORAGE_KEY); } catch(e){}
   CONFIGURABLE_ROLES.forEach(r=>{
@@ -50,6 +77,12 @@ export function resetPermissions(){
       ROLE_ACCESS[r.key].default  = 'painel';
     }
   });
+  try {
+    await sb.from('app_config').upsert(
+      { key: PERM_CONFIG_KEY, value: DEFAULT_PERMISSIONS, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+  } catch(e){ /* servidor indisponível — reposição só local */ }
   renderPermMatrix();
   showToast('Permissões repostas ✓');
 }

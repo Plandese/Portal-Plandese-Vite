@@ -104,6 +104,7 @@ export async function doLogin() {
       document.getElementById('u-nm').textContent=authedUser.nome;
       document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
       if(authedUser.role==='admin')updateDeviceBadge(device);
+      await R.loadPermissionsFromServer();
       R.applyStoredPermissions();
       R.initAdmin();
       R.applyRolePermissions(authedUser.role);

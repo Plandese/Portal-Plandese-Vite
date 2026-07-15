@@ -21,7 +21,7 @@ import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativo
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
-import { loadPermissions, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions } from './modules/permissions.js';
+import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions } from './modules/permissions.js';
 
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
@@ -84,7 +84,7 @@ Object.assign(R, {
   mostrarDiag,
   initEnc,
   initAdmin,
-  applyStoredPermissions, applyRolePermissions, renderPermMatrix,
+  applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
