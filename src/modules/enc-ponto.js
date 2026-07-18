@@ -280,17 +280,17 @@ async function encPassarColaboradores(){
   S.currentDate=new Date(data+'T12:00:00');
   const dk=S.encDataSel;
   const encId=S.currentUser?.key||null;
-  // Carregar registos existentes SÓ desta obra e deste encarregado (não misturar
-  // com folhas de outras obras/encarregados — senão ao submeter sobrescrevíamos-las).
+  // NÃO pré-carregar os registos já existentes desta obra/dia como lista
+  // editável/removível — reabrir a folha não deve arriscar apagar o que já
+  // está guardado só por remover um chip sem perceber que isso apaga logo
+  // o registo na base de dados. Mostra-se só um aviso informativo.
+  if(!S.REGISTOS[dk]){ S.REGISTOS[dk]=[]; S.activeRows[dk]=[]; }
   try {
-    let q=sb.from('registos_ponto').select('*').eq('data',dk).eq('obra_id',obraId);
+    let q=sb.from('registos_ponto').select('colab_numero').eq('data',dk).eq('obra_id',obraId);
     q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
     const {data:regs}=await q;
-    if(regs&&regs.length>0){
-      S.REGISTOS[dk]=regs.map(r=>({colabN:r.colab_numero,obra:r.obra_id,entrada:r.entrada?.slice(0,5)||'',saida:r.saida?.slice(0,5)||'',tipo:r.tipo||'Presença'}));
-      S.activeRows[dk]=regs.map(r=>r.colab_numero);
-    } else { S.REGISTOS[dk]=[]; S.activeRows[dk]=[]; }
-  } catch(e){ S.REGISTOS[dk]=[]; S.activeRows[dk]=[]; }
+    _encShowExistentesBanner(regs||[]);
+  } catch(e){ _encShowExistentesBanner([]); }
   // Atualizar resumo
   const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'—';
   const [y,m,d]=data.split('-');
@@ -309,6 +309,18 @@ async function encPassarColaboradores(){
 function encVoltarScreen1(){
   document.getElementById('enc-screen1').style.display='flex';document.getElementById('enc-screen1').style.flexDirection='column';
   document.getElementById('enc-screen2').style.display='none';
+}
+
+function _encShowExistentesBanner(regs){
+  const box=document.getElementById('enc-existentes-box');
+  if(!box) return;
+  if(!regs.length){ box.style.display='none'; return; }
+  const nomes=[...new Set(regs.map(r=>r.colab_numero))]
+    .map(n=>S.COLABORADORES.find(c=>c.n===n)?.nome.split(' ')[0])
+    .filter(Boolean);
+  document.getElementById('enc-existentes-txt').textContent=
+    `Já ${nomes.length===1?'está':'estão'} registado${nomes.length===1?'':'s'} hoje nesta obra: ${nomes.join(', ')}. Para editar as horas de alguém, adiciona-o novamente à lista abaixo.`;
+  box.style.display='block';
 }
 
 async function carregarEquipaAnterior(){
