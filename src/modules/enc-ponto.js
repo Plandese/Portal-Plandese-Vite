@@ -15,10 +15,14 @@ import { stopCombQrScanner } from './enc-combustivel.js';
 // ═══════════════════════════════════════
 // ── ENCARREGADO — ESTADO ──────────────────────────────────────
 
-function _encUpdatePrazoWidget(){
+function _encObraDoEncarregado(){
   const username=S.currentUser?.key;
-  const obra=S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.prazo)
+  return S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.prazo)
     .find(o=>o.encarregado_id===username);
+}
+
+function _encUpdatePrazoWidget(){
+  const obra=_encObraDoEncarregado();
   const valEl=document.getElementById('enc-obra-prazo-days');
   const lblEl=document.getElementById('enc-obra-prazo-label');
   const iconEl=document.getElementById('enc-obra-prazo-icon');
@@ -39,6 +43,63 @@ function _encUpdatePrazoWidget(){
   if(days<=7){iconEl.style.background='#fef2f2';iconEl.style.color='#dc2626';}
   else if(days<=21){iconEl.style.background='#fff7ed';iconEl.style.color='#ea580c';}
   else{iconEl.style.background='#f0fdf4';iconEl.style.color='#16a34a';}
+}
+
+const _PRAZO_MSGS_URGENTE=[
+  'A reta final é onde as boas equipas se destacam. Confiança no trabalho, um passo de cada vez!',
+  'Faltam poucos dias, mas a tua equipa já mostrou do que é capaz. Vamos fechar isto em grande!',
+  'O prazo está perto — foco no essencial hoje e a obra entrega-se com orgulho.',
+  'Cada hora conta agora. A tua liderança é o que mantém a equipa unida até ao fim.'
+];
+const _PRAZO_MSGS_MEDIO=[
+  'Bom ritmo! Continua a organizar a equipa e o prazo vai ser cumprido sem sobressaltos.',
+  'A obra avança porque tu fazes acontecer todos os dias. Continua assim!',
+  'Ainda há tempo de sobra para fazer as coisas bem feitas. Confiança no processo!',
+  'Um encarregado atento é metade do sucesso da obra. Bom trabalho até aqui!'
+];
+const _PRAZO_MSGS_FOLGA=[
+  'Prazo tranquilo — aproveita para deixar tudo bem organizado e sem correrias.',
+  'Com este tempo pela frente, dá para fazer um trabalho de excelência. Vai correr bem!',
+  'Ritmo controlado. A tua experiência vai garantir que tudo chega a bom porto.',
+  'Sem pressa, sem descuido. É assim que se constroem os bons resultados.'
+];
+
+function _encPrazoMensagem(days){
+  let arr;
+  if(days<=7) arr=_PRAZO_MSGS_URGENTE;
+  else if(days<=21) arr=_PRAZO_MSGS_MEDIO;
+  else arr=_PRAZO_MSGS_FOLGA;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function encOpenPrazoModal(){
+  const modal=document.getElementById('enc-prazo-modal');
+  const content=document.getElementById('enc-prazo-content');
+  if(!modal||!content) return;
+  const obra=_encObraDoEncarregado();
+  if(!obra){
+    content.innerHTML=`
+      <div class="enc-prazo-emoji">💪</div>
+      <div class="enc-prazo-msg">Ainda sem obra atribuída, mas a equipa conta contigo. Assim que houver obra, aqui estará o prazo!</div>`;
+    modal.style.display='flex';
+    return;
+  }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const prazoDate=new Date(obra.prazo+'T00:00:00');
+  const days=Math.ceil((prazoDate-today)/(1000*60*60*24));
+  const daysTxt=days>0?days:0;
+  const emoji=days<=7?'🔥':(days<=21?'⚡':'🌱');
+  content.innerHTML=`
+    <div class="enc-prazo-emoji">${emoji}</div>
+    <div class="enc-prazo-days">Faltam ${daysTxt} dias</div>
+    <div class="enc-prazo-obra">${obra.nome}</div>
+    <div class="enc-prazo-msg">${_encPrazoMensagem(days)}</div>`;
+  modal.style.display='flex';
+}
+
+function encClosePrazoModal(){
+  const modal=document.getElementById('enc-prazo-modal');
+  if(modal) modal.style.display='none';
 }
 
 const _WMO_DESC={
@@ -689,5 +750,6 @@ export {
   encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc,
   encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel,
   encVoltarHome, _encHideAll,
-  encOpenWeatherModal, encCloseWeatherModal
+  encOpenWeatherModal, encCloseWeatherModal,
+  encOpenPrazoModal, encClosePrazoModal
 };
