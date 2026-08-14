@@ -328,15 +328,22 @@ function _encShowExistentesBanner(regs){
 }
 
 async function carregarEquipaAnterior(){
-  // Procurar o registo mais recente anterior à data selecionada
+  // Procurar o registo mais recente anterior à data selecionada,
+  // limitado a esta obra e a este encarregado — não misturar equipas
+  // de outras obras/encarregados na sugestão "Equipa de [data]".
   const dk=S.encDataSel;
+  const obraId=S.encObraId;
+  const encId=S.currentUser?.key||null;
   const jaAdicionados=S.activeRows[dk]||[];
   try {
-    const {data:regs}=await sb.from('registos_ponto')
+    let q=sb.from('registos_ponto')
       .select('colab_numero, data')
       .lt('data', dk)
+      .eq('obra_id', obraId)
       .order('data',{ascending:false})
       .limit(50);
+    q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
+    const {data:regs}=await q;
     if(!regs||regs.length===0){document.getElementById('ontem-box').style.display='none';return;}
     // Encontrar a data mais recente
     const dataAnterior=regs[0].data;
