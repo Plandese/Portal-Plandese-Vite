@@ -639,9 +639,15 @@ async function encLoadHistorico(){
   const res=document.getElementById('enc-hist-resultado');
   if(!data){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400)">Selecione uma data.</div>';return;}
   res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400)">A carregar…</div>';
+  // Cada encarregado só vê os registos que ele próprio submeteu — nunca os
+  // de outros encarregados/obras, mesmo que sejam do mesmo dia.
+  const encId=S.currentUser?.key||null;
+  const encNome=S.currentUser?.nome||null;
   try{
     if(tipo==='plandese'){
-      const {data:rows}=await sb.from('registos_ponto').select('*').eq('data',data).order('colab_numero');
+      let q=sb.from('registos_ponto').select('*').eq('data',data);
+      q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
+      const {data:rows}=await q.order('colab_numero');
       if(!rows||!rows.length){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:14px">Sem registos para este dia.</div>';return;}
       const dateObj=new Date(data+'T12:00:00');
       // Colaboradores com ≥2 registos neste dia → assinalar para verificação
@@ -671,7 +677,11 @@ async function encLoadHistorico(){
       html+='</div>';
       res.innerHTML=html;
     } else {
-      const {data:rows}=await sb.from('registos_ponto_moa').select('*').eq('data',data).order('empresa_moa_nome');
+      // registos_ponto_moa não tem encarregado_id (só o nome, gravado em
+      // encAlugSubmeter) — filtrar por nome é o melhor sinal disponível.
+      let q=sb.from('registos_ponto_moa').select('*').eq('data',data);
+      if(encNome) q=q.eq('encarregado_nome',encNome);
+      const {data:rows}=await q.order('empresa_moa_nome');
       if(!rows||!rows.length){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:14px">Sem registos de MO Aluguer para este dia.</div>';return;}
       const dateObj=new Date(data+'T12:00:00');
       let html='<div style="display:flex;flex-direction:column;gap:10px">';
