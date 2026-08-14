@@ -284,7 +284,11 @@ async function encPassarColaboradores(){
   // editável/removível — reabrir a folha não deve arriscar apagar o que já
   // está guardado só por remover um chip sem perceber que isso apaga logo
   // o registo na base de dados. Mostra-se só um aviso informativo.
-  if(!S.REGISTOS[dk]){ S.REGISTOS[dk]=[]; S.activeRows[dk]=[]; }
+  // Reset incondicional: S.REGISTOS[dk]/S.activeRows[dk] podem já vir
+  // preenchidos do carregarDados() no login (últimos 7 dias, TODAS as
+  // obras/encarregados) — sem isto, cartões de outra obra/encarregado
+  // apareciam pré-carregados nesta folha.
+  S.REGISTOS[dk]=[]; S.activeRows[dk]=[];
   try {
     let q=sb.from('registos_ponto').select('colab_numero').eq('data',dk).eq('obra_id',obraId);
     q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
