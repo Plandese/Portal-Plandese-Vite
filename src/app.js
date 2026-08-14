@@ -40,7 +40,7 @@ import { renderEquipamentos, openEqModal, editEquipamento, saveEquipamento, apag
 import { loadCombustivelAdmin, toggleCombView, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
 
 // Enc-ponto
-import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal } from './modules/enc-ponto.js';
+import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal } from './modules/enc-ponto.js';
 
 // Enc-equip
 import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
@@ -203,6 +203,7 @@ Object.assign(window, {
   // Encarregado — ponto
   encPassarColaboradores, encVoltarScreen1,
   encAddColab, encRemColab, encSubmeterRegisto,
+  encTimeChange, encTipoChange,
   adicionarTodosOntem, encLoadHistorico,
 
   // Encarregado — equipamentos QR
