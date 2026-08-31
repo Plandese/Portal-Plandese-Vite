@@ -41,7 +41,11 @@ export function initAdmin(){
     if(nm) nm.textContent = u.nome || '';
     if(rl) rl.textContent = u.role === 'admin' ? 'Administrador' : (u.role || '');
   }
-  goTo('painel',document.getElementById('nav-painel'));
+  // window.goTo tem os hooks de render de cada secção (definidos em app.js)
+  const nav = window.goTo || goTo;
+  // Em modo telemóvel a vista inicial é a Análise de Dados
+  if(document.body.classList.contains('device-mobile')) nav('analise', document.getElementById('bnav-analise'));
+  else nav('painel', document.getElementById('nav-painel'));
 }
 
 export function populateFilterSelects(){
@@ -89,6 +93,7 @@ export async function refreshPortal(){
     if(activeSection){
       const id = activeSection.id.replace(/^sec-/,'');
       const renderMap = {
+        'analise':         ()=>{ R.anlResetObras?.(); R.renderAnalise?.(); },
         'painel':          ()=>R.renderPainel?.(),
         'historico':       ()=>R.applyFilter?.(),
         'empresas-moa':    ()=>R.renderEmpresasMOA?.(),

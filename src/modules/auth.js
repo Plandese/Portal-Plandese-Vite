@@ -19,7 +19,7 @@ export function mostrarDiag(msg, cor='#1d4ed8') {
   d._t = setTimeout(() => d.remove(), 6000);
 }
 
-// ── DEVICE DETECTION ──────────────────────────────────────────────
+// ── DEVICE DETECTION ──────────────────────────────────
 export function getDeviceType(){
   const w=window.innerWidth;
   const isTouch=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -28,27 +28,87 @@ export function getDeviceType(){
   return'desktop';
 }
 
+// ── MODO DE VISUALIZAÇÃO ESCOLHIDO PELO UTILIZADOR ──────────────
+// 'mobile' | 'desktop' | null (null = deteta automaticamente pelo tamanho do ecrã)
+const DEVICE_MODE_KEY = 'plandese_device_mode';
+
+export function getDeviceMode(){
+  try {
+    const v = localStorage.getItem(DEVICE_MODE_KEY);
+    return (v==='mobile'||v==='desktop') ? v : null;
+  } catch(e){ return null; }
+}
+
+// Estado inicial a partir da preferência guardada
+S.deviceMode = getDeviceMode();
+
+export function setDeviceMode(mode){
+  const m = (mode==='mobile'||mode==='desktop') ? mode : null;
+  S.deviceMode = m;
+  try {
+    if(m) localStorage.setItem(DEVICE_MODE_KEY, m);
+    else localStorage.removeItem(DEVICE_MODE_KEY);
+  } catch(e){}
+  const dt = applyDeviceClass();
+  updateDeviceBadge(dt);
+  return dt;
+}
+
 export function applyDeviceClass(){
-  const dt=getDeviceType();
+  const forced = S.deviceMode;
+  const dt = forced==='mobile' ? 'mobile'
+           : forced==='desktop' ? 'desktop'
+           : getDeviceType();
   document.body.classList.remove('device-mobile','device-tablet','device-desktop');
   document.body.classList.add('device-'+dt);
+  // forced-mobile: modo telemóvel escolhido à mão (pode estar num ecrã grande)
+  document.body.classList.toggle('forced-mobile', forced==='mobile');
+  document.body.classList.toggle('forced-desktop', forced==='desktop');
   if(dt==='desktop') document.documentElement.style.setProperty('--sidebar-w','220px');
   else if(dt==='tablet') document.documentElement.style.setProperty('--sidebar-w','60px');
   return dt;
 }
 
+// Ecrã "Como quer usar o portal?" — resolve com o modo escolhido
+export function showDeviceChooser(){
+  return new Promise(resolve => {
+    const ov = document.getElementById('device-choice');
+    if(!ov){ resolve(S.deviceMode || getDeviceType()); return; }
+    const cards = Array.from(ov.querySelectorAll('.devc-card'));
+    const sugerido = S.deviceMode || (getDeviceType()==='mobile' ? 'mobile' : 'desktop');
+    cards.forEach(c=>{
+      c.classList.toggle('suggested', c.dataset.mode===sugerido);
+      c.classList.toggle('current',   c.dataset.mode===S.deviceMode);
+    });
+    const escolher = mode => {
+      cards.forEach(c=>{ c.onclick=null; });
+      ov.classList.remove('open');
+      setDeviceMode(mode);
+      resolve(mode);
+    };
+    cards.forEach(c=>{ c.onclick = () => escolher(c.dataset.mode); });
+    ov.classList.add('open');
+  });
+}
+
 export function updateDeviceBadge(dt){
-  const hdr=document.querySelector('.hdr-right');
+  const hdr = document.querySelector('#admin-app .app-bar-right') || document.querySelector('.hdr-right');
   if(!hdr)return;
   let badge=document.getElementById('dev-badge');
-  if(!badge){badge=document.createElement('span');badge.id='dev-badge';
-    badge.style.cssText='font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;border:1px solid var(--gray-200);color:var(--gray-500);background:var(--gray-50);display:flex;align-items:center;gap:4px';
+  if(!badge){
+    badge=document.createElement('button');
+    badge.id='dev-badge';
+    badge.className='dev-badge';
+    badge.type='button';
+    badge.title='Mudar modo de visualização';
+    badge.onclick=()=>{ window.escolherModoDispositivo && window.escolherModoDispositivo(); };
     hdr.insertBefore(badge,hdr.firstChild);
   }
   const icons={'mobile':'📱','tablet':'📟','desktop':'🖥️'};
-  const labels={'mobile':'Mobile','tablet':'Tablet','desktop':'Desktop'};
+  const labels={'mobile':'Telemóvel','tablet':'Tablet','desktop':'Computador'};
   badge.textContent=`${icons[dt]} ${labels[dt]}`;
 }
+
 
 export async function doLogin() {
   const u=document.getElementById('lu').value.trim().toLowerCase();
@@ -83,6 +143,8 @@ export async function doLogin() {
     S.currentUser={nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials,key:authedUser.username};
     localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
     document.getElementById('login-screen').style.display='none';
+    // Escolha do modo de visualização (telemóvel / computador) — excepto encarregados
+    if(authedUser.role!=='encarregado') await showDeviceChooser();
     document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:white;margin-top:16px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
     try {
       document.getElementById('loading-msg').textContent='A carregar obras e colaboradores...';
@@ -103,7 +165,7 @@ export async function doLogin() {
       document.getElementById('u-av').textContent=authedUser.initials;
       document.getElementById('u-nm').textContent=authedUser.nome;
       document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
-      if(authedUser.role==='admin')updateDeviceBadge(device);
+      updateDeviceBadge(device);
       await R.loadPermissionsFromServer();
       R.applyStoredPermissions();
       R.initAdmin();

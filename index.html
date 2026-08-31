@@ -31,6 +31,28 @@
   </div>
 </div>
 
+<!-- ============== ESCOLHA DE DISPOSITIVO ============== -->
+<div id="device-choice">
+  <div class="devc-box">
+    <div class="devc-title">Como quer usar o portal?</div>
+    <div class="devc-sub">Pode mudar a qualquer momento no botão de modo, no topo da página.</div>
+    <div class="devc-cards">
+      <button class="devc-card" data-mode="mobile" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/></svg>
+        <span class="devc-card-t">Telemóvel</span>
+        <span class="devc-card-s">Ecrã compacto com análise de dados</span>
+        <span class="devc-badge">Sugerido</span>
+      </button>
+      <button class="devc-card" data-mode="desktop" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="16" x2="12" y2="21"/></svg>
+        <span class="devc-card-t">Computador</span>
+        <span class="devc-card-s">Portal completo com todas as secções</span>
+        <span class="devc-badge">Sugerido</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ ENCARREGADO ══════════════ -->
 <div id="enc-app" style="display:none">
 
@@ -886,6 +908,10 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             Ajustes de Perfil
           </button>
+          <button class="settings-item" onclick="escolherModoDispositivo();toggleSettingsPanel()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+            Modo de visualização
+          </button>
           <button class="settings-item" id="settings-theme-btn" onclick="toggleDarkMode()">
             <svg viewBox="0 0 24 24" fill="currentColor" id="settings-theme-icon"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
             <span id="settings-theme-label">Ecrã Escuro</span>
@@ -1044,6 +1070,35 @@
       <!-- ══════════════════════════════════════════════════════ -->
       <!-- PAINEL PRINCIPAL — Dashboard personalizável           -->
       <!-- ══════════════════════════════════════════════════════ -->
+      <!-- ====================================================== -->
+      <!-- ANÁLISE DE DADOS — vista optimizada para telemóvel      -->
+      <!-- ====================================================== -->
+      <section id="sec-analise" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Análise de Dados</div>
+            <div class="pg-sub" id="anl-sub">—</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="renderAnalise()" title="Actualizar">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Actualizar
+          </button>
+        </div>
+
+        <div class="anl-controls">
+          <div class="anl-chips" id="anl-chips">
+            <button class="anl-chip active" data-p="semana" onclick="anlSetPeriodo('semana')" type="button">Semana</button>
+            <button class="anl-chip" data-p="mes" onclick="anlSetPeriodo('mes')" type="button">Mês</button>
+            <button class="anl-chip" data-p="ano" onclick="anlSetPeriodo('ano')" type="button">Ano</button>
+          </div>
+          <select class="anl-select" id="anl-obra" onchange="anlSetObra(this.value)">
+            <option value="">Todas as obras</option>
+          </select>
+        </div>
+
+        <div id="anl-body"></div>
+      </section>
+
       <section id="sec-painel" class="section">
 
         <!-- Cabeçalho -->
@@ -3323,7 +3378,11 @@
 
   <!-- BOTTOM NAV (mobile only) -->
   <nav class="bottom-nav" id="bottom-nav">
-    <button class="bnav-btn active" onclick="goTo('historico',this)" id="bnav-hist">
+    <button class="bnav-btn active" onclick="goTo('analise',this)" id="bnav-analise">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Análise
+    </button>
+    <button class="bnav-btn" onclick="goTo('historico',this)" id="bnav-hist">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Histórico
     </button>

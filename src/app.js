@@ -7,7 +7,7 @@ import { S, R } from './state.js';
 import { carregarDados } from './db.js';
 
 // Auth
-import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout } from './modules/auth.js';
+import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode } from './modules/auth.js';
 
 // Navigation
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
@@ -75,6 +75,9 @@ import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHan
 // Advertências
 import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
 
+// Análise de dados (vista telemóvel)
+import { renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras } from './modules/analise.js';
+
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
@@ -93,6 +96,7 @@ Object.assign(R, {
   loadEmpresasMOA, loadColaboradoresMOA,
   initCompras, initMOAFilters,
   renderEncModsCheckboxes,
+  renderAnalise, anlResetObras,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -120,6 +124,9 @@ document.getElementById('lp')?.addEventListener('keypress', e => { if (e.key ===
 Object.assign(window, {
   // Auth
   doLogin, doLogout,
+
+  // Análise de dados (modo telemóvel)
+  renderAnalise, anlSetPeriodo, anlSetObra,
 
   // Dropbox
   dropboxLogin, dropboxLogout, dropboxIsConnected,
@@ -363,6 +370,7 @@ window.savePerfil = async function () {
   const _orig = window.goTo;
   window.goTo = function (id, btn) {
     _orig(id, btn);
+    if (id === 'analise')      { renderAnalise(); }
     if (id === 'painel')       { renderPainel(); }
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); injectMapaCompBtns(); }
@@ -376,6 +384,18 @@ window.savePerfil = async function () {
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
   };
 })();
+
+// ── Modo de visualização (telemóvel / computador) ───────────────────
+// Reabre o ecrã de escolha e leva o utilizador à vista adequada ao modo.
+window.escolherModoDispositivo = async function () {
+  const anterior = getDeviceMode();
+  const modo = await showDeviceChooser();
+  if (modo === anterior) return;
+  const secAtiva = document.querySelector('.section.active');
+  const idAtiva = secAtiva ? secAtiva.id.replace(/^sec-/, '') : '';
+  if (modo === 'mobile' && idAtiva === 'painel') window.goTo('analise', document.getElementById('bnav-analise'));
+  else if (modo === 'desktop' && idAtiva === 'analise') window.goTo('painel', document.getElementById('nav-painel'));
+};
 
 // ── Badge de compras ao iniciar ──
 setTimeout(() => { try { atualizaKPIsCompras(); } catch (e) {} }, 500);
