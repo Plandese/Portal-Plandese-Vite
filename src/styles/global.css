@@ -2074,3 +2074,8 @@ body.dark-mode .anl-notif-i.unread{background:rgba(37,99,235,.14)}
 body.dark-mode .anl-notif-msg{color:#e6ebf5}
 body.dark-mode .anl-notif-cnt{background:rgba(37,99,235,.2)}
 body.dark-mode .anl-notif-btn{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:var(--gray-400)}
+
+/* A barra inferior pertence ao portal: fora dele (login, escolha de modo,
+   ecrã de carregamento) não pode aparecer — body.app-ativa é posto no login
+   e retirado no logout. */
+body:not(.app-ativa) .bottom-nav{display:none!important}

@@ -162,6 +162,7 @@ export async function doLogin() {
       await R.initEnc();
     } else {
       document.getElementById('admin-app').style.display='flex';
+      document.body.classList.add('app-ativa');
       document.getElementById('u-av').textContent=authedUser.initials;
       document.getElementById('u-nm').textContent=authedUser.nome;
       document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
@@ -188,6 +189,7 @@ export function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('enc-app').style.display = 'none';
   document.getElementById('admin-app').style.display = 'none';
+  document.body.classList.remove('app-ativa');
   document.body.classList.remove('enc-mode');
   S.encObraId = ''; S.encDataSel = '';
   ['enc-screen0','enc-screen1','enc-screen2',
