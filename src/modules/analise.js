@@ -6,6 +6,8 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { fmt, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { ROLE_ACCESS } from '../config.js';
+import { loadNotificacoes, renderNotifPanel, markAllRead } from './notifications.js';
+import { sbMarkNotifRead } from '../db.js';
 
 let _periodo     = 'semana';   // semana | mes | ano
 let _obra        = '';         // '' = todas
@@ -210,6 +212,9 @@ export async function renderAnalise(){
   _loading = true;
   body.innerHTML = '<div class="anl-loading"><div class="anl-spin"></div>A carregar dados…</div>';
 
+  // Notificações no topo — em telemóvel a app-bar não tem sino
+  loadNotificacoes().then(renderNotifCard).catch(e => console.warn('[analise] notificações:', e));
+
   let d;
   try { d = await _carregar(); }
   catch(e){
@@ -333,6 +338,74 @@ export async function renderAnalise(){
   if(d.erros.length) html += `<div class="anl-erro">Não foi possível carregar: ${d.erros.join(', ')}.</div>`;
 
   body.innerHTML = html;
+}
+
+// ── Cartão de notificações ──────────────────────────────
+const MAX_NOTIF = 4;
+
+function _esc(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function _quando(iso){
+  if(!iso) return '';
+  const d = new Date(iso), agora = new Date();
+  const hm = d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+  if(d.toDateString() === agora.toDateString()) return hm;
+  return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'}) + ' ' + hm;
+}
+
+export function renderNotifCard(){
+  const alvo = document.getElementById('anl-notif');
+  if(!alvo) return;
+  const todas = S.NOTIFICACOES || [];
+  if(!todas.length){ alvo.innerHTML = ''; return; }
+
+  // As por ler vêm primeiro para nunca ficarem de fora do corte
+  const naoLidas = todas.filter(n => !n.lida);
+  const lidas    = todas.filter(n => n.lida);
+  const porLer   = naoLidas.length;
+  const lista    = [...naoLidas, ...lidas].slice(0, MAX_NOTIF);
+  const restantes = todas.length - lista.length;
+
+  alvo.innerHTML = `<div class="anl-card anl-notif-card">
+    <div class="anl-card-hdr">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <span>Notificações</span>
+      ${porLer > 0 ? `<span class="anl-notif-cnt">${porLer} por ler</span>` : '<span class="anl-card-x">tudo lido</span>'}
+    </div>
+    <div class="anl-notif-lista">
+      ${lista.map(n => `
+        <button class="anl-notif-i${n.lida ? '' : ' unread'}" type="button"
+          onclick="anlNotifClick('${_esc(n.id)}','${_esc(n.seccao || '')}')">
+          <span class="anl-notif-dot"></span>
+          <span class="anl-notif-txt">
+            <span class="anl-notif-msg">${_esc(n.acao)}</span>
+            <span class="anl-notif-meta">${n.actor_nome ? _esc(n.actor_nome) + ' · ' : ''}${_quando(n.created_at)}</span>
+          </span>
+        </button>`).join('')}
+    </div>
+    ${restantes > 0 ? `<div class="anl-notif-mais">+${restantes} anteriores</div>` : ''}
+    ${porLer > 0 ? '<button class="anl-notif-btn" type="button" onclick="anlMarcarTodasLidas()">Marcar todas como lidas</button>' : ''}
+  </div>`;
+}
+
+export function anlNotifClick(id, seccao){
+  const n = (S.NOTIFICACOES || []).find(x => String(x.id) === String(id));
+  if(n && !n.lida){ n.lida = true; sbMarkNotifRead(n.id); }
+  renderNotifCard();
+  renderNotifPanel();
+  if(seccao && window.goTo){
+    const alvo = "goTo(" + String.fromCharCode(39) + seccao + String.fromCharCode(39);
+    const btn = Array.from(document.querySelectorAll('#bottom-nav .bnav-btn, .sidebar .nav-btn'))
+      .find(b => (b.getAttribute('onclick') || '').includes(alvo));
+    window.goTo(seccao, btn);
+  }
+}
+
+export async function anlMarcarTodasLidas(){
+  await markAllRead();
+  renderNotifCard();
 }
 
 function _preencherObras(){

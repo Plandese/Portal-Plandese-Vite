@@ -1999,3 +1999,78 @@ body.dark-mode .anl-chips{background:rgba(255,255,255,.06)}
 body.dark-mode .anl-chip.active{background:rgba(255,255,255,.12);color:#bfdbfe}
 body.dark-mode .anl-select{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#e6ebf5}
 body.dark-mode .anl-donut-v{fill:#e6ebf5}
+
+
+/* ─────────────────────────────────────────────────────
+   BARRA DE TOPO EM TELEMÓVEL — fica só a data
+   O sino e a engrenagem saem; as notificações passam para
+   o topo da Análise e as definições para o botão "Mais".
+───────────────────────────────────────────────────── */
+body.device-mobile #admin-app .notif-btn,
+body.device-mobile #admin-app .settings-btn{display:none}
+/* sem o sino e a engrenagem o nome da marca só rouba espaço à data — fica o logo */
+body.device-mobile #admin-app .app-bar-title{display:none}
+
+/* Os painéis passam a folha inferior, acima da barra de navegação */
+body.device-mobile .notif-panel,
+body.device-mobile .settings-panel{
+  top:auto!important;bottom:74px!important;
+  left:12px!important;right:12px!important;width:auto!important;
+  max-height:70vh;overflow-y:auto;
+  transform:translateY(8px) scale(.98);
+}
+body.device-mobile .notif-panel.open,
+body.device-mobile .settings-panel.open{transform:none}
+
+/* O botão "Mais" ocupa pouco espaço para os outros atalhos respirarem */
+body.device-mobile #bnav-mais{flex:0 0 46px}
+body.device-mobile .bnav-btn{font-size:9px;gap:3px}
+body.device-mobile .bnav-btn svg{width:19px;height:19px}
+
+/* Em modo telemóvel forçado num ecrã grande, os painéis seguem a coluna */
+@media(min-width:900px){
+  body.forced-mobile .notif-panel,
+  body.forced-mobile .settings-panel{
+    left:0!important;right:0!important;margin:0 auto;width:436px!important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   CARTÃO DE NOTIFICAÇÕES NA ANÁLISE
+───────────────────────────────────────────────────── */
+.anl-notif-cnt{
+  margin-left:auto;flex-shrink:0;
+  font-size:10px!important;font-weight:800!important;
+  padding:3px 8px;border-radius:10px;
+  background:var(--blue-50);color:var(--blue-600)!important;
+}
+.anl-notif-lista{display:flex;flex-direction:column;gap:2px}
+.anl-notif-i{
+  display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;
+  padding:9px 8px;border:none;border-radius:10px;background:none;cursor:pointer;
+  font-family:var(--font);transition:background .15s;
+}
+.anl-notif-i:hover{background:var(--gray-50)}
+.anl-notif-i.unread{background:var(--blue-50)}
+.anl-notif-dot{
+  width:7px;height:7px;border-radius:50%;background:transparent;
+  flex-shrink:0;margin-top:5px;
+}
+.anl-notif-i.unread .anl-notif-dot{background:var(--blue-500)}
+.anl-notif-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.anl-notif-msg{font-size:12.5px;font-weight:600;color:var(--gray-800);line-height:1.35}
+.anl-notif-meta{font-size:10.5px;color:var(--gray-400);font-weight:600}
+.anl-notif-mais{font-size:10.5px;color:var(--gray-400);text-align:center;padding:8px 0 2px}
+.anl-notif-btn{
+  width:100%;margin-top:10px;padding:9px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--gray-200);background:var(--white);
+  font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--gray-600);
+  transition:border-color .15s,color .15s;
+}
+.anl-notif-btn:hover{border-color:var(--blue-300);color:var(--blue-600)}
+
+body.dark-mode .anl-notif-i:hover{background:rgba(255,255,255,.05)}
+body.dark-mode .anl-notif-i.unread{background:rgba(37,99,235,.14)}
+body.dark-mode .anl-notif-msg{color:#e6ebf5}
+body.dark-mode .anl-notif-cnt{background:rgba(37,99,235,.2)}
+body.dark-mode .anl-notif-btn{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:var(--gray-400)}

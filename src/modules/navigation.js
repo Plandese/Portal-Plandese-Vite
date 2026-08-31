@@ -18,8 +18,12 @@ export function switchFPTab(tab){
   document.getElementById('fp-tab-aluguer').style.display  = tab==='aluguer'  ? '' : 'none';
   document.getElementById('fp-tab-btn-plandese').classList.toggle('active', tab==='plandese');
   document.getElementById('fp-tab-btn-aluguer').classList.toggle('active',  tab==='aluguer');
-  document.getElementById('export-btns-plandese').style.display = 'none';
-  document.getElementById('export-btns-aluguer').style.display  = 'none';
+  // #export-btns-plandese ja nao existe no HTML — sem a guarda isto rebentava
+  // o handler e deixava o clique a meio (ex.: atalho "M.O. Aluguer" em telemóvel)
+  const btnsPl = document.getElementById('export-btns-plandese');
+  if(btnsPl) btnsPl.style.display = 'none';
+  const btnsAl = document.getElementById('export-btns-aluguer');
+  if(btnsAl) btnsAl.style.display = 'none';
 }
 
 export function initAdmin(){

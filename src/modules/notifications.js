@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  CENTRO DE NOTIFICAÇÕES (persistido + realtime)
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { sb } from '../supabase.js';
 import {
   sbLoadNotificacoes, sbInsertNotificacoes, sbMarkNotifRead,
@@ -42,6 +42,7 @@ function onRealtimeInsert(row){
   if(S.NOTIFICACOES.some(n=>n.id===row.id)) return;
   S.NOTIFICACOES.unshift(row);
   renderNotifPanel();
+  R.renderNotifCard?.();   // cartão na vista de Análise (modo telemóvel)
   if(window.showToast) window.showToast('🔔 '+row.acao);
 }
 

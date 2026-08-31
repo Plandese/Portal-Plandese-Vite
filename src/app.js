@@ -76,7 +76,7 @@ import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHan
 import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
 
 // Análise de dados (vista telemóvel)
-import { renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras } from './modules/analise.js';
+import { renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras, renderNotifCard, anlNotifClick, anlMarcarTodasLidas } from './modules/analise.js';
 
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
@@ -96,7 +96,7 @@ Object.assign(R, {
   loadEmpresasMOA, loadColaboradoresMOA,
   initCompras, initMOAFilters,
   renderEncModsCheckboxes,
-  renderAnalise, anlResetObras,
+  renderAnalise, anlResetObras, renderNotifCard,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -126,7 +126,7 @@ Object.assign(window, {
   doLogin, doLogout,
 
   // Análise de dados (modo telemóvel)
-  renderAnalise, anlSetPeriodo, anlSetObra,
+  renderAnalise, anlSetPeriodo, anlSetObra, anlNotifClick, anlMarcarTodasLidas,
 
   // Dropbox
   dropboxLogin, dropboxLogout, dropboxIsConnected,
@@ -287,14 +287,22 @@ Object.assign(window, {
 
   window.toggleSettingsPanel = function () {
     const panel = document.getElementById('settings-panel');
-    if (!panel) return;
+    const wrap  = document.getElementById('settings-wrap');
+    if (!panel || !wrap) return;
     open = !open;
+    // Em telemóvel o painel abre em folha inferior, aberto pelo botão "Mais".
+    // A app-bar tem backdrop-filter, o que a torna bloco de contenção dos
+    // descendentes position:fixed (e ainda tem overflow:hidden) — o painel tem
+    // de sair de lá para se posicionar face à janela.
+    const destino = document.body.classList.contains('device-mobile') ? document.body : wrap;
+    if (panel.parentElement !== destino) destino.appendChild(panel);
     panel.classList.toggle('open', open);
   };
 
   document.addEventListener('click', function (e) {
     if (!open) return;
-    if (!e.target.closest('#settings-wrap')) {
+    // #settings-panel testado à parte: em telemóvel já não vive dentro do wrap
+    if (!e.target.closest('#settings-wrap') && !e.target.closest('#settings-panel') && !e.target.closest('#bnav-mais')) {
       open = false;
       document.getElementById('settings-panel')?.classList.remove('open');
     }
