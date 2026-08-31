@@ -2011,6 +2011,19 @@ body.device-mobile #admin-app .settings-btn{display:none}
 /* sem o sino e a engrenagem o nome da marca só rouba espaço à data — fica o logo */
 body.device-mobile #admin-app .app-bar-title{display:none}
 
+/* Sem .app-bar-title (flex:1) a empurrar, o .app-bar-right ficava colado
+   ao logo em vez de fixo no canto direito — forçar com margin-left:auto */
+body.device-mobile #admin-app .app-bar-right{margin-left:auto}
+
+/* A data deixa de parecer um botão (sem moldura/fundo/cursor) e o
+   calendário deixa de abrir ao tocar — fica só texto informativo */
+body.device-mobile #admin-app #dw-wrap-adm{
+  padding:0;border:none;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+body.device-mobile #admin-app #dw-date-adm{
+  border-bottom:none;cursor:default;pointer-events:none;padding-bottom:0;
+}
+
 /* Os painéis passam a folha inferior, acima da barra de navegação */
 body.device-mobile .notif-panel,
 body.device-mobile .settings-panel{
