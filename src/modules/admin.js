@@ -53,10 +53,14 @@ async function savePainelConfig(cfg) {
   _painelConfig = cfg;
   // localStorage como backup imediato
   try { localStorage.setItem('plandese_painel_config_' + (S.currentUser?.key || 'guest'), JSON.stringify(cfg)); } catch(e) {}
-  // Supabase
+  // Supabase — leitura+escrita: a coluna painel_config também guarda a
+  // preferência de widgets da Análise de Dados (chave 'analise'), por isso
+  // não pode ser substituída às cegas, senão apaga-a.
   if (S.currentUser?.key) {
     try {
-      await sb.from('utilizadores').update({ painel_config: cfg }).eq('username', S.currentUser.key);
+      const { data } = await sb.from('utilizadores').select('painel_config').eq('username', S.currentUser.key).single();
+      const painel_config = { ...(data?.painel_config || {}), ...cfg };
+      await sb.from('utilizadores').update({ painel_config }).eq('username', S.currentUser.key);
     } catch(e) { console.warn('savePainelConfig:', e); }
   }
 }

@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════
 //  ANÁLISE — Vista de análise de dados (modo telemóvel)
 //  Só de leitura: agrega ponto, compras, faturas e combustível
+//  Widgets configuráveis por utilizador (mostrar/esconder + ordem)
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
@@ -55,6 +56,160 @@ function _pode(chapterId){
 
 const _obraNome  = id => S.OBRAS.find(o => o.id === id)?.nome || id || '—';
 const _colabNome = n  => S.COLABORADORES.find(c => c.n === n)?.nome || ('Nº ' + n);
+
+// ── Catálogo de widgets (personalizável) ────────────────────────────
+const ICONS = {
+  resumo:  '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
+  horas:   '<path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>',
+  obras:   '<path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z"/>',
+  colabs:  '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+  tipos:   '<path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03 0v8.99H22c-.47-4.74-4.24-8.52-8.97-8.99zm0 11.01V22c4.74-.47 8.5-4.25 8.97-8.99h-8.97z"/>',
+  compras: '<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>',
+  faturas: '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM7 7h7v2H7V7zm10 12H7v-2h10v2zm0-4H7v-2h10v2zm-4-7V3.5L18.5 9H13z"/>',
+  comb:    '<path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM18 10c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM8 18v-4.5H6L10 7v5h2l-4 6z"/>',
+};
+
+const ANALISE_WIDGETS_DEF = [
+  { id:'rh_kpis',    label:'Resumo de mão de obra',       chapter:'rh',  icon:ICONS.resumo },
+  { id:'rh_horas',   label:'Horas por período',            chapter:'rh',  icon:ICONS.horas },
+  { id:'rh_obras',   label:'Horas por obra',               chapter:'rh',  icon:ICONS.obras },
+  { id:'rh_colabs',  label:'Colaboradores com mais horas', chapter:'rh',  icon:ICONS.colabs },
+  { id:'rh_tipos',   label:'Tipos de registo',             chapter:'rh',  icon:ICONS.tipos },
+  { id:'cmp_kpis',   label:'Resumo de compras',            chapter:'cmp', icon:ICONS.resumo },
+  { id:'cmp_estado', label:'Compras por estado',           chapter:'cmp', icon:ICONS.compras },
+  { id:'fin_kpis',   label:'Resumo de faturação',          chapter:'fin', icon:ICONS.resumo },
+  { id:'fin_forn',   label:'Fornecedores com maior valor', chapter:'fin', icon:ICONS.faturas },
+  { id:'log_kpis',   label:'Resumo de combustível',        chapter:'log', icon:ICONS.comb },
+];
+
+function _permittedDefs(){
+  return ANALISE_WIDGETS_DEF.filter(w => _pode(w.chapter));
+}
+
+// ── Preferências do utilizador (mostrar/ordenar widgets) ────────────
+// Guardadas em utilizadores.painel_config.analise.widgets — a mesma coluna
+// que o Painel Principal usa para os seus próprios widgets, por isso o
+// guardar faz sempre leitura+escrita para não apagar a config do Painel.
+let _cfg = null, _cfgUser;
+
+function _lsKey(user){ return 'plandese_analise_config_' + (user || 'guest'); }
+
+async function _loadConfig(){
+  const user = S.currentUser?.key || null;
+  if(_cfg && _cfgUser === user) return _cfg;
+  _cfgUser = user;
+  if(user){
+    try {
+      const { data, error } = await sb.from('utilizadores').select('painel_config').eq('username', user).single();
+      if(error) throw error;
+      const saved = data?.painel_config?.analise?.widgets;
+      _cfg = { widgets: Array.isArray(saved) ? saved : null };
+      try{ localStorage.setItem(_lsKey(user), JSON.stringify(_cfg)); }catch(e){}
+      return _cfg;
+    } catch(e){ console.warn('[analise] loadConfig:', e); }
+  }
+  try {
+    const raw = localStorage.getItem(_lsKey(user));
+    if(raw){ _cfg = JSON.parse(raw); return _cfg; }
+  } catch(e){}
+  _cfg = { widgets: null };
+  return _cfg;
+}
+
+async function _saveConfig(cfg){
+  _cfg = cfg;
+  const user = S.currentUser?.key || null;
+  try{ localStorage.setItem(_lsKey(user), JSON.stringify(cfg)); }catch(e){}
+  if(!user) return;
+  try {
+    const { data } = await sb.from('utilizadores').select('painel_config').eq('username', user).single();
+    const painel_config = { ...(data?.painel_config || {}), analise: { widgets: cfg.widgets } };
+    await sb.from('utilizadores').update({ painel_config }).eq('username', user);
+  } catch(e){ console.warn('[analise] saveConfig:', e); }
+}
+
+// Ordem final a desenhar: widgets guardados (filtrados pelos disponíveis
+// nesta renderização) ou, sem personalização feita, a ordem predefinida.
+async function _widgetOrder(disponiveis){
+  const cfg = await _loadConfig();
+  if(!Array.isArray(cfg.widgets)) return disponiveis;
+  return cfg.widgets.filter(id => disponiveis.includes(id));
+}
+
+// ── Modal de personalização ──────────────────────────────────────────
+let _draft = [], _draftVisible = new Set();
+
+export async function abrirPersonalizarAnalise(){
+  const cfg = await _loadConfig();
+  const permitidos = _permittedDefs().map(w => w.id);
+  const visiveis = Array.isArray(cfg.widgets) ? cfg.widgets.filter(id => permitidos.includes(id)) : permitidos;
+  const escondidos = permitidos.filter(id => !visiveis.includes(id));
+  _draft = [...visiveis, ...escondidos];
+  _draftVisible = new Set(visiveis);
+  _renderCustomList();
+  const modal = document.getElementById('modal-analise-custom');
+  if(modal){ modal.style.display = 'flex'; modal.classList.add('open'); }
+}
+
+function _renderCustomList(){
+  const wrap = document.getElementById('anl-custom-list');
+  if(!wrap) return;
+  const defsById = {};
+  ANALISE_WIDGETS_DEF.forEach(w => { defsById[w.id] = w; });
+  wrap.innerHTML = _draft.map((id, i) => {
+    const w = defsById[id];
+    if(!w) return '';
+    const on = _draftVisible.has(id);
+    return `<div class="anlc-row${on ? '' : ' off'}">
+      <label class="anlc-chk">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="anlCustomToggle('${w.id}',this.checked)"/>
+      </label>
+      <svg viewBox="0 0 24 24" fill="currentColor" class="anlc-icon">${w.icon}</svg>
+      <span class="anlc-label">${w.label}</span>
+      <div class="anlc-arrows">
+        <button type="button" class="anlc-arrow" ${i === 0 ? 'disabled' : ''} onclick="anlCustomMove('${w.id}',-1)" aria-label="Mover para cima">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button type="button" class="anlc-arrow" ${i === _draft.length - 1 ? 'disabled' : ''} onclick="anlCustomMove('${w.id}',1)" aria-label="Mover para baixo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+export function anlCustomToggle(id, checked){
+  if(checked) _draftVisible.add(id); else _draftVisible.delete(id);
+  _renderCustomList();
+}
+
+export function anlCustomMove(id, dir){
+  const i = _draft.indexOf(id);
+  const j = i + dir;
+  if(i < 0 || j < 0 || j >= _draft.length) return;
+  [_draft[i], _draft[j]] = [_draft[j], _draft[i]];
+  _renderCustomList();
+}
+
+export function fecharPersonalizarAnalise(){
+  const modal = document.getElementById('modal-analise-custom');
+  if(modal){ modal.style.display = 'none'; modal.classList.remove('open'); }
+}
+
+export async function guardarPersonalizarAnalise(){
+  const widgets = _draft.filter(id => _draftVisible.has(id));
+  await _saveConfig({ widgets });
+  fecharPersonalizarAnalise();
+  if(window.showToast) window.showToast('Preferências guardadas ✓');
+  renderAnalise();
+}
+
+export async function reporPersonalizarAnalise(){
+  await _saveConfig({ widgets: null });
+  fecharPersonalizarAnalise();
+  if(window.showToast) window.showToast('Predefinição reposta ✓');
+  renderAnalise();
+}
 
 // ── Carregamento dos dados do período ──────────────────────────────
 async function _carregar(){
@@ -224,7 +379,7 @@ export async function renderAnalise(){
   }
   _loading = false;
 
-  let html = '';
+  const blocks = {};
 
   // ── Mão de obra (capítulo RH) ──────────────────────────────────
   if(_pode('rh')){
@@ -252,31 +407,26 @@ export async function renderAnalise(){
     });
 
     const extraTxt = hE > 0 ? fmtH(hE) + ' extra' : 'sem horas extra';
-    html += `<div class="anl-kpis">
+    blocks.rh_kpis = `<div class="anl-kpis">
       ${_kpi(_horas(hN + hE), 'Horas Plandese', 'var(--blue-500)', extraTxt)}
       ${_kpi(_horas(hMoa), 'Horas aluguer', '#7c3aed', d.moa.length + ' registos')}
       ${_kpi(_num(colabs.size), 'Colaboradores', 'var(--green)', presencas + ' presenças')}
       ${_kpi(_num(faltas), 'Faltas', faltas > 0 ? 'var(--red)' : 'var(--gray-400)', ferias + ' de férias')}
     </div>`;
 
-    html += _cartao('Horas por ' + (_periodo === 'semana' ? 'dia' : _periodo === 'mes' ? 'semana' : 'mês'),
-      '<path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>',
-      _barras(_distribuirHoras(_buckets(), porDia)));
+    blocks.rh_horas = _cartao('Horas por ' + (_periodo === 'semana' ? 'dia' : _periodo === 'mes' ? 'semana' : 'mês'),
+      ICONS.horas, _barras(_distribuirHoras(_buckets(), porDia)));
 
     const topObras = Object.entries(porObra).filter(([id]) => id && id !== 'null')
       .map(([id,v]) => ({ nome: _obraNome(id), v })).sort((a,b) => b.v - a.v).slice(0,6);
-    html += _cartao('Horas por obra',
-      '<path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z"/>',
+    blocks.rh_obras = _cartao('Horas por obra', ICONS.obras,
       _ranking(topObras, 'h'), topObras.length ? topObras.length + ' obras' : '');
 
     const topColabs = Object.entries(porColab)
       .map(([n,v]) => ({ nome: _colabNome(Number(n)), v })).sort((a,b) => b.v - a.v).slice(0,6);
-    html += _cartao('Colaboradores com mais horas',
-      '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
-      _ranking(topColabs, 'h'));
+    blocks.rh_colabs = _cartao('Colaboradores com mais horas', ICONS.colabs, _ranking(topColabs, 'h'));
 
-    html += _cartao('Tipos de registo',
-      '<path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2.03 0v8.99H22c-.47-4.74-4.24-8.52-8.97-8.99zm0 11.01V22c4.74-.47 8.5-4.25 8.97-8.99h-8.97z"/>',
+    blocks.rh_tipos = _cartao('Tipos de registo', ICONS.tipos,
       _donut([
         { nome:'Presenças',    v: presencas,    cor:'var(--blue-500)' },
         { nome:'Faltas',       v: faltas,       cor:'var(--red)' },
@@ -292,15 +442,13 @@ export async function renderAnalise(){
     compras.forEach(c => { const e = (c.estado||'pendente').toLowerCase(); porEstado[e] = (porEstado[e]||0)+1; });
     const pend = porEstado['pendente'] || 0;
     const urgentes = compras.filter(c => (c.urgencia||'').toLowerCase() === 'urgente').length;
-    html += `<div class="anl-kpis">
+    blocks.cmp_kpis = `<div class="anl-kpis">
       ${_kpi(_num(compras.length), 'Pedidos de compra', 'var(--gray-800)', 'no período')}
       ${_kpi(_num(pend), 'Pendentes', pend > 0 ? 'var(--orange)' : 'var(--gray-400)', urgentes + ' urgentes')}
     </div>`;
     const estados = Object.entries(porEstado)
       .map(([e,v]) => ({ nome: e.charAt(0).toUpperCase()+e.slice(1), v })).sort((a,b) => b.v - a.v);
-    html += _cartao('Compras por estado',
-      '<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>',
-      _ranking(estados, 'n'));
+    blocks.cmp_estado = _cartao('Compras por estado', ICONS.compras, _ranking(estados, 'n'));
   }
 
   // ── Faturas ────────────────────────────────────────────────────
@@ -309,12 +457,11 @@ export async function renderAnalise(){
     const porForn = {};
     d.faturas.forEach(f => { const k = f.fornecedor || '—'; porForn[k] = (porForn[k]||0) + (parseFloat(f.total)||0); });
     const top = Object.entries(porForn).map(([nome,v]) => ({ nome, v })).sort((a,b) => b.v - a.v).slice(0,6);
-    html += `<div class="anl-kpis">
+    blocks.fin_kpis = `<div class="anl-kpis">
       ${_kpi(_eur(total), 'Faturação', 'var(--gray-800)', d.faturas.length + ' faturas')}
       ${_kpi(_eur(d.faturas.length ? total/d.faturas.length : 0), 'Valor médio', 'var(--blue-500)', 'por fatura')}
     </div>`;
-    html += _cartao('Fornecedores com maior valor',
-      '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM7 7h7v2H7V7zm10 12H7v-2h10v2zm0-4H7v-2h10v2zm-4-7V3.5L18.5 9H13z"/>',
+    blocks.fin_forn = _cartao('Fornecedores com maior valor', ICONS.faturas,
       top.length ? `<div class="anl-rank">${top.map(t => `
         <div class="anl-rank-row">
           <div class="anl-rank-top"><span class="anl-rank-n">${t.nome}</span><span class="anl-rank-v">${_eur(t.v)}</span></div>
@@ -328,13 +475,17 @@ export async function renderAnalise(){
     const isSai = r => (r.tipo_registo === 'deposito' && r.movimento === 'saida') || r.tipo_registo === 'viatura';
     const litros = f => d.comb.filter(f).reduce((s,r) => s + (parseFloat(r.litros)||0), 0);
     const ent = litros(isEnt), sai = litros(isSai);
-    html += `<div class="anl-kpis">
+    blocks.log_kpis = `<div class="anl-kpis">
       ${_kpi(ent.toFixed(1)+'L', 'Entradas depósito', 'var(--green)', 'no período')}
       ${_kpi(sai.toFixed(1)+'L', 'Saídas / consumo', 'var(--orange)', d.comb.length + ' registos')}
     </div>`;
   }
 
-  if(!html) html = '<div class="anl-vazio">Sem módulos de análise disponíveis para o seu perfil.</div>';
+  const disponiveis = Object.keys(blocks);
+  const ordem = await _widgetOrder(disponiveis);
+  let html = ordem.map(id => blocks[id]).join('');
+
+  if(!html) html = '<div class="anl-vazio">Sem cartões seleccionados. Toque em <strong>Personalizar</strong> para escolher o que mostrar.</div>';
   if(d.erros.length) html += `<div class="anl-erro">Não foi possível carregar: ${d.erros.join(', ')}.</div>`;
 
   body.innerHTML = html;

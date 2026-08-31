@@ -76,7 +76,11 @@ import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHan
 import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
 
 // Análise de dados (vista telemóvel)
-import { renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras, renderNotifCard, anlNotifClick, anlMarcarTodasLidas } from './modules/analise.js';
+import {
+  renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras, renderNotifCard, anlNotifClick, anlMarcarTodasLidas,
+  abrirPersonalizarAnalise, fecharPersonalizarAnalise, guardarPersonalizarAnalise, reporPersonalizarAnalise,
+  anlCustomToggle, anlCustomMove,
+} from './modules/analise.js';
 
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
@@ -127,6 +131,8 @@ Object.assign(window, {
 
   // Análise de dados (modo telemóvel)
   renderAnalise, anlSetPeriodo, anlSetObra, anlNotifClick, anlMarcarTodasLidas,
+  abrirPersonalizarAnalise, fecharPersonalizarAnalise, guardarPersonalizarAnalise, reporPersonalizarAnalise,
+  anlCustomToggle, anlCustomMove,
 
   // Dropbox
   dropboxLogin, dropboxLogout, dropboxIsConnected,

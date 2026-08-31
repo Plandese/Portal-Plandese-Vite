@@ -1079,10 +1079,16 @@
             <div class="pg-title">Análise de Dados</div>
             <div class="pg-sub" id="anl-sub">—</div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="renderAnalise()" title="Actualizar">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-            Actualizar
-          </button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="abrirPersonalizarAnalise()" title="Personalizar widgets">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="6" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="6" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="8" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              Personalizar
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="renderAnalise()" title="Actualizar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              Actualizar
+            </button>
+          </div>
         </div>
 
         <div class="anl-controls">
@@ -1099,6 +1105,25 @@
         <div id="anl-notif"></div>
         <div id="anl-body"></div>
       </section>
+
+      <!-- Modal de personalização dos widgets da Análise de Dados -->
+      <div class="modal-bg" id="modal-analise-custom" onclick="if(event.target===this)fecharPersonalizarAnalise()">
+        <div class="modal" style="max-width:480px;width:100%">
+          <div class="modal-title" style="display:flex;align-items:center;gap:10px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:var(--blue)"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="6" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="6" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="8" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            Personalizar Análise
+          </div>
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:16px">Escolha os cartões a mostrar e a ordem com as setas. As preferências ficam guardadas no seu perfil.</div>
+          <div id="anl-custom-list" class="anlc-list"></div>
+          <div class="modal-footer" style="justify-content:space-between">
+            <button class="btn btn-secondary" onclick="reporPersonalizarAnalise()">Repor predefinição</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="fecharPersonalizarAnalise()">Cancelar</button>
+              <button class="btn btn-primary" onclick="guardarPersonalizarAnalise()">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <section id="sec-painel" class="section">
 
