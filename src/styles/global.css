@@ -1339,7 +1339,7 @@ body.device-mobile .filter-bar{flex-direction:column;gap:8px;padding:12px}
 body.device-mobile .filter-bar .field{min-width:0;width:100%}
 body.device-mobile .filter-bar input, body.device-mobile .filter-bar select{width:100%;font-size:14px;padding:10px 12px}
 body.device-mobile .filter-bar .btn{width:100%;justify-content:center;padding:11px}
-body.device-mobile .pg-hdr{flex-direction:column}
+body.device-mobile .pg-hdr{flex-direction:column;align-items:stretch}
 body.device-mobile table{min-width:600px}
 body.device-mobile .modal{
   width:100%;max-width:100%;
@@ -1353,6 +1353,13 @@ body.device-mobile #export-btns .btn{width:100%;justify-content:center}
 body.device-mobile #export-btns>div{flex-direction:column!important;gap:6px!important}
 body.device-mobile #mes-mensal-sel{width:100%}
 body.device-mobile #hist-week-nav{flex-wrap:wrap;gap:6px}
+
+/* Pedidos de Compra em telemóvel: só o botão "Novo pedido" (destacado) e,
+   por baixo, a pesquisa de obra + resumo — sem KPIs, filtros nem exportação */
+body.device-mobile #cmp-export-btn,
+body.device-mobile #cmp-kpis-wrap{display:none}
+body.device-mobile #cmp-filtros-wrap{display:none!important}
+body.device-mobile #cmp-novo-btn{width:100%;justify-content:center;padding:13px}
 
 /* App-bar chip hidden on mobile */
 body.device-mobile .app-bar-chip .app-bar-nm,

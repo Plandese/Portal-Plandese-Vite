@@ -1625,11 +1625,11 @@
         <div class="pg-hdr">
           <div><div class="pg-title">Pedidos de compra</div><div class="pg-sub">Gestão de requisições e encomendas</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="exportComprasXLSX()">
+            <button class="btn btn-secondary" id="cmp-export-btn" onclick="exportComprasXLSX()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar
             </button>
-            <button class="btn btn-primary" onclick="openCompraModal(null)">
+            <button class="btn btn-primary" id="cmp-novo-btn" onclick="openCompraModal(null)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Novo pedido
             </button>
@@ -1638,7 +1638,7 @@
         <div class="alert alert-ok" id="cmp-alert">Pedido guardado.</div>
 
         <!-- KPIs -->
-        <div class="cmp-kpis">
+        <div class="cmp-kpis" id="cmp-kpis-wrap">
           <div class="cmp-kpi blue">
             <div class="cmp-kpi-label">Total</div>
             <div class="cmp-kpi-value" id="cmp-k-total">0</div>
@@ -1662,7 +1662,7 @@
         </div>
 
         <!-- Filtros + seletor de vista -->
-        <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div id="cmp-filtros-wrap" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px">
           <div class="filter-bar" style="margin-bottom:0;flex:1;min-width:0">
             <div class="field"><label>Pesquisa</label><input type="text" id="cmp-f-search" placeholder="Título, fornecedor ou utilizador…" oninput="renderCompras()"/></div>
             <div class="field"><label>Obra</label>

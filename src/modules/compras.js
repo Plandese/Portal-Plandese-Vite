@@ -15,6 +15,20 @@ let _artPickerItems = [];
 let _mapaLeaflet = null;
 let _mapaMarker  = null;
 let _mapaCoords  = null;
+let _cmpMobObraSel = null;   // obraId escolhida no resumo mobile (Pedidos de Compra)
+let _cmpMobSugAberta = false; // dropdown de sugestões da pesquisa de obra (mobile) aberta?
+
+// Fecha a lista de sugestões da pesquisa de obra (resumo mobile de compras) ao
+// clicar fora — 'mousedown' para não fechar-se a si mesma no clique que a abre.
+document.addEventListener('mousedown', (e) => {
+  if (!_cmpMobSugAberta) return;
+  const sug = document.getElementById('cmp-mob-sug');
+  const inp = document.getElementById('cmp-mob-busca');
+  if (sug && e.target !== inp && !sug.contains(e.target)) {
+    _cmpMobSugAberta = false;
+    sug.style.display = 'none';
+  }
+});
 
 // ═══════════════════════════════════════
 //  MÓDULO COMPRAS
@@ -328,11 +342,125 @@ function _renderResumo(lista) {
   return html;
 }
 
+// ── Vista mobile: pesquisa de obra + resumo de pedidos pendentes/resolvidos ──
+function _cmpMobResumoObra(obraId) {
+  const items = COMPRAS.filter(c => (c.obraId || '__sem_obra__') === obraId);
+  const pendentes = items.filter(c => c.estado !== 'entregue');
+  const resolvidos = items.filter(c => c.estado === 'entregue');
+  return { items, pendentes, resolvidos };
+}
+
+function _cmpMobItemRow(c) {
+  return `<div style="padding:11px 14px;cursor:pointer" onclick="editarCompra('${c.id}')">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span style="font-size:13px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titulo}</span>
+      ${cmpEstadoBadge(c.estado)}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px">
+      ${urgBadge(c.urgencia)}
+      ${c.dataLimite && c.estado !== 'entregue' ? `<span style="font-size:11px">${dataLimiteBadge(c.dataLimite, c.estado)}</span>` : ''}
+      ${cmpFornDisplay(c) !== '—' ? `<span style="font-size:11px;color:var(--gray-500)">${cmpFornDisplay(c)}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function _cmpMobRenderResumo() {
+  const box = document.getElementById('cmp-mob-resumo');
+  if (!box) return;
+
+  if (!_cmpMobObraSel) {
+    box.innerHTML = `<div class="card" style="text-align:center;color:var(--gray-400);padding:32px 16px;font-size:13px">Escolha uma obra para ver o resumo dos pedidos.</div>`;
+    return;
+  }
+  const obraNome = _cmpMobObraSel === '__sem_obra__' ? 'Sem obra associada' : (S.OBRAS.find(o => o.id === _cmpMobObraSel)?.nome || _cmpMobObraSel);
+  const { items, pendentes, resolvidos } = _cmpMobResumoObra(_cmpMobObraSel);
+
+  const grupo = (lista, titulo, corFundo, corTexto) => `
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:${corFundo}">
+        <span style="font-size:13px;font-weight:700;color:${corTexto}">${titulo}</span>
+        <span style="font-size:11px;font-weight:700;color:${corTexto};background:rgba(255,255,255,.6);border-radius:20px;padding:2px 9px">${lista.length}</span>
+      </div>
+      ${lista.length
+        ? `<div style="display:flex;flex-direction:column">${lista.map((c, i) => `${i > 0 ? '<div style="border-top:1px solid var(--gray-100)"></div>' : ''}${_cmpMobItemRow(c)}`).join('')}</div>`
+        : `<div style="padding:14px;font-size:12.5px;color:var(--gray-400)">Nenhum pedido nesta categoria.</div>`}
+    </div>`;
+
+  box.innerHTML = `
+    <div style="font-size:14.5px;font-weight:700;color:var(--gray-900);margin-bottom:2px">${obraNome}</div>
+    <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">${items.length} pedido${items.length !== 1 ? 's' : ''} no total</div>
+    ${grupo(pendentes, 'Pendentes', '#FEF3C7', '#92400E')}
+    ${grupo(resolvidos, 'Resolvidos', '#D1FAE5', '#065F46')}
+  `;
+}
+
+function _renderMobileCompras(area) {
+  const obras = [...S.OBRAS].filter(o => o.ativa).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  const temSemObra = COMPRAS.some(c => !c.obraId);
+  const opcoes = temSemObra ? [...obras, { id: '__sem_obra__', nome: 'Sem obra associada' }] : obras;
+
+  area.innerHTML = `
+    <div style="position:relative;margin-bottom:14px">
+      <input type="text" id="cmp-mob-busca" autocomplete="off" placeholder="Escreva o nome da obra…"
+        style="width:100%;padding:11px 14px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white);color:var(--gray-900)"/>
+      <div id="cmp-mob-sug" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:260px;overflow-y:auto;z-index:50"></div>
+    </div>
+    <div id="cmp-mob-resumo"></div>
+  `;
+
+  const inp = document.getElementById('cmp-mob-busca');
+  const sug = document.getElementById('cmp-mob-sug');
+
+  const obraAtual = opcoes.find(o => o.id === _cmpMobObraSel);
+  if (obraAtual) inp.value = obraAtual.nome;
+
+  function fechar() { _cmpMobSugAberta = false; sug.style.display = 'none'; }
+
+  function mostrar() {
+    const q = inp.value.trim().toLowerCase();
+    const matches = (q ? opcoes.filter(o => o.nome.toLowerCase().includes(q)) : opcoes).slice(0, 8);
+    sug.innerHTML = matches.length ? matches.map(o => `
+      <button type="button" data-id="${o.id}" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;color:var(--gray-900);border-bottom:1px solid var(--gray-100)">${o.nome}</button>
+    `).join('') : `<div style="padding:12px 14px;font-size:12.5px;color:var(--gray-400)">Sem obras encontradas.</div>`;
+    sug.querySelectorAll('button[data-id]').forEach(btn => {
+      btn.onmousedown = (e) => {
+        e.preventDefault();
+        const id = btn.getAttribute('data-id');
+        const o = opcoes.find(x => x.id === id);
+        _cmpMobObraSel = id;
+        inp.value = o ? o.nome : '';
+        fechar();
+        _cmpMobRenderResumo();
+      };
+    });
+    _cmpMobSugAberta = true;
+    sug.style.display = 'block';
+  }
+
+  inp.addEventListener('input', () => {
+    if (_cmpMobObraSel) {
+      const o = opcoes.find(x => x.id === _cmpMobObraSel);
+      if (!o || o.nome !== inp.value) { _cmpMobObraSel = null; _cmpMobRenderResumo(); }
+    }
+    mostrar();
+  });
+  inp.addEventListener('focus', () => { inp.select(); mostrar(); });
+
+  _cmpMobRenderResumo();
+}
+
 function renderCompras() {
-  const lista = filtraCompras();
-  const area  = document.getElementById('cmp-view-area');
-  const empty = document.getElementById('cmp-empty');
+  const area = document.getElementById('cmp-view-area');
   if (!area) return;
+  if (document.body.classList.contains('device-mobile')) {
+    const empty = document.getElementById('cmp-empty');
+    if (empty) empty.style.display = 'none';
+    _renderMobileCompras(area);
+    atualizaKPIsCompras();
+    return;
+  }
+  const lista = filtraCompras();
+  const empty = document.getElementById('cmp-empty');
   if (lista.length === 0) {
     area.innerHTML = '';
     if (empty) empty.style.display = '';
