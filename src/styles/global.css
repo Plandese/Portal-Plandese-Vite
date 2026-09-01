@@ -2010,6 +2010,9 @@ body.device-mobile #admin-app .notif-btn,
 body.device-mobile #admin-app .settings-btn{display:none}
 /* sem o sino e a engrenagem o nome da marca só rouba espaço à data — fica o logo */
 body.device-mobile #admin-app .app-bar-title{display:none}
+/* Mapa de Férias em telemóvel é só resumo por colaborador — o cadeado de
+   edição do mapa (desktop) não se aplica */
+body.device-mobile #ferias-lock-btn{display:none}
 
 /* Sem .app-bar-title (flex:1) a empurrar, o .app-bar-right ficava colado
    ao logo em vez de fixo no canto direito — forçar com margin-left:auto */

@@ -14,6 +14,8 @@ let _filtroFuncs = new Set(); // vazio = todas as funções
 let _funcDropdownOpen = false;
 let _feriasUtilizadas = new Set(); // 'colab_numero|YYYY-MM-DD' — vêm das folhas de ponto
 let _feriasPrevistas  = new Set(); // 'colab_numero|YYYY-MM-DD' — planeadas, editáveis
+let _mobSelColab = null;  // colaborador escolhido no resumo mobile (nº)
+let _mobSugAberta = false; // dropdown de sugestões do campo de pesquisa (mobile) aberta?
 
 // Fecha o dropdown de função ao clicar fora dele.
 // Usa 'mousedown' (não 'click'): corre antes do re-render disparado pelo
@@ -40,6 +42,18 @@ document.addEventListener('scroll', (e) => {
   _funcDropdownOpen = false;
   _renderTabela();
 }, true);
+
+// Fecha a lista de sugestões da pesquisa de colaborador (resumo mobile) ao
+// clicar fora — 'mousedown' para não fechar-se a si mesma no clique que a abre.
+document.addEventListener('mousedown', (e) => {
+  if (!_mobSugAberta) return;
+  const sug = document.getElementById('ferias-mob-sug');
+  const inp = document.getElementById('ferias-mob-busca');
+  if (sug && e.target !== inp && !sug.contains(e.target)) {
+    _mobSugAberta = false;
+    sug.style.display = 'none';
+  }
+});
 
 // ── Dropdown do filtro de função ───────────────────────────────
 // Anexada diretamente ao <body> (position:fixed, posição calculada a partir
@@ -272,6 +286,157 @@ export async function renderMapaFerias() {
   _renderTabela();
 }
 
+// ── Iniciais para o avatar do resumo mobile ───────────────────
+function _iniciais(nome) {
+  const partes = (nome || '').trim().split(/\s+/);
+  return ((partes[0]?.[0] || '') + (partes[partes.length - 1]?.[0] || '')).toUpperCase();
+}
+
+// ── Agrupa datas (YYYY-MM-DD) consecutivas em intervalos [ini, fim] ──
+function _agruparIntervalos(dateStrs) {
+  const sorted = [...new Set(dateStrs)].sort();
+  if (!sorted.length) return [];
+  const ranges = [];
+  let ini = sorted[0], fim = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const seguinte = fmt(new Date(new Date(fim + 'T12:00:00').setDate(new Date(fim + 'T12:00:00').getDate() + 1)));
+    if (sorted[i] === seguinte) { fim = sorted[i]; continue; }
+    ranges.push([ini, fim]);
+    ini = fim = sorted[i];
+  }
+  ranges.push([ini, fim]);
+  return ranges;
+}
+
+function _fmtIntervalo([ini, fim]) {
+  const di = new Date(ini + 'T12:00:00'), df = new Date(fim + 'T12:00:00');
+  if (ini === fim) return `${di.getDate()} de ${MESES_FULL[di.getMonth()]}`;
+  if (di.getMonth() === df.getMonth()) return `${di.getDate()} a ${df.getDate()} de ${MESES_FULL[di.getMonth()]}`;
+  return `${di.getDate()} ${MESES[di.getMonth()]} a ${df.getDate()} ${MESES[df.getMonth()]}`;
+}
+
+// ── Datas de férias (utilizadas/previstas) de um colaborador no ano atual ──
+function _mobColabDatas(colabN) {
+  const util = [], prev = [];
+  for (let m = 0; m < 12; m++) {
+    const diasNoMes = new Date(_ano, m + 1, 0).getDate();
+    for (let d = 1; d <= diasNoMes; d++) {
+      const dateObj = new Date(_ano, m, d);
+      const isWknd = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+      const dateStr = fmt(new Date(_ano, m, d, 12));
+      const key = `${colabN}|${dateStr}`;
+      if (_feriasUtilizadas.has(key)) util.push({ dateStr, isWknd });
+      else if (_feriasPrevistas.has(key)) prev.push({ dateStr, isWknd });
+    }
+  }
+  return { util, prev };
+}
+
+// ── Resumo do colaborador escolhido (dias já tirados / ainda por tirar) ──
+function _mobRenderResumo() {
+  const box = document.getElementById('ferias-mob-resumo');
+  if (!box) return;
+
+  if (!_mobSelColab) {
+    box.innerHTML = `<div class="card" style="text-align:center;color:var(--gray-400);padding:32px 16px;font-size:13px">Escolha um colaborador para ver o resumo de férias de ${_ano}.</div>`;
+    return;
+  }
+  const colab = S.COLABORADORES.find(c => c.n === _mobSelColab);
+  if (!colab) { box.innerHTML = ''; return; }
+
+  const { util, prev } = _mobColabDatas(_mobSelColab);
+  const totalUtil = util.filter(x => !x.isWknd).length;
+  const totalPrev = prev.filter(x => !x.isWknd).length;
+  const rangesUtil = _agruparIntervalos(util.map(x => x.dateStr));
+  const rangesPrev = _agruparIntervalos(prev.map(x => x.dateStr));
+
+  const lista = (ranges, msgVazio) => ranges.length
+    ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">${ranges.map(r => `<div style="font-size:13px;color:var(--gray-700);padding:8px 12px;background:var(--gray-50);border-radius:8px">${_fmtIntervalo(r)}</div>`).join('')}</div>`
+    : `<div style="font-size:12.5px;color:var(--gray-400);margin-top:8px">${msgVazio}</div>`;
+
+  box.innerHTML = `
+    <div class="card" style="padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--blue-500);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${_iniciais(colab.nome)}</div>
+        <div style="min-width:0">
+          <div style="font-size:14.5px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${colab.nome}</div>
+          <div style="font-size:11.5px;color:var(--gray-500)">${colab.func}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:14px 16px;margin-bottom:12px;border-left:3px solid #10B981">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Já tirou em ${_ano}</span>
+        ${_totalBadge(totalUtil, '#065F46', '#D1FAE5')}
+      </div>
+      ${lista(rangesUtil, `Sem férias utilizadas em ${_ano}.`)}
+    </div>
+    <div class="card" style="padding:14px 16px;border-left:3px solid #F59E0B">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Ainda por tirar em ${_ano}</span>
+        ${_totalBadge(totalPrev, '#92400E', '#FEF3C7')}
+      </div>
+      ${lista(rangesPrev, `Sem férias previstas marcadas em ${_ano}.`)}
+    </div>
+  `;
+}
+
+// ── Vista mobile: caixa de pesquisa de colaborador + resumo ───
+function _renderMobileResumo(cont, allColabsPorNome) {
+  cont.innerHTML = `
+    <div style="position:relative;margin-bottom:14px">
+      <input type="text" id="ferias-mob-busca" autocomplete="off" placeholder="Escreva o nome do colaborador…"
+        style="width:100%;padding:11px 14px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white);color:var(--gray-900)"/>
+      <div id="ferias-mob-sug" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:260px;overflow-y:auto;z-index:50"></div>
+    </div>
+    <div id="ferias-mob-resumo"></div>
+  `;
+
+  const inp = document.getElementById('ferias-mob-busca');
+  const sug = document.getElementById('ferias-mob-sug');
+
+  const colabAtual = allColabsPorNome.find(c => c.n === _mobSelColab);
+  if (colabAtual) inp.value = colabAtual.nome;
+
+  function fechar() { _mobSugAberta = false; sug.style.display = 'none'; }
+
+  function mostrar() {
+    const q = inp.value.trim().toLowerCase();
+    const matches = (q ? allColabsPorNome.filter(c => c.nome.toLowerCase().includes(q)) : allColabsPorNome).slice(0, 8);
+    sug.innerHTML = matches.length ? matches.map(c => `
+      <button type="button" data-n="${c.n}" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-family:var(--font);border-bottom:1px solid var(--gray-100)">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${c.nome}</div>
+        <div style="font-size:11px;color:var(--gray-500)">${c.func}</div>
+      </button>
+    `).join('') : `<div style="padding:12px 14px;font-size:12.5px;color:var(--gray-400)">Sem colaboradores encontrados.</div>`;
+    sug.querySelectorAll('button[data-n]').forEach(btn => {
+      // mousedown (não click): corre antes do blur do input, que já fecharia a lista
+      btn.onmousedown = (e) => {
+        e.preventDefault();
+        const n = parseInt(btn.getAttribute('data-n'));
+        const c = allColabsPorNome.find(x => x.n === n);
+        _mobSelColab = n;
+        inp.value = c ? c.nome : '';
+        fechar();
+        _mobRenderResumo();
+      };
+    });
+    _mobSugAberta = true;
+    sug.style.display = 'block';
+  }
+
+  inp.addEventListener('input', () => {
+    if (_mobSelColab) {
+      const c = allColabsPorNome.find(x => x.n === _mobSelColab);
+      if (!c || c.nome !== inp.value) { _mobSelColab = null; _mobRenderResumo(); }
+    }
+    mostrar();
+  });
+  inp.addEventListener('focus', () => { inp.select(); mostrar(); });
+
+  _mobRenderResumo();
+}
+
 // ── Render da tabela a partir dos dados em memória ────────────
 // Chamado por lock/filtro — nunca faz fetch ao Supabase.
 function _renderTabela() {
@@ -281,6 +446,12 @@ function _renderTabela() {
   const allColabs = S.COLABORADORES.filter(c => c.ativo).sort((a, b) => a.n - b.n);
   if (!allColabs.length) {
     cont.innerHTML = '<div class="card" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Sem colaboradores ativos.</div>';
+    return;
+  }
+
+  if (document.body.classList.contains('device-mobile')) {
+    const porNome = [...allColabs].sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+    _renderMobileResumo(cont, porNome);
     return;
   }
 
