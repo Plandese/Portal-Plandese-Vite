@@ -688,6 +688,26 @@ function cmpRenderArtigosSelected() {
     return;
   }
   el.style.display = '';
+
+  if (document.body.classList.contains('device-mobile')) {
+    el.innerHTML = _cmpArtigosEdit.map((a, i) => `
+      <div style="padding:9px 12px;${i > 0 ? 'border-top:1px solid var(--gray-200)' : ''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="min-width:0">
+            <div style="font-size:13px;color:var(--gray-900);word-break:break-word">${a.nome}</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${a.ref || '—'}</div>
+          </div>
+          <button onclick="cmpRemoveArtigo(${i})" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;line-height:1;padding:2px 4px;flex-shrink:0" title="Remover">✕</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span style="font-size:11px;color:var(--gray-500);background:var(--gray-100);border-radius:6px;padding:3px 8px">${a.un}</span>
+          <input type="number" min="0" step="any" value="${a.qty}" onchange="cmpUpdateArtigoQty(${i},this.value)" style="width:80px;text-align:center;border:1.5px solid var(--gray-200);border-radius:6px;padding:5px 6px;font-size:13px;font-family:inherit"/>
+        </div>
+      </div>`
+    ).join('');
+    return;
+  }
+
   el.innerHTML =
     `<table style="width:100%;border-collapse:collapse;font-size:12px">`+
     `<thead><tr style="background:var(--gray-100);">`+
@@ -962,8 +982,9 @@ function cmpUpdateArtBtnBadge() {
   const btn = document.getElementById('btn-lista-mat');
   if (!btn) return;
   const n = _cmpArtigosEdit.length;
-  const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
-  btn.innerHTML = icon + (n > 0 ? ` Lista de Materiais <span style="background:var(--blue-500);color:white;border-radius:12px;padding:1px 8px;font-size:11px;margin-left:4px">${n}</span>` : ' Lista de Materiais');
+  const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
+  const label = n > 0 ? `${n} artigo${n !== 1 ? 's' : ''} escolhido${n !== 1 ? 's' : ''}` : 'Escolher da lista de materiais';
+  btn.innerHTML = icon + ' ' + label;
 }
 
 function openCompraModal(c) {
@@ -987,6 +1008,13 @@ function openCompraModal(c) {
   document.getElementById('mcmp-del-btn').style.display   = c ? '' : 'none';
   const elMapaBtn = document.getElementById('mcmp-mapa-btn');
   if (elMapaBtn) elMapaBtn.style.display = c ? '' : 'none';
+  // Estado só interessa a quem edita — num pedido novo começa sempre "Pendente"
+  const elEstadoField = document.getElementById('mcmp-estado-field');
+  if (elEstadoField) elEstadoField.style.display = c ? '' : 'none';
+  // "Mais opções" (localização/email): recolhido por omissão em telemóvel,
+  // exceto se o pedido já tiver esses dados preenchidos
+  const elMais = document.getElementById('mcmp-mais');
+  if (elMais) elMais.open = !document.body.classList.contains('device-mobile') || !!(c?.local || c?.emailNotif);
   // Workflow checkboxes (elementos opcionais — podem ter sido removidos do form)
   const elCotacao = document.getElementById('mcmp-cotacao');
   const elAprovDO = document.getElementById('mcmp-aprov-do');
