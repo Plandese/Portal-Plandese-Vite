@@ -2798,14 +2798,16 @@
         </button>
         <input type="file" id="cmp-upload-lista-input" accept=".xls,.xlsx" style="display:none" onchange="uploadListaExcelFile(this)">
       </div>
-      <div style="display:flex;gap:6px;margin-top:10px;align-items:center">
-        <input type="text" id="mcmp-art-rapido" placeholder="Artigo rápido (ex: Cimento CEM II 42,5R)" onkeydown="if(event.key==='Enter'){event.preventDefault();cmpAddArtigoRapido()}" style="flex:1;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)"/>
-        <input type="number" id="mcmp-art-qty" value="1" min="0.01" step="any" style="width:60px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 8px;font-size:13px;font-family:var(--font);text-align:center"/>
-        <select id="mcmp-art-un" style="width:62px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 6px;font-size:13px;font-family:var(--font);background:white;color:var(--gray-800)">
-          <option>un</option><option>m</option><option>m2</option><option>m3</option><option>ml</option>
-          <option>kg</option><option>t</option><option>lt</option><option>h</option><option>cx</option><option>vb</option>
-        </select>
-        <button type="button" onclick="cmpAddArtigoRapido()" style="padding:7px 12px;border:1.5px solid var(--blue-400);border-radius:8px;background:white;color:var(--blue-600);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font)" title="Adicionar artigo rápido">+ Adicionar</button>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+        <input type="text" id="mcmp-art-rapido" placeholder="Artigo rápido (ex: Cimento CEM II 42,5R)" onkeydown="if(event.key==='Enter'){event.preventDefault();cmpAddArtigoRapido()}" style="flex:1 1 200px;min-width:0;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)"/>
+        <div style="display:flex;flex:0 0 auto;gap:6px;align-items:center">
+          <input type="number" id="mcmp-art-qty" value="1" min="0.01" step="any" style="width:60px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 8px;font-size:13px;font-family:var(--font);text-align:center"/>
+          <select id="mcmp-art-un" style="width:62px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 6px;font-size:13px;font-family:var(--font);background:white;color:var(--gray-800)">
+            <option>un</option><option>m</option><option>m2</option><option>m3</option><option>ml</option>
+            <option>kg</option><option>t</option><option>lt</option><option>h</option><option>cx</option><option>vb</option>
+          </select>
+          <button type="button" onclick="cmpAddArtigoRapido()" style="padding:7px 12px;border:1.5px solid var(--blue-400);border-radius:8px;background:white;color:var(--blue-600);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font)" title="Adicionar artigo rápido">+ Adicionar</button>
+        </div>
       </div>
       <div id="mcmp-art-selected" style="margin-top:10px;border:1.5px solid var(--gray-200);border-radius:8px;overflow:hidden;display:none"></div>
     </div>
@@ -2813,11 +2815,11 @@
     <!-- FORNECEDORES -->
     <div class="field">
       <label>Fornecedores <span style="font-weight:400;color:var(--gray-400)">(pode adicionar vários)</span></label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="mcmp-forn-input" placeholder="Pesquise pelo nome do fornecedor…" list="mcmp-forn-list" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();cmpAddForn()}"/>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <input type="text" id="mcmp-forn-input" placeholder="Pesquise pelo nome do fornecedor…" list="mcmp-forn-list" autocomplete="off" style="flex:1 1 200px;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();cmpAddForn()}"/>
         <datalist id="mcmp-forn-list"></datalist>
         <input type="hidden" id="mcmp-forn-id"/>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="cmpAddForn()" style="white-space:nowrap;align-self:stretch">+ Adicionar</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cmpAddForn()" style="white-space:nowrap;flex-shrink:0">+ Adicionar</button>
       </div>
       <div id="mcmp-forn-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
     </div>
@@ -2841,15 +2843,15 @@
       <input type="hidden" id="mcmp-lng"/>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div class="field"><label>Urgência</label>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <div class="field" style="flex:1 1 140px;min-width:0"><label>Urgência</label>
         <select id="mcmp-urg">
           <option value="Normal">Normal</option>
           <option value="Urgente">Urgente</option>
           <option value="Muito Urgente">Muito Urgente</option>
         </select>
       </div>
-      <div class="field"><label>Estado</label>
+      <div class="field" style="flex:1 1 140px;min-width:0"><label>Estado</label>
         <select id="mcmp-estado">
           <option value="pendente">Pendente</option>
           <option value="aprovado">Aprovado</option>
@@ -2857,8 +2859,8 @@
           <option value="entregue">Entregue</option>
         </select>
       </div>
-      <div class="field"><label>Data limite entrega</label>
-        <input type="date" id="mcmp-data-limite"/>
+      <div class="field" style="flex:1 1 140px;min-width:0"><label>Data limite entrega</label>
+        <input type="date" id="mcmp-data-limite" style="width:100%"/>
       </div>
     </div>
 
