@@ -11,6 +11,8 @@ import { showToast } from './navigation.js';
 //  ADMIN — HISTÓRICO SEMANAL
 // ═══════════════════════════════════════
 let histSemanaRef = new Date(); // data de referência da semana atual no hist
+let _histDiaSel = null;  // dateStr do dia selecionado na vista de lista (telemóvel)
+let _histCache = null;   // {obraMap, dupByDay, days, dStrs, dayNames, semLabel} da última semana carregada
 
 // ── Edição/anulação de um registo (popover por célula) ──────────────────────
 // Anexado ao <body> (position:fixed) para nunca ficar tapado pelo overflow-x
@@ -190,6 +192,12 @@ export function navSemana(delta){
 // no HTML atual — esta função evita que o resto do render pare por causa disso.
 function _elStyle(id){ const el=document.getElementById(id); return el?el.style:{}; }
 
+export function histSelectDia(dateStr){
+  if(!_histCache || !_histCache.dStrs.includes(dateStr)) return;
+  _histDiaSel = dateStr;
+  _histDrawResultado();
+}
+
 export async function renderHistSemana(){
   const mon = getMonday(histSemanaRef);
   const days = [];
@@ -220,12 +228,14 @@ export async function renderHistSemana(){
   } catch(e) {
     cont.innerHTML=`<div class="card" style="text-align:center;color:var(--red);padding:32px;font-size:13px">⚠️ Erro ao carregar dados: ${e.message||'Verifique a ligação ao Supabase.'}</div>`;
     _elStyle('export-btns-plandese').display='none';
+    _histCache=null;
     return;
   }
 
   if(!regs||!regs.length){
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Sem registos para esta semana.</div>';
     _elStyle('export-btns-plandese').display='none';
+    _histCache=null;
     return;
   }
 
@@ -242,6 +252,25 @@ export async function renderHistSemana(){
     if(!dupByDay[r.data]) dupByDay[r.data]={};
     dupByDay[r.data][r.colab_numero]=(dupByDay[r.data][r.colab_numero]||0)+1;
   });
+
+  // Dia selecionado (vista de lista, telemóvel): mantém o dia já escolhido se
+  // continuar dentro da semana; caso contrário usa hoje (se pertencer a esta
+  // semana) ou a 2ª-feira.
+  const todayStr = fmt(new Date());
+  if(!_histDiaSel || !dStrs.includes(_histDiaSel)) _histDiaSel = dStrs.includes(todayStr) ? todayStr : dStrs[0];
+
+  _histCache = {obraMap, dupByDay, days, dStrs, dayNames, semLabel};
+  _histDrawResultado();
+}
+
+// Redesenha #hist-resultado a partir de _histCache (sem voltar a consultar o
+// Supabase) — usado tanto após o fetch como ao trocar de dia na vista mobile.
+function _histDrawResultado(){
+  if(!_histCache) return;
+  const {obraMap, dupByDay, days, dStrs, dayNames, semLabel} = _histCache;
+  const cont = document.getElementById('hist-resultado');
+  if(!cont) return;
+
   // Colaboradores com ≥2 registos no mesmo dia → precisam de verificação
   const dupResumo=[]; // {nome, data}
   Object.keys(dupByDay).forEach(ds=>{
@@ -270,6 +299,16 @@ export async function renderHistSemana(){
       <div style="font-size:12px;color:#9a3412;margin-bottom:8px">Estes colaboradores têm mais do que um registo no mesmo dia (várias obras ou vários encarregados). Confirme se está correto.</div>
       <div>${itens}</div>`;
     cont.appendChild(banner);
+  }
+
+  if(document.body.classList.contains('device-mobile')){
+    grandT = _histDrawMobile(cont);
+    window._histExportData={obraMap,days,dStrs,dayNames,semLabel,grandN,grandE,grandT};
+    _elStyle('export-btns-plandese').display='flex';
+    const curM=new Date().getMonth()+1;
+    const mesSel=document.getElementById('mes-mensal-sel');
+    if(mesSel) mesSel.value=String(curM);
+    return;
   }
 
   Object.keys(obraMap).sort().forEach(obraId=>{
@@ -384,6 +423,108 @@ export async function renderHistSemana(){
   const curM=new Date().getMonth()+1;
   const mesSel=document.getElementById('mes-mensal-sel');
   if(mesSel) mesSel.value=String(curM);
+}
+
+// Vista mobile: seletor de dia (2ª a Sábado) + lista de colaboradores só com
+// o registo desse dia — em vez da tabela larga de 6 colunas do desktop.
+// Devolve o total de horas do dia selecionado (para window._histExportData).
+function _histDrawMobile(cont){
+  const {obraMap, dupByDay, days, dStrs, dayNames} = _histCache;
+  const diaIdx = dStrs.indexOf(_histDiaSel);
+  const todayStr = fmt(new Date());
+
+  const sel=document.createElement('div');
+  sel.style.cssText='display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px;margin-bottom:14px;-webkit-overflow-scrolling:touch';
+  dStrs.forEach((ds,i)=>{
+    const active = ds===_histDiaSel;
+    const isToday = ds===todayStr;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.onclick=()=>histSelectDia(ds);
+    btn.style.cssText=`flex:0 0 auto;min-width:52px;padding:7px 4px 8px;border-radius:12px;border:1.5px solid ${active?'var(--blue-500)':'var(--gray-200)'};background:${active?'var(--blue-500)':'var(--white)'};color:${active?'#fff':'var(--gray-700)'};font-family:var(--font);cursor:pointer;text-align:center;transition:background .15s,border-color .15s`;
+    btn.innerHTML=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;opacity:${active?'.9':'.6'}">${dayNames[i].replace(' Feira','')}</div>
+      <div style="font-size:15px;font-weight:700;margin-top:2px;line-height:1">${dStrs[i].slice(8,10)}</div>
+      ${isToday?`<div style="width:4px;height:4px;border-radius:50%;margin:4px auto 0;background:${active?'#fff':'var(--blue-500)'}"></div>`:''}`;
+    sel.appendChild(btn);
+  });
+  cont.appendChild(sel);
+
+  const obraIds = Object.keys(obraMap).sort();
+  let grandT=0, anyRow=false;
+
+  obraIds.forEach(obraId=>{
+    const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
+    const obraData=obraMap[obraId];
+    const nums = Object.keys(obraData)
+      .filter(nStr=>(obraData[nStr][diaIdx]||[]).length)
+      .sort((a,b)=>{
+        const ca=S.COLABORADORES.find(x=>x.n===parseInt(a));
+        const cb=S.COLABORADORES.find(x=>x.n===parseInt(b));
+        return (ca?.nome||'').localeCompare(cb?.nome||'');
+      });
+    if(!nums.length) return;
+    anyRow=true;
+
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;gap:10px;margin:16px 0 8px';
+    hdr.innerHTML=`<div style="width:8px;height:8px;border-radius:50%;background:var(--blue-500);flex-shrink:0"></div>
+      <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Obra: ${obraNome}</span>`;
+    cont.appendChild(hdr);
+
+    const list=document.createElement('div');
+    list.className='card';
+    list.style.cssText='padding:0;overflow:hidden;margin-bottom:4px';
+
+    nums.forEach((nStr,idx)=>{
+      const n=parseInt(nStr);
+      const c=S.COLABORADORES.find(x=>x.n===n); if(!c) return;
+      const cellRegs=obraData[nStr][diaIdx];
+      const cellKey=`${obraId}__${n}__${diaIdx}`;
+      _histCellIndex[cellKey]={obraId,colabN:n,dateStr:dStrs[diaIdx],dateObj:days[diaIdx],regs:cellRegs,reg:cellRegs[0]||null,colab:c};
+      const isDupDay=(dupByDay[dStrs[diaIdx]]?.[n]||0)>=2;
+
+      let h={n:0,e:0,t:0};
+      cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),days[diaIdx]);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
+      grandT+=h.t;
+
+      let right;
+      if(h.t>0){
+        right=`<div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--blue-600)">${fmtH(h.t)}</div>
+          ${h.e>0?`<div style="font-size:10px;color:var(--orange);font-weight:600;margin-top:1px">+${fmtH(h.e)} extra</div>`:''}`;
+      } else {
+        const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+        const tp=special?.tipo||'';
+        if(tp==='Anulado') right=`<span class="badge b-gray" style="text-decoration:line-through">Anulado</span>`;
+        else if(tp.includes('Falta')) right=`<span class="badge b-red">${tp}</span>`;
+        else if(tp==='Férias') right=`<span class="badge b-blue">Férias</span>`;
+        else if(tp==='Folga') right=`<span class="badge b-yellow">Folga</span>`;
+        else right=`<span style="color:var(--gray-300);font-size:12px">—</span>`;
+      }
+
+      const row=document.createElement('div');
+      row.className='hp-cell';
+      row.setAttribute('onclick',`hpEditCell(event,'${cellKey}')`);
+      row.style.cssText=`display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;cursor:pointer;${idx>0?'border-top:1px solid var(--gray-100)':''}`;
+      row.innerHTML=`<div style="min-width:0">
+          <div style="font-size:13.5px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}${isDupDay?' <span title="Vários registos neste dia — verificar" style="color:var(--orange,#ea580c);font-weight:800">⚠</span>':''}</div>
+          <div style="font-size:11px;color:var(--gray-500);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.func||''}</div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">${right}</div>`;
+      list.appendChild(row);
+    });
+
+    cont.appendChild(list);
+  });
+
+  if(!anyRow){
+    const empty=document.createElement('div');
+    empty.className='card';
+    empty.style.cssText='text-align:center;color:var(--gray-400);padding:32px;font-size:13px';
+    empty.textContent='Sem registos para este dia.';
+    cont.appendChild(empty);
+  }
+
+  return grandT;
 }
 
 // ── ExcelJS helpers ─────────────────────────────────────────────────────────
