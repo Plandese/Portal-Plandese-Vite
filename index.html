@@ -1828,7 +1828,7 @@
         <div class="pg-hdr">
           <div><div class="pg-title">Equipamentos e Logística</div><div class="pg-sub">Rastreio de localização por QR code — obra a obra</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="exportEquipamentosXLSX()">
+            <button class="btn btn-secondary" id="eq-export-btn" onclick="exportEquipamentosXLSX()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar
             </button>
@@ -1841,7 +1841,7 @@
         <div class="alert alert-ok" id="eq-alert">Equipamento guardado.</div>
 
         <!-- KPIs -->
-        <div class="eq-kpis">
+        <div class="eq-kpis" id="eq-kpis-wrap">
           <div class="eq-kpi blue"><div class="eq-kpi-label">Total</div><div class="eq-kpi-value" id="eq-k-total">0</div><div class="eq-kpi-sub">equipamentos</div></div>
           <div class="eq-kpi green"><div class="eq-kpi-label">Em obra hoje</div><div class="eq-kpi-value" id="eq-k-obra">0</div><div class="eq-kpi-sub">registados hoje</div></div>
           <div class="eq-kpi yellow"><div class="eq-kpi-label">Sem registo</div><div class="eq-kpi-value" id="eq-k-sem">0</div><div class="eq-kpi-sub">há mais de 7 dias</div></div>

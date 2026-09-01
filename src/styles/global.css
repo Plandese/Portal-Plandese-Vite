@@ -1361,6 +1361,10 @@ body.device-mobile #cmp-kpis-wrap{display:none}
 body.device-mobile #cmp-filtros-wrap{display:none!important}
 body.device-mobile #cmp-novo-btn{width:100%;justify-content:center;padding:13px}
 
+/* Equipamentos e Logística em telemóvel: sem KPIs nem exportação */
+body.device-mobile #eq-export-btn,
+body.device-mobile #eq-kpis-wrap{display:none}
+
 /* App-bar chip hidden on mobile */
 body.device-mobile .app-bar-chip .app-bar-nm,
 body.device-mobile .app-bar-chip .app-bar-role{display:none}
