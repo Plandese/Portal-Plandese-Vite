@@ -1262,6 +1262,7 @@ async function renderFatSelPages(item){
 }
 
 export {
+  FATURAS,
   handleFatFiles, renderFaturas, limparFatFiltros, renderQueue,
   editarFatura, saveFatura, apagarFatura, exportFaturasXLSX,
   setupFatDropzone, atualizaKPIs, seedFaturasDemo,

@@ -7,6 +7,10 @@ import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
 import { showToast } from './navigation.js';
 import { renderLembretes } from './lembretes.js';
+import { coComputeStats, prodFmtEur, _prodLoadLocal, _loadObrasExtra } from './producao.js';
+import { COMPRAS } from './compras.js';
+import { FATURAS } from './faturas.js';
+import { EQUIPAMENTOS } from './equipamentos.js';
 
 let _painelConfig = null;
 
@@ -99,6 +103,10 @@ async function renderPainel() {
     titulo.textContent = nomePropio ? `${saudacao}, ${nomePropio}` : 'Painel Principal';
   }
 
+  // Destaques (alertas cruzados) e KPIs compactos
+  renderPainelKPIs(obrasFiltro);
+  renderPainelAlerts(obrasFiltro);
+
   // Carregar dados necessários para os widgets ativos
   const widgets = (cfg.widgets || []).filter(wid => PAINEL_WIDGETS_DEF.some(w => w.id === wid));
 
@@ -123,6 +131,149 @@ async function renderPainel() {
 
   // Renderizar quadro de lembretes em paralelo
   renderLembretes().catch(e => console.warn('renderLembretes:', e));
+}
+
+// ── Destaques (alertas cruzados de outras secções) ─────────────────
+const _PAINEL_ICON_WARN = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+const _PAINEL_ICON_OK   = '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>';
+
+function _painelSidebarBtn(section) {
+  return document.querySelector(`.sidebar .nav-btn[onclick*="'${section}'"]`);
+}
+
+// Stats de Controlo de Obras partilhadas entre o widget e os destaques
+function _painelObraStats(obrasFiltro) {
+  _prodLoadLocal();
+  _loadObrasExtra();
+  const obrasAtivas = S.OBRAS.filter(o => o.ativa && (obrasFiltro.length === 0 || obrasFiltro.includes(o.id)));
+  return obrasAtivas.map(o => coComputeStats(o));
+}
+
+function computePainelAlerts(obrasFiltro) {
+  const alerts = [];
+
+  try {
+    const stats = _painelObraStats(obrasFiltro);
+    const bad = stats.filter(s => s.status === 'bad').length;
+    const warn = stats.filter(s => s.status === 'warn').length;
+    if (bad > 0) alerts.push({
+      sev: 'red', count: bad, label: bad === 1 ? 'obra em alerta' : 'obras em alerta',
+      action: () => window.goTo('producao', _painelSidebarBtn('producao')),
+    });
+    if (warn > 0) alerts.push({
+      sev: 'orange', count: warn, label: warn === 1 ? 'obra em atenção' : 'obras em atenção',
+      action: () => window.goTo('producao', _painelSidebarBtn('producao')),
+    });
+  } catch (e) { console.warn('painel alerts (obras):', e); }
+
+  try {
+    const urgentes = COMPRAS.filter(c => c.estado === 'pendente'
+      && (c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente')
+      && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId)));
+    if (urgentes.length > 0) alerts.push({
+      sev: 'orange', count: urgentes.length, label: urgentes.length === 1 ? 'pedido urgente pendente' : 'pedidos urgentes pendentes',
+      action: () => {
+        const est = document.getElementById('cmp-f-estado'); if (est) est.value = 'pendente';
+        window.goTo('compras', _painelSidebarBtn('compras'));
+      },
+    });
+  } catch (e) { console.warn('painel alerts (compras):', e); }
+
+  try {
+    const rever = FATURAS.filter(f => f.status === 'rever' || (f._flags && f._flags.length > 0));
+    if (rever.length > 0) alerts.push({
+      sev: 'yellow', count: rever.length, label: rever.length === 1 ? 'fatura a rever' : 'faturas a rever',
+      action: () => {
+        const sel = document.getElementById('fat-f-status'); if (sel) sel.value = 'rever';
+        window.goTo('faturas', _painelSidebarBtn('faturas'));
+      },
+    });
+  } catch (e) { console.warn('painel alerts (faturas):', e); }
+
+  try {
+    const ago7 = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const semReg = EQUIPAMENTOS.filter(eq => {
+      const ul = eq.ultimoRegisto ? new Date(eq.ultimoRegisto) : null;
+      return !ul || ul < ago7;
+    });
+    if (semReg.length > 0) alerts.push({
+      sev: 'yellow', count: semReg.length, label: semReg.length === 1 ? 'equipamento sem registo' : 'equipamentos sem registo',
+      action: () => window.goTo('equipamentos', _painelSidebarBtn('equipamentos')),
+    });
+  } catch (e) { console.warn('painel alerts (equipamentos):', e); }
+
+  return alerts;
+}
+
+function renderPainelAlerts(obrasFiltro) {
+  const wrap = document.getElementById('painel-alerts');
+  if (!wrap) return;
+
+  let alerts = [];
+  try { alerts = computePainelAlerts(obrasFiltro); } catch (e) { console.warn('renderPainelAlerts:', e); }
+
+  if (alerts.length === 0) {
+    wrap.innerHTML = `<div class="painel-alert-chip ok">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px">${_PAINEL_ICON_OK}</svg>
+      Tudo em dia
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = alerts.map((a, i) => `
+    <button type="button" class="painel-alert-chip ${a.sev}" data-idx="${i}">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px">${_PAINEL_ICON_WARN}</svg>
+      <span class="pac-count">${a.count}</span> ${a.label}
+    </button>`).join('');
+
+  wrap.querySelectorAll('.painel-alert-chip[data-idx]').forEach(btn => {
+    const idx = +btn.dataset.idx;
+    btn.addEventListener('click', () => alerts[idx].action());
+  });
+}
+
+// ── KPIs compactos ──────────────────────────────────────────────────
+function _painelKpiTile(iconPath, value, label, bg, fg) {
+  return `<div class="painel-kpi">
+    <div class="painel-kpi-icon" style="background:${bg};color:${fg}">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px">${iconPath}</svg>
+    </div>
+    <div>
+      <div class="painel-kpi-value">${value}</div>
+      <div class="painel-kpi-label">${label}</div>
+    </div>
+  </div>`;
+}
+
+function renderPainelKPIs(obrasFiltro) {
+  const wrap = document.getElementById('painel-kpis');
+  if (!wrap) return;
+
+  const iconObras = PAINEL_WIDGETS_DEF.find(w => w.id === 'obras_ativas').icon;
+  const iconColab = PAINEL_WIDGETS_DEF.find(w => w.id === 'colaboradores').icon;
+  const iconPonto = PAINEL_WIDGETS_DEF.find(w => w.id === 'ponto_semana').icon;
+  const iconCompras = PAINEL_WIDGETS_DEF.find(w => w.id === 'compras_recentes').icon;
+
+  const obrasAtivasAll = S.OBRAS.filter(o => o.ativa);
+  const obrasCount = obrasFiltro.length ? obrasFiltro.length : obrasAtivasAll.length;
+
+  const colabAtivos = S.COLABORADORES.filter(c => c.ativo).length;
+
+  const hoje = fmt(new Date());
+  const hojeRegs = S.REGISTOS[hoje] || [];
+  const presentesHoje = obrasFiltro.length ? hojeRegs.filter(r => obrasFiltro.includes(r.obra)).length : hojeRegs.length;
+
+  let comprasPendentes = 0;
+  try {
+    comprasPendentes = COMPRAS.filter(c => c.estado === 'pendente' && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId))).length;
+  } catch (e) {}
+
+  wrap.innerHTML = [
+    _painelKpiTile(iconObras, obrasCount, obrasFiltro.length ? 'obras selecionadas' : 'obras ativas', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
+    _painelKpiTile(iconColab, colabAtivos, 'colaboradores ativos', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
+    _painelKpiTile(iconPonto, presentesHoje, 'presentes hoje', 'var(--green-bg)', 'var(--green)'),
+    _painelKpiTile(iconCompras, comprasPendentes, 'pedidos pendentes', 'var(--orange-bg)', 'var(--orange)'),
+  ].join('');
 }
 
 // ── Construir HTML de cada widget ─────────────────────────────────
@@ -154,17 +305,34 @@ async function buildWidget(wid, obrasFiltro) {
       const mon = getMonday(new Date());
       const days = [];
       for(let i=0;i<6;i++){ const d=new Date(mon); d.setDate(d.getDate()+i); days.push(fmt(d)); }
-      let total = 0, presentes = new Set();
-      days.forEach(dk => {
+      const diaLetra = ['S','T','Q','Q','S','S'];
+      let total = 0;
+      const porDia = days.map(dk => {
         const regs = S.REGISTOS[dk] || [];
         const filtrados = obrasFiltro.length > 0 ? regs.filter(r => obrasFiltro.includes(r.obra)) : regs;
-        filtrados.forEach(r => { presentes.add(r.colabN); if(r.tipo==='Presença'||r.tipo==='Normal'||r.tipo==='Hora Extra') total++; });
+        let n = 0;
+        filtrados.forEach(r => { if(r.tipo==='Presença'||r.tipo==='Normal'||r.tipo==='Hora Extra') n++; });
+        total += n;
+        return n;
       });
       const hoje = fmt(new Date());
-      const hoje_regs = (S.REGISTOS[hoje] || []);
-      const hoje_pres = obrasFiltro.length > 0 ? hoje_regs.filter(r => obrasFiltro.includes(r.obra)).length : hoje_regs.length;
+      const hojeIdx = days.indexOf(hoje);
+      const hoje_pres = hojeIdx >= 0 ? porDia[hojeIdx] : 0;
+      const maxDia = Math.max(1, ...porDia);
+
+      const bars = porDia.map((n, i) => {
+        const h = Math.max(2, Math.round((n / maxDia) * 40));
+        const isHoje = i === hojeIdx;
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+          <div style="width:100%;max-width:22px;height:44px;display:flex;align-items:flex-end" title="${n}">
+            <div style="width:100%;height:${h}px;background:${isHoje ? 'var(--blue)' : 'var(--blue-200,#bfdbfe)'};border-radius:3px 3px 0 0"></div>
+          </div>
+          <div style="font-size:9px;color:${isHoje ? 'var(--blue)' : 'var(--gray-400)'};font-weight:${isHoje ? 700 : 400}">${diaLetra[i]}</div>
+        </div>`;
+      }).join('');
+
       return _painelCard(def, `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div style="text-align:center;padding:12px;background:var(--blue-50,#eff6ff);border-radius:8px">
             <div style="font-size:28px;font-weight:700;color:var(--blue)">${hoje_pres}</div>
             <div style="font-size:11px;color:var(--gray-500)">hoje</div>
@@ -174,6 +342,7 @@ async function buildWidget(wid, obrasFiltro) {
             <div style="font-size:11px;color:var(--gray-500)">esta semana</div>
           </div>
         </div>
+        <div style="display:flex;gap:4px;border-top:1px solid var(--gray-100);padding-top:10px">${bars}</div>
         ${goBtn}`);
     }
 
@@ -227,18 +396,11 @@ async function buildWidget(wid, obrasFiltro) {
     }
 
     if (wid === 'controlo_obras') {
-      // Garantir que os dados extra e de produção estão carregados
-      _prodLoadLocal();
-      _loadObrasExtra();
+      const allStats = _painelObraStats(obrasFiltro);
 
-      const obrasAtivas = S.OBRAS.filter(o => o.ativa && (obrasFiltro.length === 0 || obrasFiltro.includes(o.id)));
-
-      if (obrasAtivas.length === 0) {
+      if (allStats.length === 0) {
         return _painelCard(def, `<div style="font-size:13px;color:var(--gray-400);padding:20px 0;text-align:center">Sem obras ativas</div>${goBtn}`);
       }
-
-      // Calcular stats para cada obra ativa
-      const allStats = obrasAtivas.map(o => coComputeStats(o));
 
       // Contagem por estado
       const nOk   = allStats.filter(s => s.status === 'ok').length;
