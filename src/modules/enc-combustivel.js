@@ -5,6 +5,7 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
+import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, saveEqLocal, eqFmtDt } from './equipamentos.js';
 
 let _depMovimento = 'entrada';
 let _combHtml5Qr = null;
@@ -23,13 +24,6 @@ function _encHideAll(){
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
-}
-
-function encGoCombustivel(){
-  _encHideAll();
-  stopCombQrScanner();
-  const s=document.getElementById('enc-screen-combustivel');
-  s.style.display='flex'; s.style.flexDirection='column';
 }
 
 // ── Depósito de Obra ────────────────────────────

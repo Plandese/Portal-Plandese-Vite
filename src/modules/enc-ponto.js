@@ -746,6 +746,7 @@ function encGoEquipamentos(){
 //  COMBUSTÍVEL — ENCARREGADO
 // ════════════════════════════════════════════════
 function encGoCombustivel(){
+  stopCombQrScanner();
   _encHideAll();
   const el = document.getElementById('enc-screen-combustivel');
   if(el){ el.style.display='flex'; el.style.flexDirection='column'; }
