@@ -598,6 +598,16 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .eq-cat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-cat-maquina{background:#EDE9FE;color:#6D28D9}.eq-cat-veiculo{background:#DBEAFE;color:#1D4ED8}
 .eq-cat-ferramenta{background:#FEF3C7;color:#92400E}.eq-cat-outro{background:var(--gray-100);color:var(--gray-600)}
+.eq-kpi.red::before{background:var(--red)}
+.eq-est-badge,.eq-prop-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.eq-est-ok{background:#DCFCE7;color:#15803D}.eq-est-man{background:#FEF3C7;color:#B45309}.eq-est-par{background:#FEE2E2;color:#B91C1C}
+.eq-prop-badge{background:#FEF9C3;color:#854D0E;margin-left:4px}
+.eq-val-chip{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:600;margin:1px 4px 1px 0;white-space:nowrap}
+.eq-val-chip.ok{background:var(--gray-100);color:var(--gray-600)}.eq-val-chip.warn{background:#FEF3C7;color:#B45309}.eq-val-chip.bad{background:#FEE2E2;color:#B91C1C}
+.eq-pend-dot{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:#DC2626;color:#fff;font-size:10px;font-weight:700}
+.eq-form-sec{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-top:4px;padding-top:8px;border-top:1px solid var(--gray-100)}
+.eq-form-sec:first-child{border-top:0;margin-top:0;padding-top:0}
+.eq-sel{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;color:var(--gray-900);-webkit-appearance:none}
 
 /* QR Registration screen (opens via URL ?reg=ID) */
 #qr-reg-screen{display:none;min-height:100vh;flex-direction:column;background:var(--blue-800);position:relative;overflow:hidden}

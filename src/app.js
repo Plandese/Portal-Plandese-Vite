@@ -34,7 +34,7 @@ import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatu
 import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
 
 // Equipamentos
-import { renderEquipamentos, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, submitQrRegistration, initEquipamentos, initQrRegistration } from './modules/equipamentos.js';
+import { renderEquipamentos, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration } from './modules/equipamentos.js';
 
 // Combustível admin
 import { loadCombustivelAdmin, toggleCombView, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
@@ -198,6 +198,7 @@ Object.assign(window, {
   renderEquipamentos, openEqModal, editEquipamento,
   saveEquipamento, apagarEquipamento, refreshEqMap,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
+  openEqManut, addEqManut, toggleEqManut, removeEqManut,
 
   // QR Registration
   submitQrRegistration,

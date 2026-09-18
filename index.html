@@ -1840,7 +1840,7 @@
       <!-- EQUIPAMENTOS E LOGÍSTICA -->
       <section id="sec-equipamentos" class="section">
         <div class="pg-hdr">
-          <div><div class="pg-title">Equipamentos e Logística</div><div class="pg-sub">Rastreio de localização por QR code — obra a obra</div></div>
+          <div><div class="pg-title">Equipamentos e Logística</div><div class="pg-sub">Base de dados de viaturas, máquinas e equipamentos — ficha técnica, manutenção e localização por QR code</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary" id="eq-export-btn" onclick="exportEquipamentosXLSX()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1860,6 +1860,7 @@
           <div class="eq-kpi green"><div class="eq-kpi-label">Em obra hoje</div><div class="eq-kpi-value" id="eq-k-obra">0</div><div class="eq-kpi-sub">registados hoje</div></div>
           <div class="eq-kpi yellow"><div class="eq-kpi-label">Sem registo</div><div class="eq-kpi-value" id="eq-k-sem">0</div><div class="eq-kpi-sub">há mais de 7 dias</div></div>
           <div class="eq-kpi orange"><div class="eq-kpi-label">Movimentos</div><div class="eq-kpi-value" id="eq-k-mov">0</div><div class="eq-kpi-sub">esta semana</div></div>
+          <div class="eq-kpi red"><div class="eq-kpi-label">Manutenção / paradas</div><div class="eq-kpi-value" id="eq-k-man">0</div><div class="eq-kpi-sub">fora de operação normal</div></div>
         </div>
 
         <!-- Mapa -->
@@ -1883,7 +1884,7 @@
 
         <!-- Filtros -->
         <div class="filter-bar">
-          <div class="field"><label>Pesquisa</label><input type="text" id="eq-f-search" placeholder="Nome ou nº de série…" oninput="renderEquipamentos()"/></div>
+          <div class="field"><label>Pesquisa</label><input type="text" id="eq-f-search" placeholder="Nome, matrícula, nº série, condutor…" oninput="renderEquipamentos()"/></div>
           <div class="field"><label>Categoria</label>
             <select id="eq-f-cat" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
               <option value="">Todas</option>
@@ -1891,6 +1892,27 @@
               <option value="veiculo">Veículo</option>
               <option value="ferramenta">Ferramenta</option>
               <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="field"><label>Estado</label>
+            <select id="eq-f-est" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
+              <option value="">Todos</option>
+              <option value="operacional">Operacional</option>
+              <option value="manutencao">Manutenção</option>
+              <option value="oficina">Em oficina</option>
+              <option value="parada">Parada</option>
+            </select>
+          </div>
+          <div class="field"><label>Propriedade</label>
+            <select id="eq-f-prop" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
+              <option value="">Todas</option>
+              <option value="propria">Própria</option>
+              <option value="aluguer">Aluguer</option>
+            </select>
+          </div>
+          <div class="field"><label>Localização</label>
+            <select id="eq-f-loc" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
+              <option value="">Todas</option>
             </select>
           </div>
         </div>
@@ -1903,9 +1925,10 @@
                 <tr>
                   <th>Equipamento</th>
                   <th>Categoria</th>
+                  <th>Estado</th>
                   <th>Nº série</th>
-                  <th>Última localização</th>
-                  <th>Último registo</th>
+                  <th>Localização</th>
+                  <th>Validades</th>
                   <th></th>
                 </tr>
               </thead>
@@ -3290,23 +3313,71 @@
 
 <!-- MODAL EQUIPAMENTO -->
 <div class="modal-bg" id="modal-equip">
-  <div class="modal" style="width:520px">
+  <div class="modal" style="width:640px">
     <div class="modal-title" id="meq-title">Novo equipamento</div>
-    <div class="modal-sub">Preencha os dados — será gerado um QR code único para rastreio</div>
+    <div class="modal-sub">Ficha do equipamento — é gerado um QR code único para rastreio</div>
     <input type="hidden" id="meq-id"/>
+    <div style="max-height:62vh;overflow-y:auto;padding-right:4px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="eq-form-sec">Identificação</div>
       <div class="field" style="grid-column:1/-1"><label>Nome do equipamento *</label><input type="text" id="meq-nome" placeholder="Ex: Escavadora Caterpillar 320"/></div>
       <div class="field">
         <label>Categoria *</label>
-        <select id="meq-cat" style="width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;color:var(--gray-900);-webkit-appearance:none">
+        <select id="meq-cat" class="eq-sel">
           <option value="maquina">Máquina</option>
           <option value="veiculo">Veículo</option>
           <option value="ferramenta">Ferramenta</option>
           <option value="outro">Outro</option>
         </select>
       </div>
-      <div class="field"><label>Nº série / matrícula</label><input type="text" id="meq-serie" placeholder="Ex: CAT-320-2021"/></div>
+      <div class="field">
+        <label>Propriedade</label>
+        <select id="meq-prop" class="eq-sel">
+          <option value="propria">Própria</option>
+          <option value="aluguer">Aluguer</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Estado</label>
+        <select id="meq-estado" class="eq-sel">
+          <option value="operacional">Operacional</option>
+          <option value="manutencao">Manutenção</option>
+          <option value="oficina">Em oficina</option>
+          <option value="parada">Parada</option>
+        </select>
+      </div>
+      <div class="field"><label>Código interno</label><input type="text" id="meq-codigo" placeholder="Ex: 1001"/></div>
+      <div class="field"><label>Matrícula</label><input type="text" id="meq-matricula" placeholder="Ex: 34-XT-67"/></div>
+      <div class="field"><label>Nº série</label><input type="text" id="meq-serie" placeholder="Ex: CAT-320-2021"/></div>
+      <div class="field"><label>Marca / modelo</label><input type="text" id="meq-marca" placeholder="Ex: SANY SY35U"/></div>
+      <div class="field"><label>Ano</label><input type="number" id="meq-ano" min="1950" max="2100" placeholder="Ex: 2021"/></div>
+      <div class="field">
+        <label>Combustível</label>
+        <select id="meq-comb" class="eq-sel">
+          <option value="">—</option>
+          <option value="Gasóleo">Gasóleo</option>
+          <option value="Gasolina">Gasolina</option>
+          <option value="Híbrido">Híbrido</option>
+          <option value="Elétrico">Elétrico</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="field"><label>Condutor / responsável</label><input type="text" id="meq-condutor" placeholder="Nome"/></div>
+      <div class="field"><label>Kms / horas</label><input type="number" id="meq-kms" min="0" step="any" placeholder="Ex: 152000"/></div>
+
+      <div class="eq-form-sec">Documentos e validades</div>
+      <div class="field"><label>Seguro válido até</label><input type="date" id="meq-seguro"/></div>
+      <div class="field"><label>Inspeção (IPO) até</label><input type="date" id="meq-ipo"/></div>
+
+      <div class="eq-form-sec">Aquisição / aluguer</div>
+      <div class="field"><label>Fornecedor</label><input type="text" id="meq-forn" placeholder="Ex: Vendap, Hertz…"/></div>
+      <div class="field"><label>Data de aquisição / início</label><input type="date" id="meq-aquis"/></div>
+      <div class="field"><label>Valor (€)</label><input type="number" id="meq-valor" min="0" step="0.01" placeholder="0,00"/></div>
+      <div class="field"><label>Garantia até</label><input type="date" id="meq-garantia"/></div>
+
       <div class="field" style="grid-column:1/-1"><label>Descrição / observações</label><input type="text" id="meq-desc" placeholder="Breve descrição ou notas"/></div>
+      <div style="grid-column:1/-1;font-size:12px"><a id="meq-trello" href="#" target="_blank" rel="noopener" style="display:none;color:var(--blue-500)">Abrir cartão no Trello</a></div>
+    </div>
     </div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-secondary" id="meq-del-btn" style="color:var(--red);border-color:var(--red-bg);display:none" onclick="apagarEquipamento()">Apagar</button>
@@ -3335,6 +3406,24 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Imprimir
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MANUTENÇÃO EQUIPAMENTO -->
+<div class="modal-bg" id="modal-eq-manut">
+  <div class="modal" style="width:560px">
+    <div class="modal-title" id="meqm-title">Manutenção</div>
+    <div class="modal-sub" id="meqm-sub">Histórico de manutenção</div>
+    <div id="meqm-list" style="max-height:320px;overflow-y:auto;margin-top:4px"></div>
+    <div style="display:grid;grid-template-columns:1fr 130px 100px;gap:8px;margin-top:14px;align-items:end">
+      <div class="field" style="grid-column:1/-1"><label>Nova manutenção / avaria</label><input type="text" id="meqm-desc" placeholder="Ex: Revisão dos 1000 h, fuga de óleo…" onkeydown="if(event.key==='Enter')addEqManut()"/></div>
+      <div class="field"><label>Data (opcional)</label><input type="date" id="meqm-data"/></div>
+      <div class="field"><label>Custo €</label><input type="number" id="meqm-custo" min="0" step="0.01" placeholder="0,00"/></div>
+      <button class="btn btn-primary" onclick="addEqManut()">Adicionar</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-eq-manut')">Fechar</button>
     </div>
   </div>
 </div>
