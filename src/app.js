@@ -77,7 +77,7 @@ import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdv
 
 // Análise de dados (vista telemóvel)
 import {
-  renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras, renderNotifCard, anlNotifClick, anlMarcarTodasLidas,
+  renderAnalise, anlSetPeriodo, anlSetObra, anlResetObras,
   abrirPersonalizarAnalise, fecharPersonalizarAnalise, guardarPersonalizarAnalise, reporPersonalizarAnalise,
   anlCustomToggle, anlCustomMove,
 } from './modules/analise.js';
@@ -100,7 +100,7 @@ Object.assign(R, {
   loadEmpresasMOA, loadColaboradoresMOA,
   initCompras, initMOAFilters,
   renderEncModsCheckboxes,
-  renderAnalise, anlResetObras, renderNotifCard,
+  renderAnalise, anlResetObras,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -130,7 +130,7 @@ Object.assign(window, {
   doLogin, doLogout,
 
   // Análise de dados (modo telemóvel)
-  renderAnalise, anlSetPeriodo, anlSetObra, anlNotifClick, anlMarcarTodasLidas,
+  renderAnalise, anlSetPeriodo, anlSetObra,
   abrirPersonalizarAnalise, fecharPersonalizarAnalise, guardarPersonalizarAnalise, reporPersonalizarAnalise,
   anlCustomToggle, anlCustomMove,
 

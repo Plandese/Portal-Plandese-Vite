@@ -42,7 +42,6 @@ function onRealtimeInsert(row){
   if(S.NOTIFICACOES.some(n=>n.id===row.id)) return;
   S.NOTIFICACOES.unshift(row);
   renderNotifPanel();
-  R.renderNotifCard?.();   // cartão na vista de Análise (modo telemóvel)
   if(window.showToast) window.showToast('🔔 '+row.acao);
 }
 
