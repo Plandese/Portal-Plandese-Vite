@@ -5,7 +5,27 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
-import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, saveEqLocal, eqFmtDt } from './equipamentos.js';
+import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
+
+let _combEqOpts = new Map();
+
+function _combFillListaEquip(){
+  const dl=document.getElementById('comb-viatura-list');
+  if(!dl) return;
+  const lista=EQUIPAMENTOS.filter(e=>e.categoria!=='outro').sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  const cont={}; lista.forEach(e=>{cont[e.nome]=(cont[e.nome]||0)+1;});
+  _combEqOpts=new Map();
+  dl.innerHTML='';
+  lista.forEach(e=>{
+    let value=cont[e.nome]>1?`${e.nome} · ${e.ultimoLocal||'#'+e.id.slice(-4)}`:e.nome;
+    if(_combEqOpts.has(value)) value+=` #${e.id.slice(-4)}`;
+    _combEqOpts.set(value,e);
+    const op=document.createElement('option');
+    op.value=value;
+    op.label=[e.matricula,e.marcaModelo,e.ultimoLocal].filter(Boolean).join(' · ');
+    dl.appendChild(op);
+  });
+}
 
 let _depMovimento = 'entrada';
 let _combHtml5Qr = null;
@@ -194,6 +214,8 @@ function combViaturaManual(){
   document.getElementById('comb-viatura-scan-btn').style.display='inline-flex';
   document.getElementById('comb-viatura-nome-input').value='';
   _combPreencherFormViatura();
+  _combFillListaEquip();
+  sbLoadEquipamentos().then(_combFillListaEquip).catch(()=>{});
 }
 
 function _combPreencherFormViatura(){
@@ -230,6 +252,8 @@ async function encSubmeterCombViatura(){
   if(_combModoManual){
     equipNome=document.getElementById('comb-viatura-nome-input').value.trim();
     if(!equipNome){showToast('Indique o nome da viatura ou equipamento');return;}
+    const escolhido=_combEqOpts.get(equipNome);
+    if(escolhido){ equipId=escolhido.id; equipNome=escolhido.nome; }
   } else {
     const eq=EQUIPAMENTOS.find(e=>e.id===equipId);
     equipNome=eq?eq.nome:(equipId||'');
