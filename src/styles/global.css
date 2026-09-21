@@ -723,6 +723,16 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .enc-forecast-temp{font-size:13px;font-weight:700;color:var(--gray-900);flex-shrink:0;min-width:54px;text-align:right}
 .enc-forecast-temp span{font-size:11px;font-weight:500;color:var(--gray-400)}
 /* ── Prazo da obra — modal de motivação ── */
+.enc-fuel-content{padding:4px 20px 28px;max-height:60vh;overflow-y:auto}
+.enc-fuel-empty{padding:24px 0;text-align:center;font-size:14px;font-weight:600;color:var(--gray-500)}
+.enc-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-100)}
+.enc-fuel-row:last-child{border-bottom:none}
+.enc-fuel-row-main{min-width:0}
+.enc-fuel-row-t{font-size:14px;font-weight:700;color:var(--gray-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.enc-fuel-row-s{font-size:11.5px;font-weight:500;color:var(--gray-500);margin-top:2px}
+.enc-fuel-row-l{font-size:15px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.enc-fuel-row-l.in{color:var(--green)}
+.enc-fuel-row-l.out{color:var(--red)}
 .enc-prazo-content{padding:8px 24px 32px;text-align:center}
 .enc-prazo-emoji{font-size:40px;line-height:1;margin-bottom:14px}
 .enc-prazo-days{font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:4px}

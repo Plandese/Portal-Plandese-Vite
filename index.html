@@ -97,7 +97,7 @@
             </div>
           </button>
           <!-- Gasóleo do depósito da obra -->
-          <button class="eb-box eb-fuel" onclick="encGoCombustivel()">
+          <button class="eb-box eb-fuel" onclick="encOpenFuelModal()">
             <div class="eb-fuel-ic ic-amber">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7s6 6.3 6 10.8a6 6 0 0 1-12 0C6 9 12 2.7 12 2.7z"/></svg>
             </div>
@@ -853,6 +853,20 @@
         </button>
       </div>
       <div id="enc-weather-forecast" class="enc-weather-forecast-list"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Últimos registos de gasóleo -->
+  <div id="enc-fuel-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:flex-end" onclick="encCloseFuelModal()">
+    <div class="enc-weather-sheet" onclick="event.stopPropagation()">
+      <div class="enc-weather-sheet-handle"></div>
+      <div class="enc-weather-sheet-header">
+        <div class="enc-weather-sheet-title">Últimos registos de gasóleo</div>
+        <button class="enc-weather-sheet-close" onclick="encCloseFuelModal()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div id="enc-fuel-content" class="enc-fuel-content"></div>
     </div>
   </div>
 

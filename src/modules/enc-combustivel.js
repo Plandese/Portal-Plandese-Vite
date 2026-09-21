@@ -49,11 +49,15 @@ function _encHideAll(){
 // ── Depósito de Obra ────────────────────────────
 
 // Cartão da home: litros de gasóleo em stock no(s) depósito(s) da(s) obra(s) do encarregado
+function _encObrasComb(){
+  return S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.encarregado_id===S.currentUser?.key);
+}
+
 async function encUpdateFuelWidget(){
   const litrosEl=document.getElementById('enc-fuel-litros');
   const labelEl=document.getElementById('enc-fuel-label');
   if(!litrosEl||!labelEl) return;
-  const obras=S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.encarregado_id===S.currentUser?.key);
+  const obras=_encObrasComb();
   litrosEl.classList.remove('neg');
   if(!obras.length){litrosEl.textContent='—';labelEl.textContent='sem obra atribuída';return;}
   const nomeObra=obras.length===1?obras[0].nome:obras.length+' obras';
@@ -90,6 +94,47 @@ function depSetMovimento(tipo){
     btnE.style.background='#f3f4f6'; btnE.style.borderColor='#d1d5db'; btnE.style.color='#6b7280';
     btnE.style.boxShadow='none'; btnE.style.transform='scale(1)';
   }
+}
+
+// Resumo dos últimos registos de gasóleo das obras do encarregado
+async function encOpenFuelModal(){
+  const modal=document.getElementById('enc-fuel-modal');
+  const box=document.getElementById('enc-fuel-content');
+  if(!modal||!box) return;
+  modal.style.display='flex';
+  const obras=_encObrasComb();
+  if(!obras.length){box.innerHTML='<div class="enc-fuel-empty">Sem obra atribuída.</div>';return;}
+  box.innerHTML='<div class="enc-fuel-empty">A carregar…</div>';
+  try{
+    const {data,error}=await sb.from('registos_combustivel')
+      .select('data,litros,movimento,tipo_registo,equipamento_nome,obra_nome,encarregado_nome')
+      .in('obra_id',obras.map(o=>o.id))
+      .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null')
+      .order('data',{ascending:false}).order('criado_em',{ascending:false})
+      .limit(8);
+    if(error) throw error;
+    if(!data?.length){box.innerHTML='<div class="enc-fuel-empty">Ainda sem registos de gasóleo.</div>';return;}
+    const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    box.innerHTML=data.map(r=>{
+      const dep=r.tipo_registo==='deposito';
+      const entrada=dep&&r.movimento!=='saida';
+      const titulo=dep?(entrada?'Entrada no depósito':'Saída do depósito'):'Abastecimento · '+esc(r.equipamento_nome||'Viatura');
+      const l=(parseFloat(r.litros)||0).toLocaleString('pt-PT',{maximumFractionDigits:1});
+      const sub=[fmtPT(r.data),obras.length>1?esc(r.obra_nome):'',esc(r.encarregado_nome)].filter(Boolean).join(' · ');
+      return `<div class="enc-fuel-row">
+        <div class="enc-fuel-row-main"><div class="enc-fuel-row-t">${titulo}</div><div class="enc-fuel-row-s">${sub}</div></div>
+        <div class="enc-fuel-row-l ${entrada?'in':'out'}">${entrada?'+':'−'}${l} L</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.warn('fuel modal:',e);
+    box.innerHTML='<div class="enc-fuel-empty">Não foi possível carregar os registos.</div>';
+  }
+}
+
+function encCloseFuelModal(){
+  const modal=document.getElementById('enc-fuel-modal');
+  if(modal) modal.style.display='none';
 }
 
 function encGoCombDeposito(){
@@ -708,7 +753,7 @@ window.chatSend         = chatSend;
 window.chatOnInput      = chatOnInput;
 
 export {
-  encUpdateFuelWidget, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
+  encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   encGoCombViatura, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encSubmeterCombustivel,
   encGoComprasChat, _chatReset, _chatAddBot, _chatAddUser, chatOnInput, chatSend
