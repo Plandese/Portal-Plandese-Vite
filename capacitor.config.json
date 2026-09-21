@@ -3,6 +3,7 @@
   "appName": "Plandese Portal",
   "webDir": "dist_mobile",
   "server": {
+    "url": "https://portal-plandese-vite.vercel.app",
     "androidScheme": "https",
     "iosScheme": "capacitor"
   },
