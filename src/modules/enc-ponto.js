@@ -8,7 +8,7 @@ import { TIPOS, ENC_MODULES } from '../config.js';
 import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
 import { _encEquipShowState, startEncQrScanner, stopEncQrScanner } from './enc-equip.js';
-import { stopCombQrScanner } from './enc-combustivel.js';
+import { stopCombQrScanner, encUpdateFuelWidget } from './enc-combustivel.js';
 
 // ═══════════════════════════════════════
 //  ENCARREGADO
@@ -265,6 +265,7 @@ async function initEnc(){
   // Widgets: prazo da obra + meteorologia
   _encUpdatePrazoWidget();
   _encLoadWeather();
+  encUpdateFuelWidget();
 }
 
 async function encPassarColaboradores(){
@@ -761,6 +762,7 @@ function encVoltarHome(){
   document.getElementById('enc-screen0').style.flexDirection='column';
   _encSetNav('home');
   _encUpdateCtxBar();
+  encUpdateFuelWidget();
 }
 
 function _encSetNav(key){

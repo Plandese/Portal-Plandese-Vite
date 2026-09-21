@@ -48,6 +48,33 @@ function _encHideAll(){
 
 // ── Depósito de Obra ────────────────────────────
 
+// Cartão da home: litros de gasóleo em stock no(s) depósito(s) da(s) obra(s) do encarregado
+async function encUpdateFuelWidget(){
+  const litrosEl=document.getElementById('enc-fuel-litros');
+  const labelEl=document.getElementById('enc-fuel-label');
+  if(!litrosEl||!labelEl) return;
+  const obras=S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.encarregado_id===S.currentUser?.key);
+  litrosEl.classList.remove('neg');
+  if(!obras.length){litrosEl.textContent='—';labelEl.textContent='sem obra atribuída';return;}
+  const nomeObra=obras.length===1?obras[0].nome:obras.length+' obras';
+  try{
+    const {data,error}=await sb.from('registos_combustivel')
+      .select('litros,movimento')
+      .eq('tipo_registo','deposito')
+      .in('obra_id',obras.map(o=>o.id))
+      .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null');
+    if(error) throw error;
+    const stock=(data||[]).reduce((s,r)=>{const l=parseFloat(r.litros)||0;return s+(r.movimento==='saida'?-l:l);},0);
+    litrosEl.textContent=stock.toLocaleString('pt-PT',{maximumFractionDigits:1})+' L';
+    litrosEl.classList.toggle('neg',stock<0);
+    labelEl.textContent='Gasóleo · '+nomeObra;
+  }catch(e){
+    console.warn('fuel widget:',e);
+    litrosEl.textContent='—';
+    labelEl.textContent='Gasóleo · indisponível';
+  }
+}
+
 function depSetMovimento(tipo){
   _depMovimento = tipo;
   const btnE=document.getElementById('dep-btn-entrada');
@@ -111,6 +138,7 @@ async function encSubmeterCombDeposito(){
     if(error)throw error;
     document.getElementById('dep-alert').style.display='block';
     showToast((_depMovimento==='entrada'?'Entrada':'Saída')+' no depósito registada ✓');
+    encUpdateFuelWidget();
     R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:''), seccao:'combustivel' });
     setTimeout(()=>{
       document.getElementById('dep-litros').value='';
@@ -680,7 +708,7 @@ window.chatSend         = chatSend;
 window.chatOnInput      = chatOnInput;
 
 export {
-  depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
+  encUpdateFuelWidget, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   encGoCombViatura, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encSubmeterCombustivel,
   encGoComprasChat, _chatReset, _chatAddBot, _chatAddUser, chatOnInput, chatSend

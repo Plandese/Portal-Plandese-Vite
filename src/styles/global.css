@@ -1787,6 +1787,7 @@ body.dark-mode #enc-app{
 #enc-app .eb-box:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 #enc-app .eb-box:active{transform:scale(.98)}
 #enc-app .eb-tall{grid-row:span 2}
+#enc-app .eb-wx-col{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:11px;min-width:0}
 #enc-app .eb-col2{grid-column:span 2}
 #enc-app .eb-ic{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
 #enc-app .eb-ic svg{width:21px;height:21px}
@@ -1824,6 +1825,15 @@ body.dark-mode #enc-app{
 #enc-app .eb-wx-desc{font-size:12.5px;font-weight:600;opacity:.92;position:relative;z-index:1;margin-top:2px}
 #enc-app .eb-wx .enc-widget-rain-alert{color:#fff;background:rgba(255,255,255,.2);padding:4px 9px;border-radius:20px;font-size:11px;font-weight:700;margin-top:8px;position:relative;z-index:1}
 #enc-app .eb-wx .enc-widget-rain-alert.visible{display:inline-flex}
+
+/* fuel tile (depósito da obra) */
+#enc-app .eb-fuel{display:flex;align-items:center;gap:11px;padding:12px 14px;min-height:78px}
+#enc-app .eb-fuel-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--orange-bg);color:var(--orange)}
+#enc-app .eb-fuel-ic svg{width:20px;height:20px}
+#enc-app .eb-fuel-body{min-width:0}
+#enc-app .eb-fuel-n{font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.6px;color:var(--gray-900);white-space:nowrap}
+#enc-app .eb-fuel-n.neg{color:var(--red)}
+#enc-app .eb-fuel-l{font-size:11px;font-weight:600;color:var(--gray-500);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── SUB-ECRÃS — polish partilhado ── */
 #enc-app .enc-card{border-radius:20px;border:1px solid var(--gray-200);box-shadow:var(--shadow)}
