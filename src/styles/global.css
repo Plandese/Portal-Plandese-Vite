@@ -2245,3 +2245,8 @@ body.dark-mode .anlc-arrow:hover:not(:disabled){background:rgba(37,99,235,.18);b
   body.pt-rep-open .pt-rep-tools{display:none}
 }
 @media (max-width:600px){.pt-tabs{grid-template-columns:1fr}}
+.pt-editing{border-color:var(--blue-500);box-shadow:inset 0 0 0 1px var(--blue-500)}
+.pt-editing .field{margin-bottom:10px}
+.pt-editing input[type=text],.pt-editing select{padding:10px 12px;font-size:14px}
+.pt-editing textarea{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;color:var(--gray-900);background:var(--white);outline:none;resize:vertical}
+.pt-editing textarea:focus{border-color:var(--blue-500)}

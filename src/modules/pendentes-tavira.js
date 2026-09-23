@@ -29,14 +29,19 @@ const BASE = [
 ];
 const OBRAS = {'49':'Margem Direita','53':'Margem Esquerda Norte'};
 
-let obra = '49', filtro = 'pend', custom = [], estado = {}, fotos = [];
+let obra = '49', filtro = 'pend', custom = [], estado = {}, fotos = [], editId = null;
 let iniciado = false, eventosLigados = false;
 const dstr = t => new Date(t).toLocaleDateString('sv');
 let repDate = dstr(Date.now());
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const todos = () => BASE.concat(custom);
+// Tópicos base com as edições (sobreposições em tavira_estado) aplicadas
+const todos = () => BASE.map(i=>{
+  const e = estado[i.id];
+  if(!e) return i;
+  return {...i, o:e.obra??i.o, r:e.rua??i.r, t:e.descricao??i.t, rec:e.reclamacao??i.rec};
+}).concat(custom);
 
 const mapTopico = x => ({id:x.id,o:x.obra,r:x.rua,t:x.descricao,rec:x.reclamacao,custom:1});
 const mapFoto   = x => ({id:x.id,topic:x.topico_id,data:x.data,ts:new Date(x.created_at).getTime()});
@@ -50,7 +55,7 @@ async function carregarEstado(){
   const {data,error} = await sb.from('tavira_estado').select('*');
   if(error) throw error;
   estado = {};
-  (data||[]).forEach(x => estado[x.topico_id] = {done:x.done, ts:new Date(x.updated_at).getTime()});
+  (data||[]).forEach(x => estado[x.topico_id] = {done:x.done, ts:new Date(x.updated_at).getTime(), obra:x.obra, rua:x.rua, descricao:x.descricao, reclamacao:x.reclamacao});
 }
 async function carregarFotos(){
   const {data,error} = await sb.from('tavira_fotos').select('*').order('created_at');
@@ -97,7 +102,10 @@ function render(){
   $('pt-prog').style.width = mine.length ? (100*done/mine.length)+'%' : '0';
   $('pt-prog-lbl').textContent = mine.length ? `${done} de ${mine.length} resolvidos` : '';
   sec.querySelectorAll('.pt-chip[data-f]').forEach(c=>c.setAttribute('aria-pressed', c.dataset.f===filtro));
-  const shown = mine.filter(i=>filtro==='all' || (filtro==='done')===!!estado[i.id]?.done);
+  // Um tópico em edição fica sempre visível (mesmo que o filtro o esconda)
+  const shown = mine.filter(i=>i.id===editId || filtro==='all' || (filtro==='done')===!!estado[i.id]?.done);
+  // Preservar o que já foi escrito no formulário se a lista for redesenhada (ex.: atualização em tempo real)
+  const rascunho = editId && $('pt-e-txt') ? {obra:$('pt-e-obra').value, rua:$('pt-e-rua').value, txt:$('pt-e-txt').value, rec:$('pt-e-rec').checked} : null;
   if(!shown.length){
     $('pt-list').innerHTML = `<p class="pt-empty">${mine.length?'Nada nesta lista.':'Ainda não há tópicos nesta obra.'}</p>`;
   } else {
@@ -105,11 +113,28 @@ function render(){
     shown.forEach(i=>{ let g = grupos.find(x=>x.r===i.r); if(!g) grupos.push(g={r:i.r,l:[]}); g.l.push(i); });
     $('pt-list').innerHTML = grupos.map(g=>`<h3 class="pt-rua">${esc(g.r)}</h3>`+g.l.map(card).join('')).join('');
   }
+  if(rascunho && $('pt-e-txt')){
+    $('pt-e-obra').value = rascunho.obra; $('pt-e-rua').value = rascunho.rua;
+    $('pt-e-txt').value = rascunho.txt;   $('pt-e-rec').checked = rascunho.rec;
+  }
   $('pt-addnote').textContent = `Será adicionado à obra ${obra} – ${OBRAS[obra]}.`;
   if(!$('pt-rep').hidden) drawRep();
 }
 
+function formEditar(i){
+  return `<article class="pt-item pt-editing">
+    <div class="field"><label for="pt-e-obra">Obra</label><select id="pt-e-obra">${Object.keys(OBRAS).map(k=>`<option value="${k}" ${k===i.o?'selected':''}>Obra ${k} – ${OBRAS[k]}</option>`).join('')}</select></div>
+    <div class="field"><label for="pt-e-rua">Rua / local</label><input type="text" id="pt-e-rua" value="${esc(i.r)}"/></div>
+    <div class="field"><label for="pt-e-txt">Descrição</label><textarea id="pt-e-txt" rows="4">${esc(i.t)}</textarea></div>
+    <label class="pt-chk"><input type="checkbox" id="pt-e-rec" ${i.rec?'checked':''}/> Reclamação</label>
+    <div class="pt-acts">
+      <button type="button" class="btn btn-primary btn-sm" data-save="${i.id}">Guardar</button>
+      <button type="button" class="btn btn-secondary btn-sm" data-cancel="1">Cancelar</button>
+    </div></article>`;
+}
+
 function card(i){
+  if(i.id===editId) return formEditar(i);
   const d = !!estado[i.id]?.done, ph = fotos.filter(f=>f.topic===i.id);
   return `<article class="pt-item ${d?'done':''}">
     <div class="pt-meta"><span class="pt-pill ${d?'ok':'pend'}">${d?'Resolvido':'Pendente'}</span>${i.rec?'<span class="pt-pill rec">Reclamação</span>':''}${i.custom?'<span class="pt-pill">Adicionado</span>':''}</div>
@@ -118,6 +143,7 @@ function card(i){
     <div class="pt-acts">
       <label class="btn btn-primary btn-sm" for="pt-f-${i.id}">+ Foto</label><input type="file" id="pt-f-${i.id}" data-up="${i.id}" accept="image/*" multiple hidden>
       <button type="button" class="btn btn-secondary btn-sm" data-tog="${i.id}">${d?'Reabrir':'Marcar resolvido'}</button>
+      <button type="button" class="btn btn-secondary btn-sm" data-edit="${i.id}">Editar</button>
       ${i.custom?`<button type="button" class="btn btn-secondary btn-sm" data-del="${i.id}">Apagar</button>`:''}
     </div></article>`;
 }
@@ -160,8 +186,11 @@ function ligarEventos(){
   });
 
   sec.addEventListener('click', async e=>{
-    const t = e.target.closest('[data-o],[data-f],[data-tog],[data-del],[data-ph]'); if(!t) return;
-    if(t.dataset.o){ obra = t.dataset.o; render(); }
+    const t = e.target.closest('[data-o],[data-f],[data-tog],[data-del],[data-ph],[data-edit],[data-save],[data-cancel]'); if(!t) return;
+    if(t.dataset.edit){ editId = t.dataset.edit; render(); $('pt-e-txt')?.focus(); }
+    else if(t.dataset.cancel){ editId = null; render(); }
+    else if(t.dataset.save){ await guardarEdicao(t.dataset.save, t); }
+    else if(t.dataset.o){ obra = t.dataset.o; editId = null; render(); }
     else if(t.dataset.f){ filtro = t.dataset.f; render(); }
     else if(t.dataset.tog){
       const id = t.dataset.tog, d = !estado[id]?.done;
@@ -187,6 +216,26 @@ function ligarEventos(){
   });
 
   $('pt-lb').addEventListener('click', e=>{ if(e.target.id==='pt-lb') $('pt-lb').hidden = true; });
+}
+
+async function guardarEdicao(id, btn){
+  const novo = {obra:$('pt-e-obra').value, rua:$('pt-e-rua').value.trim(), descricao:$('pt-e-txt').value.trim(), reclamacao:$('pt-e-rec').checked};
+  if(!novo.rua || !novo.descricao){ showToast('Preencha a rua e a descrição.'); return; }
+  btn.disabled = true;
+  try {
+    const eCustom = custom.some(c=>c.id===id);
+    // Tópicos adicionados: editar a própria linha. Tópicos base: guardar sobreposição em tavira_estado
+    // (sem mexer em done/updated_at, que marcam a data de resolução usada no relatório)
+    const {error} = eCustom
+      ? await sb.from('tavira_topicos').update(novo).eq('id', id)
+      : await sb.from('tavira_estado').upsert({topico_id:id, ...novo});
+    if(error) throw error;
+    await (eCustom ? carregarTopicos() : carregarEstado());
+    editId = null;
+    if(novo.obra !== obra){ obra = novo.obra; showToast(`Tópico movido para a obra ${novo.obra}`); }
+    else showToast('Tópico atualizado');
+    render();
+  } catch(_){ btn.disabled = false; showToast('Não foi possível gravar. Verifique a ligação.'); }
 }
 
 function abrirFoto(pid){
