@@ -142,7 +142,7 @@ function card(i){
     ${ph.length?`<div class="pt-photos">${ph.map(f=>`<button type="button" class="pt-ph" data-ph="${f.id}" aria-label="Ver foto"><img loading="lazy" alt="Foto do pendente" src="${f.data}"></button>`).join('')}</div>`:''}
     <div class="pt-acts">
       <label class="btn btn-primary btn-sm" for="pt-f-${i.id}">+ Foto</label><input type="file" id="pt-f-${i.id}" data-up="${i.id}" accept="image/*" multiple hidden>
-      <button type="button" class="btn btn-secondary btn-sm" data-tog="${i.id}">${d?'Reabrir':'Marcar resolvido'}</button>
+      <button type="button" class="btn btn-sm ${d?'btn-secondary':'pt-btn-ok'}" data-tog="${i.id}">${d?'Reabrir':'Marcar resolvido'}</button>
       <button type="button" class="btn btn-secondary btn-sm" data-edit="${i.id}">Editar</button>
       ${i.custom?`<button type="button" class="btn btn-secondary btn-sm" data-del="${i.id}">Apagar</button>`:''}
     </div></article>`;

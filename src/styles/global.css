@@ -2250,3 +2250,7 @@ body.dark-mode .anlc-arrow:hover:not(:disabled){background:rgba(37,99,235,.18);b
 .pt-editing input[type=text],.pt-editing select{padding:10px 12px;font-size:14px}
 .pt-editing textarea{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;color:var(--gray-900);background:var(--white);outline:none;resize:vertical}
 .pt-editing textarea:focus{border-color:var(--blue-500)}
+.pt-btn-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-light)}
+.pt-btn-ok:hover{background:var(--green-light)}
+body.dark-mode .pt-btn-ok{background:rgba(14,159,110,.16);color:#4ade80;border-color:rgba(14,159,110,.4)}
+body.dark-mode .pt-btn-ok:hover{background:rgba(14,159,110,.26)}
