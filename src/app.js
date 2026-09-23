@@ -83,7 +83,7 @@ import {
 } from './modules/analise.js';
 
 // Pendentes Tavira (obras 49 e 53)
-import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio } from './modules/pendentes-tavira.js';
+import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, ptEnviarEmail } from './modules/pendentes-tavira.js';
 
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
@@ -289,7 +289,7 @@ Object.assign(window, {
   renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs,
 
   // Pendentes Tavira
-  ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio,
+  ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, ptEnviarEmail,
 
   // Lembretes
   renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar,

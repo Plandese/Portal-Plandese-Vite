@@ -282,6 +282,56 @@ export function ptFecharRelatorio(){
   document.body.classList.remove('pt-rep-open');
 }
 
+// Abre o cliente de email predefinido (ex.: Outlook) com o corpo do relatório já preenchido.
+// Sem destinatário fixo — o utilizador escolhe para quem enviar.
+export function ptEnviarEmail(){
+  const items = todos().filter(i=>i.o===obra), ph = id => fotos.filter(x=>x.topic===id);
+  const act = items.filter(i=>ph(i.id).some(f=>dstr(f.ts)===repDate) || (estado[i.id]?.done && dstr(estado[i.id].ts)===repDate));
+  const open = items.filter(i=>!estado[i.id]?.done);
+  const dCurta = new Date(repDate+'T12:00').toLocaleDateString('pt-PT');
+  const ref = `PT-${obra}-${repDate.replaceAll('-','')}`;
+
+  const linhas = [];
+  linhas.push(`Relatório diário de pendentes — Obra ${obra} (${OBRAS[obra]}), Tavira`);
+  linhas.push(`Data: ${dCurta}    Referência: ${ref}`);
+  linhas.push('');
+  linhas.push(`Em aberto: ${open.length} de ${items.length}    Resolvidos no dia: ${act.filter(i=>estado[i.id]?.done && dstr(estado[i.id].ts)===repDate).length}`);
+  linhas.push('');
+  linhas.push('ATIVIDADE DO DIA');
+  linhas.push('----------------');
+  if(act.length){
+    act.forEach((i,n)=>{
+      const r = estado[i.id]?.done && dstr(estado[i.id].ts)===repDate;
+      const nf = ph(i.id).filter(f=>dstr(f.ts)===repDate).length;
+      linhas.push(`${n+1}. ${i.r}${i.rec?' (RECLAMAÇÃO)':''}${r?' — RESOLVIDO':''}`);
+      linhas.push(`   ${i.t}`);
+      if(nf) linhas.push(`   [${nf} foto(s) — ver relatório em PDF]`);
+      linhas.push('');
+    });
+  } else {
+    linhas.push('Sem fotos nem resoluções registadas neste dia.');
+    linhas.push('');
+  }
+  linhas.push('PENDENTES EM ABERTO (' + open.length + ' de ' + items.length + ')');
+  linhas.push('----------------------------------');
+  if(open.length){
+    open.forEach((i,n)=>{
+      linhas.push(`${n+1}. ${i.r}${i.rec?' (RECLAMAÇÃO)':''}`);
+      linhas.push(`   ${i.t}`);
+    });
+  } else {
+    linhas.push('Sem pendentes em aberto.');
+  }
+  linhas.push('');
+  linhas.push('Relatório completo (com fotos) em anexo/PDF — usar "Imprimir / Guardar PDF" e anexar ao email.');
+  linhas.push('');
+  linhas.push('PLANDESE, SA');
+
+  const assunto = `Relatório diário · Obra ${obra} – ${OBRAS[obra]} · ${dCurta}`;
+  const url = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(linhas.join('\n'))}`;
+  window.location.href = url;
+}
+
 function drawRep(){
   const items = todos().filter(i=>i.o===obra), ph = id => fotos.filter(x=>x.topic===id);
   const act = items.filter(i=>ph(i.id).some(f=>dstr(f.ts)===repDate) || (estado[i.id]?.done && dstr(estado[i.id].ts)===repDate));
@@ -293,7 +343,7 @@ function drawRep(){
   const totalRes = items.length - open.length;
   const ref = `PT-${obra}-${repDate.replaceAll('-','')}`;
   const tag = (txt,cls) => `<span class="pt-rep-tag ${cls}">${txt}</span>`;
-  $('pt-rep').innerHTML = `<div class="pt-rep-tools"><button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button><button type="button" class="btn btn-secondary" onclick="ptFecharRelatorio()">Fechar</button><label for="pt-rdate">Dia</label><input type="date" id="pt-rdate" value="${repDate}"></div>
+  $('pt-rep').innerHTML = `<div class="pt-rep-tools"><button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button><button type="button" class="btn btn-secondary" onclick="ptEnviarEmail()">Enviar por email</button><button type="button" class="btn btn-secondary" onclick="ptFecharRelatorio()">Fechar</button><label for="pt-rdate">Dia</label><input type="date" id="pt-rdate" value="${repDate}"></div>
   <div class="pt-rep-page">
     <header class="pt-rep-head">
       <div class="pt-rep-brand"><img src="/plandese_logo.png" alt="Plandese"><div><strong>PLANDESE, SA</strong><span>Pendentes de obra · Tavira</span></div></div>
