@@ -82,6 +82,9 @@ import {
   anlCustomToggle, anlCustomMove,
 } from './modules/analise.js';
 
+// Pendentes Tavira (obras 49 e 53)
+import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio } from './modules/pendentes-tavira.js';
+
 // Lembretes (quadro Trello)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
@@ -284,6 +287,9 @@ Object.assign(window, {
   // Férias
   renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs,
 
+  // Pendentes Tavira
+  ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio,
+
   // Lembretes
   renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar,
   lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop,
@@ -398,6 +404,7 @@ window.savePerfil = async function () {
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
+    if (id === 'pendentes-tavira')   { initPendentesTavira(); }
   };
 })();
 

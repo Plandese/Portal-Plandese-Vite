@@ -951,6 +951,10 @@
       <svg viewBox="0 0 24 24" fill="currentColor" id="settings-theme-icon"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
       <span id="settings-theme-label">Ecrã Escuro</span>
     </button>
+    <button class="settings-item" onclick="goTo('pendentes-tavira',document.getElementById('nav-pendentes-tavira'));toggleSettingsPanel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Pendentes Tavira
+    </button>
     <div class="settings-sep"></div>
     <button class="settings-item" id="btn-refresh" onclick="refreshPortal();toggleSettingsPanel()">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
@@ -1056,6 +1060,10 @@
         <button class="nav-btn" onclick="goTo('precos-unitarios',this)" id="nav-precos-unit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           <span class="nav-label">Lista de Preços</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('pendentes-tavira',this)" id="nav-pendentes-tavira">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="nav-label">Pendentes Tavira</span>
         </button>
       </div>
 
@@ -2606,6 +2614,41 @@
         </div>
 
         <input type="file" id="pu-file-input" accept=".xlsx,.xls,.pdf" style="display:none" onchange="puHandleFile(event)"/>
+      </section>
+
+      <!-- PENDENTES TAVIRA -->
+      <section id="sec-pendentes-tavira" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Pendentes Tavira</div>
+            <div class="pg-sub">Trabalhos por concluir nas obras 49 e 53 · alterações partilhadas em tempo real</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="pt-sync" id="pt-sync">A ligar…</span>
+            <button class="btn btn-primary" type="button" onclick="ptAbrirRelatorio()">Relatório diário</button>
+          </div>
+        </div>
+        <div class="pt-wrap">
+          <div class="pt-tabs" id="pt-tabs"></div>
+          <div class="pt-prog"><i id="pt-prog"></i></div>
+          <div class="pt-prog-lbl" id="pt-prog-lbl"></div>
+          <div class="pt-filters">
+            <button class="pt-chip" type="button" data-f="pend" aria-pressed="true">Pendentes</button>
+            <button class="pt-chip" type="button" data-f="done" aria-pressed="false">Resolvidos</button>
+            <button class="pt-chip" type="button" data-f="all" aria-pressed="false">Todos</button>
+          </div>
+          <div id="pt-list"></div>
+          <div class="card pt-add">
+            <div class="pt-add-title">Novo pendente</div>
+            <div class="field"><label for="pt-nrua">Rua / local</label><input type="text" id="pt-nrua" placeholder="Ex.: Rua da Porta Nova"/></div>
+            <div class="field"><label for="pt-ntxt">Descrição</label><textarea id="pt-ntxt" rows="3" placeholder="O que falta fazer"></textarea></div>
+            <label class="pt-chk"><input type="checkbox" id="pt-nrec"/> Reclamação</label>
+            <div style="margin-top:10px"><button class="btn btn-primary" type="button" onclick="ptAdicionar()">Adicionar</button></div>
+            <div class="pt-addnote" id="pt-addnote"></div>
+          </div>
+        </div>
+        <div id="pt-lb" hidden></div>
+        <div id="pt-rep" hidden></div>
       </section>
 
       <!-- FOLHA DE FECHO -->

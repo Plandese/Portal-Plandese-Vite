@@ -111,6 +111,7 @@ export async function refreshPortal(){
         'producao':        ()=>R.renderProdDashboard?.(),
         'permissoes':      ()=>R.renderPermMatrix?.(),
         'fecho-mes':       ()=>R.renderFechoMes?.(),
+        'pendentes-tavira':()=>window.goTo('pendentes-tavira'),
       };
       if(renderMap[id]) renderMap[id]();
     }

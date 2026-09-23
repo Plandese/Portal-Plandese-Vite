@@ -169,7 +169,7 @@ function chapterOfSection(sec){
 
 export function applyRolePermissions(role){
   // repor tudo visível antes de reaplicar (necessário ao trocar de utilizador sem recarregar a página)
-  document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick]').forEach(el=>{ el.style.display=''; });
+  document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(el=>{ el.style.display=''; });
   if(role === 'admin') return; // admin vê tudo
   const access = ROLE_ACCESS[role];
   if(!access) return;
@@ -180,7 +180,7 @@ export function applyRolePermissions(role){
     document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
   });
   // Esconder atalhos da barra de navegação inferior (mobile) cujo capítulo não é permitido
-  document.querySelectorAll('.bnav-btn[onclick]').forEach(btn=>{
+  document.querySelectorAll('.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(btn=>{
     const m = btn.getAttribute('onclick').match(/goTo\('([^']+)'/);
     const sec = m && m[1];
     const chId = sec && chapterOfSection(sec);

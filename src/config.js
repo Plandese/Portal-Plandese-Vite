@@ -91,7 +91,7 @@ export const NAV_CHAPTERS = [
   {id:'cmp',  label:'Compras',                   sections:['compras','mapas-comparativos']},
   {id:'fin',  label:'Financeiro',                sections:['faturas']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
-  {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios']},
+  {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios','pendentes-tavira']},
   {id:'def',  label:'Definições',                sections:['obras','utilizadores','empresas-moa','fornecedores']},
 ];
 
