@@ -8,6 +8,7 @@ import { showToast } from './navigation.js';
 import { EQUIPAMENTOS } from './equipamentos.js';
 
 let _combView = 'tabela';
+const _escHtml = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ════════════════════════════════════════════════
 //  COMBUSTÍVEL — ADMIN
@@ -54,28 +55,35 @@ async function loadCombustivelAdmin(){
     // Saída: saída de depósito OU abastecimento directo de viatura
     const isSaida=r=>(r.tipo_registo==='deposito'&&r.movimento==='saida')||r.tipo_registo==='viatura';
 
+    // Stock = entradas no depósito − saídas (saídas do depósito + abastecimentos de viaturas)
+    const stockDe=arr=>arr.reduce((s,r)=>{const l=parseFloat(r.litros)||0;return s+(isEntDep(r)?l:isSaida(r)?-l:0);},0);
+    // KPIs e stock respeitam a obra escolhida (as datas só filtram a tabela)
+    const kpiRows=obraFilt?allRows.filter(r=>r.obra_id===obraFilt):allRows;
+
     const sumL=(arr,filterFn,de,ate)=>
       arr.filter(r=>filterFn(r)&&r.data&&r.data>=de&&r.data<=ate)
          .reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
 
-    // ── 4. KPIs de período (sobre TODOS os registos — independente do filtro) ──
+    // ── 4. KPIs de período (hoje/semana/mês/ano) da obra filtrada ──
     const fL=v=>v.toFixed(1)+'L';
     const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
 
-    setTxt('comb-k-ent-dia', fL(sumL(allRows,isEntDep,hoje,hoje)));
-    setTxt('comb-k-ent-sem', fL(sumL(allRows,isEntDep,startSem,hoje)));
-    setTxt('comb-k-ent-mes', fL(sumL(allRows,isEntDep,startMes,hoje)));
-    setTxt('comb-k-ent-ano', fL(sumL(allRows,isEntDep,startAno,hoje)));
-    setTxt('comb-k-sai-dia', fL(sumL(allRows,isSaida,hoje,hoje)));
-    setTxt('comb-k-sai-sem', fL(sumL(allRows,isSaida,startSem,hoje)));
-    setTxt('comb-k-sai-mes', fL(sumL(allRows,isSaida,startMes,hoje)));
-    setTxt('comb-k-sai-ano', fL(sumL(allRows,isSaida,startAno,hoje)));
+    setTxt('comb-k-ent-dia', fL(sumL(kpiRows,isEntDep,hoje,hoje)));
+    setTxt('comb-k-ent-sem', fL(sumL(kpiRows,isEntDep,startSem,hoje)));
+    setTxt('comb-k-ent-mes', fL(sumL(kpiRows,isEntDep,startMes,hoje)));
+    setTxt('comb-k-ent-ano', fL(sumL(kpiRows,isEntDep,startAno,hoje)));
+    setTxt('comb-k-sai-dia', fL(sumL(kpiRows,isSaida,hoje,hoje)));
+    setTxt('comb-k-sai-sem', fL(sumL(kpiRows,isSaida,startSem,hoje)));
+    setTxt('comb-k-sai-mes', fL(sumL(kpiRows,isSaida,startMes,hoje)));
+    setTxt('comb-k-sai-ano', fL(sumL(kpiRows,isSaida,startAno,hoje)));
 
-    // ── 5. Stock real acumulado (todos os registos de depósito) ──
-    const stockReal=allRows.filter(r=>r.tipo_registo==='deposito').reduce((s,r)=>{
-      const l=parseFloat(r.litros)||0;
-      return s+(r.movimento==='saida'?-l:l);
-    },0);
+    // ── 5. Stock real acumulado: entradas − saídas (todos os registos da obra filtrada) ──
+    const stockReal=stockDe(kpiRows);
+    const stockSub=document.getElementById('comb-k-stock-sub');
+    if(stockSub){
+      const obraNome=obraFilt?(S.OBRAS.find(o=>o.id===obraFilt)?.nome||''):'';
+      stockSub.innerHTML=`Entradas − Saídas<br>${obraNome?_escHtml(obraNome):'todas as obras'}`;
+    }
     const stockEl=document.getElementById('comb-k-stock');
     if(stockEl){
       stockEl.textContent=(stockReal>=0?'+':'')+stockReal.toFixed(1)+'L';
@@ -180,7 +188,7 @@ function renderCombObraCards(rows){
   grid.innerHTML=obras.map(ob=>{
     const ent=ob.rows.filter(r=>r.tipo_registo==='deposito'&&(r.movimento==='entrada'||!r.movimento)).reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
     const sai=ob.rows.filter(r=>(r.tipo_registo==='deposito'&&r.movimento==='saida')||r.tipo_registo==='viatura').reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
-    const stock=ob.rows.filter(r=>r.tipo_registo==='deposito').reduce((s,r)=>{const l=parseFloat(r.litros)||0;return s+(r.movimento==='saida'?-l:l);},0);
+    const stock=ent-sai; // entradas − saídas (inclui abastecimentos de viaturas)
     const nReg=ob.rows.length;
     const tipos=[...new Set(ob.rows.map(r=>r.tipo_combustivel).filter(Boolean))].join(', ')||'—';
     const stockColor=stock>=0?'var(--blue-700)':'#b91c1c';
@@ -237,9 +245,17 @@ function _initCombustivelAdmin(){
   // Preencher select de obras
   const selObra=document.getElementById('comb-f-obra');
   if(selObra){
+    const atual=selObra.value;
     selObra.innerHTML='<option value="">Todas as obras</option>';
-    S.OBRAS.forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;selObra.appendChild(op);});
+    S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;selObra.appendChild(op);});
+    // Manter a obra escolhida ao voltar à secção
+    if([...selObra.options].some(o=>o.value===atual)) selObra.value=atual;
   }
+  // Cálculo automático: qualquer alteração aos filtros atualiza logo os totais e a tabela
+  ['comb-f-ini','comb-f-fim','comb-f-equip','comb-f-obra'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && !el.dataset.autoLoad){ el.dataset.autoLoad='1'; el.addEventListener('change',()=>loadCombustivelAdmin()); }
+  });
   // Garantir vista tabela ao iniciar
   _combView='tabela';
   toggleCombView('tabela');

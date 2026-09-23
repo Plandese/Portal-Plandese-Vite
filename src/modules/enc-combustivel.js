@@ -122,12 +122,16 @@ async function encUpdateFuelWidget(){
   const nomeObra=obras.length===1?obras[0].nome:obras.length+' obras';
   try{
     const {data,error}=await sb.from('registos_combustivel')
-      .select('litros,movimento')
-      .eq('tipo_registo','deposito')
+      .select('litros,movimento,tipo_registo')
       .in('obra_id',obras.map(o=>o.id))
       .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null');
     if(error) throw error;
-    const stock=(data||[]).reduce((s,r)=>{const l=parseFloat(r.litros)||0;return s+(r.movimento==='saida'?-l:l);},0);
+    // Stock = entradas no depósito − saídas (saídas do depósito + abastecimentos de viaturas)
+    const stock=(data||[]).reduce((s,r)=>{
+      const l=parseFloat(r.litros)||0;
+      const saida=r.tipo_registo==='viatura'||r.movimento==='saida';
+      return s+(saida?-l:l);
+    },0);
     litrosEl.textContent=stock.toLocaleString('pt-PT',{maximumFractionDigits:1})+' L';
     litrosEl.classList.toggle('neg',stock<0);
     labelEl.textContent='Gasóleo · '+nomeObra;
