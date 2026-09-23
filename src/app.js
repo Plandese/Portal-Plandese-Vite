@@ -46,7 +46,7 @@ import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnteri
 import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
 
 // Enc-combustivel + chat
-import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend } from './modules/enc-combustivel.js';
+import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
 import { loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover } from './modules/enc-aluguer.js';
@@ -231,6 +231,7 @@ Object.assign(window, {
   encGoCombDeposito, encGoCombViatura,
   depSetMovimento, encSubmeterCombDeposito,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura,
+  combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto,
 
   // Encarregado — aluguer
   encAlugPassarTrabalhadores, encAlugVoltarA,

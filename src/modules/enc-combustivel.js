@@ -8,24 +8,83 @@ import { showToast } from './navigation.js';
 import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
 
 let _combEqOpts = new Map();
+let _combPickerCat = '';
 
+// Lista de equipamentos para o registo manual: guarda em _combEqOpts o texto
+// mostrado no campo → equipamento (o submit usa este mapa para obter o id)
 function _combFillListaEquip(){
-  const dl=document.getElementById('comb-viatura-list');
-  if(!dl) return;
   const lista=EQUIPAMENTOS.filter(e=>e.categoria!=='outro').sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
   const cont={}; lista.forEach(e=>{cont[e.nome]=(cont[e.nome]||0)+1;});
   _combEqOpts=new Map();
-  dl.innerHTML='';
   lista.forEach(e=>{
     let value=cont[e.nome]>1?`${e.nome} · ${e.ultimoLocal||'#'+e.id.slice(-4)}`:e.nome;
     if(_combEqOpts.has(value)) value+=` #${e.id.slice(-4)}`;
     _combEqOpts.set(value,e);
-    const op=document.createElement('option');
-    op.value=value;
-    op.label=[e.matricula,e.marcaModelo,e.ultimoLocal].filter(Boolean).join(' · ');
-    dl.appendChild(op);
   });
+  if(!document.getElementById('comb-picker')?.hidden) combPickerRender();
 }
+
+// ── Seletor em página inteira ──
+const _norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const _escH = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function combAbrirPicker(){
+  const pk=document.getElementById('comb-picker');
+  pk.hidden=false;
+  const q=document.getElementById('comb-picker-q');
+  q.value=''; _combPickerCat='';
+  combPickerRender();
+  setTimeout(()=>q.focus(),50);
+}
+function combFecharPicker(){
+  document.getElementById('comb-picker').hidden=true;
+}
+function combPickerSetCat(cat){ _combPickerCat=cat; combPickerRender(); }
+function combPickerEscolher(value){
+  document.getElementById('comb-viatura-nome-input').value=value;
+  combFecharPicker();
+}
+function combPickerUsarTexto(){
+  const t=document.getElementById('comb-picker-q').value.trim();
+  if(t) combPickerEscolher(t);
+}
+
+function combPickerRender(){
+  const itens=[..._combEqOpts.entries()];
+  const cats=[...new Set(itens.map(([,e])=>e.categoria).filter(Boolean))];
+  document.getElementById('comb-picker-chips').innerHTML=cats.length>1
+    ? [['','Todos'],...cats.map(c=>[c,(EQ_CATS[c]?.label||c)+'s'])].map(([c,l])=>
+        `<button type="button" class="comb-picker-chip" aria-pressed="${_combPickerCat===c}" onclick="combPickerSetCat('${c}')">${_escH(l)}</button>`).join('')
+    : '';
+  // Cada palavra pesquisada tem de aparecer (em qualquer ordem) — ex.: "lagos sy35"
+  const termos=_norm(document.getElementById('comb-picker-q').value).split(/\s+/).filter(Boolean);
+  const res=itens.filter(([v,e])=>{
+    if(_combPickerCat && e.categoria!==_combPickerCat) return false;
+    const txt=_norm([v,e.nome,e.matricula,e.marcaModelo,e.ultimoLocal,e.numero,e.codigo].join(' '));
+    return termos.every(t=>txt.includes(t));
+  });
+  document.getElementById('comb-picker-count').textContent=`${res.length} de ${itens.length}`;
+  const atual=document.getElementById('comb-viatura-nome-input').value;
+  const textoLivre=document.getElementById('comb-picker-q').value.trim();
+  document.getElementById('comb-picker-list').innerHTML=
+    res.map(([v,e])=>{
+      const sub=[e.matricula,e.marcaModelo,e.ultimoLocal].filter(Boolean).join(' · ');
+      return `<button type="button" class="comb-picker-item${v===atual?' sel':''}" data-v="${_escH(v)}">
+        <span class="comb-picker-ic">${_escH((EQ_CATS[e.categoria]?.label||'?').charAt(0))}</span>
+        <span class="comb-picker-tx"><b>${_escH(v)}</b>${sub?`<small>${_escH(sub)}</small>`:''}</span>
+      </button>`;
+    }).join('')
+    + (textoLivre && !res.some(([v])=>_norm(v)===_norm(textoLivre))
+      ? `<button type="button" class="comb-picker-item comb-picker-livre" onclick="combPickerUsarTexto()"><span class="comb-picker-ic">+</span><span class="comb-picker-tx"><b>Usar “${_escH(textoLivre)}”</b><small>Não está na lista — registar com este nome</small></span></button>`
+      : '')
+    + (!res.length && !textoLivre ? '<div class="comb-picker-empty">Sem equipamentos para mostrar.</div>' : '');
+}
+
+// Clique num item (delegado: os valores podem ter aspas/apóstrofos)
+document.addEventListener('click',e=>{
+  const it=e.target.closest('#comb-picker-list .comb-picker-item[data-v]');
+  if(it) combPickerEscolher(it.dataset.v);
+});
 
 let _depMovimento = 'entrada';
 let _combHtml5Qr = null;
@@ -756,5 +815,6 @@ export {
   encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   encGoCombViatura, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encSubmeterCombustivel,
+  combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto,
   encGoComprasChat, _chatReset, _chatAddBot, _chatAddUser, chatOnInput, chatSend
 };

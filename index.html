@@ -431,6 +431,24 @@
   </div>
 
   <!-- ECRÃ: VIATURAS / EQUIPAMENTOS — QR + MANUAL -->
+  <!-- SELETOR DE VIATURA / EQUIPAMENTO (página inteira por cima do formulário) -->
+  <div id="comb-picker" class="comb-picker" hidden>
+    <div class="enc-hdr">
+      <button class="enc-hdr-back" type="button" onclick="combFecharPicker()" aria-label="Voltar">
+        <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <div class="enc-hdr-info">
+        <div class="enc-hdr-t">Escolher viatura / equipamento</div>
+        <div class="enc-hdr-s" id="comb-picker-count"></div>
+      </div>
+    </div>
+    <div class="comb-picker-search">
+      <input type="search" id="comb-picker-q" class="enc-input" autocomplete="off" placeholder="Pesquisar: nome, matrícula, marca, local…" oninput="combPickerRender()"/>
+      <div class="comb-picker-chips" id="comb-picker-chips"></div>
+    </div>
+    <div class="comb-picker-list" id="comb-picker-list"></div>
+  </div>
+
   <div id="enc-screen-comb-viatura" style="display:none;flex:1;flex-direction:column">
     <div class="enc-equip-body" id="comb-viatura-body">
 
@@ -486,8 +504,8 @@
           <!-- Campo nome manual (só visível em modo manual) -->
           <div class="enc-field" id="comb-viatura-nome-field" style="display:none">
             <label>Nome da viatura / equipamento *</label>
-            <input type="text" id="comb-viatura-nome-input" class="enc-input" list="comb-viatura-list" autocomplete="off" placeholder="Escreva para pesquisar: nome, matrícula, nº…"/>
-            <datalist id="comb-viatura-list"></datalist>
+            <!-- Abre o ecrã de seleção (comb-picker) em vez de uma datalist -->
+            <input type="text" id="comb-viatura-nome-input" class="enc-input comb-picker-trigger" readonly onclick="combAbrirPicker()" placeholder="Toque para escolher a viatura ou equipamento"/>
           </div>
 
           <div class="enc-field">
