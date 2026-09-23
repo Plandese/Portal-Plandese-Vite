@@ -282,54 +282,67 @@ export function ptFecharRelatorio(){
   document.body.classList.remove('pt-rep-open');
 }
 
-// Abre o cliente de email predefinido (ex.: Outlook) com o corpo do relatório já preenchido.
-// Sem destinatário fixo — o utilizador escolhe para quem enviar.
-export function ptEnviarEmail(){
-  const items = todos().filter(i=>i.o===obra), ph = id => fotos.filter(x=>x.topic===id);
-  const act = items.filter(i=>ph(i.id).some(f=>dstr(f.ts)===repDate) || (estado[i.id]?.done && dstr(estado[i.id].ts)===repDate));
-  const open = items.filter(i=>!estado[i.id]?.done);
+// Copia o relatório (com o mesmo layout e as fotos incluídas) para a área de
+// transferência como HTML rico, e abre o cliente de email predefinido (ex.:
+// Outlook) já com o assunto preenchido — basta colar (Ctrl+V) no corpo do
+// email. Sem destinatário fixo — o utilizador escolhe para quem enviar.
+export async function ptEnviarEmail(){
   const dCurta = new Date(repDate+'T12:00').toLocaleDateString('pt-PT');
-  const ref = `PT-${obra}-${repDate.replaceAll('-','')}`;
-
-  const linhas = [];
-  linhas.push(`Relatório diário de pendentes — Obra ${obra} (${OBRAS[obra]}), Tavira`);
-  linhas.push(`Data: ${dCurta}    Referência: ${ref}`);
-  linhas.push('');
-  linhas.push(`Em aberto: ${open.length} de ${items.length}    Resolvidos no dia: ${act.filter(i=>estado[i.id]?.done && dstr(estado[i.id].ts)===repDate).length}`);
-  linhas.push('');
-  linhas.push('ATIVIDADE DO DIA');
-  linhas.push('----------------');
-  if(act.length){
-    act.forEach((i,n)=>{
-      const r = estado[i.id]?.done && dstr(estado[i.id].ts)===repDate;
-      const nf = ph(i.id).filter(f=>dstr(f.ts)===repDate).length;
-      linhas.push(`${n+1}. ${i.r}${i.rec?' (RECLAMAÇÃO)':''}${r?' — RESOLVIDO':''}`);
-      linhas.push(`   ${i.t}`);
-      if(nf) linhas.push(`   [${nf} foto(s) — ver relatório em PDF]`);
-      linhas.push('');
-    });
-  } else {
-    linhas.push('Sem fotos nem resoluções registadas neste dia.');
-    linhas.push('');
-  }
-  linhas.push('PENDENTES EM ABERTO (' + open.length + ' de ' + items.length + ')');
-  linhas.push('----------------------------------');
-  if(open.length){
-    open.forEach((i,n)=>{
-      linhas.push(`${n+1}. ${i.r}${i.rec?' (RECLAMAÇÃO)':''}`);
-      linhas.push(`   ${i.t}`);
-    });
-  } else {
-    linhas.push('Sem pendentes em aberto.');
-  }
-  linhas.push('');
-  linhas.push('Relatório completo (com fotos) em anexo/PDF — usar "Imprimir / Guardar PDF" e anexar ao email.');
-  linhas.push('');
-  linhas.push('PLANDESE, SA');
-
   const assunto = `Relatório diário · Obra ${obra} – ${OBRAS[obra]} · ${dCurta}`;
-  const url = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(linhas.join('\n'))}`;
-  window.location.href = url;
+  const page = document.querySelector('#pt-rep .pt-rep-page');
+
+  let copiado = false;
+  if(page){
+    try {
+      const html = inlineStyles(page);
+      if(navigator.clipboard?.write && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], {type:'text/html'}),
+          'text/plain': new Blob([page.innerText], {type:'text/plain'}),
+        })]);
+        copiado = true;
+      }
+    } catch(_){ copiado = false; }
+    if(!copiado){
+      // Alternativa: selecionar o relatório e usar o copy nativo do browser
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(page);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        copiado = document.execCommand('copy');
+        sel.removeAllRanges();
+      } catch(_){ copiado = false; }
+    }
+  }
+
+  showToast(copiado ? 'Relatório copiado — cole (Ctrl+V) no corpo do email' : 'Não foi possível copiar o relatório automaticamente. Selecione-o e copie manualmente (Ctrl+C).');
+  window.location.href = `mailto:?subject=${encodeURIComponent(assunto)}`;
+}
+
+// Devolve o HTML do nó com o estilo computado de cada elemento aplicado inline,
+// para que o layout se mantenha igual quando colado num email (Outlook, etc.)
+// que não carrega o CSS do portal.
+const INLINE_PROPS = ['display','position','box-sizing','width','max-width','margin','margin-top','margin-right','margin-bottom','margin-left',
+  'padding','padding-top','padding-right','padding-bottom','padding-left','border','border-top','border-right','border-bottom','border-left',
+  'border-radius','background','background-color','color','font-family','font-size','font-weight','font-style','line-height','letter-spacing',
+  'text-align','text-transform','text-decoration','vertical-align','white-space','grid-template-columns','gap','flex','flex-direction',
+  'flex-wrap','align-items','justify-content','object-fit','overflow','box-shadow'];
+
+function inlineStyles(root){
+  const clone = root.cloneNode(true);
+  const origAll = root.querySelectorAll('*');
+  const cloneAll = clone.querySelectorAll('*');
+  const apply = (orig, el) => {
+    const cs = getComputedStyle(orig);
+    let css = '';
+    INLINE_PROPS.forEach(p => { const v = cs.getPropertyValue(p); if(v) css += `${p}:${v};`; });
+    el.setAttribute('style', css);
+  };
+  apply(root, clone);
+  origAll.forEach((orig, i) => apply(orig, cloneAll[i]));
+  clone.querySelectorAll('img').forEach(img => { img.style.maxWidth = '100%'; img.removeAttribute('loading'); });
+  return `<div>${clone.outerHTML}</div>`;
 }
 
 function drawRep(){
