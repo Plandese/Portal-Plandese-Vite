@@ -2254,3 +2254,25 @@ body.dark-mode .anlc-arrow:hover:not(:disabled){background:rgba(37,99,235,.18);b
 .pt-btn-ok:hover{background:var(--green-light)}
 body.dark-mode .pt-btn-ok{background:rgba(14,159,110,.16);color:#4ade80;border-color:rgba(14,159,110,.4)}
 body.dark-mode .pt-btn-ok:hover{background:rgba(14,159,110,.26)}
+
+/* ─────────────────────────────────────────────────────
+   ENCARREGADO — SCROLL EM TELEMÓVEL
+   html/body têm overflow:hidden, por isso cada ecrã tem de caber na janela
+   e fazer scroll por dentro. Sem min-height:0 um item flex cresce com o
+   conteúdo (min-height:auto) e o que passa do fundo fica cortado, sem scroll
+   (acontecia no Histórico, Combustível e Depósito).
+───────────────────────────────────────────────────── */
+@supports (height:100dvh){
+  /* acompanha a barra do browser/teclado no telemóvel (100% pode ficar maior que a área visível) */
+  #enc-app{height:100dvh}
+}
+#enc-app > div[id^="enc-screen"]{min-height:0}
+#enc-app .enc-equip-body{min-height:0}
+#enc-app [style*="overflow-y:auto"],#enc-app .enc-scroll,#enc-app .enc-bento-scroll{min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* Ecrãs sem contentor de scroll próprio: o próprio ecrã faz scroll */
+#enc-app #enc-screen-historico-enc{overflow:hidden}
+#enc-app #enc-screen-combustivel > div[style*="overflow-y:auto"],
+#enc-app #enc-screen-comb-deposito > div[style*="overflow-y:auto"]{width:100%}
+/* Formulários de equipamento/viatura (após QR): passam a fazer scroll */
+#enc-app #enc-equip-state-form,#enc-app #comb-viatura-state-form,
+#enc-app #enc-equip-state-success,#enc-app #comb-viatura-state-success{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
