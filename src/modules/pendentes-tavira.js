@@ -287,13 +287,36 @@ function drawRep(){
   const act = items.filter(i=>ph(i.id).some(f=>dstr(f.ts)===repDate) || (estado[i.id]?.done && dstr(estado[i.id].ts)===repDate));
   const open = items.filter(i=>!estado[i.id]?.done);
   const dl = new Date(repDate+'T12:00').toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const dCurta = new Date(repDate+'T12:00').toLocaleDateString('pt-PT');
+  const resolvidosDia = items.filter(i=>estado[i.id]?.done && dstr(estado[i.id].ts)===repDate).length;
+  const fotosDia = items.reduce((n,i)=>n+ph(i.id).filter(f=>dstr(f.ts)===repDate).length, 0);
+  const totalRes = items.length - open.length;
+  const ref = `PT-${obra}-${repDate.replaceAll('-','')}`;
+  const tag = (txt,cls) => `<span class="pt-rep-tag ${cls}">${txt}</span>`;
   $('pt-rep').innerHTML = `<div class="pt-rep-tools"><button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button><button type="button" class="btn btn-secondary" onclick="ptFecharRelatorio()">Fechar</button><label for="pt-rdate">Dia</label><input type="date" id="pt-rdate" value="${repDate}"></div>
-  <div class="pt-rep-page"><h1>Relatório diário · Obra ${obra}</h1><p>${OBRAS[obra]} · Tavira · ${esc(dl)}</p>
-  <h2>Atividade do dia</h2>${act.length?act.map(i=>{
-    const fs = ph(i.id).filter(f=>dstr(f.ts)===repDate), r = estado[i.id]?.done && dstr(estado[i.id].ts)===repDate;
-    return `<div class="pt-rep-item"><h3>${esc(i.r)}${i.rec?' (RECLAMAÇÃO)':''}${r?' — RESOLVIDO':''}</h3><p>${esc(i.t)}</p>${fs.length?`<div class="pt-rep-ph">${fs.map(f=>`<img alt="Foto" src="${f.data}">`).join('')}</div>`:''}</div>`;
-  }).join(''):'<p>Sem fotos nem resoluções registadas neste dia.</p>'}
-  <h2>Pendentes em aberto (${open.length} de ${items.length})</h2>${open.length?open.map(i=>`<div class="pt-rep-item"><h3>${esc(i.r)}${i.rec?' (RECLAMAÇÃO)':''}</h3><p>${esc(i.t)}</p></div>`).join(''):'<p>Sem pendentes em aberto.</p>'}
-  <div class="pt-rep-sig"><div>Diretor de Obra</div><div>Fiscalização</div></div></div>`;
+  <div class="pt-rep-page">
+    <header class="pt-rep-head">
+      <div class="pt-rep-brand"><img src="/plandese_logo.png" alt="Plandese"><div><strong>PLANDESE, SA</strong><span>Pendentes de obra · Tavira</span></div></div>
+      <div class="pt-rep-doc"><span>Relatório diário</span><b>${ref}</b></div>
+    </header>
+    <h1 class="pt-rep-title">Pendentes de Obra — Tavira</h1>
+    <table class="pt-rep-info"><tbody>
+      <tr><th>Obra</th><td>${obra} – ${OBRAS[obra]}</td><th>Data</th><td>${dCurta}</td></tr>
+      <tr><th>Local</th><td>Tavira</td><th>Dia</th><td class="pt-rep-cap">${esc(dl)}</td></tr>
+    </tbody></table>
+    <div class="pt-rep-kpis">
+      <div><b>${open.length}</b><span>Em aberto</span></div>
+      <div><b>${totalRes}</b><span>Resolvidos (total)</span></div>
+      <div><b>${resolvidosDia}</b><span>Resolvidos no dia</span></div>
+      <div><b>${fotosDia}</b><span>Fotos do dia</span></div>
+    </div>
+    <h2><span>1</span>Atividade do dia</h2>${act.length?act.map((i,n)=>{
+      const fs = ph(i.id).filter(f=>dstr(f.ts)===repDate), r = estado[i.id]?.done && dstr(estado[i.id].ts)===repDate;
+      return `<div class="pt-rep-item"><div class="pt-rep-ih"><span class="pt-rep-n">1.${n+1}</span><h3>${esc(i.r)}</h3>${i.rec?tag('Reclamação','rec'):''}${r?tag('Resolvido','ok'):tag('Pendente','pend')}</div><p>${esc(i.t)}</p>${fs.length?`<div class="pt-rep-ph">${fs.map((f,k)=>`<figure><img alt="Foto" src="${f.data}"><figcaption>Foto ${n+1}.${k+1}</figcaption></figure>`).join('')}</div>`:''}</div>`;
+    }).join(''):'<p class="pt-rep-empty">Sem fotos nem resoluções registadas neste dia.</p>'}
+    <h2><span>2</span>Pendentes em aberto <small>${open.length} de ${items.length}</small></h2>${open.length?`<table class="pt-rep-tbl"><thead><tr><th>N.º</th><th>Local</th><th>Descrição</th></tr></thead><tbody>${open.map((i,n)=>`<tr><td>2.${n+1}</td><td><b>${esc(i.r)}</b>${i.rec?`<br>${tag('Reclamação','rec')}`:''}</td><td>${esc(i.t)}</td></tr>`).join('')}</tbody></table>`:'<p class="pt-rep-empty">Sem pendentes em aberto.</p>'}
+    <div class="pt-rep-sig"><div><span>Diretor de Obra</span><small>Nome / Assinatura / Data</small></div><div><span>Fiscalização</span><small>Nome / Assinatura / Data</small></div></div>
+    <footer class="pt-rep-foot"><span>PLANDESE, SA · Relatório ${ref}</span><span>Emitido em ${new Date().toLocaleString('pt-PT',{dateStyle:'short',timeStyle:'short'})}</span></footer>
+  </div>`;
   $('pt-rdate').onchange = e=>{ repDate = e.target.value || repDate; drawRep(); };
 }
