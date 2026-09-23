@@ -6,6 +6,7 @@ import { S } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
 import { showToast } from './navigation.js';
+import { canAccessSection } from './permissions.js';
 import { renderLembretes } from './lembretes.js';
 import { coComputeStats, prodFmtEur, _prodLoadLocal, _loadObrasExtra } from './producao.js';
 import { COMPRAS } from './compras.js';
@@ -26,6 +27,11 @@ const PAINEL_WIDGETS_DEF = [
   { id:'combustivel',     label:'Combustível',        icon:'<path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM18 10c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM8 18v-4.5H6L10 7v5h2l-4 6z"/>',  section:'combustivel' },
   { id:'controlo_obras',  label:'Controlo de Obras',  icon:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',  section:'producao' },
 ];
+
+// Só os widgets cuja secção o perfil pode abrir (evita expor dados de departamentos bloqueados)
+function _painelWidgetsPermitidos() {
+  return PAINEL_WIDGETS_DEF.filter(w => canAccessSection(w.section));
+}
 
 const PAINEL_DEFAULT_CONFIG = {
   widgets: ['obras_ativas','colaboradores','ponto_semana','compras_recentes'],
@@ -108,7 +114,7 @@ async function renderPainel() {
   renderPainelAlerts(obrasFiltro);
 
   // Carregar dados necessários para os widgets ativos
-  const widgets = (cfg.widgets || []).filter(wid => PAINEL_WIDGETS_DEF.some(w => w.id === wid));
+  const widgets = (cfg.widgets || []).filter(wid => _painelWidgetsPermitidos().some(w => w.id === wid));
 
   if (widgets.length === 0) {
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px">
@@ -152,7 +158,7 @@ function _painelObraStats(obrasFiltro) {
 function computePainelAlerts(obrasFiltro) {
   const alerts = [];
 
-  try {
+  if (canAccessSection('producao')) try {
     const stats = _painelObraStats(obrasFiltro);
     const bad = stats.filter(s => s.status === 'bad').length;
     const warn = stats.filter(s => s.status === 'warn').length;
@@ -166,7 +172,7 @@ function computePainelAlerts(obrasFiltro) {
     });
   } catch (e) { console.warn('painel alerts (obras):', e); }
 
-  try {
+  if (canAccessSection('compras')) try {
     const urgentes = COMPRAS.filter(c => c.estado === 'pendente'
       && (c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente')
       && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId)));
@@ -179,7 +185,7 @@ function computePainelAlerts(obrasFiltro) {
     });
   } catch (e) { console.warn('painel alerts (compras):', e); }
 
-  try {
+  if (canAccessSection('faturas')) try {
     const rever = FATURAS.filter(f => f.status === 'rever' || (f._flags && f._flags.length > 0));
     if (rever.length > 0) alerts.push({
       sev: 'yellow', count: rever.length, label: rever.length === 1 ? 'fatura a rever' : 'faturas a rever',
@@ -190,7 +196,7 @@ function computePainelAlerts(obrasFiltro) {
     });
   } catch (e) { console.warn('painel alerts (faturas):', e); }
 
-  try {
+  if (canAccessSection('equipamentos')) try {
     const ago7 = new Date(Date.now() - 7 * 24 * 3600 * 1000);
     const semReg = EQUIPAMENTOS.filter(eq => {
       const ul = eq.ultimoRegisto ? new Date(eq.ultimoRegisto) : null;
@@ -268,12 +274,13 @@ function renderPainelKPIs(obrasFiltro) {
     comprasPendentes = COMPRAS.filter(c => c.estado === 'pendente' && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId))).length;
   } catch (e) {}
 
+  // Cada indicador só aparece se o perfil tiver acesso à secção de onde vêm os dados
   wrap.innerHTML = [
-    _painelKpiTile(iconObras, obrasCount, obrasFiltro.length ? 'obras selecionadas' : 'obras ativas', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
-    _painelKpiTile(iconColab, colabAtivos, 'colaboradores ativos', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
-    _painelKpiTile(iconPonto, presentesHoje, 'presentes hoje', 'var(--green-bg)', 'var(--green)'),
-    _painelKpiTile(iconCompras, comprasPendentes, 'pedidos pendentes', 'var(--orange-bg)', 'var(--orange)'),
-  ].join('');
+    canAccessSection('obras')         && _painelKpiTile(iconObras, obrasCount, obrasFiltro.length ? 'obras selecionadas' : 'obras ativas', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
+    canAccessSection('colaboradores') && _painelKpiTile(iconColab, colabAtivos, 'colaboradores ativos', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
+    canAccessSection('historico')     && _painelKpiTile(iconPonto, presentesHoje, 'presentes hoje', 'var(--green-bg)', 'var(--green)'),
+    canAccessSection('compras')       && _painelKpiTile(iconCompras, comprasPendentes, 'pedidos pendentes', 'var(--orange-bg)', 'var(--orange)'),
+  ].filter(Boolean).join('');
 }
 
 // ── Construir HTML de cada widget ─────────────────────────────────
@@ -509,7 +516,7 @@ function openPainelCustomizer() {
   // Widgets checkboxes
   const widChecks = document.getElementById('painel-widget-checks');
   if (widChecks) {
-    widChecks.innerHTML = PAINEL_WIDGETS_DEF.map(w => {
+    widChecks.innerHTML = _painelWidgetsPermitidos().map(w => {
       const checked = (cfg.widgets || []).includes(w.id);
       return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${checked?'var(--blue)':'var(--gray-200)'};border-radius:8px;cursor:pointer;background:${checked?'var(--blue-50,#eff6ff)':'white'};transition:all .15s;font-size:13px" id="painel-wlbl-${w.id}">
         <input type="checkbox" id="painel-wchk-${w.id}" ${checked?'checked':''} onchange="painelWChkChange('${w.id}',this)" style="accent-color:var(--blue)"/>
@@ -560,7 +567,7 @@ function closePainelCustomizer() {
 
 async function savePainelCustomizer() {
   // Ler widgets selecionados
-  const widgets = PAINEL_WIDGETS_DEF.map(w => w.id).filter(wid => {
+  const widgets = _painelWidgetsPermitidos().map(w => w.id).filter(wid => {
     const chk = document.getElementById('painel-wchk-'+wid);
     return chk && chk.checked;
   });

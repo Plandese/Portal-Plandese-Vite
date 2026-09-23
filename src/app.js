@@ -21,7 +21,7 @@ import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativo
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
-import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions } from './modules/permissions.js';
+import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions, canAccessSection } from './modules/permissions.js';
 
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
@@ -392,6 +392,12 @@ window.savePerfil = async function () {
 (function () {
   const _orig = window.goTo;
   window.goTo = function (id, btn) {
+    // Barreira central de segurança: qualquer entrada (sidebar, painel, notificações,
+    // atalhos, chamadas programáticas) passa por aqui e é recusada sem permissão.
+    if (!canAccessSection(id)) {
+      showToast('🔒 Sem permissão para aceder a esta secção');
+      return;
+    }
     _orig(id, btn);
     if (id === 'analise')      { renderAnalise(); }
     if (id === 'painel')       { renderPainel(); }

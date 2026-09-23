@@ -7,8 +7,15 @@ import {
   sbLoadNotificacoes, sbInsertNotificacoes, sbMarkNotifRead,
   sbMarkAllNotifRead, sbSubscribeNotificacoes
 } from '../db.js';
+import { canAccessSection, roleCanAccessSection } from './permissions.js';
 
 let _realtimeCh = null;
+
+// Notificação visível = sem secção associada, ou secção a que o utilizador tem acesso.
+// Notificações de departamentos bloqueados nunca chegam à lista, ao badge nem ao toast.
+function _notifPermitida(n){
+  return !n.seccao || canAccessSection(n.seccao);
+}
 
 export async function initNotifications(){
   // Carrega notificações reais do utilizador autenticado
@@ -34,12 +41,14 @@ export async function initNotifications(){
 export async function loadNotificacoes(){
   const me = S.currentUser?.key;
   if(!me){ S.NOTIFICACOES = []; return; }
-  S.NOTIFICACOES = await sbLoadNotificacoes(me);
+  const todas = await sbLoadNotificacoes(me);
+  S.NOTIFICACOES = todas.filter(_notifPermitida);
 }
 
 function onRealtimeInsert(row){
   // Evita duplicados (caso já exista)
   if(S.NOTIFICACOES.some(n=>n.id===row.id)) return;
+  if(!_notifPermitida(row)) return;
   S.NOTIFICACOES.unshift(row);
   renderNotifPanel();
   if(window.showToast) window.showToast('🔔 '+row.acao);
@@ -65,6 +74,12 @@ export async function emitEvent({ acao, seccao }){
 
     // Não notificar o próprio autor da acção
     if(actor) recipients.delete(actor);
+
+    // Só notificar quem tem acesso à secção (subscrições antigas de perfis entretanto bloqueados)
+    [...recipients].forEach(dest=>{
+      const role = S.USERS?.[dest]?.role;
+      if(!roleCanAccessSection(role, seccao)) recipients.delete(dest);
+    });
 
     if(recipients.size===0) return;
 
@@ -123,7 +138,7 @@ export function notifClick(id, section){
   if(n && !n.lida){ n.lida = true; sbMarkNotifRead(n.id); }
   renderNotifPanel();
   closeNotifPanel();
-  if(section){
+  if(section && canAccessSection(section)){
     const btn = document.querySelector(`.sidebar .nav-btn[onclick*="'${section}'"]`);
     window.goTo(section, btn);
   }

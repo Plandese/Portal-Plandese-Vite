@@ -6,6 +6,7 @@ import { S } from '../state.js';
 import { NOTIF_SECTIONS } from '../config.js';
 import { sbLoadSubscriptions, sbSetSubscription } from '../db.js';
 import { showToast } from './navigation.js';
+import { roleCanAccessSection } from './permissions.js';
 
 // Conjunto de subscrições ativas em memória: "destinatario|seccao"
 let _subs = new Set();
@@ -36,10 +37,12 @@ export async function renderNotifSubs(){
 
   body.innerHTML = users.map(([username,u])=>{
     const cells = secEntries.map(([secKey])=>{
-      const on = _subs.has(username+'|'+secKey);
+      // Sem acesso à secção → nunca recebe notificações dela (bloqueado na matriz)
+      const permitido = roleCanAccessSection(u.role, secKey);
+      const on = permitido && _subs.has(username+'|'+secKey);
       return `<td>
-        <label class="perm-toggle" title="${on?'Recebe notificações':'Não recebe'}">
-          <input type="checkbox" ${on?'checked':''}
+        <label class="perm-toggle" title="${!permitido?'Perfil sem acesso a esta secção':on?'Recebe notificações':'Não recebe'}"${permitido?'':' style="opacity:.35"'}>
+          <input type="checkbox" ${on?'checked':''}${permitido?'':' disabled'}
             onchange="toggleNotifSub('${username}','${secKey}',this.checked)"/>
           <span class="perm-slider"></span>
         </label>

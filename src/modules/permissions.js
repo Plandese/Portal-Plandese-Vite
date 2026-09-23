@@ -4,6 +4,7 @@
 import { ROLE_ACCESS, NAV_CHAPTERS } from '../config.js';
 import { showToast } from './navigation.js';
 import { sb } from '../supabase.js';
+import { S } from '../state.js';
 
 // Chave (linha) na tabela app_config onde a matriz de permissões é partilhada entre dispositivos
 const PERM_CONFIG_KEY = 'role_permissions';
@@ -165,6 +166,26 @@ export function applyStoredPermissions(){
 function chapterOfSection(sec){
   const ch = NAV_CHAPTERS.find(c=>c.sections.includes(sec));
   return ch ? ch.id : null;
+}
+
+// Secções abertas a todos os perfis autenticados (não pertencem a nenhum capítulo)
+const OPEN_SECTIONS = ['painel','analise'];
+
+// ── Verificação central de acesso ──────────────────────────────────
+// Fonte única de verdade: sidebar, goTo, painel, análise e notificações usam estas funções.
+// Falha "fechada": secção desconhecida ou perfil sem configuração → sem acesso (excepto admin).
+export function roleCanAccessSection(role, sec){
+  if(role === 'admin') return true;
+  if(OPEN_SECTIONS.includes(sec)) return !!role;
+  const chId = chapterOfSection(sec);
+  if(!chId) return false;
+  const access = ROLE_ACCESS[role];
+  if(!access) return false;
+  return (access.chapters || []).includes(chId);
+}
+
+export function canAccessSection(sec){
+  return roleCanAccessSection(S.currentUser?.role, sec);
 }
 
 export function applyRolePermissions(role){
