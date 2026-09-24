@@ -146,6 +146,7 @@ export async function entrarComoUtilizador(authedUser) {
     R.applyRolePermissions(authedUser.role);
     R.initNotifications();
     R.ensurePushSubscription?.();
+    R.applyPendingSection?.();
   }
 }
 

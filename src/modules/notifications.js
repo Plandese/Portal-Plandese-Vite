@@ -139,15 +139,20 @@ function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// Navega para a secção (usado pelo clique numa notificação, dentro ou fora da app)
+export function goToSection(section){
+  if(section && canAccessSection(section)){
+    const btn = document.querySelector(`.sidebar .nav-btn[onclick*="'${section}'"]`);
+    window.goTo(section, btn);
+  }
+}
+
 export function notifClick(id, section){
   const n = S.NOTIFICACOES.find(x=>String(x.id)===String(id));
   if(n && !n.lida){ n.lida = true; sbMarkNotifRead(n.id); }
   renderNotifPanel();
   closeNotifPanel();
-  if(section && canAccessSection(section)){
-    const btn = document.querySelector(`.sidebar .nav-btn[onclick*="'${section}'"]`);
-    window.goTo(section, btn);
-  }
+  goToSection(section);
 }
 
 export async function toggleNotifPanel(){

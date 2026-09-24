@@ -26,7 +26,7 @@ import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermi
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
 import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
-import { ensurePushSubscription, requestPushPermission, pushStatus } from './modules/push.js';
+import { ensurePushSubscription, requestPushPermission, pushStatus, capturePendingSectionFromURL, applyPendingSection } from './modules/push.js';
 
 // Faturas
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura } from './modules/faturas.js';
@@ -97,7 +97,7 @@ Object.assign(R, {
   initAdmin,
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent,
-  ensurePushSubscription,
+  ensurePushSubscription, applyPendingSection,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
   loadCombustivelAdmin, renderProdDashboard,
@@ -122,6 +122,9 @@ window.addEventListener('resize', () => {
 
 // ── QR Registration via URL param ──
 initQrRegistration();
+
+// ── Deep link de notificação push (?open=secção) ──
+capturePendingSectionFromURL();
 
 // ── Dropbox OAuth callback (se vier redirect de volta da Dropbox) ──
 dropboxInit();

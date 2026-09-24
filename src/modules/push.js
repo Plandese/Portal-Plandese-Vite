@@ -5,6 +5,7 @@ import { S } from '../state.js';
 import { VAPID_PUBLIC_KEY } from '../config.js';
 import { sbSavePushSubscription } from '../db.js';
 import { showToast } from './navigation.js';
+import { goToSection } from './notifications.js';
 
 function isIos(){
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -82,4 +83,30 @@ export async function requestPushPermission(){
     console.warn('Erro ao pedir permissão de notificações:', e);
     showToast('Não foi possível ativar as notificações');
   }
+}
+
+// ── Deep link: abrir a secção certa ao clicar numa notificação ──────────
+// Caso 1: a app já estava aberta numa aba — o service worker manda um postMessage.
+// Caso 2: a app estava fechada — abre com ?open=<seccao> no URL, lido aqui no arranque.
+let _pendingSection = null;
+
+export function capturePendingSectionFromURL(){
+  const seccao = new URLSearchParams(location.search).get('open');
+  if(seccao) _pendingSection = seccao;
+}
+
+export function applyPendingSection(){
+  if(!_pendingSection) return;
+  const seccao = _pendingSection;
+  _pendingSection = null;
+  history.replaceState(null, '', location.pathname);
+  goToSection(seccao);
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(e.data?.type !== 'notif-open') return;
+    if(S.currentUser) goToSection(e.data.seccao);
+    else _pendingSection = e.data.seccao;
+  });
 }

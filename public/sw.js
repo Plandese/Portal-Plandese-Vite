@@ -22,12 +22,19 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const url = event.notification.data?.url || '/';
+  const seccao = new URL(url, self.location.origin).searchParams.get('open');
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => {
       for (const client of clients) {
-        if ('focus' in client) return client.focus();
+        if ('focus' in client) {
+          await client.focus();
+          // App já aberta: pede-lhe para navegar internamente (sem recarregar/perder estado)
+          if (seccao) client.postMessage({ type: 'notif-open', seccao });
+          return;
+        }
       }
+      // Nenhuma janela aberta: abre uma nova já com a secção no URL
       if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );
