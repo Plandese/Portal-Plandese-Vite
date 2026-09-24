@@ -2,7 +2,7 @@
 //  ADMIN — Painel principal e Fecho de Mês
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
 import { showToast } from './navigation.js';
@@ -111,6 +111,8 @@ async function renderPainel() {
     const nomePropio = S.currentUser?.nome?.split(' ')[0] || '';
     titulo.textContent = nomePropio ? `${saudacao}, ${nomePropio}` : 'Painel Principal';
   }
+
+  R.renderCalWidget?.();
 
   const dias = _painelSemana();
   const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;

@@ -113,6 +113,7 @@ export async function refreshPortal(){
         'fecho-mes':       ()=>R.renderFechoMes?.(),
         'pendentes-tavira':()=>window.goTo('pendentes-tavira'),
         'notificacoes':    ()=>window.goTo('notificacoes'),
+        'calendario':      ()=>window.goTo('calendario'),
       };
       if(renderMap[id]) renderMap[id]();
     }

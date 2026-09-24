@@ -50,37 +50,12 @@ async function loadColaboradoresMOA(){
     COLABORADORES_MOA={};
     (data||[]).forEach(c=>{
       if(!COLABORADORES_MOA[c.empresa_moa_id]) COLABORADORES_MOA[c.empresa_moa_id]=[];
-      COLABORADORES_MOA[c.empresa_moa_id].push({id:c.id,nome:c.nome,funcao:c.funcao||''});
+      COLABORADORES_MOA[c.empresa_moa_id].push({id:c.id,nome:c.nome,funcao:c.funcao||'',foto_path:c.foto_path||null});
     });
   }catch(e){
     console.warn('colaboradores_moa Supabase indisponível:',e.message);
     COLABORADORES_MOA={};
   }
-}
-
-async function addColabMOA(empId){
-  const nomeEl=document.getElementById(`colab-nome-${empId}`);
-  const funcEl=document.getElementById(`colab-func-${empId}`);
-  const nome=(nomeEl?.value||'').trim();
-  const funcao=(funcEl?.value||'').trim();
-  if(!nome){showToast('Indique o nome do colaborador');return;}
-  const id='cmoa_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  const rec={id, empresa_moa_id:empId, nome, funcao:funcao||null, ativo:true};
-  // Guardar no Supabase
-  try{
-    const {error}=await sb.from('colaboradores_moa').insert(rec);
-    if(error) throw error;
-  }catch(e){
-    showToast('Erro ao guardar: '+(e.message||e));
-    return;
-  }
-  // Atualizar estado local
-  if(!COLABORADORES_MOA[empId]) COLABORADORES_MOA[empId]=[];
-  COLABORADORES_MOA[empId].push({id,nome,funcao:funcao||''});
-  // Re-renderizar painel
-  const panel=document.getElementById(`colabs-panel-${empId}`);
-  if(panel) _renderColabsPanelMOA(empId, panel);
-  showToast(`✓ ${nome} adicionado`);
 }
 
 async function removeColabMOA(id, empId){
@@ -142,13 +117,13 @@ function renderEmpresasMOA(){
 }
 
 function _renderColabsPanelMOA(empId, panel){
-  const FUNCOES_MOA=['Servente','Pedreiro','Manobrador','Motorista','Canalizador','Encarregado'];
   const colabs=(COLABORADORES_MOA[empId]||[]);
   let html=`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Colaboradores (${colabs.length})</div>`;
   if(colabs.length){
     html+=`<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">`;
     colabs.forEach(c=>{
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px">
+        ${_moaAvatarHTML(c,28)}
         <span style="font-size:13px;font-weight:600;color:var(--gray-900);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome}</span>
         ${c.funcao?`<span style="font-size:11px;color:#7c3aed;font-weight:500;white-space:nowrap">${c.funcao}</span>`:''}
         <button onclick="removeColabMOA('${c.id}','${empId}')" title="Remover" style="padding:2px 7px;background:#fee2e2;border:none;border-radius:5px;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">✕</button>
@@ -158,16 +133,9 @@ function _renderColabsPanelMOA(empId, panel){
   } else {
     html+=`<div style="font-size:12px;color:var(--gray-400);padding:4px 0 8px">Sem colaboradores. Adicione abaixo.</div>`;
   }
-  // Formulário compacto numa só linha
-  html+=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-    <input type="text" id="colab-nome-${empId}" placeholder="Nome *" style="flex:2;min-width:110px;padding:6px 9px;border:1.5px solid var(--gray-200);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--gray-900);background:white"/>
-    <select id="colab-func-${empId}" style="flex:1;min-width:110px;padding:6px 9px;border:1.5px solid var(--gray-200);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--gray-900);background:white">
-      <option value="">— Função —</option>
-      ${FUNCOES_MOA.map(f=>`<option value="${f}">${f}</option>`).join('')}
-    </select>
-    <button onclick="addColabMOA('${empId}')" class="btn btn-primary btn-sm" style="flex-shrink:0;white-space:nowrap;font-size:12px">+ Adicionar</button>
-  </div>`;
+  html+=`<button onclick="moaTrabAbrir(false,'${empId}')" class="btn btn-primary btn-sm" style="font-size:12px">+ Registar trabalhador</button>`;
   panel.innerHTML=html;
+  _moaCarregarFotos(panel);
 }
 
 function editEmpresaMOA(id){
@@ -232,7 +200,7 @@ async function encAlugPassarTrabalhadores(){
   encAlugHoraIni=ini; encAlugHoraFim=fim;
   // Pré-carregar colaboradores registados da empresa selecionada
   const colabsPreDef=(COLABORADORES_MOA[empresaId]||[]);
-  encAlugTrabalhadores=colabsPreDef.map(c=>({id:Date.now()+Math.random(),nome:c.nome,funcao:c.funcao||'',entrada:ini,saida:fim,status:'P'}));
+  encAlugTrabalhadores=colabsPreDef.map(c=>_novoTrab(c));
   // Atualizar resumo
   const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'—';
   const [y,m,d]=data.split('-');
@@ -250,12 +218,25 @@ function encAlugVoltarA(){
   screenB.style.display='none';
 }
 
+function _novoTrab(c){
+  return {id:Date.now()+Math.random(),colabId:c.id,nome:c.nome,funcao:c.funcao||'',foto_path:c.foto_path||null,entrada:encAlugHoraIni,saida:encAlugHoraFim,status:'P'};
+}
+
+// Seletor com os trabalhadores registados da empresa que ainda não estão na lista do dia
+function _fillEncTrabSel(){
+  const sel=document.getElementById('enc-alug-sel-trab');
+  if(!sel) return;
+  const naLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
+  const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[]).filter(c=>!naLista.has(c.id));
+  sel.innerHTML=`<option value="">${disp.length?'— Selecione o trabalhador —':'Todos os registados já estão na lista'}</option>`+
+    disp.map(c=>`<option value="${c.id}">${c.nome}${c.funcao?' · '+c.funcao:''}</option>`).join('');
+}
+
 function encAlugAddTrabalhador(){
-  const inp=document.getElementById('enc-alug-nome-novo');
-  const nome=inp.value.trim();
-  if(!nome){showToast('Escreva o nome do trabalhador');return;}
-  encAlugTrabalhadores.push({id:Date.now(),nome,entrada:encAlugHoraIni,saida:encAlugHoraFim,status:'P'});
-  inp.value='';
+  const sel=document.getElementById('enc-alug-sel-trab');
+  const c=(COLABORADORES_MOA[encAlugEmpresaId]||[]).find(x=>x.id===sel?.value);
+  if(!c){showToast('Selecione um trabalhador ou registe um novo');return;}
+  encAlugTrabalhadores.push(_novoTrab(c));
   buildAlugList();
 }
 
@@ -263,7 +244,7 @@ function buildAlugList(){
   const cont=document.getElementById('enc-alug-list'); cont.innerHTML='';
   if(!encAlugTrabalhadores.length){
     cont.innerHTML='<div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:14px">Adicione trabalhadores acima para iniciar o registo.</div>';
-    encAlugUpdateStats([]);return;
+    encAlugUpdateStats([]);_fillEncTrabSel();return;
   }
   // Separador informativo quando há colaboradores pré-carregados
   const temPreDef=(COLABORADORES_MOA[encAlugEmpresaId]||[]).length>0;
@@ -280,7 +261,7 @@ function buildAlugList(){
     card.className='mob-colab-card';
     card.innerHTML=`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;flex-shrink:0">${t.nome.charAt(0).toUpperCase()}</div>
+        ${_moaAvatarHTML(t,36)}
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nome}</div>
           ${t.funcao?`<div style="font-size:11px;color:#7c3aed;font-weight:500;margin-bottom:1px">${t.funcao}</div>`:''}
@@ -302,6 +283,8 @@ function buildAlugList(){
   });
   cards.forEach(c=>cont.appendChild(c));
   encAlugUpdateStats(encAlugTrabalhadores);
+  _fillEncTrabSel();
+  _moaCarregarFotos(cont);
 }
 
 function encAlugSetHora(id,campo,val){
@@ -341,6 +324,7 @@ async function encAlugSubmeter(){
       empresa_moa_nome:encAlugEmpresaNome,
       trabalhador_nome:t.nome,
       trabalhador_funcao:t.funcao||null,
+      colab_moa_id:t.colabId||null,
       obra_id:encAlugObraId,
       entrada:t.entrada,
       saida:t.saida,
@@ -355,6 +339,176 @@ async function encAlugSubmeter(){
     showToast('Erro ao guardar: '+(e.message||e));
     if(btn){btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Submeter registo';}
   }
+}
+
+// ═══════════════════════════════════════
+//  REGISTO DE TRABALHADOR MOA (encarregado / diretor de obra)
+//  Nome, empresa e função obrigatórios; fotografia da cara opcional.
+// ═══════════════════════════════════════
+const MOA_FOTOS_BUCKET='moa-fotos';
+const _fotoUrlCache={}; // foto_path → {url, exp}
+let _mmtFotoBlob=null, _mmtDoEnc=false;
+
+// Avatar: inicial por omissão; a foto (bucket privado) é trocada depois por _moaCarregarFotos
+function _moaAvatarHTML(c,size){
+  const ini=(c.nome||'?').charAt(0).toUpperCase();
+  return `<div ${c.foto_path?`data-foto="${c.foto_path}"`:''} style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:${Math.round(size*.36)}px;flex-shrink:0;overflow:hidden;background-size:cover;background-position:center">${ini}</div>`;
+}
+
+async function _moaCarregarFotos(root){
+  const els=[...root.querySelectorAll('[data-foto]')];
+  if(!els.length) return;
+  const now=Date.now();
+  const falta=[...new Set(els.map(e=>e.dataset.foto))].filter(p=>!(_fotoUrlCache[p]?.exp>now));
+  if(falta.length){
+    try{
+      const {data,error}=await sb.storage.from(MOA_FOTOS_BUCKET).createSignedUrls(falta,3600);
+      if(error) throw error;
+      (data||[]).forEach(d=>{ if(d.signedUrl) _fotoUrlCache[d.path]={url:d.signedUrl,exp:now+3500*1000}; });
+    }catch(e){ console.warn('fotos MOA:',e.message||e); return; }
+  }
+  els.forEach(el=>{
+    const u=_fotoUrlCache[el.dataset.foto]?.url;
+    if(u){ el.style.backgroundImage=`url("${u}")`; el.textContent=''; }
+  });
+}
+
+// Reduz a fotografia (telemóveis tiram 3–12 MB) para um JPEG quadrado de 480px
+function _moaComprimirFoto(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const lado=Math.min(img.width,img.height), T=480;
+      const cv=document.createElement('canvas'); cv.width=T; cv.height=T;
+      cv.getContext('2d').drawImage(img,(img.width-lado)/2,(img.height-lado)/2,lado,lado,0,0,T,T);
+      URL.revokeObjectURL(img.src);
+      cv.toBlob(b=>b?resolve(b):reject(new Error('falha ao processar a fotografia')),'image/jpeg',0.82);
+    };
+    img.onerror=()=>reject(new Error('ficheiro de imagem inválido'));
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+function _mmtFillEmpresas(selId){
+  const sel=document.getElementById('mmt-empresa');
+  sel.innerHTML='<option value="">— Selecione a empresa —</option>'+
+    EMPRESAS_MOA.filter(e=>e.ativa!==false).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('')+
+    '<option value="__nova">+ Nova empresa…</option>';
+  sel.value=selId||'';
+  moaTrabEmpresaChange();
+}
+
+// doEnc=true → aberto no ecrã B do encarregado: empresa pré-selecionada e o
+// trabalhador entra logo na lista do dia.
+function moaTrabAbrir(doEnc, empId){
+  _mmtDoEnc=!!doEnc;
+  _mmtFotoBlob=null;
+  ['mmt-nome','mmt-funcao','mmt-empresa-nova'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('mmt-foto').value='';
+  moaTrabFotoRemover();
+  _mmtFillEmpresas(doEnc?encAlugEmpresaId:(empId||''));
+  const btn=document.getElementById('mmt-guardar'); btn.disabled=false; btn.textContent='Registar';
+  document.getElementById('modal-moa-trab').classList.add('open');
+  setTimeout(()=>document.getElementById('mmt-nome').focus(),50);
+}
+
+function moaTrabEmpresaChange(){
+  const nova=document.getElementById('mmt-empresa').value==='__nova';
+  document.getElementById('mmt-empresa-nova-wrap').style.display=nova?'block':'none';
+}
+
+async function moaTrabFotoChange(inp){
+  const f=inp.files?.[0]; if(!f) return;
+  try{
+    _mmtFotoBlob=await _moaComprimirFoto(f);
+    const prev=document.getElementById('mmt-foto-prev');
+    prev.style.border='none';
+    prev.innerHTML=`<img src="${URL.createObjectURL(_mmtFotoBlob)}" style="width:100%;height:100%;object-fit:cover"/>`;
+    document.getElementById('mmt-foto-rem').style.display='inline-flex';
+  }catch(e){ showToast('Erro na fotografia: '+e.message); }
+}
+
+function moaTrabFotoRemover(){
+  _mmtFotoBlob=null;
+  document.getElementById('mmt-foto').value='';
+  const prev=document.getElementById('mmt-foto-prev');
+  prev.style.border='1.5px dashed var(--gray-300)';
+  prev.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  document.getElementById('mmt-foto-rem').style.display='none';
+}
+
+const _norm=s=>(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+
+async function moaTrabGuardar(){
+  const nome=document.getElementById('mmt-nome').value.replace(/\s+/g,' ').trim();
+  const funcao=document.getElementById('mmt-funcao').value.trim();
+  let empId=document.getElementById('mmt-empresa').value;
+  const empNova=document.getElementById('mmt-empresa-nova').value.replace(/\s+/g,' ').trim();
+  if(!nome){showToast('Indique o nome do trabalhador');return;}
+  if(!empId||(empId==='__nova'&&!empNova)){showToast('Indique a empresa cedente');return;}
+  if(!funcao){showToast('Indique a função');return;}
+
+  const btn=document.getElementById('mmt-guardar'); btn.disabled=true; btn.textContent='A registar…';
+  let fotoPath=null;
+  try{
+    // Empresa nova (se já existir uma com o mesmo nome, usa essa)
+    if(empId==='__nova'){
+      const exist=EMPRESAS_MOA.find(e=>_norm(e.nome)===_norm(empNova));
+      if(exist) empId=exist.id;
+      else{
+        const rec={id:'empmoa_'+Date.now(),nome:empNova,nif:null,contacto:null,ativa:true};
+        const {error}=await sb.from('empresas_moa').insert(rec);
+        if(error) throw error;
+        EMPRESAS_MOA.push(rec); EMPRESAS_MOA.sort((a,b)=>a.nome.localeCompare(b.nome));
+        _saveEmpresasMOALocal();
+      }
+    }
+    // Evitar duplicados: mesmo nome na mesma empresa
+    const dup=(COLABORADORES_MOA[empId]||[]).find(c=>_norm(c.nome)===_norm(nome));
+    if(dup){
+      showToast(`${dup.nome} já está registado nesta empresa`);
+      btn.disabled=false; btn.textContent='Registar';
+      return;
+    }
+    const id='cmoa_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    if(_mmtFotoBlob){
+      fotoPath=`${empId}/${id}.jpg`;
+      const {error}=await sb.storage.from(MOA_FOTOS_BUCKET).upload(fotoPath,_mmtFotoBlob,{contentType:'image/jpeg'});
+      if(error) throw error;
+    }
+    const rec={id,empresa_moa_id:empId,nome,funcao,ativo:true,foto_path:fotoPath,registado_por:S.currentUser?.key||null};
+    const {error}=await sb.from('colaboradores_moa').insert(rec);
+    if(error) throw error;
+
+    const c={id,nome,funcao,foto_path:fotoPath};
+    if(!COLABORADORES_MOA[empId]) COLABORADORES_MOA[empId]=[];
+    COLABORADORES_MOA[empId].push(c);
+    COLABORADORES_MOA[empId].sort((a,b)=>a.nome.localeCompare(b.nome));
+    closeModal('modal-moa-trab');
+    showToast(`✓ ${nome} registado`);
+    _moaRefreshEmpresaSelects();
+    const panel=document.getElementById(`colabs-panel-${empId}`);
+    if(panel) _renderColabsPanelMOA(empId,panel); else if(document.getElementById('empresas-moa-list')) renderEmpresasMOA();
+    // No ecrã do encarregado, o trabalhador entra logo no registo do dia (se for da empresa em curso)
+    if(_mmtDoEnc){
+      if(empId===encAlugEmpresaId){ encAlugTrabalhadores.push(_novoTrab(c)); buildAlugList(); }
+      else showToast(`${nome} registado noutra empresa — não entra neste registo`);
+    }
+  }catch(e){
+    if(fotoPath) sb.storage.from(MOA_FOTOS_BUCKET).remove([fotoPath]).catch(()=>{});
+    showToast('Erro ao registar: '+(e.message||e));
+    btn.disabled=false; btn.textContent='Registar';
+  }
+}
+
+// Empresa criada no modal → atualizar os seletores de empresa abertos
+function _moaRefreshEmpresaSelects(){
+  [['enc-alug-empresa','— Selecione a empresa —'],['moa-f-empresa','Todas']].forEach(([id,vazio])=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const v=sel.value;
+    sel.innerHTML=`<option value="">${vazio}</option>`+EMPRESAS_MOA.filter(e=>e.ativa!==false).map(e=>`<option value="${e.id}">${e.nome}</option>`).join('');
+    sel.value=v;
+  });
 }
 
 // ── MOA Admin — filtros e listagem ─────
@@ -549,6 +703,9 @@ async function moaAnularRow() {
 }
 
 async function initMOAFilters(){
+  // Registar trabalhadores: admin e diretores de obra (o encarregado regista na app dele)
+  const btnReg=document.getElementById('moa-btn-registar');
+  if(btnReg) btnReg.style.display=['admin','diretor_obra'].includes(S.currentUser?.role)?'':'none';
   // Preencher empresas no filtro do admin
   const es=document.getElementById('moa-f-empresa');
   if(es){
@@ -564,7 +721,8 @@ async function initMOAFilters(){
 }
 
 export {
-  loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA,
+  loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA,
+  moaTrabAbrir, moaTrabEmpresaChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar,
   renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA,
   encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador,
   buildAlugList, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,

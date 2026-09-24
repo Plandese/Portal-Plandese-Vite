@@ -2,7 +2,7 @@
 //  PONTO — Histórico semanal e exportação
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, fmtPT, isWeekend, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT, DIAS_PT_EXP, TIPOS } from '../config.js';
 import { showToast } from './navigation.js';
@@ -31,6 +31,10 @@ export function hpEditCell(evt, cellKey) {
   const ctx = _histCellIndex[cellKey];
   if (!ctx) return;
   evt.stopPropagation();
+  if (_histCache?.aprov?.[_aprovKey(ctx.obraId, ctx.dateStr)]) {
+    showToast('Dia aprovado pelo diretor de obra — retire a aprovação para editar');
+    return;
+  }
   _hpCurrent = ctx;
   _hpCurrent._anchor = evt.currentTarget;
   // Se a célula tiver >1 registo, começa por editar o primeiro (o utilizador pode trocar no seletor).
@@ -226,6 +230,80 @@ export async function hpDeleteCell() {
   }
 }
 
+// ── Aprovação diária por obra (diretor de obra) ─────────────────────────────
+// Uma aprovação cobre um dia inteiro de uma obra — não é trabalhador a trabalhador.
+const _aprovKey = (obraId, dateStr) => `${obraId}|${dateStr}`;
+
+function _podeAprovar(obraId){
+  const u = S.currentUser;
+  if (!u || obraId === '_sem') return false;
+  return u.role === 'admin' || S.OBRAS.find(o => o.id === obraId)?.diretor_id === u.key;
+}
+
+function _aprovInfo(a){
+  const quem = S.USERS?.[a.aprovado_por]?.nome || a.aprovado_por;
+  const quando = new Date(a.aprovado_em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return `Aprovado por ${quem} em ${quando}`;
+}
+
+// Célula de aprovação de um dia (linha "Aprovação" da tabela / vista mobile)
+function _aprovDiaHTML(obraId, dateStr, temRegistos){
+  if (obraId === '_sem' || !temRegistos) return '<span style="color:var(--gray-300);font-size:11px">—</span>';
+  const a = _histCache?.aprov?.[_aprovKey(obraId, dateStr)];
+  const pode = _podeAprovar(obraId);
+  if (a) {
+    return pode
+      ? `<button class="badge b-green" style="border:none;cursor:pointer;font-family:var(--font)" title="${_aprovInfo(a)} — clique para retirar" onclick="retirarAprovacaoPonto('${obraId}','${dateStr}')">✓ Aprovado</button>`
+      : `<span class="badge b-green" title="${_aprovInfo(a)}">✓ Aprovado</span>`;
+  }
+  return pode
+    ? `<button class="btn btn-primary btn-sm" style="padding:3px 9px;font-size:11px" onclick="aprovarDiaPonto('${obraId}','${dateStr}')">Aprovar</button>`
+    : `<span class="badge b-yellow" style="font-size:10px">Pendente</span>`;
+}
+
+// Resumo no cabeçalho da obra: "4/6 dias aprovados · Diretor"
+function _aprovResumoHTML(obraId){
+  if (obraId === '_sem' || !_histCache) return '';
+  const { obraMap, dStrs, aprov } = _histCache;
+  const diasComReg = dStrs.filter((ds, i) => Object.values(obraMap[obraId]).some(cells => cells[i].length));
+  const nAprov = diasComReg.filter(ds => aprov?.[_aprovKey(obraId, ds)]).length;
+  const diretor = S.OBRAS.find(o => o.id === obraId)?.diretor_id;
+  const nomeDir = diretor ? (S.USERS?.[diretor]?.nome || diretor) : 'sem diretor atribuído';
+  const cls = nAprov === diasComReg.length ? 'b-green' : 'b-yellow';
+  return `<span class="badge ${cls}" title="Diretor de obra: ${nomeDir}">${nAprov}/${diasComReg.length} dias aprovados · ${nomeDir}</span>`;
+}
+
+export async function aprovarDiaPonto(obraId, dateStr){
+  if (!_histCache || !_podeAprovar(obraId)) return;
+  const obraNome = S.OBRAS.find(o => o.id === obraId)?.nome || obraId;
+  try {
+    const { error } = await sb.from('aprovacoes_ponto').insert({ obra_id: obraId, data: dateStr, aprovado_por: S.currentUser.key });
+    if (error && error.code !== '23505') throw error; // 23505 = já aprovado por outra pessoa
+    showToast(`${fmtPT(dateStr)} aprovado ✓`);
+    R.emitEvent?.({ acao: `Folha de ponto aprovada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico' });
+    await renderHistSemana();
+  } catch (e) {
+    showToast('Erro ao aprovar: ' + (e.message || e));
+  }
+}
+
+export async function retirarAprovacaoPonto(obraId, dateStr){
+  if (!_histCache || !_podeAprovar(obraId)) return;
+  const obraNome = S.OBRAS.find(o => o.id === obraId)?.nome || obraId;
+  if (!confirm(`Retirar a aprovação da obra "${obraNome}" no dia ${fmtPT(dateStr)}? Os registos desse dia voltam a poder ser alterados.`)) return;
+  try {
+    const { data, error } = await sb.from('aprovacoes_ponto').delete()
+      .eq('obra_id', obraId).eq('data', dateStr).select('obra_id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('sem permissão ou aprovação já retirada');
+    showToast('Aprovação retirada');
+    R.emitEvent?.({ acao: `Aprovação da folha de ponto retirada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico' });
+    await renderHistSemana();
+  } catch (e) {
+    showToast('Erro ao retirar aprovação: ' + (e.message || e));
+  }
+}
+
 export async function applyFilter(){
   const ds = document.getElementById('f-semana').value;
   if(!ds){ showToast('Selecione uma data da semana pretendida'); return; }
@@ -269,14 +347,19 @@ export async function renderHistSemana(){
   const cont = document.getElementById('hist-resultado');
   cont.innerHTML='<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">A carregar...</div>';
 
-  let regs;
+  let regs, aprov;
   try {
     let query = sb.from('registos_ponto').select('*').in('data', dStrs);
     if(cn) query=query.eq('colab_numero',cn);
     if(oo) query=query.eq('obra_id',oo);
-    const {data, error} = await query;
+    const [{data, error}, {data: aprovRows}] = await Promise.all([
+      query,
+      sb.from('aprovacoes_ponto').select('*').in('data', dStrs),
+    ]);
     if(error) throw error;
     regs = data;
+    aprov = {};
+    (aprovRows||[]).forEach(a=>{ aprov[_aprovKey(a.obra_id, a.data)]=a; });
   } catch(e) {
     cont.innerHTML=`<div class="card" style="text-align:center;color:var(--red);padding:32px;font-size:13px">⚠️ Erro ao carregar dados: ${e.message||'Verifique a ligação ao Supabase.'}</div>`;
     _elStyle('export-btns-plandese').display='none';
@@ -285,6 +368,7 @@ export async function renderHistSemana(){
   }
 
   if(!regs||!regs.length){
+    document.getElementById('hist-week-sub').textContent='—';
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Sem registos para esta semana.</div>';
     _elStyle('export-btns-plandese').display='none';
     _histCache=null;
@@ -311,7 +395,7 @@ export async function renderHistSemana(){
   const todayStr = fmt(new Date());
   if(!_histDiaSel || !dStrs.includes(_histDiaSel)) _histDiaSel = dStrs.includes(todayStr) ? todayStr : dStrs[0];
 
-  _histCache = {obraMap, dupByDay, days, dStrs, dayNames, semLabel};
+  _histCache = {obraMap, dupByDay, days, dStrs, dayNames, semLabel, aprov};
   _histDrawResultado();
 }
 
@@ -319,9 +403,22 @@ export async function renderHistSemana(){
 // Supabase) — usado tanto após o fetch como ao trocar de dia na vista mobile.
 function _histDrawResultado(){
   if(!_histCache) return;
-  const {obraMap, dupByDay, days, dStrs, dayNames, semLabel} = _histCache;
+  const {obraMap, dupByDay, days, dStrs, dayNames, semLabel, aprov} = _histCache;
   const cont = document.getElementById('hist-resultado');
   if(!cont) return;
+
+  // Pares obra/dia com registos (os que precisam de aprovação)
+  let nDias=0, nAprov=0;
+  Object.keys(obraMap).filter(id=>id!=='_sem').forEach(id=>{
+    dStrs.forEach((ds,i)=>{
+      if(!Object.values(obraMap[id]).some(cells=>cells[i].length)) return;
+      nDias++; if(aprov?.[_aprovKey(id,ds)]) nAprov++;
+    });
+  });
+  const subEl = document.getElementById('hist-week-sub');
+  if(subEl) subEl.textContent = nDias
+    ? `${nAprov}/${nDias} dias de obra aprovados pelo diretor de obra`
+    : '—';
 
   // Colaboradores com ≥2 registos no mesmo dia → precisam de verificação
   const dupResumo=[]; // {nome, data}
@@ -372,7 +469,7 @@ function _histDrawResultado(){
     obraHdr.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
       <div style="width:10px;height:10px;border-radius:50%;background:var(--blue-500)"></div>
       <span style="font-size:14px;font-weight:600;color:var(--gray-800)">Obra: ${obraNome}</span>
-    </div>`;
+    </div>${_aprovResumoHTML(obraId)}`;
     cont.appendChild(obraHdr);
 
     const wrap=document.createElement('div');
@@ -397,7 +494,17 @@ function _histDrawResultado(){
     });
     thead+=`<th style="color:white;background:#1e3a2f;text-align:center;border-left:2px solid rgba(255,255,255,.2)">H.Nor.</th>
       <th style="color:white;background:#1e3a2f;text-align:center">H.Ext.</th>
-      <th style="color:white;background:#1e3a2f;text-align:center">Total</th></tr></thead>`;
+      <th style="color:white;background:#1e3a2f;text-align:center">Total</th></tr>`;
+    if(obraId!=='_sem'){
+      thead+=`<tr style="background:var(--gray-50)">
+        <th colspan="3" style="background:var(--gray-50);font-size:11px;font-weight:600;color:var(--gray-600)">Aprovação diária</th>`;
+      dStrs.forEach((ds,i)=>{
+        const temReg=Object.values(obraData).some(cells=>cells[i].length);
+        thead+=`<th style="background:var(--gray-50);text-align:center;padding:6px 4px;border-left:1px solid var(--gray-100)">${_aprovDiaHTML(obraId,ds,temReg)}</th>`;
+      });
+      thead+=`<th colspan="3" style="background:var(--gray-50)"></th></tr>`;
+    }
+    thead+='</thead>';
     tbl.innerHTML=thead;
 
     let tbody='<tbody>';
@@ -518,9 +625,10 @@ function _histDrawMobile(cont){
     anyRow=true;
 
     const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;align-items:center;gap:10px;margin:16px 0 8px';
+    hdr.style.cssText='display:flex;align-items:center;gap:10px;margin:16px 0 8px;flex-wrap:wrap';
     hdr.innerHTML=`<div style="width:8px;height:8px;border-radius:50%;background:var(--blue-500);flex-shrink:0"></div>
-      <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Obra: ${obraNome}</span>`;
+      <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Obra: ${obraNome}</span>
+      ${obraId!=='_sem'?`<div style="margin-left:auto">${_aprovDiaHTML(obraId,_histDiaSel,true)}</div>`:''}`;
     cont.appendChild(hdr);
 
     const list=document.createElement('div');

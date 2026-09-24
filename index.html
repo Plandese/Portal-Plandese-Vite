@@ -73,9 +73,6 @@
         <div class="app-bar-sub">Portal do Encarregado</div>
       </div>
       <div class="app-bar-right">
-        <button class="btn-theme-toggle" id="enc-theme-btn" onclick="toggleDarkMode()" title="Mudar tema">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="enc-theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
         <button class="btn-out" onclick="doLogout()">Sair</button>
       </div>
     </div>
@@ -821,11 +818,12 @@
           <!-- Adicionar trabalhador -->
           <div class="mob-add-bar">
             <div class="mob-add-title">+ Adicionar trabalhador</div>
-            <input class="mob-add-sel" id="enc-alug-nome-novo" type="text" placeholder="Nome do trabalhador…" style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--gray-900);background:var(--gray-50)"/>
+            <select class="mob-add-sel" id="enc-alug-sel-trab" style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--gray-900);background:var(--gray-50)"></select>
             <button class="mob-add-btn" onclick="encAlugAddTrabalhador()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Adicionar
             </button>
+            <button type="button" onclick="moaTrabAbrir(true)" style="width:100%;margin-top:8px;padding:9px 12px;border:1.5px dashed #a855f7;border-radius:var(--radius);background:#faf5ff;color:#7c3aed;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer">+ Registar trabalhador novo</button>
           </div>
 
           <div id="enc-alug-list"></div>
@@ -972,21 +970,17 @@
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
       Modo de visualização
     </button>
-    <button class="settings-item" id="settings-theme-btn" onclick="toggleDarkMode()">
-      <svg viewBox="0 0 24 24" fill="currentColor" id="settings-theme-icon"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
-      <span id="settings-theme-label">Ecrã Escuro</span>
-    </button>
     <button class="settings-item" onclick="goTo('pendentes-tavira',document.getElementById('nav-pendentes-tavira'));toggleSettingsPanel()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Pendentes Tavira
     </button>
+    <button class="settings-item" onclick="goTo('calendario');toggleSettingsPanel()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+      Calendário
+    </button>
     <button class="settings-item" onclick="goTo('notificacoes');toggleSettingsPanel()">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
       Notificações
-    </button>
-    <button class="settings-item" onclick="requestPushPermission();toggleSettingsPanel()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
-      Ativar notificações no telemóvel
     </button>
     <div class="settings-sep"></div>
     <button class="settings-item" id="btn-refresh" onclick="refreshPortal();toggleSettingsPanel()">
@@ -1206,8 +1200,12 @@
           </div>
         </div>
 
-        <!-- Presentes por obra + férias/faltas (injetado por renderPainel()) -->
-        <div id="painel-grid" class="painel-semana"></div>
+        <div class="painel-layout">
+          <!-- Presentes por obra + férias/faltas (injetado por renderPainel()) -->
+          <div id="painel-grid" class="painel-semana"></div>
+          <!-- Mini-calendário + lembretes do dia (injetado por renderCalWidget()) -->
+          <aside id="cal-widget" class="card cal-widget"></aside>
+        </div>
 
       </section>
 
@@ -1272,6 +1270,7 @@
             </div>
             <div class="field"><label>Obra</label><select id="moa-f-obra" style="padding:7px 10px;font-size:13px"><option value="">Todas</option></select></div>
             <button class="btn btn-primary" onclick="applyMOAFilter()">Ver semana</button>
+            <button class="btn btn-secondary" id="moa-btn-registar" onclick="moaTrabAbrir(false)">+ Registar trabalhador</button>
           </div>
           <div id="moa-week-nav" style="display:none;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;box-shadow:var(--shadow)">
             <button class="btn btn-secondary btn-sm" onclick="navMOASemana(-1)">‹ Anterior</button>
@@ -2542,6 +2541,30 @@
         <div id="pt-rep" hidden></div>
       </section>
 
+      <!-- CALENDÁRIO -->
+      <section id="sec-calendario" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Calendário</div>
+            <div class="pg-sub">Lembretes, reuniões e datas importantes · duplo clique num dia para adicionar</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="calHoje()">Hoje</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="calNovoEvento()">+ Novo lembrete</button>
+          </div>
+        </div>
+        <div class="cal-pg-layout">
+          <div class="card cal-pg-main">
+            <div class="cal-pg-hdr" id="cal-pg-hdr"></div>
+            <div class="cal-grid cal-grid-full" id="cal-pg-grid"></div>
+          </div>
+          <div class="card cal-pg-side">
+            <div class="cal-w-dia" id="cal-pg-dia"></div>
+            <div id="cal-pg-lista"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- NOTIFICAÇÕES -->
       <section id="sec-notificacoes" class="section">
         <div class="pg-hdr">
@@ -2676,6 +2699,46 @@
 </div>
 
 <!-- MODAIS -->
+<div class="modal-bg" id="modal-calendario">
+  <div class="modal">
+    <div class="modal-title" id="cal-m-title">Novo lembrete</div>
+    <div class="modal-sub" id="cal-m-sub">Guarde lembretes, reuniões e datas importantes</div>
+    <div class="field"><label>Título *</label><input type="text" id="cal-m-titulo" maxlength="120" placeholder="Ex: Renovar seguro da carrinha" onkeydown="if(event.key==='Enter')calGuardar()"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Data *</label><input type="date" id="cal-m-data"/></div>
+      <div class="field"><label>Hora</label><input type="time" id="cal-m-hora"/></div>
+    </div>
+    <label class="cal-m-check"><input type="checkbox" id="cal-m-diainteiro" onchange="calToggleDiaInteiro(this.checked)"/> Dia inteiro</label>
+    <div class="field" style="margin-top:12px"><label>Categoria</label>
+      <select id="cal-m-cat">
+        <option value="lembrete">Lembrete</option>
+        <option value="importante">Data importante</option>
+        <option value="reuniao">Reunião</option>
+        <option value="aniversario">Aniversário</option>
+        <option value="outro">Outro</option>
+      </select>
+    </div>
+    <div class="field"><label>Notas</label><textarea id="cal-m-notas" style="resize:vertical;min-height:60px" placeholder="Detalhes (opcional)"></textarea></div>
+    <label class="cal-m-check"><input type="checkbox" id="cal-m-anual"/> Repetir todos os anos</label>
+    <div class="field" style="margin-top:12px"><label>Quem pode ver</label>
+      <div class="cal-seg" id="cal-m-visib">
+        <button type="button" data-v="eu" onclick="calSetVisib('eu')">Só eu</button>
+        <button type="button" data-v="equipa" onclick="calSetVisib('equipa')">Toda a equipa</button>
+        <button type="button" data-v="pessoas" onclick="calSetVisib('pessoas')">Pessoas específicas</button>
+      </div>
+      <div class="cal-pessoas" id="cal-m-pessoas" hidden>
+        <input type="search" id="cal-m-pessoas-q" placeholder="Procurar pessoa…" oninput="calFiltrarPessoas(this.value)"/>
+        <div class="cal-pessoas-lista" id="cal-m-pessoas-lista"></div>
+      </div>
+      <div class="cal-visib-nota" id="cal-m-visib-nota"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary ntf-btn-danger" type="button" id="cal-m-apagar" style="margin-right:auto" onclick="calApagar()">Apagar</button>
+      <button class="btn btn-secondary" type="button" id="cal-m-cancelar" onclick="calFecharModal()">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="cal-m-guardar" onclick="calGuardar()">Guardar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="modal-obra">
   <div class="modal">
     <div class="modal-title" id="mo-title">Nova obra</div>
@@ -2706,6 +2769,38 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-empresa-moa')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveEmpresaMOA()">Guardar</button>
+    </div>
+  </div>
+</div>
+<!-- Registo de trabalhador MO Aluguer (encarregado e diretor de obra) -->
+<div class="modal-bg" id="modal-moa-trab" onclick="if(event.target===this)closeModal('modal-moa-trab')">
+  <div class="modal">
+    <div class="modal-title">Registar trabalhador de aluguer</div>
+    <div class="modal-sub">Fica disponível para os próximos registos de ponto desta empresa</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div id="mmt-foto-prev" style="width:72px;height:72px;border-radius:50%;background:var(--gray-100);border:1.5px dashed var(--gray-300);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;color:var(--gray-400)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          Tirar fotografia (opcional)
+          <input type="file" id="mmt-foto" accept="image/*" capture="user" style="display:none" onchange="moaTrabFotoChange(this)"/>
+        </label>
+        <button type="button" id="mmt-foto-rem" class="btn btn-sm" style="display:none;background:var(--red-bg);color:var(--red)" onclick="moaTrabFotoRemover()">Remover fotografia</button>
+      </div>
+    </div>
+    <div class="field"><label>Nome completo *</label><input type="text" id="mmt-nome" placeholder="Nome do trabalhador" autocomplete="off"/></div>
+    <div class="field"><label>Empresa cedente *</label>
+      <select id="mmt-empresa" onchange="moaTrabEmpresaChange()"></select>
+    </div>
+    <div class="field" id="mmt-empresa-nova-wrap" style="display:none"><label>Nome da nova empresa *</label><input type="text" id="mmt-empresa-nova" placeholder="Ex: Alpha — Cedência de Pessoal"/></div>
+    <div class="field"><label>Função *</label>
+      <input type="text" id="mmt-funcao" list="mmt-funcoes" placeholder="Ex: Servente" autocomplete="off"/>
+      <datalist id="mmt-funcoes"><option>Servente</option><option>Pedreiro</option><option>Manobrador</option><option>Motorista</option><option>Canalizador</option><option>Carpinteiro</option><option>Armador de ferro</option><option>Eletricista</option><option>Encarregado</option></datalist>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-moa-trab')">Cancelar</button>
+      <button class="btn btn-primary" id="mmt-guardar" onclick="moaTrabGuardar()">Registar</button>
     </div>
   </div>
 </div>

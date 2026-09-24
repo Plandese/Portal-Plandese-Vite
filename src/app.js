@@ -7,13 +7,13 @@ import { S, R } from './state.js';
 import { carregarDados } from './db.js';
 
 // Auth
-import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword } from './modules/auth.js';
+import { mostrarDiag, applyDeviceClass, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword } from './modules/auth.js';
 
 // Navigation
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
 
 // Ponto admin
-import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, hpDeleteCell, _hpClosePopover } from './modules/ponto.js';
+import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, hpDeleteCell, _hpClosePopover, aprovarDiaPonto, retirarAprovacaoPonto } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
@@ -26,6 +26,7 @@ import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermi
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
 import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
+import { renderCalWidget, initCalendario, calMudarMes, calHoje, calSelDia, calNovoEvento, calAbrirEvento, calToggleDiaInteiro, calFecharModal, calGuardar, calApagar, calToggleConcluido, calSetVisib, calFiltrarPessoas, calTogglePessoa } from './modules/calendario.js';
 import { initNotifPage, ntfOnInsert, ntfFiltro, renderNotifPage, ntfToggleLida, ntfApagar, ntfAbrir, ntfMarcarTodasLidas, ntfApagarLidas, ntfTogglePref } from './modules/notif-page.js';
 import { ensurePushSubscription, requestPushPermission, pushStatus, capturePendingSectionFromURL, applyPendingSection } from './modules/push.js';
 
@@ -51,7 +52,7 @@ import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
 import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
-import { loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover } from './modules/enc-aluguer.js';
+import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover } from './modules/enc-aluguer.js';
 
 // Produção
 import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
@@ -97,7 +98,7 @@ Object.assign(R, {
   initEnc,
   initAdmin,
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
-  initNotifications, emitEvent, ntfOnInsert,
+  initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
   ensurePushSubscription, applyPendingSection,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
@@ -116,10 +117,7 @@ window.S = S;
 
 // ── Device detection ao carregar ──
 applyDeviceClass();
-window.addEventListener('resize', () => {
-  const dt = applyDeviceClass();
-  if (S.currentUser?.role === 'admin') updateDeviceBadge(dt);
-});
+window.addEventListener('resize', applyDeviceClass);
 
 // ── QR Registration via URL param ──
 initQrRegistration();
@@ -159,6 +157,7 @@ Object.assign(window, {
   applyFilter, navSemana, exportHistSemana, exportMensal,
   switchFPTab, loadWeek,
   hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, hpDeleteCell, _hpClosePopover,
+  aprovarDiaPonto, retirarAprovacaoPonto,
 
   // MOA
   applyMOAFilter, navMOASemana, exportMOAExcel,
@@ -200,7 +199,7 @@ Object.assign(window, {
 
   // Empresas MOA
   saveEmpresaMOA, editEmpresaMOA, toggleEmpresaMOA,
-  addColabMOA, removeColabMOA,
+  removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar,
 
   // Equipamentos
   renderEquipamentos, openEqModal, editEquipamento,
@@ -261,6 +260,7 @@ Object.assign(window, {
 
   // Notificações
   toggleNotifPanel, closeNotifPanel, notifClick, markAllRead,
+  calMudarMes, calHoje, calSelDia, calNovoEvento, calAbrirEvento, calToggleDiaInteiro, calFecharModal, calGuardar, calApagar, calToggleConcluido, calSetVisib, calFiltrarPessoas, calTogglePessoa,
   ntfFiltro, renderNotifPage, ntfToggleLida, ntfApagar, ntfAbrir, ntfMarcarTodasLidas, ntfApagarLidas, ntfTogglePref,
   renderNotifSubs, toggleNotifSub,
   requestPushPermission,
@@ -331,29 +331,8 @@ Object.assign(window, {
   });
 })();
 
-// ── Dark mode ────────────────────────────────────────────────────────────────
-(function () {
-  const KEY = 'plandese-dark-mode';
-  const MOON = '<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>';
-  const SUN  = '<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-12.37l-1.06 1.06a.996.996 0 0 0 0 1.41c.39.39 1.03.39 1.41 0l1.06-1.06a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0zM7.05 18.36l-1.06 1.06a.996.996 0 0 0 0 1.41c.39.39 1.03.39 1.41 0l1.06-1.06a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0z"/>';
-  function applyTheme(dark) {
-    document.body.classList.toggle('dark-mode', dark);
-    const lbl = document.getElementById('settings-theme-label');
-    if (lbl) lbl.textContent = dark ? 'Ecrã Claro' : 'Ecrã Escuro';
-    const encIcon = document.getElementById('enc-theme-icon');
-    if (encIcon) encIcon.innerHTML = dark ? SUN : MOON;
-    const settingsIcon = document.getElementById('settings-theme-icon');
-    if (settingsIcon) settingsIcon.innerHTML = dark ? SUN : MOON;
-  }
-  // restore saved preference
-  applyTheme(localStorage.getItem(KEY) === '1');
-
-  window.toggleDarkMode = function () {
-    const dark = !document.body.classList.contains('dark-mode');
-    localStorage.setItem(KEY, dark ? '1' : '0');
-    applyTheme(dark);
-  };
-})();
+// ── Modo escuro retirado: limpa a preferência antiga guardada no browser ──
+try { localStorage.removeItem('plandese-dark-mode'); } catch (e) {}
 
 // ── Profile modal ─────────────────────────────────────────────────────────────
 window.openProfileModal = function () {
@@ -418,6 +397,7 @@ window.savePerfil = async function () {
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
     if (id === 'notificacoes')       { initNotifPage(); }
+    if (id === 'calendario')         { initCalendario(); }
   };
 })();
 
@@ -493,11 +473,18 @@ setTimeout(() => { try { atualizaKPIsCompras(); } catch (e) {} }, 500);
       if (calVisible) { const other = document.getElementById('dw-cal-' + calVisible); if (other) other.style.display = 'none'; }
       const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth();
       renderCal(suffix);
-      const rect = dateEl.getBoundingClientRect();
-      cal.style.top = (rect.bottom + 8) + 'px';
-      cal.style.right = (window.innerWidth - rect.right) + 'px';
-      cal.style.left = 'auto';
+      // Centra o calendário por baixo da data. O backdrop-filter da .dw-wrap faz dela o
+      // containing block do position:fixed, por isso desconta-se a origem real medida.
+      const anchor = cal.closest('.dw-wrap') || dateEl;
+      const rect = anchor.getBoundingClientRect();
+      cal.style.right = 'auto';
+      cal.style.left = '0px'; cal.style.top = '0px';
       cal.style.display = 'block';
+      const origin = cal.getBoundingClientRect();
+      const w = cal.offsetWidth;
+      const left = Math.min(Math.max(8, rect.left + rect.width / 2 - w / 2), window.innerWidth - w - 8);
+      cal.style.left = (left - origin.left) + 'px';
+      cal.style.top = (rect.bottom + 8 - origin.top) + 'px';
       calVisible = suffix;
     }
   };

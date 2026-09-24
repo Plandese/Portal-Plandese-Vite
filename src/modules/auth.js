@@ -49,9 +49,7 @@ export function setDeviceMode(mode){
     if(m) localStorage.setItem(DEVICE_MODE_KEY, m);
     else localStorage.removeItem(DEVICE_MODE_KEY);
   } catch(e){}
-  const dt = applyDeviceClass();
-  updateDeviceBadge(dt);
-  return dt;
+  return applyDeviceClass();
 }
 
 export function applyDeviceClass(){
@@ -91,23 +89,6 @@ export function showDeviceChooser(){
   });
 }
 
-export function updateDeviceBadge(dt){
-  const hdr = document.querySelector('#admin-app .app-bar-right') || document.querySelector('.hdr-right');
-  if(!hdr)return;
-  let badge=document.getElementById('dev-badge');
-  if(!badge){
-    badge=document.createElement('button');
-    badge.id='dev-badge';
-    badge.className='dev-badge';
-    badge.type='button';
-    badge.title='Mudar modo de visualização';
-    badge.onclick=()=>{ window.escolherModoDispositivo && window.escolherModoDispositivo(); };
-    hdr.insertBefore(badge,hdr.firstChild);
-  }
-  const icons={'mobile':'📱','tablet':'📟','desktop':'🖥️'};
-  const labels={'mobile':'Telemóvel','tablet':'Tablet','desktop':'Computador'};
-  badge.textContent=`${icons[dt]} ${labels[dt]}`;
-}
 
 
 // ── Passwords: regras e troca pelo próprio utilizador ──────────────────
@@ -207,7 +188,6 @@ export async function entrarComoUtilizador(authedUser) {
     document.getElementById('u-av').textContent=authedUser.initials;
     document.getElementById('u-nm').textContent=authedUser.nome;
     document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
-    updateDeviceBadge(device);
     await R.loadPermissionsFromServer();
     R.applyStoredPermissions();
     R.initAdmin();

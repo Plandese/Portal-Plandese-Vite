@@ -402,12 +402,13 @@ async function encAddColabN(n,chipEl){
 async function sbSaveRegistoEnc(dk,n){
   const r=(S.REGISTOS[dk]||[]).find(x=>x.colabN===n);if(!r)return;
   try {
-    await sb.from('registos_ponto').upsert({
+    const {error}=await sb.from('registos_ponto').upsert({
       data:dk, colab_numero:n, obra_id:r.obra||null,
       encarregado_id:S.currentUser?.key||null,
       entrada:r.entrada||null, saida:r.saida||null, tipo:r.tipo||'Presença'
     },{onConflict:'data,colab_numero,obra_id,encarregado_id'});
-  } catch(e){console.warn('save registo:',e);}
+    if(error) throw error;
+  } catch(e){console.warn('save registo:',e);return e.message||String(e);}
 }
 
 
@@ -569,7 +570,10 @@ async function encSubmeterRegisto(){
   const dk=S.encDataSel;
   if(!(S.activeRows[dk]||[]).length){showToast('Adicione pelo menos um colaborador');return;}
   showToast('A submeter...');
-  for(const n of (S.activeRows[dk]||[])){encAutoSave(n);await sbSaveRegistoEnc(dk,n);}
+  let erro=null;
+  for(const n of (S.activeRows[dk]||[])){encAutoSave(n);erro=(await sbSaveRegistoEnc(dk,n))||erro;}
+  // Ex.: semana já aprovada pelo diretor de obra (bloqueada na base de dados)
+  if(erro){showToast('⚠️ Não foi possível submeter: '+erro);return;}
   showToast('Registo submetido com sucesso! ✓');
   _encMarkDoneToday('plandese');
   R.emitEvent?.({ acao:'Folha de ponto submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+(S.activeRows[dk]||[]).length+' colab.)', seccao:'historico' });
