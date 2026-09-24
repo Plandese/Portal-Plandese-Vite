@@ -132,6 +132,7 @@ export async function entrarComoUtilizador(authedUser) {
     document.getElementById('enc-app').style.display='flex';
     document.getElementById('enc-name').textContent=authedUser.nome;
     await R.initEnc();
+    R.ensurePushSubscription?.();
   } else {
     document.getElementById('admin-app').style.display='flex';
     document.body.classList.add('app-ativa');
@@ -144,6 +145,7 @@ export async function entrarComoUtilizador(authedUser) {
     R.initAdmin();
     R.applyRolePermissions(authedUser.role);
     R.initNotifications();
+    R.ensurePushSubscription?.();
   }
 }
 

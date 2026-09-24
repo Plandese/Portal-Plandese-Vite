@@ -106,6 +106,10 @@ export const ENC_MODULES = [
   {id:'historico',     label:'Histórico',     nav:'hist'},
 ];
 
+// Chave pública VAPID para Web Push (não é segredo — vai no browser). A privada
+// fica só na Edge Function 'send-push' (Supabase secrets), nunca aqui.
+export const VAPID_PUBLIC_KEY = 'BOOTEblPARFAqqZvGmwRazfOL406J04hYpkmGnkjzydMlStBhhKqUIixt8tkLfS38QCY6mdDI8g3ugHLWVotyoU';
+
 export const TIPOS = ['Presença','Falta Injust.','Falta Just.','Férias'];
 export const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 export const DIAS_PT_EXP = ['Segunda-Feira','Terça-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sábado','Domingo'];

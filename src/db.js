@@ -144,6 +144,18 @@ export async function sbSetSubscription(destinatario, seccao, ativo){
   } catch(e){ console.warn('Erro ao guardar subscrição:', e); }
 }
 
+// Push — grava/atualiza a subscrição Web Push deste dispositivo
+export async function sbSavePushSubscription(destinatario, sub){
+  try {
+    await sb.from('push_subscriptions').upsert({
+      destinatario,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth
+    }, {onConflict:'endpoint'});
+  } catch(e){ console.warn('Erro ao guardar subscrição push:', e); }
+}
+
 // Realtime — entrega ao vivo de notificações novas para o utilizador
 export function sbSubscribeNotificacoes(destinatario, onInsert){
   try {

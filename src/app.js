@@ -26,6 +26,7 @@ import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermi
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
 import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
+import { ensurePushSubscription, requestPushPermission, pushStatus } from './modules/push.js';
 
 // Faturas
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura } from './modules/faturas.js';
@@ -96,6 +97,7 @@ Object.assign(R, {
   initAdmin,
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent,
+  ensurePushSubscription,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
   loadCombustivelAdmin, renderProdDashboard,
@@ -260,6 +262,7 @@ Object.assign(window, {
   // Notificações
   toggleNotifPanel, notifClick, markAllRead,
   renderNotifSubs, toggleNotifSub,
+  requestPushPermission,
 
   // Folha de Fecho
   renderFechoMes, exportFechoMes,

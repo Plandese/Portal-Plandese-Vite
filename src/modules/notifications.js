@@ -87,6 +87,12 @@ export async function emitEvent({ acao, seccao }){
       actor, actor_nome, acao, seccao, destinatario
     }));
     await sbInsertNotificacoes(rows);
+
+    // Entrega Web Push real (Central de Notificações do telemóvel) — não bloqueia
+    // nem quebra o fluxo se a função falhar (ex. sem subscrições).
+    sb.functions.invoke('send-push', {
+      body: { recipients: [...recipients], acao, seccao, actor_nome }
+    }).catch(e => console.warn('send-push falhou:', e));
   } catch(e){ console.warn('emitEvent falhou:', e); }
 }
 
