@@ -110,6 +110,43 @@ export function updateDeviceBadge(dt){
 }
 
 
+// ── Entra na app já autenticado (usado pelo login manual e pela sessão guardada) ──
+export async function entrarComoUtilizador(authedUser) {
+  S.currentUser={nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials,key:authedUser.username};
+  localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
+  document.getElementById('login-screen').style.display='none';
+  // Escolha do modo de visualização (telemóvel / computador) — só se ainda não houver preferência guardada
+  if(authedUser.role!=='encarregado' && !getDeviceMode()) await showDeviceChooser();
+  document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:white;margin-top:16px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
+  try {
+    document.getElementById('loading-msg').textContent='A carregar obras e colaboradores...';
+    await R.carregarDados();
+    mostrarDiag(`✓ Dados carregados: ${S.OBRAS.length} obras, ${S.COLABORADORES.length} colaboradores`,'#15803D');
+  } catch(e){
+    mostrarDiag('❌ Erro ao carregar dados: '+e.message,'#B91C1C');
+  }
+  const ls=document.getElementById('loading-screen');if(ls)ls.remove();
+  const device=applyDeviceClass();
+  if(authedUser.role==='encarregado'){
+    document.body.classList.add('enc-mode');
+    document.getElementById('enc-app').style.display='flex';
+    document.getElementById('enc-name').textContent=authedUser.nome;
+    await R.initEnc();
+  } else {
+    document.getElementById('admin-app').style.display='flex';
+    document.body.classList.add('app-ativa');
+    document.getElementById('u-av').textContent=authedUser.initials;
+    document.getElementById('u-nm').textContent=authedUser.nome;
+    document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
+    updateDeviceBadge(device);
+    await R.loadPermissionsFromServer();
+    R.applyStoredPermissions();
+    R.initAdmin();
+    R.applyRolePermissions(authedUser.role);
+    R.initNotifications();
+  }
+}
+
 export async function doLogin() {
   const u=document.getElementById('lu').value.trim().toLowerCase();
   const p=document.getElementById('lp').value;
@@ -140,42 +177,19 @@ export async function doLogin() {
   }
   btn.textContent='Entrar'; btn.disabled=false;
   if(authedUser){
-    S.currentUser={nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials,key:authedUser.username};
-    localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
-    document.getElementById('login-screen').style.display='none';
-    // Escolha do modo de visualização (telemóvel / computador) — excepto encarregados
-    if(authedUser.role!=='encarregado') await showDeviceChooser();
-    document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:white;margin-top:16px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
-    try {
-      document.getElementById('loading-msg').textContent='A carregar obras e colaboradores...';
-      await R.carregarDados();
-      mostrarDiag(`✓ Dados carregados: ${S.OBRAS.length} obras, ${S.COLABORADORES.length} colaboradores`,'#15803D');
-    } catch(e){
-      mostrarDiag('❌ Erro ao carregar dados: '+e.message,'#B91C1C');
-    }
-    const ls=document.getElementById('loading-screen');if(ls)ls.remove();
-    const device=applyDeviceClass();
-    if(authedUser.role==='encarregado'){
-      document.body.classList.add('enc-mode');
-      document.getElementById('enc-app').style.display='flex';
-      document.getElementById('enc-name').textContent=authedUser.nome;
-      await R.initEnc();
-    } else {
-      document.getElementById('admin-app').style.display='flex';
-      document.body.classList.add('app-ativa');
-      document.getElementById('u-av').textContent=authedUser.initials;
-      document.getElementById('u-nm').textContent=authedUser.nome;
-      document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
-      updateDeviceBadge(device);
-      await R.loadPermissionsFromServer();
-      R.applyStoredPermissions();
-      R.initAdmin();
-      R.applyRolePermissions(authedUser.role);
-      R.initNotifications();
-    }
+    await entrarComoUtilizador(authedUser);
   } else {
     const e=document.getElementById('login-error');e.style.display='block';setTimeout(()=>e.style.display='none',3000);
   }
+}
+
+// ── Restaura a sessão guardada ao (re)abrir a página, sem pedir login outra vez ──
+export async function tentarSessaoGuardada() {
+  let saved=null;
+  try { saved=JSON.parse(localStorage.getItem('plandese_session')||'null'); } catch(e){}
+  if(!saved || !saved.key) return false;
+  await entrarComoUtilizador({username:saved.key,nome:saved.nome,role:saved.role,initials:saved.initials||''});
+  return true;
 }
 
 export function doLogout() {

@@ -7,7 +7,7 @@ import { S, R } from './state.js';
 import { carregarDados } from './db.js';
 
 // Auth
-import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode } from './modules/auth.js';
+import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada } from './modules/auth.js';
 
 // Navigation
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
@@ -126,6 +126,9 @@ dropboxInit();
 
 // ── Login com Enter ──
 document.getElementById('lp')?.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── Sessão guardada — mantém o utilizador ligado ao reabrir a página ──
+tentarSessaoGuardada();
 
 // ── Expor todas as funções ao window para handlers HTML inline ──
 Object.assign(window, {
