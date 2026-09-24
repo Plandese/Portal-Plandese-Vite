@@ -7,98 +7,146 @@ import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
 import { showToast } from './navigation.js';
 import { canAccessSection } from './permissions.js';
-import { renderLembretes } from './lembretes.js';
-import { coComputeStats, prodFmtEur, _prodLoadLocal, _loadObrasExtra } from './producao.js';
-import { COMPRAS } from './compras.js';
-import { FATURAS } from './faturas.js';
-import { EQUIPAMENTOS } from './equipamentos.js';
 
-let _painelConfig = null;
+let _painelSeq = 0; // evita que uma resposta antiga sobrescreva uma mais recente
 
-// ── Estado do painel ──────────────────────────────────────────────
+// ── Painel Principal — presenças e ausências da semana ────────────
+const _DIAS_CURTO = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+const _TIPOS_PRESENTE = ['Presença','Normal','Hora Extra'];
 
-const PAINEL_WIDGETS_DEF = [
-  { id:'obras_ativas',    label:'Obras Ativas',       icon:'<path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>',  section:'obras' },
-  { id:'colaboradores',   label:'Colaboradores',      icon:'<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',  section:'colaboradores' },
-  { id:'ponto_semana',    label:'Ponto da Semana',    icon:'<path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>',  section:'historico' },
-  { id:'compras_recentes',label:'Compras Pendentes',  icon:'<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>',  section:'compras' },
-  { id:'faturas',         label:'Faturas',            icon:'<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM7 7h7v2H7V7zm10 12H7v-2h10v2zm0-4H7v-2h10v2zm-4-7V3.5L18.5 9H13z"/>',  section:'faturas' },
-  { id:'equipamentos',    label:'Equipamentos',       icon:'<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>',  section:'equipamentos' },
-  { id:'combustivel',     label:'Combustível',        icon:'<path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM18 10c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM8 18v-4.5H6L10 7v5h2l-4 6z"/>',  section:'combustivel' },
-  { id:'controlo_obras',  label:'Controlo de Obras',  icon:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/>',  section:'producao' },
-];
+const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const _ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-// Só os widgets cuja secção o perfil pode abrir (evita expor dados de departamentos bloqueados)
-function _painelWidgetsPermitidos() {
-  return PAINEL_WIDGETS_DEF.filter(w => canAccessSection(w.section));
+// Segunda a domingo da semana corrente
+function _painelSemana() {
+  const mon = getMonday(new Date());
+  mon.setHours(12,0,0,0);
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
 }
 
-const PAINEL_DEFAULT_CONFIG = {
-  widgets: ['obras_ativas','colaboradores','ponto_semana','compras_recentes'],
-  obras_filtro: [], // vazio = todas as obras
-};
-
-// ── Carregar config do Supabase ────────────────────────────────────
-async function loadPainelConfig() {
-  // Tentar carregar do Supabase
-  if (S.currentUser?.key) {
-    try {
-      const { data } = await sb.from('utilizadores').select('painel_config').eq('username', S.currentUser.key).single();
-      if (data?.painel_config) {
-        _painelConfig = { ...PAINEL_DEFAULT_CONFIG, ...data.painel_config };
-        return;
-      }
-    } catch(e) { console.warn('loadPainelConfig:', e); }
-  }
-  // Fallback: localStorage
+// Registos da semana: vai buscar ao servidor (para apanhar o que outros
+// encarregados lançaram entretanto) e recorre ao estado local se falhar.
+async function _painelCarregarSemana(dias) {
+  const ini = _ymd(dias[0]), fim = _ymd(dias[6]);
+  const local = () => dias.flatMap(d => (S.REGISTOS[_ymd(d)] || []).map(r => ({ data: _ymd(d), colab: r.colabN, obra: r.obra || null, tipo: r.tipo || 'Presença' })));
+  let registos, previstas = [];
   try {
-    const raw = localStorage.getItem('plandese_painel_config_' + (S.currentUser?.key || 'guest'));
-    if (raw) { _painelConfig = { ...PAINEL_DEFAULT_CONFIG, ...JSON.parse(raw) }; return; }
-  } catch(e) {}
-  _painelConfig = { ...PAINEL_DEFAULT_CONFIG };
+    const { data, error } = await sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo').gte('data', ini).lte('data', fim);
+    if (error) throw error;
+    registos = (data || []).map(r => ({ data: r.data, colab: r.colab_numero, obra: r.obra_id || null, tipo: r.tipo || 'Presença' }));
+  } catch (e) { console.warn('painel (registos):', e); registos = local(); }
+  try {
+    const { data, error } = await sb.from('ferias_previstas').select('colab_numero,data').gte('data', ini).lte('data', fim);
+    if (error) throw error;
+    previstas = (data || []).map(r => ({ data: r.data, colab: r.colab_numero }));
+  } catch (e) { console.warn('painel (férias previstas):', e); }
+  return { registos, previstas };
 }
 
-// ── Guardar config no Supabase ─────────────────────────────────────
-async function savePainelConfig(cfg) {
-  _painelConfig = cfg;
-  // localStorage como backup imediato
-  try { localStorage.setItem('plandese_painel_config_' + (S.currentUser?.key || 'guest'), JSON.stringify(cfg)); } catch(e) {}
-  // Supabase — leitura+escrita: a coluna painel_config também guarda a
-  // preferência de widgets da Análise de Dados (chave 'analise'), por isso
-  // não pode ser substituída às cegas, senão apaga-a.
-  if (S.currentUser?.key) {
-    try {
-      const { data } = await sb.from('utilizadores').select('painel_config').eq('username', S.currentUser.key).single();
-      const painel_config = { ...(data?.painel_config || {}), ...cfg };
-      await sb.from('utilizadores').update({ painel_config }).eq('username', S.currentUser.key);
-    } catch(e) { console.warn('savePainelConfig:', e); }
-  }
+function _painelPessoa(n) {
+  const c = S.COLABORADORES.find(x => x.n === n);
+  return { nome: c?.nome || `Colaborador ${n}`, func: c?.func || '' };
 }
 
-// ── Renderizar painel ──────────────────────────────────────────────
+function _painelCardHtml(titulo, subtitulo, corIcon, bgIcon, iconPath, corpo) {
+  return `<div class="card" style="padding:20px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="width:36px;height:36px;border-radius:9px;background:${bgIcon};color:${corIcon};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px">${iconPath}</svg>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--gray-800)">${titulo}</div>
+        <div style="font-size:11px;color:var(--gray-400)">${subtitulo}</div>
+      </div>
+    </div>
+    ${corpo}
+  </div>`;
+}
+
+// Bolinhas Seg–Dom: preenchida = dia com presença
+function _painelDots(diasPresente, dias) {
+  return `<div style="display:flex;gap:3px;flex-shrink:0">${dias.map((d, i) => {
+    const on = diasPresente.has(_ymd(d));
+    return `<span title="${_DIAS_CURTO[i]}" style="width:16px;height:16px;border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;${on ? 'background:var(--green);color:#fff' : 'background:var(--gray-100);color:var(--gray-400)'}">${_DIAS_CURTO[i][0]}</span>`;
+  }).join('')}</div>`;
+}
+
+function _painelVazio(txt) {
+  return `<div style="font-size:13px;color:var(--gray-400);padding:8px 0">${txt}</div>`;
+}
+
+function _painelHtmlPresentes(registos, dias) {
+  // obra → colab → dias com presença
+  const porObra = new Map();
+  registos.forEach(r => {
+    if (!_TIPOS_PRESENTE.includes(r.tipo)) return;
+    if (!porObra.has(r.obra)) porObra.set(r.obra, new Map());
+    const m = porObra.get(r.obra);
+    if (!m.has(r.colab)) m.set(r.colab, new Set());
+    m.get(r.colab).add(r.data);
+  });
+  if (!porObra.size) return _painelVazio('Ainda sem presenças lançadas nesta semana.');
+
+  const nomeObra = (id) => id ? (S.OBRAS.find(o => o.id === id)?.nome || id) : 'Sem obra atribuída';
+  return [...porObra.entries()]
+    .sort((a, b) => nomeObra(a[0]).localeCompare(nomeObra(b[0]), 'pt'))
+    .map(([obraId, pessoas]) => {
+      const linhas = [...pessoas.entries()]
+        .map(([n, ds]) => ({ n, ds, ...(_painelPessoa(n)) }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+        .map(p => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100)">
+          <div style="min-width:0">
+            <div style="font-size:13px;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(p.nome)}</div>
+            ${p.func ? `<div style="font-size:11px;color:var(--gray-400)">${_esc(p.func)}</div>` : ''}
+          </div>
+          ${_painelDots(p.ds, dias)}
+        </div>`).join('');
+      return `<div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-600)">${_esc(nomeObra(obraId))}</div>
+          <span class="badge b-blue" style="font-size:10px">${pessoas.size} ${pessoas.size === 1 ? 'pessoa' : 'pessoas'}</span>
+        </div>
+        ${linhas}
+      </div>`;
+    }).join('');
+}
+
+function _painelHtmlAusentes(registos, previstas, dias) {
+  // colab → { ferias, fInj, fJust, prev } (conjuntos de datas)
+  const porColab = new Map();
+  const get = (n) => { if (!porColab.has(n)) porColab.set(n, { ferias: new Set(), fInj: new Set(), fJust: new Set(), prev: new Set() }); return porColab.get(n); };
+  registos.forEach(r => {
+    if (r.tipo === 'Férias') get(r.colab).ferias.add(r.data);
+    else if (r.tipo === 'Falta Just.') get(r.colab).fJust.add(r.data);
+    else if (r.tipo.includes('Falta')) get(r.colab).fInj.add(r.data); // 'Falta Injust.' e registos antigos
+  });
+  // férias planeadas que ainda não têm registo no ponto
+  previstas.forEach(p => {
+    if (porColab.get(p.colab)?.ferias.has(p.data)) return;
+    get(p.colab).prev.add(p.data);
+  });
+  if (!porColab.size) return _painelVazio('Ninguém de férias ou a faltar nesta semana.');
+
+  const diasTxt = (set) => dias.map((d, i) => set.has(_ymd(d)) ? _DIAS_CURTO[i] : '').filter(Boolean).join(', ');
+  const tag = (set, txt, cls) => set.size ? `<span class="badge ${cls}" style="font-size:10px;white-space:nowrap">${txt} · ${diasTxt(set)}</span>` : '';
+
+  return [...porColab.entries()]
+    .map(([n, t]) => ({ n, t, ...(_painelPessoa(n)) }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+    .map(p => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100)">
+      <div style="min-width:0">
+        <div style="font-size:13px;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(p.nome)}</div>
+        ${p.func ? `<div style="font-size:11px;color:var(--gray-400)">${_esc(p.func)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+        ${tag(p.t.ferias, 'Férias', 'b-blue')}${tag(p.t.prev, 'Férias previstas', 'b-blue')}${tag(p.t.fJust, 'Falta just.', 'b-orange')}${tag(p.t.fInj, 'Falta injust.', 'b-red')}
+      </div>
+    </div>`).join('');
+}
+
 async function renderPainel() {
   const grid = document.getElementById('painel-grid');
   if (!grid) return;
-
-  // Carregar config se ainda não tiver
-  if (!_painelConfig) await loadPainelConfig();
-
-  const cfg = _painelConfig || PAINEL_DEFAULT_CONFIG;
-  const obrasAtivas = S.OBRAS.filter(o => o.ativa);
-  const obrasFiltro = (cfg.obras_filtro || []).filter(id => obrasAtivas.some(o => o.id === id));
-
-  // Badge de obras filtradas
-  const badge = document.getElementById('painel-obras-badge');
-  const badgeTxt = document.getElementById('painel-obras-badge-txt');
-  if (badge && badgeTxt) {
-    if (obrasFiltro.length > 0) {
-      const nomes = obrasFiltro.map(id => obrasAtivas.find(o => o.id === id)?.nome || id).join(', ');
-      badgeTxt.textContent = `A mostrar dados de: ${nomes}`;
-      badge.style.display = 'flex';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
 
   // Saudação personalizada
   const titulo = document.getElementById('painel-titulo');
@@ -109,479 +157,26 @@ async function renderPainel() {
     titulo.textContent = nomePropio ? `${saudacao}, ${nomePropio}` : 'Painel Principal';
   }
 
-  // Destaques (alertas cruzados) e KPIs compactos
-  renderPainelKPIs(obrasFiltro);
-  renderPainelAlerts(obrasFiltro);
+  const dias = _painelSemana();
+  const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
+  const sub = document.getElementById('painel-sub');
+  if (sub) sub.textContent = `Folhas de ponto · semana de ${semanaTxt}`;
 
-  // Carregar dados necessários para os widgets ativos
-  const widgets = (cfg.widgets || []).filter(wid => _painelWidgetsPermitidos().some(w => w.id === wid));
+  // Os dados vêm das folhas de ponto — só para quem tem acesso a essa secção
+  if (!canAccessSection('historico')) { grid.innerHTML = ''; return; }
 
-  if (widgets.length === 0) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;margin:0 auto 12px;display:block;opacity:.3"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-      Nenhum widget selecionado. Clique em <strong>Personalizar</strong> para configurar o painel.
-    </div>`;
-    return;
-  }
+  const seq = ++_painelSeq;
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px">A carregar folhas de ponto…</div>';
 
-  // Mostrar loading
-  grid.innerHTML = widgets.map(() =>
-    `<div class="card" style="min-height:140px;display:flex;align-items:center;justify-content:center">
-      <div style="width:24px;height:24px;border:3px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite"></div>
-    </div>`
-  ).join('');
+  const { registos, previstas } = await _painelCarregarSemana(dias);
+  if (seq !== _painelSeq) return;
 
-  // Construir cada widget
-  const htmlWidgets = await Promise.all(widgets.map(wid => buildWidget(wid, obrasFiltro)));
-  grid.innerHTML = htmlWidgets.join('');
+  const iconPres = '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>';
+  const iconAus = '<path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11z"/>';
 
-  // Renderizar quadro de lembretes em paralelo
-  renderLembretes().catch(e => console.warn('renderLembretes:', e));
-}
-
-// ── Destaques (alertas cruzados de outras secções) ─────────────────
-const _PAINEL_ICON_WARN = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
-const _PAINEL_ICON_OK   = '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>';
-
-function _painelSidebarBtn(section) {
-  return document.querySelector(`.sidebar .nav-btn[onclick*="'${section}'"]`);
-}
-
-// Stats de Controlo de Obras partilhadas entre o widget e os destaques
-function _painelObraStats(obrasFiltro) {
-  _prodLoadLocal();
-  _loadObrasExtra();
-  const obrasAtivas = S.OBRAS.filter(o => o.ativa && (obrasFiltro.length === 0 || obrasFiltro.includes(o.id)));
-  return obrasAtivas.map(o => coComputeStats(o));
-}
-
-function computePainelAlerts(obrasFiltro) {
-  const alerts = [];
-
-  if (canAccessSection('producao')) try {
-    const stats = _painelObraStats(obrasFiltro);
-    const bad = stats.filter(s => s.status === 'bad').length;
-    const warn = stats.filter(s => s.status === 'warn').length;
-    if (bad > 0) alerts.push({
-      sev: 'red', count: bad, label: bad === 1 ? 'obra em alerta' : 'obras em alerta',
-      action: () => window.goTo('producao', _painelSidebarBtn('producao')),
-    });
-    if (warn > 0) alerts.push({
-      sev: 'orange', count: warn, label: warn === 1 ? 'obra em atenção' : 'obras em atenção',
-      action: () => window.goTo('producao', _painelSidebarBtn('producao')),
-    });
-  } catch (e) { console.warn('painel alerts (obras):', e); }
-
-  if (canAccessSection('compras')) try {
-    const urgentes = COMPRAS.filter(c => c.estado === 'pendente'
-      && (c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente')
-      && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId)));
-    if (urgentes.length > 0) alerts.push({
-      sev: 'orange', count: urgentes.length, label: urgentes.length === 1 ? 'pedido urgente pendente' : 'pedidos urgentes pendentes',
-      action: () => {
-        const est = document.getElementById('cmp-f-estado'); if (est) est.value = 'pendente';
-        window.goTo('compras', _painelSidebarBtn('compras'));
-      },
-    });
-  } catch (e) { console.warn('painel alerts (compras):', e); }
-
-  if (canAccessSection('faturas')) try {
-    const rever = FATURAS.filter(f => f.status === 'rever' || (f._flags && f._flags.length > 0));
-    if (rever.length > 0) alerts.push({
-      sev: 'yellow', count: rever.length, label: rever.length === 1 ? 'fatura a rever' : 'faturas a rever',
-      action: () => {
-        const sel = document.getElementById('fat-f-status'); if (sel) sel.value = 'rever';
-        window.goTo('faturas', _painelSidebarBtn('faturas'));
-      },
-    });
-  } catch (e) { console.warn('painel alerts (faturas):', e); }
-
-  if (canAccessSection('equipamentos')) try {
-    const ago7 = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    const semReg = EQUIPAMENTOS.filter(eq => {
-      const ul = eq.ultimoRegisto ? new Date(eq.ultimoRegisto) : null;
-      return !ul || ul < ago7;
-    });
-    if (semReg.length > 0) alerts.push({
-      sev: 'yellow', count: semReg.length, label: semReg.length === 1 ? 'equipamento sem registo' : 'equipamentos sem registo',
-      action: () => window.goTo('equipamentos', _painelSidebarBtn('equipamentos')),
-    });
-  } catch (e) { console.warn('painel alerts (equipamentos):', e); }
-
-  return alerts;
-}
-
-function renderPainelAlerts(obrasFiltro) {
-  const wrap = document.getElementById('painel-alerts');
-  if (!wrap) return;
-
-  let alerts = [];
-  try { alerts = computePainelAlerts(obrasFiltro); } catch (e) { console.warn('renderPainelAlerts:', e); }
-
-  if (alerts.length === 0) {
-    wrap.innerHTML = `<div class="painel-alert-chip ok">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px">${_PAINEL_ICON_OK}</svg>
-      Tudo em dia
-    </div>`;
-    return;
-  }
-
-  wrap.innerHTML = alerts.map((a, i) => `
-    <button type="button" class="painel-alert-chip ${a.sev}" data-idx="${i}">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px">${_PAINEL_ICON_WARN}</svg>
-      <span class="pac-count">${a.count}</span> ${a.label}
-    </button>`).join('');
-
-  wrap.querySelectorAll('.painel-alert-chip[data-idx]').forEach(btn => {
-    const idx = +btn.dataset.idx;
-    btn.addEventListener('click', () => alerts[idx].action());
-  });
-}
-
-// ── KPIs compactos ──────────────────────────────────────────────────
-function _painelKpiTile(iconPath, value, label, bg, fg) {
-  return `<div class="painel-kpi">
-    <div class="painel-kpi-icon" style="background:${bg};color:${fg}">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:17px;height:17px">${iconPath}</svg>
-    </div>
-    <div>
-      <div class="painel-kpi-value">${value}</div>
-      <div class="painel-kpi-label">${label}</div>
-    </div>
-  </div>`;
-}
-
-function renderPainelKPIs(obrasFiltro) {
-  const wrap = document.getElementById('painel-kpis');
-  if (!wrap) return;
-
-  const iconObras = PAINEL_WIDGETS_DEF.find(w => w.id === 'obras_ativas').icon;
-  const iconColab = PAINEL_WIDGETS_DEF.find(w => w.id === 'colaboradores').icon;
-  const iconPonto = PAINEL_WIDGETS_DEF.find(w => w.id === 'ponto_semana').icon;
-  const iconCompras = PAINEL_WIDGETS_DEF.find(w => w.id === 'compras_recentes').icon;
-
-  const obrasAtivasAll = S.OBRAS.filter(o => o.ativa);
-  const obrasCount = obrasFiltro.length ? obrasFiltro.length : obrasAtivasAll.length;
-
-  const colabAtivos = S.COLABORADORES.filter(c => c.ativo).length;
-
-  const hoje = fmt(new Date());
-  const hojeRegs = S.REGISTOS[hoje] || [];
-  const presentesHoje = obrasFiltro.length ? hojeRegs.filter(r => obrasFiltro.includes(r.obra)).length : hojeRegs.length;
-
-  let comprasPendentes = 0;
-  try {
-    comprasPendentes = COMPRAS.filter(c => c.estado === 'pendente' && (obrasFiltro.length === 0 || obrasFiltro.includes(c.obraId))).length;
-  } catch (e) {}
-
-  // Cada indicador só aparece se o perfil tiver acesso à secção de onde vêm os dados
-  wrap.innerHTML = [
-    canAccessSection('obras')         && _painelKpiTile(iconObras, obrasCount, obrasFiltro.length ? 'obras selecionadas' : 'obras ativas', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
-    canAccessSection('colaboradores') && _painelKpiTile(iconColab, colabAtivos, 'colaboradores ativos', 'var(--blue-50,#eff6ff)', 'var(--blue)'),
-    canAccessSection('historico')     && _painelKpiTile(iconPonto, presentesHoje, 'presentes hoje', 'var(--green-bg)', 'var(--green)'),
-    canAccessSection('compras')       && _painelKpiTile(iconCompras, comprasPendentes, 'pedidos pendentes', 'var(--orange-bg)', 'var(--orange)'),
-  ].filter(Boolean).join('');
-}
-
-// ── Construir HTML de cada widget ─────────────────────────────────
-async function buildWidget(wid, obrasFiltro) {
-  const def = PAINEL_WIDGETS_DEF.find(w => w.id === wid);
-  if (!def) return '';
-
-  const goBtn = `<button class="btn btn-secondary btn-sm" onclick="goTo('${def.section}',document.querySelector('.sidebar .nav-btn[onclick*=\\'${def.section}\\']'))" style="margin-top:12px;font-size:11px">Ver tudo →</button>`;
-
-  try {
-    if (wid === 'obras_ativas') {
-      const obras = S.OBRAS.filter(o => o.ativa && (obrasFiltro.length === 0 || obrasFiltro.includes(o.id)));
-      const rows = obras.slice(0, 5).map(o => `<div style="padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px;color:var(--gray-700)">${o.nome}</div>`).join('');
-      const extra = obras.length > 5 ? `<div style="font-size:11px;color:var(--gray-400);margin-top:6px">+${obras.length-5} mais</div>` : '';
-      return _painelCard(def, `<div style="font-size:36px;font-weight:700;color:var(--blue);line-height:1">${obras.length}</div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">obras ativas</div>${rows}${extra}${goBtn}`);
-    }
-
-    if (wid === 'colaboradores') {
-      const ativos = S.COLABORADORES.filter(c => c.ativo);
-      const byFunc = {};
-      ativos.forEach(c => { byFunc[c.func] = (byFunc[c.func]||0)+1; });
-      const top3 = Object.entries(byFunc).sort((a,b)=>b[1]-a[1]).slice(0,3);
-      const rows = top3.map(([f,n]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:13px"><span style="color:var(--gray-700)">${f}</span><span style="font-weight:600;color:var(--gray-900)">${n}</span></div>`).join('');
-      return _painelCard(def, `<div style="font-size:36px;font-weight:700;color:var(--blue);line-height:1">${ativos.length}</div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">colaboradores ativos</div>${rows}${goBtn}`);
-    }
-
-    if (wid === 'ponto_semana') {
-      // Registos desta semana (já carregados em S.REGISTOS)
-      const mon = getMonday(new Date());
-      const days = [];
-      for(let i=0;i<6;i++){ const d=new Date(mon); d.setDate(d.getDate()+i); days.push(fmt(d)); }
-      const diaLetra = ['S','T','Q','Q','S','S'];
-      let total = 0;
-      const porDia = days.map(dk => {
-        const regs = S.REGISTOS[dk] || [];
-        const filtrados = obrasFiltro.length > 0 ? regs.filter(r => obrasFiltro.includes(r.obra)) : regs;
-        let n = 0;
-        filtrados.forEach(r => { if(r.tipo==='Presença'||r.tipo==='Normal'||r.tipo==='Hora Extra') n++; });
-        total += n;
-        return n;
-      });
-      const hoje = fmt(new Date());
-      const hojeIdx = days.indexOf(hoje);
-      const hoje_pres = hojeIdx >= 0 ? porDia[hojeIdx] : 0;
-      const maxDia = Math.max(1, ...porDia);
-
-      const bars = porDia.map((n, i) => {
-        const h = Math.max(2, Math.round((n / maxDia) * 40));
-        const isHoje = i === hojeIdx;
-        return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-          <div style="width:100%;max-width:22px;height:44px;display:flex;align-items:flex-end" title="${n}">
-            <div style="width:100%;height:${h}px;background:${isHoje ? 'var(--blue)' : 'var(--blue-200,#bfdbfe)'};border-radius:3px 3px 0 0"></div>
-          </div>
-          <div style="font-size:9px;color:${isHoje ? 'var(--blue)' : 'var(--gray-400)'};font-weight:${isHoje ? 700 : 400}">${diaLetra[i]}</div>
-        </div>`;
-      }).join('');
-
-      return _painelCard(def, `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div style="text-align:center;padding:12px;background:var(--blue-50,#eff6ff);border-radius:8px">
-            <div style="font-size:28px;font-weight:700;color:var(--blue)">${hoje_pres}</div>
-            <div style="font-size:11px;color:var(--gray-500)">hoje</div>
-          </div>
-          <div style="text-align:center;padding:12px;background:var(--gray-50);border-radius:8px">
-            <div style="font-size:28px;font-weight:700;color:var(--gray-700)">${total}</div>
-            <div style="font-size:11px;color:var(--gray-500)">esta semana</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:4px;border-top:1px solid var(--gray-100);padding-top:10px">${bars}</div>
-        ${goBtn}`);
-    }
-
-    if (wid === 'compras_recentes') {
-      const compras = (typeof COMPRAS !== 'undefined' ? COMPRAS : []);
-      const pendentes = compras.filter(c => (c.estado||'').toLowerCase() === 'pendente');
-      const recentes = compras.slice(0, 4);
-      const rows = recentes.map(c => {
-        const est = (c.estado||'pendente').toLowerCase();
-        const cor = est==='pendente'?'var(--orange,#ea580c)':est==='aprovado'?'var(--green)':'var(--gray-400)';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px">
-          <span style="color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${c.descricao||c.fornecedor||'—'}</span>
-          <span style="font-size:10px;font-weight:600;color:${cor};white-space:nowrap">${c.estado||'—'}</span>
-        </div>`;
-      }).join('');
-      return _painelCard(def, `<div style="font-size:36px;font-weight:700;color:var(--orange,#ea580c);line-height:1">${pendentes.length}</div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">pedidos pendentes</div>${rows||'<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Sem compras registadas</div>'}${goBtn}`);
-    }
-
-    if (wid === 'faturas') {
-      const fats = (typeof FATURAS !== 'undefined' ? FATURAS : []);
-      const total = fats.reduce((s,f) => s+(parseFloat(f.total)||0), 0);
-      const recentes = fats.slice(0,4);
-      const rows = recentes.map(f => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px">
-        <span style="color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${f.fornecedor||f.numero||'—'}</span>
-        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-600)">${(parseFloat(f.total)||0).toLocaleString('pt-PT',{minimumFractionDigits:2})} €</span>
-      </div>`).join('');
-      return _painelCard(def, `<div style="font-size:24px;font-weight:700;color:var(--gray-800);line-height:1;font-family:'DM Mono',monospace">${total.toLocaleString('pt-PT',{minimumFractionDigits:2})} €</div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">${fats.length} faturas</div>${rows||'<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Sem faturas carregadas</div>'}${goBtn}`);
-    }
-
-    if (wid === 'equipamentos') {
-      const equips = (typeof EQUIPAMENTOS !== 'undefined' ? EQUIPAMENTOS : []);
-      const bycat = {};
-      equips.forEach(e => { const k=e.categoria||'outro'; bycat[k]=(bycat[k]||0)+1; });
-      const rows = Object.entries(bycat).map(([k,n]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:13px"><span style="color:var(--gray-700);text-transform:capitalize">${k}</span><span style="font-weight:600">${n}</span></div>`).join('');
-      return _painelCard(def, `<div style="font-size:36px;font-weight:700;color:var(--blue);line-height:1">${equips.length}</div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">equipamentos</div>${rows||'<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Sem equipamentos</div>'}${goBtn}`);
-    }
-
-    if (wid === 'combustivel') {
-      // Buscar últimos registos de combustível do Supabase
-      let combustRegs = [];
-      try {
-        const { data } = await sb.from('registos_combustivel').select('*').order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(5);
-        if (data) combustRegs = data;
-      } catch(e) {}
-      const totalLitros = combustRegs.reduce((s,r) => s+(parseFloat(r.litros)||0), 0);
-      const rows = combustRegs.slice(0,4).map(r => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px">
-        <span style="color:var(--gray-700)">${r.data||'—'} · ${r.tipo_combustivel||r.tipo||'—'}</span>
-        <span style="font-weight:600;color:var(--gray-900)">${r.litros||0} L</span>
-      </div>`).join('');
-      return _painelCard(def, `<div style="font-size:36px;font-weight:700;color:var(--blue);line-height:1">${totalLitros.toFixed(0)}<span style="font-size:16px;font-weight:400"> L</span></div><div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">últimos 5 registos</div>${rows||'<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Sem registos de combustível</div>'}${goBtn}`);
-    }
-
-    if (wid === 'controlo_obras') {
-      const allStats = _painelObraStats(obrasFiltro);
-
-      if (allStats.length === 0) {
-        return _painelCard(def, `<div style="font-size:13px;color:var(--gray-400);padding:20px 0;text-align:center">Sem obras ativas</div>${goBtn}`);
-      }
-
-      // Contagem por estado
-      const nOk   = allStats.filter(s => s.status === 'ok').length;
-      const nWarn = allStats.filter(s => s.status === 'warn').length;
-      const nBad  = allStats.filter(s => s.status === 'bad').length;
-
-      // Total faturado
-      const totalFat = allStats.reduce((sum, s) => sum + s.faturado, 0);
-
-      // Badge de estado colorido
-      const statusBadge = (st) => {
-        const cor = st === 'ok' ? 'var(--green,#16a34a)' : st === 'warn' ? 'var(--orange,#ea580c)' : 'var(--red,#dc2626)';
-        const bg  = st === 'ok' ? '#f0fdf4' : st === 'warn' ? '#fff7ed' : '#fef2f2';
-        const lbl = st === 'ok' ? 'OK' : st === 'warn' ? 'Atenção' : 'Alerta';
-        return `<span style="font-size:10px;font-weight:600;color:${cor};background:${bg};border-radius:4px;padding:2px 6px;white-space:nowrap">${lbl}</span>`;
-      };
-
-      // Barra de progresso
-      const progressBar = (pct, color) => {
-        const p = Math.min(100, Math.max(0, pct));
-        return `<div style="height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin-top:3px">
-          <div style="height:100%;width:${p}%;background:${color};border-radius:2px;transition:width .3s"></div>
-        </div>`;
-      };
-
-      // Cabeçalho com contagens de estado
-      const resumo = `
-        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-          ${nOk   > 0 ? `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--green,#16a34a);background:#f0fdf4;border-radius:6px;padding:4px 8px"><span style="font-weight:700">${nOk}</span> em curso</div>` : ''}
-          ${nWarn > 0 ? `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--orange,#ea580c);background:#fff7ed;border-radius:6px;padding:4px 8px"><span style="font-weight:700">${nWarn}</span> atenção</div>` : ''}
-          ${nBad  > 0 ? `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--red,#dc2626);background:#fef2f2;border-radius:6px;padding:4px 8px"><span style="font-weight:700">${nBad}</span> alerta</div>` : ''}
-        </div>`;
-
-      // Linhas por obra (máx 5, ordenadas: bad → warn → ok)
-      const sorted = allStats.slice().sort((a, b) => {
-        const rank = { bad: 0, warn: 1, ok: 2 };
-        return (rank[a.status] ?? 3) - (rank[b.status] ?? 3);
-      });
-
-      const rows = sorted.slice(0, 5).map(s => {
-        const temPrazo = s.tempoPct > 0;
-        const temExec  = s.execPct  > 0 || s.contratado > 0;
-        const execColor = s.status === 'bad' ? 'var(--red,#dc2626)' : s.status === 'warn' ? 'var(--orange,#ea580c)' : 'var(--blue)';
-
-        const prazoPart = temPrazo
-          ? `<div style="font-size:10px;color:var(--gray-400);margin-top:1px">
-               Tempo: ${s.tempoPct.toFixed(0)}%
-               ${s.diasRest !== null ? ` · ${s.diasRest >= 0 ? s.diasRest + 'd restantes' : Math.abs(s.diasRest) + 'd atraso'}` : ''}
-             </div>
-             ${progressBar(s.tempoPct, 'var(--gray-300)')}`
-          : '';
-
-        const execPart = temExec
-          ? `<div style="font-size:10px;color:var(--gray-400);margin-top:4px">
-               Execução: ${s.execPct.toFixed(0)}%
-               ${s.faturado > 0 ? ` · ${prodFmtEur(s.faturado)}` : ''}
-             </div>
-             ${progressBar(s.execPct, execColor)}`
-          : '';
-
-        return `<div style="padding:8px 0;border-bottom:1px solid var(--gray-100)">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
-            <span style="font-size:12px;font-weight:500;color:var(--gray-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${s.obra.nome}</span>
-            ${statusBadge(s.status)}
-          </div>
-          ${prazoPart}${execPart}
-        </div>`;
-      }).join('');
-
-      const extra = sorted.length > 5 ? `<div style="font-size:11px;color:var(--gray-400);margin-top:6px">+${sorted.length - 5} mais obras</div>` : '';
-
-      const totalFatHtml = totalFat > 0
-        ? `<div style="font-size:11px;color:var(--gray-500);margin-top:10px;padding-top:8px;border-top:1px solid var(--gray-100)">
-             Total faturado: <strong style="color:var(--gray-800);font-family:'DM Mono',monospace">${prodFmtEur(totalFat)}</strong>
-           </div>` : '';
-
-      return _painelCard(def, `${resumo}${rows}${extra}${totalFatHtml}${goBtn}`);
-    }
-
-  } catch(e) {
-    console.warn('buildWidget error:', wid, e);
-    return _painelCard(def, `<div style="font-size:13px;color:var(--red,#dc2626);padding:12px 0">Erro ao carregar dados</div>`);
-  }
-
-  return '';
-}
-
-// ── Helper: card HTML ──────────────────────────────────────────────
-function _painelCard(def, bodyHtml) {
-  return `<div class="card" style="padding:20px;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <div style="width:36px;height:36px;border-radius:8px;background:var(--blue-50,#eff6ff);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--blue)">${def.icon}</svg>
-      </div>
-      <div style="font-size:13px;font-weight:600;color:var(--gray-700)">${def.label}</div>
-    </div>
-    ${bodyHtml}
-  </div>`;
-}
-
-// ── Abrir modal de personalização ──────────────────────────────────
-function openPainelCustomizer() {
-  if (!_painelConfig) _painelConfig = { ...PAINEL_DEFAULT_CONFIG };
-  const cfg = _painelConfig;
-
-  // Widgets checkboxes
-  const widChecks = document.getElementById('painel-widget-checks');
-  if (widChecks) {
-    widChecks.innerHTML = _painelWidgetsPermitidos().map(w => {
-      const checked = (cfg.widgets || []).includes(w.id);
-      return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${checked?'var(--blue)':'var(--gray-200)'};border-radius:8px;cursor:pointer;background:${checked?'var(--blue-50,#eff6ff)':'white'};transition:all .15s;font-size:13px" id="painel-wlbl-${w.id}">
-        <input type="checkbox" id="painel-wchk-${w.id}" ${checked?'checked':''} onchange="painelWChkChange('${w.id}',this)" style="accent-color:var(--blue)"/>
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0;color:var(--blue)">${w.icon}</svg>
-        ${w.label}
-      </label>`;
-    }).join('');
-  }
-
-  // Obras checkboxes
-  const obraChecks = document.getElementById('painel-obra-checks');
-  if (obraChecks) {
-    const obrasAtivas = S.OBRAS.filter(o => o.ativa);
-    if (obrasAtivas.length === 0) {
-      obraChecks.innerHTML = '<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Sem obras ativas</div>';
-    } else {
-      obraChecks.innerHTML = obrasAtivas.map(o => {
-        const checked = (cfg.obras_filtro || []).includes(o.id);
-        return `<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 10px;border-radius:6px;cursor:pointer;background:${checked?'var(--blue-50,#eff6ff)':'transparent'};transition:all .15s" id="painel-obra-lbl-${o.id}">
-          <input type="checkbox" id="painel-obra-chk-${o.id}" ${checked?'checked':''} onchange="painelObraChkChange('${o.id}',this)" style="accent-color:var(--blue)"/>
-          ${o.nome}
-        </label>`;
-      }).join('');
-    }
-  }
-
-  const modal = document.getElementById('painel-modal-bg');
-  if (modal) { modal.style.display = 'flex'; modal.classList.add('open'); }
-}
-
-function painelWChkChange(wid, chk) {
-  const lbl = document.getElementById('painel-wlbl-'+wid);
-  if (lbl) {
-    lbl.style.borderColor = chk.checked ? 'var(--blue)' : 'var(--gray-200)';
-    lbl.style.background = chk.checked ? 'var(--blue-50,#eff6ff)' : 'white';
-  }
-}
-
-function painelObraChkChange(obraId, chk) {
-  const lbl = document.getElementById('painel-obra-lbl-'+obraId);
-  if (lbl) lbl.style.background = chk.checked ? 'var(--blue-50,#eff6ff)' : 'transparent';
-}
-
-function closePainelCustomizer() {
-  const modal = document.getElementById('painel-modal-bg');
-  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
-}
-
-async function savePainelCustomizer() {
-  // Ler widgets selecionados
-  const widgets = _painelWidgetsPermitidos().map(w => w.id).filter(wid => {
-    const chk = document.getElementById('painel-wchk-'+wid);
-    return chk && chk.checked;
-  });
-  // Ler obras selecionadas
-  const obras_filtro = S.OBRAS.filter(o => o.ativa).map(o => o.id).filter(id => {
-    const chk = document.getElementById('painel-obra-chk-'+id);
-    return chk && chk.checked;
-  });
-
-  const cfg = { widgets, obras_filtro };
-  await savePainelConfig(cfg);
-  closePainelCustomizer();
-  showToast('Painel guardado ✓');
-  renderPainel();
+  grid.innerHTML =
+    _painelCardHtml('Presentes na empreitada', `Por obra · ${semanaTxt}`, 'var(--green)', 'var(--green-bg)', iconPres, _painelHtmlPresentes(registos, dias)) +
+    _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
 }
 
 async function renderFechoMes(){
@@ -811,8 +406,6 @@ async function exportFechoMes(){
 }
 
 export {
-  loadPainelConfig, savePainelConfig, renderPainel, buildWidget, _painelCard,
-  openPainelCustomizer, closePainelCustomizer, savePainelCustomizer,
-  painelWChkChange, painelObraChkChange,
+  renderPainel,
   renderFechoMes, exportFechoMes
 };

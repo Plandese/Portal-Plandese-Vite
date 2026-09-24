@@ -56,7 +56,7 @@ import { loadEmpresasMOA, loadColaboradoresMOA, addColabMOA, removeColabMOA, ren
 import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
 
 // Admin/Painel
-import { loadPainelConfig, savePainelConfig, renderPainel, buildWidget, openPainelCustomizer, closePainelCustomizer, savePainelCustomizer, painelWChkChange, painelObraChkChange, renderFechoMes, exportFechoMes } from './modules/admin.js';
+import { renderPainel, renderFechoMes, exportFechoMes } from './modules/admin.js';
 
 // Fornecedores
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
@@ -147,10 +147,6 @@ Object.assign(window, {
 
   // Dropbox
   dropboxLogin, dropboxLogout, dropboxIsConnected,
-
-  // Painel Principal
-  openPainelCustomizer, closePainelCustomizer, savePainelCustomizer,
-  painelWChkChange, painelObraChkChange,
 
   // Navegação admin
   goTo, toggleNavGrp, refreshPortal,
