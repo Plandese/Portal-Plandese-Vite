@@ -7,7 +7,7 @@ import { S, R } from './state.js';
 import { carregarDados } from './db.js';
 
 // Auth
-import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada } from './modules/auth.js';
+import { mostrarDiag, applyDeviceClass, updateDeviceBadge, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword } from './modules/auth.js';
 
 // Navigation
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
@@ -375,7 +375,7 @@ window.savePerfil = async function () {
   const pass = document.getElementById('perfil-senha').value;
   const pass2 = document.getElementById('perfil-senha2').value;
   if (!nome) { showToast('Introduza um nome'); return; }
-  if (pass && pass !== pass2) { showToast('As senhas não coincidem'); return; }
+  if (pass) { const v = validarPassword(pass, pass2); if (v) { showToast(v); return; } }
   const u = S.currentUser;
   if (!u) return;
   u.nome = nome;
@@ -384,10 +384,8 @@ window.savePerfil = async function () {
   document.getElementById('u-nm').textContent = nome;
   document.getElementById('u-av').textContent = initials;
   if (pass) {
-    try {
-      const { sb } = await import('./supabase.js');
-      await sb.rpc('fn_upsert_user', { p_username: u.key, p_nome: nome, p_role: u.role, p_initials: initials, p_password: pass });
-    } catch (e) { showToast('Erro ao guardar no servidor'); return; }
+    const erro = await trocarPropriaPassword(pass);
+    if (erro) { showToast(erro); return; }
   }
   closePerfil();
   showToast('Perfil actualizado');

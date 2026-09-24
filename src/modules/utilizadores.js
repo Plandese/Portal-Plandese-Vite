@@ -3,8 +3,9 @@
 // ═══════════════════════════════════════
 import { S, R } from '../state.js';
 import { sbSaveUser, sbSaveEncModulos } from '../db.js';
-import { closeModal, flashAlert } from './navigation.js';
+import { closeModal, flashAlert, showToast } from './navigation.js';
 import { ROLE_LABELS, ENC_MODULES } from '../config.js';
+import { validarPassword } from './auth.js';
 
 export function renderUsers(){
   const ROLE_BADGE={admin:'b-blue',diretor_obra:'b-blue',compras:'b-orange',financeiro:'b-green',comercial:'b-gray',encarregado:'b-gray'};
@@ -66,12 +67,15 @@ export async function saveUser(){
   const role=document.getElementById('mu-role').value;
   const editKey=document.getElementById('mu-key').value;
   if(!nome||!user||(!editKey&&!pass)){alert('Preencha todos os campos.');return;}
+  if(pass){ const v=validarPassword(pass,pass); if(v){alert(v);return;} }
   const initials=nome.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
   const encModulos=role==='encarregado' ? readEncModsCheckboxes() : null;
+  const err=await sbSaveUser(user,{pass:pass||null,nome,initials,role});
+  if(err){alert('Não foi possível guardar o utilizador: '+(err.message||err));return;}
+  await sbSaveEncModulos(user,encModulos);
   if(editKey&&editKey!==user)delete S.USERS[editKey];
   S.USERS[user]={nome,initials,role,encModulos};
-  await sbSaveUser(user,{pass:pass||null,nome,initials,role});
-  await sbSaveEncModulos(user,encModulos);
   closeModal('modal-user');renderUsers();flashAlert('user-alert');
+  if(pass&&user!==S.currentUser?.key) showToast(`Password provisória guardada — ${nome} vai escolher uma nova no próximo login`);
   R.emitEvent?.({ acao:(editKey?'Utilizador atualizado':'Novo utilizador')+': '+nome, seccao:'utilizadores' });
 }

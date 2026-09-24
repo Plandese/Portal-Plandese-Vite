@@ -79,10 +79,13 @@ export async function sbSaveColab(c) {
   } catch(e) { console.warn('Erro ao guardar colaborador:', e); }
 }
 
+// Devolve null se correu bem, ou o erro do servidor (ex.: sem permissão, password curta)
 export async function sbSaveUser(key, u) {
   try {
-    await sb.rpc('fn_upsert_user', {p_username:key, p_nome:u.nome, p_role:u.role, p_initials:u.initials, p_password:u.pass||null});
-  } catch(e) { console.warn('Erro ao guardar utilizador:', e); }
+    const {error} = await sb.rpc('fn_upsert_user', {p_username:key, p_nome:u.nome, p_role:u.role, p_initials:u.initials, p_password:u.pass||null});
+    if (error) console.warn('Erro ao guardar utilizador:', error);
+    return error || null;
+  } catch(e) { console.warn('Erro ao guardar utilizador:', e); return e; }
 }
 
 // modulos = array de ids ENC_MODULES permitidos, ou null (sem restrição, tudo visível)

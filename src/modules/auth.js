@@ -110,8 +110,76 @@ export function updateDeviceBadge(dt){
 }
 
 
+// ── Passwords: regras e troca pelo próprio utilizador ──────────────────
+export const PASS_MIN = 8;
+
+export function validarPassword(p1, p2){
+  if(!p1 || p1.length<PASS_MIN) return `A password tem de ter pelo menos ${PASS_MIN} caracteres.`;
+  if(!/[A-Za-z]/.test(p1) || !/\d/.test(p1)) return 'A password tem de ter letras e números.';
+  if(p1!==p2) return 'As passwords não coincidem.';
+  return null;
+}
+
+// Muda a password de quem tem sessão via Supabase Auth (o servidor aplica as regras de segurança).
+// Devolve null se correu bem, ou a mensagem de erro para mostrar.
+export async function trocarPropriaPassword(nova){
+  const {error}=await sb.auth.updateUser({password:nova});
+  if(error){
+    if(error.code==='same_password') return 'A nova password tem de ser diferente da atual.';
+    if(error.code==='weak_password'){
+      if((error.reasons||[]).includes('pwned')) return 'Esta password aparece em fugas de dados conhecidas. Escolha outra.';
+      return `Password demasiado fraca: use pelo menos ${PASS_MIN} caracteres, com letras e números.`;
+    }
+    return 'Não foi possível guardar a password: '+error.message;
+  }
+  await sb.rpc('fn_password_trocada');
+  return null;
+}
+
+// Ecrã bloqueante: obriga a escolher uma password nova antes de entrar. Resolve true/false (saiu).
+function pedirNovaPassword(nome){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.className='modal-bg open';
+    ov.style.zIndex='10000';
+    ov.innerHTML=`<div class="modal" style="max-width:400px">
+      <div class="modal-title">Defina uma nova password</div>
+      <div class="modal-sub" id="tp-sub"></div>
+      <div class="field"><label>Nova password</label><input type="password" id="tp-p1" autocomplete="new-password"/></div>
+      <div class="field"><label>Confirmar password</label><input type="password" id="tp-p2" autocomplete="new-password"/></div>
+      <div style="font-size:12px;color:var(--gray-500);margin:-4px 0 12px">Mínimo ${PASS_MIN} caracteres, com letras e números.</div>
+      <div id="tp-erro" style="display:none;font-size:13px;color:#B91C1C;margin-bottom:12px"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" id="tp-sair">Sair</button>
+        <button class="btn btn-primary" type="button" id="tp-ok">Guardar e entrar</button>
+      </div>
+    </div>`;
+    ov.querySelector('#tp-sub').textContent=`Olá ${nome||''}. Por segurança, tem de escolher uma password nova antes de continuar.`;
+    document.body.appendChild(ov);
+    const erro=msg=>{ const e=ov.querySelector('#tp-erro'); e.textContent=msg||''; e.style.display=msg?'block':'none'; };
+    const ok=ov.querySelector('#tp-ok');
+    ok.onclick=async()=>{
+      const p1=ov.querySelector('#tp-p1').value, p2=ov.querySelector('#tp-p2').value;
+      const v=validarPassword(p1,p2); if(v){ erro(v); return; }
+      ok.disabled=true; ok.textContent='A guardar...'; erro('');
+      const e=await trocarPropriaPassword(p1);
+      ok.disabled=false; ok.textContent='Guardar e entrar';
+      if(e){ erro(e); return; }
+      ov.remove(); resolve(true);
+    };
+    ov.querySelector('#tp-p2').addEventListener('keypress',ev=>{ if(ev.key==='Enter') ok.click(); });
+    ov.querySelector('#tp-sair').onclick=()=>{ ov.remove(); resolve(false); };
+    setTimeout(()=>ov.querySelector('#tp-p1').focus(),50);
+  });
+}
+
 // ── Entra na app já autenticado (usado pelo login manual e pela sessão guardada) ──
 export async function entrarComoUtilizador(authedUser) {
+  // Password provisória (posta pelo admin) ou exposta: tem de a trocar antes de entrar
+  if(authedUser.trocar_password){
+    const trocou=await pedirNovaPassword(authedUser.nome);
+    if(!trocou){ doLogout(); return; }
+  }
   S.currentUser={nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials,key:authedUser.username};
   localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
   document.getElementById('login-screen').style.display='none';
@@ -165,7 +233,7 @@ export async function doLogin() {
     const {data:authData,error:signErr}=await sb.auth.signInWithPassword({email:authEmail(u),password:p});
     if(signErr&&signErr.status!==400)throw signErr;
     if(!signErr&&authData?.session){
-      const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
+      const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config,trocar_password');
       if(error)throw error;
       S.USERS={};
       (users||[]).forEach(x=>{S.USERS[x.username]={nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
@@ -193,7 +261,7 @@ export async function tentarSessaoGuardada() {
   if(!username){ localStorage.removeItem('plandese_session'); return false; }
   let saved=null;
   try { saved=JSON.parse(localStorage.getItem('plandese_session')||'null'); } catch(e){}
-  const {data:perfil,error}=await sb.from('utilizadores').select('username,nome,role,initials').eq('username',username).maybeSingle();
+  const {data:perfil,error}=await sb.from('utilizadores').select('username,nome,role,initials,trocar_password').eq('username',username).maybeSingle();
   // Sem rede: confia no perfil guardado se for do mesmo utilizador da sessão
   const user=perfil||(error&&saved?.key===username?{username:saved.key,nome:saved.nome,role:saved.role,initials:saved.initials||''}:null);
   if(!user){
