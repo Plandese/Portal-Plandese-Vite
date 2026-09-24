@@ -357,8 +357,8 @@ async function saveMapaComp() {
     pedido_id: document.getElementById('mmc-pedido').value || null,
     estado: document.getElementById('mmc-estado').value,
     mostrar_venda: document.getElementById('mmc-mostrar-venda').checked,
-    criado_por: S.currentUser?.username || null,
-    criado_nome: S.currentUser?.nome || S.currentUser?.username || null,
+    criado_por: S.currentUser?.key || null,
+    criado_nome: S.currentUser?.nome || S.currentUser?.key || null,
     updated_at: new Date().toISOString()
   };
   try {

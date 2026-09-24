@@ -702,7 +702,7 @@ async function _chatFinalize() {
       estado:      'pendente',
       notas:       'Prazo: ' + (_chat.prazo || ''),
       artigos:     artigosJSON,
-      criado_por:  (S.currentUser && S.currentUser.username) || '',
+      criado_por:  (S.currentUser && S.currentUser.key) || '',
       criado_nome: (S.currentUser && S.currentUser.nome) || '',
     };
 

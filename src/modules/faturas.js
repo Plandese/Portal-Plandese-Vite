@@ -578,7 +578,7 @@ function _fatToRow(f){
     ficheiro_url: f.ficheiroUrl || null,
     aprovado_por: f.aprovadoPor || null,
     aprovado_em:  f.aprovadoEm  || null,
-    criado_por:   S.currentUser?.username || null,
+    criado_por:   S.currentUser?.key || null,
   };
 }
 
