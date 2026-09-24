@@ -51,7 +51,7 @@ export const COLABORADORES_BASE = [
 ];
 
 export const USERS_BASE = {
-  'admin':{pass:'Pd-9k2VmXq7Rz',nome:'Administrador',initials:'AD',role:'admin'},
+  'admin':{nome:'Administrador',initials:'AD',role:'admin'},
 };
 
 export const ROLE_LABELS = {

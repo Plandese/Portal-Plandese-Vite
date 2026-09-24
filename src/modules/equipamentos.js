@@ -539,27 +539,18 @@ async function initQrRegistration(){
   _qrEquipId=regId;
   document.getElementById('qr-reg-screen').style.display='flex';
   document.getElementById('login-screen').style.display='none';
-  let eq=EQUIPAMENTOS.find(e=>e.id===regId);
-  if(!eq){
-    // Equipamento não está no localStorage — tentar Supabase (criado noutro dispositivo)
-    document.getElementById('qr-equip-nome').textContent='A carregar…';
-    document.getElementById('qr-equip-cat').textContent='';
-    eq=await sbFetchEquipamentoById(regId);
-    if(eq){ EQUIPAMENTOS.push(eq); saveEqLocal(); }
-  }
+  // Página pública (pode não haver login): equipamento e obras vêm de fn_qr_info, não das tabelas
+  document.getElementById('qr-equip-nome').textContent='A carregar…';
+  document.getElementById('qr-equip-cat').textContent='';
+  let info=null;
+  try{ const {data}=await sb.rpc('fn_qr_info',{p_equip_id:regId}); info=data; }catch(e){}
+  const eq=EQUIPAMENTOS.find(e=>e.id===regId)||info?.equipamento||null;
   document.getElementById('qr-equip-nome').textContent=eq?eq.nome:`Equipamento ${regId}`;
   document.getElementById('qr-equip-cat').textContent=eq?(EQ_CATS[eq.categoria]?.label||'Equipamento'):'';
-  // Obras via Supabase
-  try{
-    const {data:obras}=await sb.from('obras').select('id,nome').eq('ativa',true).order('nome');
-    const sel=document.getElementById('qr-obra-sel');
-    sel.innerHTML='<option value="">Selecionar obra…</option>';
-    if(obras&&obras.length) obras.forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
-  }catch(e){
-    const sel=document.getElementById('qr-obra-sel');
-    sel.innerHTML='<option value="">Selecionar obra…</option>';
-    S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
-  }
+  const sel=document.getElementById('qr-obra-sel');
+  sel.innerHTML='<option value="">Selecionar obra…</option>';
+  const obras=info?.obras?.length?info.obras:S.OBRAS.filter(o=>o.ativa);
+  obras.forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
   // Sessão guardada — pré-preencher nome se o encarregado já está logado
   let _qrSession = null;
   try { _qrSession = JSON.parse(localStorage.getItem('plandese_session')||'null'); } catch(e){}
@@ -623,11 +614,11 @@ function submitQrRegistration(){
     EQUIPAMENTOS[idx].ultimoRegisto =mov.criadoEm;
   }
   saveEqLocal();
-  // Guardar movimento em Supabase (silencioso)
-  try{ sb.from('eq_movimentos').insert({equip_id:_qrEquipId,obra_id:mov.obraId,obra_nome:mov.obraNome,lat:mov.lat,lng:mov.lng,obs:mov.obs,encarregado:mov.encarregado,criado_em:mov.criadoEm}).then(()=>{}).catch(()=>{}); }catch(e){}
-  // Actualizar último local do equipamento em Supabase
-  const _qrIdx=EQUIPAMENTOS.findIndex(e=>e.id===_qrEquipId);
-  if(_qrIdx>=0){ sbUpdateEquipamentoLocal(_qrEquipId,EQUIPAMENTOS[_qrIdx].ultimoLocal,EQUIPAMENTOS[_qrIdx].ultimoLat,EQUIPAMENTOS[_qrIdx].ultimoLng,EQUIPAMENTOS[_qrIdx].ultimoRegisto); }
+  // Guardar movimento + último local em Supabase via fn_qr_registar (funciona sem login; silencioso)
+  sb.rpc('fn_qr_registar',{
+    p_equip_id:_qrEquipId, p_obra_id:mov.obraId, p_lat:mov.lat, p_lng:mov.lng, p_obs:mov.obs||null, p_encarregado:mov.encarregado,
+    p_ultimo_local:obraNome||(mov.lat?`${mov.lat.toFixed(4)}, ${mov.lng.toFixed(4)}`:'Registado')
+  }).then(({error})=>{ if(error) console.warn('fn_qr_registar:',error); },e=>console.warn('fn_qr_registar:',e));
   // Mostrar sucesso
   const form=document.getElementById('qr-reg-form'), succ=document.getElementById('qr-success');
   if(form) form.style.display='none'; if(succ) succ.style.display='block';

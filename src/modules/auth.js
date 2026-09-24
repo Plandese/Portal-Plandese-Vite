@@ -161,37 +161,21 @@ export async function doLogin() {
   let authedUser=null;
   try {
     mostrarDiag('A ligar ao Supabase...','#1d4ed8');
-    // Login no Supabase Auth: a partir daqui cada pedido leva o token do utilizador
+    // Login no Supabase Auth: sem sessão válida o servidor não entrega dados nenhuns
     const {data:authData,error:signErr}=await sb.auth.signInWithPassword({email:authEmail(u),password:p});
+    if(signErr&&signErr.status!==400)throw signErr;
     if(!signErr&&authData?.session){
-      const {data:perfil}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config').eq('username',u).maybeSingle();
-      if(perfil)authedUser=perfil;
-    }
-    const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,painel_config');
-    if(error)throw error;
-    S.USERS={};
-    if(users&&users.length>0){
-      mostrarDiag('✓ Supabase ligado — '+users.length+' utilizadores','#15803D');
-      users.forEach(x=>{S.USERS[x.username]={nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
-    } else {
-      mostrarDiag('⚠️ Supabase ligado mas sem utilizadores — só o admin pode entrar','#B45309');
-    }
-    if(!S.USERS['admin'])S.USERS['admin']={nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role};
-    // Transição: conta ainda sem Supabase Auth — entra pelo fn_login antigo (a remover na etapa 2)
-    if(!authedUser){
-      const {data:authRows,error:authErr}=await sb.rpc('fn_login',{p_username:u,p_password:p});
-      if(authErr)throw authErr;
-      if(authRows&&authRows.length>0){
-        authedUser=authRows[0];
-        console.warn('Login sem sessão Supabase Auth (fn_login):',u,signErr?.message);
-      }
+      const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config');
+      if(error)throw error;
+      S.USERS={};
+      (users||[]).forEach(x=>{S.USERS[x.username]={nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
+      if(!S.USERS['admin'])S.USERS['admin']={nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role};
+      authedUser=(users||[]).find(x=>x.username===u)||null;
+      if(authedUser) mostrarDiag('✓ Supabase ligado — '+users.length+' utilizadores','#15803D');
+      else await sb.auth.signOut().catch(()=>{});
     }
   } catch(e){
-    S.USERS = { 'admin': {nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role} };
-    mostrarDiag('⚠️ Sem ligação ao servidor — apenas admin pode entrar','#B45309');
-    if(u==='admin'&&p===USERS_BASE['admin'].pass){
-      authedUser={username:'admin',nome:USERS_BASE['admin'].nome,role:'admin',initials:USERS_BASE['admin'].initials};
-    }
+    mostrarDiag('⚠️ Sem ligação ao servidor — tente novamente','#B45309');
   }
   btn.textContent='Entrar'; btn.disabled=false;
   if(authedUser){
@@ -201,12 +185,23 @@ export async function doLogin() {
   }
 }
 
-// ── Restaura a sessão guardada ao (re)abrir a página, sem pedir login outra vez ──
+// ── Restaura a sessão ao (re)abrir a página, sem pedir login outra vez ──
+// Exige sessão válida no Supabase Auth; a sessão antiga só em localStorage já não chega.
 export async function tentarSessaoGuardada() {
+  const {data:{session}}=await sb.auth.getSession();
+  const username=session?.user?.app_metadata?.username;
+  if(!username){ localStorage.removeItem('plandese_session'); return false; }
   let saved=null;
   try { saved=JSON.parse(localStorage.getItem('plandese_session')||'null'); } catch(e){}
-  if(!saved || !saved.key) return false;
-  await entrarComoUtilizador({username:saved.key,nome:saved.nome,role:saved.role,initials:saved.initials||''});
+  const {data:perfil,error}=await sb.from('utilizadores').select('username,nome,role,initials').eq('username',username).maybeSingle();
+  // Sem rede: confia no perfil guardado se for do mesmo utilizador da sessão
+  const user=perfil||(error&&saved?.key===username?{username:saved.key,nome:saved.nome,role:saved.role,initials:saved.initials||''}:null);
+  if(!user){
+    await sb.auth.signOut().catch(()=>{});
+    localStorage.removeItem('plandese_session');
+    return false;
+  }
+  await entrarComoUtilizador(user);
   return true;
 }
 
