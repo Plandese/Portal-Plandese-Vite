@@ -150,6 +150,9 @@ export async function entrarComoUtilizador(authedUser) {
   }
 }
 
+// Contas do Supabase Auth usam um email sintético derivado do username (ver fn_sync_auth_user)
+const authEmail = username => `${username}@portal.plandese.local`;
+
 export async function doLogin() {
   const u=document.getElementById('lu').value.trim().toLowerCase();
   const p=document.getElementById('lp').value;
@@ -158,6 +161,12 @@ export async function doLogin() {
   let authedUser=null;
   try {
     mostrarDiag('A ligar ao Supabase...','#1d4ed8');
+    // Login no Supabase Auth: a partir daqui cada pedido leva o token do utilizador
+    const {data:authData,error:signErr}=await sb.auth.signInWithPassword({email:authEmail(u),password:p});
+    if(!signErr&&authData?.session){
+      const {data:perfil}=await sb.from('utilizadores').select('username,nome,role,initials,telefone,painel_config').eq('username',u).maybeSingle();
+      if(perfil)authedUser=perfil;
+    }
     const {data:users,error}=await sb.from('utilizadores').select('username,nome,role,initials,painel_config');
     if(error)throw error;
     S.USERS={};
@@ -168,9 +177,15 @@ export async function doLogin() {
       mostrarDiag('⚠️ Supabase ligado mas sem utilizadores — só o admin pode entrar','#B45309');
     }
     if(!S.USERS['admin'])S.USERS['admin']={nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role};
-    const {data:authRows,error:authErr}=await sb.rpc('fn_login',{p_username:u,p_password:p});
-    if(authErr)throw authErr;
-    if(authRows&&authRows.length>0)authedUser=authRows[0];
+    // Transição: conta ainda sem Supabase Auth — entra pelo fn_login antigo (a remover na etapa 2)
+    if(!authedUser){
+      const {data:authRows,error:authErr}=await sb.rpc('fn_login',{p_username:u,p_password:p});
+      if(authErr)throw authErr;
+      if(authRows&&authRows.length>0){
+        authedUser=authRows[0];
+        console.warn('Login sem sessão Supabase Auth (fn_login):',u,signErr?.message);
+      }
+    }
   } catch(e){
     S.USERS = { 'admin': {nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role} };
     mostrarDiag('⚠️ Sem ligação ao servidor — apenas admin pode entrar','#B45309');
@@ -198,6 +213,7 @@ export async function tentarSessaoGuardada() {
 export function doLogout() {
   S.currentUser = null;
   localStorage.removeItem('plandese_session');
+  sb.auth.signOut().catch(()=>{});
   S.NOTIFICACOES = [];
   S.notifPanelOpen = false;
   document.getElementById('notif-panel')?.classList.remove('open');
