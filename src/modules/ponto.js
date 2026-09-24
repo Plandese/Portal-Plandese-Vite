@@ -90,12 +90,14 @@ function _hpRenderPopover(anchorEl) {
       <button class="btn btn-secondary btn-sm" onclick="_hpClosePopover()">Cancelar</button>
     </div>
     <button id="hp-anular-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red-bg);color:var(--red)" onclick="hpAnularCell()">Anular registo</button>
+    <button id="hp-apagar-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red);color:#fff" onclick="hpDeleteCell()">Apagar registo</button>
   `;
   document.getElementById('hp-nome').textContent = ctx.colab?.nome || '';
   document.getElementById('hp-data').textContent = fmtPT(ctx.dateStr);
   document.getElementById('hp-entrada').value = ctx.reg?.entrada?.slice(0, 5) || '';
   document.getElementById('hp-saida').value = ctx.reg?.saida?.slice(0, 5) || '';
   document.getElementById('hp-anular-btn').style.display = (ctx.reg && ctx.reg.tipo !== 'Anulado') ? 'flex' : 'none';
+  document.getElementById('hp-apagar-btn').style.display = ctx.reg ? 'flex' : 'none';
   const auditEl = document.getElementById('hp-audit');
   if (ctx.reg?.editado_por) {
     auditEl.style.display = 'block';
@@ -108,7 +110,7 @@ function _hpRenderPopover(anchorEl) {
   const maxLeft = window.innerWidth - 246;
   const left = Math.max(8, Math.min(rect.left, maxLeft));
   let top = rect.bottom + 6;
-  if (top + 260 > window.innerHeight) top = Math.max(8, rect.top - 266);
+  if (top + 300 > window.innerHeight) top = Math.max(8, rect.top - 306);
   pop.style.top = top + 'px';
   pop.style.left = left + 'px';
 }
@@ -133,6 +135,22 @@ export function _hpClosePopover() {
 async function _hpUpsert(extra) {
   const ctx = _hpCurrent;
   if (!ctx) return;
+  // Registo já existente: atualizar pelo id. Um upsert por chave recriaria a
+  // linha se ela já tivesse sido apagada (vista desatualizada) — "ressuscitava"
+  // registos apagados.
+  if (ctx.reg?.id != null) {
+    const { data, error } = await sb.from('registos_ponto').update({
+      ...extra,
+      editado_por: S.currentUser?.nome || S.currentUser?.key || '—',
+      editado_em: new Date().toISOString(),
+    }).eq('id', ctx.reg.id).select('id');
+    if (error) throw error;
+    if (!data?.length) {
+      await renderHistSemana();
+      throw new Error('Este registo já não existe — a lista foi atualizada.');
+    }
+    return;
+  }
   const payload = {
     data: ctx.dateStr, colab_numero: ctx.colabN,
     obra_id: ctx.obraId === '_sem' ? null : ctx.obraId,
@@ -171,6 +189,40 @@ export async function hpAnularCell() {
     await renderHistSemana();
   } catch (e) {
     showToast('Erro ao anular: ' + (e.message || e));
+  }
+}
+
+// Apaga mesmo o registo (deixa de aparecer na folha de ponto), ao contrário de
+// "Anular", que mantém a linha marcada como Anulado.
+export async function hpDeleteCell() {
+  const reg = _hpCurrent?.reg;
+  if (!reg) return;
+  if (!confirm('APAGAR este registo de ponto? Deixa de aparecer na folha de ponto e não pode ser recuperado.\n\nPara o manter marcado como anulado, use "Anular registo".')) return;
+  const { colabN, dateStr, obraId } = _hpCurrent;
+  try {
+    let q = sb.from('registos_ponto').delete();
+    if (reg.id != null) q = q.eq('id', reg.id);
+    else {
+      q = q.eq('data', dateStr).eq('colab_numero', colabN);
+      q = obraId === '_sem' ? q.is('obra_id', null) : q.eq('obra_id', obraId);
+      q = reg.encarregado_id != null ? q.eq('encarregado_id', reg.encarregado_id) : q.is('encarregado_id', null);
+    }
+    const { data, error } = await q.select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('nenhum registo foi apagado (já não existe ou sem permissão)');
+    // Limpar também o estado em memória carregado no login
+    if (S.REGISTOS?.[dateStr]) {
+      S.REGISTOS[dateStr] = S.REGISTOS[dateStr].filter(r =>
+        !(r.colabN === colabN && (r.obra || null) === (obraId === '_sem' ? null : obraId) && (r.encarregado_id ?? null) === (reg.encarregado_id ?? null)));
+    }
+    if (S.activeRows?.[dateStr] && !(S.REGISTOS?.[dateStr] || []).some(r => r.colabN === colabN)) {
+      S.activeRows[dateStr] = S.activeRows[dateStr].filter(n => n !== colabN);
+    }
+    showToast('Registo apagado');
+    _hpClosePopover();
+    await renderHistSemana();
+  } catch (e) {
+    showToast('Erro ao apagar: ' + (e.message || e));
   }
 }
 
