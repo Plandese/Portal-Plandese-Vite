@@ -352,7 +352,7 @@ const FUNCOES_MOA=['Servente','Pedreiro','Carpinteiro','Cofrador','Armador de fe
   'Canalizador','Ajudante Canalizador','Eletricista','Serralheiro','Pintor',
   'Condutor Manobrador','Motorista','Encarregado'];
 const _fotoUrlCache={}; // foto_path → {url, exp}
-let _mmtFotoBlob=null, _mmtDoEnc=false;
+let _mmtFotoBlob=null, _mmtDoEnc=false; // _mmtDoEnc: false | true (ecrã B) | 'a' (ecrã A)
 
 // Avatar: inicial por omissão; a foto (bucket privado) é trocada depois por _moaCarregarFotos
 function _moaAvatarHTML(c,size){
@@ -405,14 +405,16 @@ function _mmtFillEmpresas(selId){
 
 // doEnc=true → aberto no ecrã B do encarregado: empresa pré-selecionada e o
 // trabalhador entra logo na lista do dia.
+// doEnc='a' → aberto no ecrã A: usa a empresa já escolhida e, no fim, deixa-a selecionada.
 function moaTrabAbrir(doEnc, empId){
-  _mmtDoEnc=!!doEnc;
+  _mmtDoEnc=doEnc==='a'?'a':!!doEnc;
+  if(doEnc==='a') empId=document.getElementById('enc-alug-empresa')?.value||'';
   _mmtFotoBlob=null;
   ['mmt-nome','mmt-funcao-outra','mmt-empresa-nova'].forEach(id=>{document.getElementById(id).value='';});
   _mmtFillFuncoes();
   document.getElementById('mmt-foto').value='';
   moaTrabFotoRemover();
-  _mmtFillEmpresas(doEnc?encAlugEmpresaId:(empId||''));
+  _mmtFillEmpresas(doEnc===true?encAlugEmpresaId:(empId||''));
   const btn=document.getElementById('mmt-guardar'); btn.disabled=false; btn.textContent='Registar';
   document.getElementById('modal-moa-trab').classList.add('open');
   setTimeout(()=>document.getElementById('mmt-nome').focus(),50);
@@ -509,7 +511,11 @@ async function moaTrabGuardar(){
     const panel=document.getElementById(`colabs-panel-${empId}`);
     if(panel) _renderColabsPanelMOA(empId,panel); else if(document.getElementById('empresas-moa-list')) renderEmpresasMOA();
     // No ecrã do encarregado, o trabalhador entra logo no registo do dia (se for da empresa em curso)
-    if(_mmtDoEnc){
+    if(_mmtDoEnc==='a'){
+      // Ecrã A: deixar a empresa do trabalhador escolhida — ao continuar, ele já vem na lista
+      const es=document.getElementById('enc-alug-empresa'); if(es) es.value=empId;
+      showToast(`✓ ${nome} registado — ao continuar já aparece na lista`);
+    } else if(_mmtDoEnc){
       if(empId===encAlugEmpresaId){ encAlugTrabalhadores.push(_novoTrab(c)); buildAlugList(); }
       else showToast(`${nome} registado noutra empresa — não entra neste registo`);
     }

@@ -125,12 +125,19 @@ async function renderPainel() {
   const seq = ++_painelSeq;
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px">A carregar folhas de ponto…</div>';
 
-  const { registos, previstas } = await _painelCarregarSemana(dias);
+  const html = await htmlFeriasFaltasSemana();
   if (seq !== _painelSeq) return;
+  grid.innerHTML = html;
+}
 
+// Cartão "Férias e faltas" da semana corrente — usado no Painel Principal e na
+// Análise de Dados (telemóvel), para mostrarem exatamente o mesmo.
+export async function htmlFeriasFaltasSemana() {
+  const dias = _painelSemana();
+  const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
+  const { registos, previstas } = await _painelCarregarSemana(dias);
   const iconAus = '<path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11z"/>';
-
-  grid.innerHTML = _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
+  return _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
 }
 
 // Lista de períodos: últimos 12 meses + o próximo, valor "ano-mês"

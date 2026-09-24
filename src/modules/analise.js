@@ -7,6 +7,12 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { fmt, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { ROLE_ACCESS } from '../config.js';
+import { htmlFeriasFaltasSemana } from './admin.js';
+import { canAccessSection } from './permissions.js';
+
+// Por enquanto a Análise mostra só quem está de férias/falta esta semana (o mesmo
+// cartão do Painel Principal). Pôr a false para voltar aos widgets completos.
+const SO_FERIAS_FALTAS = true;
 
 let _periodo     = 'semana';   // semana | mes | ano
 let _obra        = '';         // '' = todas
@@ -356,6 +362,22 @@ function _donut(partes){
 export async function renderAnalise(){
   const body = document.getElementById('anl-body');
   if(!body || _loading) return;
+
+  // Controlos de período/obra e "Personalizar" não se aplicam à vista reduzida
+  const sec = document.getElementById('sec-analise');
+  sec?.querySelector('.anl-controls')?.style.setProperty('display', SO_FERIAS_FALTAS ? 'none' : '');
+  sec?.querySelector('[onclick="abrirPersonalizarAnalise()"]')?.style.setProperty('display', SO_FERIAS_FALTAS ? 'none' : '');
+  if(SO_FERIAS_FALTAS){
+    const sub = document.getElementById('anl-sub');
+    if(sub) sub.textContent = 'Férias e faltas desta semana';
+    if(!canAccessSection('historico')){ body.innerHTML = '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; return; }
+    _loading = true;
+    body.innerHTML = '<div class="anl-loading"><div class="anl-spin"></div>A carregar dados…</div>';
+    try { body.innerHTML = await htmlFeriasFaltasSemana(); }
+    catch(e){ body.innerHTML = `<div class="anl-vazio">Não foi possível carregar os dados: ${e.message || e}</div>`; }
+    finally { _loading = false; }
+    return;
+  }
 
   _preencherObras();
   document.querySelectorAll('#anl-chips .anl-chip').forEach(c => c.classList.toggle('active', c.dataset.p === _periodo));
