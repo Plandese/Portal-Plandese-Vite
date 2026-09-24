@@ -18,6 +18,8 @@ export function switchFPTab(tab){
   document.getElementById('fp-tab-aluguer').style.display  = tab==='aluguer'  ? '' : 'none';
   document.getElementById('fp-tab-btn-plandese').classList.toggle('active', tab==='plandese');
   document.getElementById('fp-tab-btn-aluguer').classList.toggle('active',  tab==='aluguer');
+  // Como na MO Plandese: ao abrir, mostra logo a semana escolhida (hoje, por omissão)
+  if(tab==='aluguer') window.applyMOAFilter?.();
   // #export-btns-plandese ja nao existe no HTML — sem a guarda isto rebentava
   // o handler e deixava o clique a meio (ex.: atalho "M.O. Aluguer" em telemóvel)
   const btnsPl = document.getElementById('export-btns-plandese');
@@ -84,7 +86,7 @@ export let goTo = function(id, btn){
   if(bnav)bnav.classList.add('active');
   if(id==='painel') closeAllGroups();
   syncNavGroups();
-  if(id==='historico') R.applyFilter?.();
+  if(id==='historico'){ R.applyFilter?.(); if(fpTabAtivo==='aluguer') window.applyMOAFilter?.(); }
   if(id==='empresas-moa') R.renderEmpresasMOA?.();
 };
 
@@ -99,7 +101,7 @@ export async function refreshPortal(){
       const renderMap = {
         'analise':         ()=>{ R.anlResetObras?.(); R.renderAnalise?.(); },
         'painel':          ()=>R.renderPainel?.(),
-        'historico':       ()=>R.applyFilter?.(),
+        'historico':       ()=>{ R.applyFilter?.(); if(fpTabAtivo==='aluguer') window.applyMOAFilter?.(); },
         'empresas-moa':    ()=>R.renderEmpresasMOA?.(),
         'obras':           ()=>R.renderObras?.(),
         'colaboradores':   ()=>R.renderColabs?.(),

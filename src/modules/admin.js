@@ -133,11 +133,33 @@ async function renderPainel() {
   grid.innerHTML = _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
 }
 
+// Lista de períodos: últimos 12 meses + o próximo, valor "ano-mês"
+function _fechoPreencherMeses(sel){
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const hoje = new Date();
+  let html = '';
+  for(let k = 1; k >= -12; k--){
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
+    html += `<option value="${d.getFullYear()}-${d.getMonth()+1}">${MESES[d.getMonth()]} ${d.getFullYear()}</option>`;
+  }
+  sel.innerHTML = html;
+}
+
+// Ao abrir a Folha de Fecho: fica sempre selecionado o mês atual
+function abrirFechoMes(){
+  const sel = document.getElementById('fecho-mes-sel');
+  if(!sel) return;
+  _fechoPreencherMeses(sel);
+  const hoje = new Date();
+  sel.value = `${hoje.getFullYear()}-${hoje.getMonth()+1}`;
+  renderFechoMes();
+}
+
 async function renderFechoMes(){
   const sel = document.getElementById('fecho-mes-sel');
   if(!sel) return;
-  const mesVal = parseInt(sel.value);
-  const ano = 2026;
+  if(!sel.options.length){ abrirFechoMes(); return; }
+  const [ano, mesVal] = sel.value.split('-').map(Number);
 
   // Período: 22 do mês anterior → 21 do mês atual
   // Usar hora 12:00 para evitar problemas de timezone (UTC vs UTC+1)
@@ -271,7 +293,7 @@ async function exportFechoMes(){
     showToast('Carregue primeiro os dados clicando em Atualizar.');
     return;
   }
-  const {rows, mesVal, dIniStr, dFimStr} = window._fechoMesData;
+  const {rows, mesVal, ano, dIniStr, dFimStr} = window._fechoMesData;
   const mesNome = MESES_PT[mesVal-1];
 
   showToast('A gerar ficheiro Excel\u2026');
@@ -296,7 +318,7 @@ async function exportFechoMes(){
   ws.spliceRows(1, 0, []);
   ws.mergeCells('A1:J1');
   const titleCell = ws.getCell('A1');
-  titleCell.value = 'Folha de Fecho \u2014 ' + mesNome + ' 2026 (' + dIniStr + ' a ' + dFimStr + ')';
+  titleCell.value = 'Folha de Fecho \u2014 ' + mesNome + ' ' + ano + ' (' + dIniStr + ' a ' + dFimStr + ')';
   titleCell.font = {bold:true, size:13, color:{argb:'FF002060'}};
   titleCell.alignment = {horizontal:'center', vertical:'middle'};
   titleCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFD9E1F2'}};
@@ -353,7 +375,7 @@ async function exportFechoMes(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'Folha_Fecho_' + mesNome + '_2026.xlsx';
+  a.download = 'Folha_Fecho_' + mesNome + '_' + ano + '.xlsx';
   a.click();
   URL.revokeObjectURL(url);
   showToast('\u2713 Ficheiro exportado!');
@@ -361,5 +383,5 @@ async function exportFechoMes(){
 
 export {
   renderPainel,
-  renderFechoMes, exportFechoMes
+  renderFechoMes, abrirFechoMes, exportFechoMes
 };

@@ -2611,20 +2611,7 @@
           <div style="display:flex;align-items:center;gap:12px">
             <div>
               <div style="font-size:10px;font-weight:600;color:var(--gray-500);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Per&#237;odo</div>
-              <select id="fecho-mes-sel" style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-family:var(--font);font-size:13px" onchange="renderFechoMes()">
-                <option value="1">Janeiro 2026</option>
-                <option value="2">Fevereiro 2026</option>
-                <option value="3">Mar&#231;o 2026</option>
-                <option value="4">Abril 2026</option>
-                <option value="5" selected>Maio 2026</option>
-                <option value="6">Junho 2026</option>
-                <option value="7">Julho 2026</option>
-                <option value="8">Agosto 2026</option>
-                <option value="9">Setembro 2026</option>
-                <option value="10">Outubro 2026</option>
-                <option value="11">Novembro 2026</option>
-                <option value="12">Dezembro 2026</option>
-              </select>
+              <select id="fecho-mes-sel" style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-family:var(--font);font-size:13px" onchange="renderFechoMes()"></select>
             </div>
             <button class="btn btn-primary" onclick="renderFechoMes()" style="align-self:flex-end">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -2795,9 +2782,9 @@
     </div>
     <div class="field" id="mmt-empresa-nova-wrap" style="display:none"><label>Nome da nova empresa *</label><input type="text" id="mmt-empresa-nova" placeholder="Ex: Alpha — Cedência de Pessoal"/></div>
     <div class="field"><label>Função *</label>
-      <input type="text" id="mmt-funcao" list="mmt-funcoes" placeholder="Ex: Servente" autocomplete="off"/>
-      <datalist id="mmt-funcoes"><option>Servente</option><option>Pedreiro</option><option>Manobrador</option><option>Motorista</option><option>Canalizador</option><option>Carpinteiro</option><option>Armador de ferro</option><option>Eletricista</option><option>Encarregado</option></datalist>
+      <select id="mmt-funcao" onchange="moaTrabFuncaoChange()"></select>
     </div>
+    <div class="field" id="mmt-funcao-outra-wrap" style="display:none"><label>Qual a função? *</label><input type="text" id="mmt-funcao-outra" placeholder="Escreva a função"/></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-moa-trab')">Cancelar</button>
       <button class="btn btn-primary" id="mmt-guardar" onclick="moaTrabGuardar()">Registar</button>

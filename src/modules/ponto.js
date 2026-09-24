@@ -234,31 +234,37 @@ export async function hpDeleteCell() {
 // Uma aprovação cobre um dia inteiro de uma obra — não é trabalhador a trabalhador.
 const _aprovKey = (obraId, dateStr) => `${obraId}|${dateStr}`;
 
-function _podeAprovar(obraId){
-  const u = S.currentUser;
-  if (!u || obraId === '_sem') return false;
-  return u.role === 'admin' || S.OBRAS.find(o => o.id === obraId)?.diretor_id === u.key;
-}
-
 function _aprovInfo(a){
   const quem = S.USERS?.[a.aprovado_por]?.nome || a.aprovado_por;
   const quando = new Date(a.aprovado_em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   return `Aprovado por ${quem} em ${quando}`;
 }
 
-// Célula de aprovação de um dia (linha "Aprovação" da tabela / vista mobile)
-function _aprovDiaHTML(obraId, dateStr, temRegistos){
-  if (obraId === '_sem' || !temRegistos) return '<span style="color:var(--gray-300);font-size:11px">—</span>';
-  const a = _histCache?.aprov?.[_aprovKey(obraId, dateStr)];
-  const pode = _podeAprovar(obraId);
+// Célula de aprovação de um dia — partilhada com a MO Aluguer (enc-aluguer.js)
+export function podeAprovarObra(obraId){
+  const u = S.currentUser;
+  if (!u || !obraId || obraId === '_sem') return false;
+  return u.role === 'admin' || S.OBRAS.find(o => o.id === obraId)?.diretor_id === u.key;
+}
+
+export function aprovCelulaHTML({ a, pode, temRegistos, onAprovar, onRetirar }){
+  if (!temRegistos) return '<span style="color:var(--gray-300);font-size:11px">—</span>';
   if (a) {
     return pode
-      ? `<button class="badge b-green" style="border:none;cursor:pointer;font-family:var(--font)" title="${_aprovInfo(a)} — clique para retirar" onclick="retirarAprovacaoPonto('${obraId}','${dateStr}')">✓ Aprovado</button>`
+      ? `<button class="badge b-green" style="border:none;cursor:pointer;font-family:var(--font)" title="${_aprovInfo(a)} — clique para retirar" onclick="${onRetirar}">✓ Aprovado</button>`
       : `<span class="badge b-green" title="${_aprovInfo(a)}">✓ Aprovado</span>`;
   }
   return pode
-    ? `<button class="btn btn-primary btn-sm" style="padding:3px 9px;font-size:11px" onclick="aprovarDiaPonto('${obraId}','${dateStr}')">Aprovar</button>`
+    ? `<button class="btn btn-primary btn-sm" style="padding:3px 9px;font-size:11px" onclick="${onAprovar}">Aprovar</button>`
     : `<span class="badge b-yellow" style="font-size:10px">Pendente</span>`;
+}
+
+function _aprovDiaHTML(obraId, dateStr, temRegistos){
+  if (obraId === '_sem') return '<span style="color:var(--gray-300);font-size:11px">—</span>';
+  return aprovCelulaHTML({
+    a: _histCache?.aprov?.[_aprovKey(obraId, dateStr)], pode: podeAprovarObra(obraId), temRegistos,
+    onAprovar: `aprovarDiaPonto('${obraId}','${dateStr}')`, onRetirar: `retirarAprovacaoPonto('${obraId}','${dateStr}')`,
+  });
 }
 
 // Resumo no cabeçalho da obra: "4/6 dias aprovados · Diretor"
@@ -274,7 +280,7 @@ function _aprovResumoHTML(obraId){
 }
 
 export async function aprovarDiaPonto(obraId, dateStr){
-  if (!_histCache || !_podeAprovar(obraId)) return;
+  if (!_histCache || !podeAprovarObra(obraId)) return;
   const obraNome = S.OBRAS.find(o => o.id === obraId)?.nome || obraId;
   try {
     const { error } = await sb.from('aprovacoes_ponto').insert({ obra_id: obraId, data: dateStr, aprovado_por: S.currentUser.key });
@@ -288,7 +294,7 @@ export async function aprovarDiaPonto(obraId, dateStr){
 }
 
 export async function retirarAprovacaoPonto(obraId, dateStr){
-  if (!_histCache || !_podeAprovar(obraId)) return;
+  if (!_histCache || !podeAprovarObra(obraId)) return;
   const obraNome = S.OBRAS.find(o => o.id === obraId)?.nome || obraId;
   if (!confirm(`Retirar a aprovação da obra "${obraNome}" no dia ${fmtPT(dateStr)}? Os registos desse dia voltam a poder ser alterados.`)) return;
   try {

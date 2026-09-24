@@ -52,13 +52,13 @@ import { encScanNovamente, submitEncEquipamento } from './modules/enc-equip.js';
 import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
-import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover } from './modules/enc-aluguer.js';
+import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
 import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
 
 // Admin/Painel
-import { renderPainel, renderFechoMes, exportFechoMes } from './modules/admin.js';
+import { renderPainel, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
 
 // Fornecedores
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
@@ -161,7 +161,7 @@ Object.assign(window, {
 
   // MOA
   applyMOAFilter, navMOASemana, exportMOAExcel,
-  moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
+  moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, aprovarDiaMOA, retirarAprovacaoMOA,
 
   // Obras
   renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, saveObraExtra,
@@ -199,7 +199,7 @@ Object.assign(window, {
 
   // Empresas MOA
   saveEmpresaMOA, editEmpresaMOA, toggleEmpresaMOA,
-  removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar,
+  removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar,
 
   // Equipamentos
   renderEquipamentos, openEqModal, editEquipamento,
@@ -389,7 +389,7 @@ window.savePerfil = async function () {
     if (id === 'compras')      { populaCmpObras(); renderCompras(); injectMapaCompBtns(); }
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
-    if (id === 'fecho-mes')    { renderFechoMes(); }
+    if (id === 'fecho-mes')    { abrirFechoMes(); }
     if (id === 'producao')          { renderProdDashboard(); }
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
