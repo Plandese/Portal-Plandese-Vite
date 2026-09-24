@@ -12,7 +12,6 @@ let _painelSeq = 0; // evita que uma resposta antiga sobrescreva uma mais recent
 
 // ── Painel Principal — presenças e ausências da semana ────────────
 const _DIAS_CURTO = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-const _TIPOS_PRESENTE = ['Presença','Normal','Hora Extra'];
 
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const _ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -63,52 +62,8 @@ function _painelCardHtml(titulo, subtitulo, corIcon, bgIcon, iconPath, corpo) {
   </div>`;
 }
 
-// Bolinhas Seg–Dom: preenchida = dia com presença
-function _painelDots(diasPresente, dias) {
-  return `<div style="display:flex;gap:3px;flex-shrink:0">${dias.map((d, i) => {
-    const on = diasPresente.has(_ymd(d));
-    return `<span title="${_DIAS_CURTO[i]}" style="width:16px;height:16px;border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;${on ? 'background:var(--green);color:#fff' : 'background:var(--gray-100);color:var(--gray-400)'}">${_DIAS_CURTO[i][0]}</span>`;
-  }).join('')}</div>`;
-}
-
 function _painelVazio(txt) {
   return `<div style="font-size:13px;color:var(--gray-400);padding:8px 0">${txt}</div>`;
-}
-
-function _painelHtmlPresentes(registos, dias) {
-  // obra → colab → dias com presença
-  const porObra = new Map();
-  registos.forEach(r => {
-    if (!_TIPOS_PRESENTE.includes(r.tipo)) return;
-    if (!porObra.has(r.obra)) porObra.set(r.obra, new Map());
-    const m = porObra.get(r.obra);
-    if (!m.has(r.colab)) m.set(r.colab, new Set());
-    m.get(r.colab).add(r.data);
-  });
-  if (!porObra.size) return _painelVazio('Ainda sem presenças lançadas nesta semana.');
-
-  const nomeObra = (id) => id ? (S.OBRAS.find(o => o.id === id)?.nome || id) : 'Sem obra atribuída';
-  return [...porObra.entries()]
-    .sort((a, b) => nomeObra(a[0]).localeCompare(nomeObra(b[0]), 'pt'))
-    .map(([obraId, pessoas]) => {
-      const linhas = [...pessoas.entries()]
-        .map(([n, ds]) => ({ n, ds, ...(_painelPessoa(n)) }))
-        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
-        .map(p => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100)">
-          <div style="min-width:0">
-            <div style="font-size:13px;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(p.nome)}</div>
-            ${p.func ? `<div style="font-size:11px;color:var(--gray-400)">${_esc(p.func)}</div>` : ''}
-          </div>
-          ${_painelDots(p.ds, dias)}
-        </div>`).join('');
-      return `<div style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-600)">${_esc(nomeObra(obraId))}</div>
-          <span class="badge b-blue" style="font-size:10px">${pessoas.size} ${pessoas.size === 1 ? 'pessoa' : 'pessoas'}</span>
-        </div>
-        ${linhas}
-      </div>`;
-    }).join('');
 }
 
 function _painelHtmlAusentes(registos, previstas, dias) {
@@ -171,12 +126,9 @@ async function renderPainel() {
   const { registos, previstas } = await _painelCarregarSemana(dias);
   if (seq !== _painelSeq) return;
 
-  const iconPres = '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>';
   const iconAus = '<path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11z"/>';
 
-  grid.innerHTML =
-    _painelCardHtml('Presentes na empreitada', `Por obra · ${semanaTxt}`, 'var(--green)', 'var(--green-bg)', iconPres, _painelHtmlPresentes(registos, dias)) +
-    _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
+  grid.innerHTML = _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
 }
 
 async function renderFechoMes(){
