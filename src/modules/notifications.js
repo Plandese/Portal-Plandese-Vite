@@ -51,6 +51,7 @@ function onRealtimeInsert(row){
   if(!_notifPermitida(row)) return;
   S.NOTIFICACOES.unshift(row);
   renderNotifPanel();
+  R.ntfOnInsert?.(row);
   if(window.showToast) window.showToast('🔔 '+row.acao);
 }
 

@@ -131,6 +131,19 @@ export async function sbMarkAllNotifRead(destinatario){
   try { await sb.from('notificacoes').update({lida:true}).eq('destinatario',destinatario).eq('lida',false); } catch(e){}
 }
 
+export async function sbSetNotifLida(id, lida){
+  try { await sb.from('notificacoes').update({lida}).eq('id',id); } catch(e){}
+}
+
+export async function sbDeleteNotif(id){
+  try { await sb.from('notificacoes').delete().eq('id',id); } catch(e){ console.warn('Erro ao apagar notificação:', e); }
+}
+
+export async function sbDeleteNotifsLidas(destinatario){
+  try { await sb.from('notificacoes').delete().eq('destinatario',destinatario).eq('lida',true); }
+  catch(e){ console.warn('Erro ao apagar notificações lidas:', e); }
+}
+
 // Subscrições — quem recebe de que secção
 export async function sbLoadSubscriptions(){
   try { const {data} = await sb.from('notif_subscriptions').select('*'); return data||[]; }

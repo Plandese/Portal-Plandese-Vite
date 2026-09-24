@@ -26,6 +26,7 @@ import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermi
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
 import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
+import { initNotifPage, ntfOnInsert, ntfFiltro, renderNotifPage, ntfToggleLida, ntfApagar, ntfAbrir, ntfMarcarTodasLidas, ntfApagarLidas, ntfTogglePref } from './modules/notif-page.js';
 import { ensurePushSubscription, requestPushPermission, pushStatus, capturePendingSectionFromURL, applyPendingSection } from './modules/push.js';
 
 // Faturas
@@ -96,7 +97,7 @@ Object.assign(R, {
   initEnc,
   initAdmin,
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
-  initNotifications, emitEvent,
+  initNotifications, emitEvent, ntfOnInsert,
   ensurePushSubscription, applyPendingSection,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
@@ -259,7 +260,8 @@ Object.assign(window, {
   exportSemanaExcel,
 
   // Notificações
-  toggleNotifPanel, notifClick, markAllRead,
+  toggleNotifPanel, closeNotifPanel, notifClick, markAllRead,
+  ntfFiltro, renderNotifPage, ntfToggleLida, ntfApagar, ntfAbrir, ntfMarcarTodasLidas, ntfApagarLidas, ntfTogglePref,
   renderNotifSubs, toggleNotifSub,
   requestPushPermission,
 
@@ -415,6 +417,7 @@ window.savePerfil = async function () {
     if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
+    if (id === 'notificacoes')       { initNotifPage(); }
   };
 })();
 

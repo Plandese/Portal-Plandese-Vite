@@ -953,6 +953,7 @@
       <button class="notif-clear-btn" onclick="markAllRead()">Marcar todas como lidas</button>
     </div>
     <div class="notif-list" id="notif-list"></div>
+    <button class="notif-all-btn" type="button" onclick="closeNotifPanel();goTo('notificacoes')">Ver todas as notificações</button>
   </div>
   <div class="settings-panel" id="settings-panel">
     <div class="settings-user-row">
@@ -978,6 +979,10 @@
     <button class="settings-item" onclick="goTo('pendentes-tavira',document.getElementById('nav-pendentes-tavira'));toggleSettingsPanel()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Pendentes Tavira
+    </button>
+    <button class="settings-item" onclick="goTo('notificacoes');toggleSettingsPanel()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+      Notificações
     </button>
     <button class="settings-item" onclick="requestPushPermission();toggleSettingsPanel()">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
@@ -2535,6 +2540,42 @@
         </div>
         <div id="pt-lb" hidden></div>
         <div id="pt-rep" hidden></div>
+      </section>
+
+      <!-- NOTIFICAÇÕES -->
+      <section id="sec-notificacoes" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Notificações</div>
+            <div class="pg-sub" id="ntf-sub">Todas as notificações recebidas</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="ntfMarcarTodasLidas()">Marcar todas como lidas</button>
+            <button class="btn btn-secondary btn-sm ntf-btn-danger" type="button" onclick="ntfApagarLidas()">Apagar lidas</button>
+          </div>
+        </div>
+        <div class="ntf-layout">
+          <div class="card ntf-main">
+            <div class="ntf-toolbar">
+              <div class="ntf-chips">
+                <button class="pt-chip" type="button" data-nf="all" aria-pressed="true" onclick="ntfFiltro('all')">Todas</button>
+                <button class="pt-chip" type="button" data-nf="unread" aria-pressed="false" onclick="ntfFiltro('unread')">Não lidas</button>
+                <button class="pt-chip" type="button" data-nf="read" aria-pressed="false" onclick="ntfFiltro('read')">Lidas</button>
+              </div>
+              <div class="ntf-search">
+                <select id="ntf-seccao" onchange="renderNotifPage()"><option value="">Todas as secções</option></select>
+                <input type="search" id="ntf-q" placeholder="Pesquisar…" oninput="renderNotifPage()"/>
+              </div>
+            </div>
+            <div id="ntf-list"></div>
+          </div>
+          <div class="card ntf-prefs">
+            <div class="ntf-prefs-title">Receber notificações de</div>
+            <div class="ntf-prefs-sub" id="ntf-prefs-sub">Escolha as secções de que quer ser avisado.</div>
+            <div id="ntf-prefs-list"></div>
+            <button class="btn btn-secondary btn-sm" type="button" style="margin-top:14px;width:100%;justify-content:center" onclick="requestPushPermission()">Ativar notificações no telemóvel</button>
+          </div>
+        </div>
       </section>
 
       <!-- FOLHA DE FECHO -->

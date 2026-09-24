@@ -169,7 +169,7 @@ function chapterOfSection(sec){
 }
 
 // Secções abertas a todos os perfis autenticados (não pertencem a nenhum capítulo)
-const OPEN_SECTIONS = ['painel','analise'];
+const OPEN_SECTIONS = ['painel','analise','notificacoes'];
 
 // ── Verificação central de acesso ──────────────────────────────────
 // Fonte única de verdade: sidebar, goTo, painel, análise e notificações usam estas funções.
