@@ -6,7 +6,7 @@ import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
-import { showToast } from './navigation.js';
+import { showToast, openModal } from './navigation.js';
 import { canAccessSection } from './permissions.js';
 
 let _painelSeq = 0; // evita que uma resposta antiga sobrescreva uma mais recente
@@ -120,15 +120,16 @@ async function renderPainel() {
   const sub = document.getElementById('painel-sub');
   if (sub) sub.textContent = `Folhas de ponto · semana de ${semanaTxt}`;
 
-  // Os dados vêm das folhas de ponto — só para quem tem acesso a essa secção
-  if (!canAccessSection('historico')) { grid.innerHTML = ''; return; }
+  // Os dados vêm das folhas de ponto e dos equipamentos — só para quem tem acesso a essas secções
+  const podeFolhas = canAccessSection('historico');
+  if (!podeFolhas && !canAccessSection('equipamentos')) { grid.innerHTML = ''; return; }
 
   const seq = ++_painelSeq;
   grid.innerHTML = '<div class="pl-load" style="grid-column:1/-1;padding:60px 20px"><span class="pl-logo"></span>A carregar folhas de ponto…</div>';
 
-  const html = await htmlFeriasFaltasSemana();
+  const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), podeFolhas ? htmlFeriasFaltasSemana() : '']);
   if (seq !== _painelSeq) return;
-  grid.innerHTML = html;
+  grid.innerHTML = estado + ferias;
 }
 
 // Cartão "Férias e faltas" da semana corrente — usado no Painel Principal e na
@@ -139,6 +140,159 @@ export async function htmlFeriasFaltasSemana() {
   const { registos, previstas } = await _painelCarregarSemana(dias);
   const iconAus = '<path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11z"/>';
   return _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
+}
+
+// ── Painel Principal — estado das obras na semana (MO e EQ) ───────
+// MO = disponibilidade da equipa: dias úteis sem férias/faltas (registadas ou previstas)
+// EQ = equipamentos da obra que estão operacionais (não em avaria/manutenção/parados)
+const _EQ_NAO_OP = ['manutencao', 'oficina', 'parada'];
+const _EQ_ESTADO_TXT = { operacional: 'Operacional', manutencao: 'Manutenção', oficina: 'Em oficina', parada: 'Parada' };
+const _EQ_ESTADO_CLS = { operacional: 'eq-est-ok', manutencao: 'eq-est-man', oficina: 'eq-est-man', parada: 'eq-est-par' };
+let _estadoObras = new Map(); // obraId → dados calculados, para o detalhe
+
+// "O057 - ZMC Lagos" e "0057 - ZMC Lagos" → 57 (a convenção de código varia entre O e 0)
+function _obraCodigo(nome) {
+  const m = /^\s*[O0]?\s*(\d{1,7})\b/i.exec(nome || '');
+  return m ? parseInt(m[1], 10) : null;
+}
+const _normNome = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+function _corPct(p) { return p >= 85 ? 'var(--green)' : p >= 65 ? 'var(--orange)' : 'var(--red)'; }
+
+async function _estadoObrasCarregar(dias, podeMO, podeEQ) {
+  const monAnt = new Date(dias[0]); monAnt.setDate(monAnt.getDate() - 7);
+  const ini = _ymd(dias[0]), fim = _ymd(dias[6]);
+  const q = async (fn, fallback) => { try { const { data, error } = await fn(); if (error) throw error; return data || fallback; } catch (e) { console.warn('estado das obras:', e); return fallback; } };
+  const [regs, prev, equips, manut] = await Promise.all([
+    podeMO ? q(() => sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo').gte('data', _ymd(monAnt)).lte('data', fim), []) : [],
+    podeMO ? q(() => sb.from('ferias_previstas').select('colab_numero,data').gte('data', ini).lte('data', fim), []) : [],
+    podeEQ ? q(() => sb.from('equipamentos').select('id,nome,codigo,matricula,estado,ultimo_local,propriedade'), []) : [],
+    podeEQ ? q(() => sb.from('eq_manutencoes').select('equip_id,descricao,data').eq('estado', 'pendente'), []) : [],
+  ]);
+  return { regs, prev, equips, manut };
+}
+
+function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
+  const uteis = dias.slice(0, 5).map(_ymd);
+  const obras = S.OBRAS.filter(o => o.ativa);
+  const porObra = new Map(obras.map(o => [o.id, { obra: o, equipa: new Map(), equips: [] }]));
+
+  // Cada colaborador conta na obra do seu registo mais recente (esta semana ou a anterior)
+  const ult = new Map();
+  regs.filter(r => r.obra_id).forEach(r => { const a = ult.get(r.colab_numero); if (!a || r.data > a.data) ult.set(r.colab_numero, r); });
+  ult.forEach((r, n) => { porObra.get(r.obra_id)?.equipa.set(n, {}); });
+
+  const dia = new Map(); // "colab|data" → tipo
+  regs.forEach(r => dia.set(r.colab_numero + '|' + r.data, r.tipo || 'Presença'));
+  const previstas = new Set(prev.map(p => p.colab_numero + '|' + p.data));
+
+  porObra.forEach(o => {
+    o.equipa.forEach((_, n) => {
+      const cel = uteis.map(d => {
+        const t = dia.get(n + '|' + d);
+        if (t === 'Férias') return 'F';
+        if (t === 'Falta Just.') return 'J';
+        if (t && t.includes('Falta')) return 'I';
+        if (t) return 'P';
+        return previstas.has(n + '|' + d) ? 'V' : '-';
+      });
+      o.equipa.set(n, cel);
+    });
+    const total = o.equipa.size * uteis.length;
+    o.aus = [...o.equipa.values()].reduce((s, c) => s + c.filter(x => 'FJIV'.includes(x) && x !== '-').length, 0);
+    o.mo = total ? Math.round(100 * (total - o.aus) / total) : null;
+    o.uteis = uteis;
+  });
+
+  // Equipamentos: ligados à obra pelo código (O057/0057) ou pelo nome do último local
+  const porCodigo = new Map(), porNome = new Map();
+  obras.forEach(o => { const c = _obraCodigo(o.nome); if (c != null) porCodigo.set(c, o.id); porNome.set(_normNome(o.nome), o.id); });
+  const manutPor = new Map();
+  manut.forEach(m => { if (!manutPor.has(m.equip_id)) manutPor.set(m.equip_id, []); manutPor.get(m.equip_id).push(m); });
+  equips.forEach(e => {
+    const c = _obraCodigo(e.ultimo_local);
+    const id = (c != null && porCodigo.get(c)) || porNome.get(_normNome(e.ultimo_local));
+    if (id) porObra.get(id).equips.push({ ...e, estado: e.estado || 'operacional', pend: manutPor.get(e.id) || [] });
+  });
+  porObra.forEach(o => {
+    o.eqNaoOp = o.equips.filter(e => _EQ_NAO_OP.includes(e.estado)).length;
+    o.eq = o.equips.length ? Math.round(100 * (o.equips.length - o.eqNaoOp) / o.equips.length) : null;
+  });
+
+  return [...porObra.values()].filter(o => o.equipa.size || o.equips.length)
+    .sort((a, b) => a.obra.nome.localeCompare(b.obra.nome, 'pt'));
+}
+
+function _eoMetrica(rot, pct, txt) {
+  if (pct == null) return `<div class="eo-met"><span class="eo-rot">${rot}</span><span class="eo-txt" style="color:var(--gray-400)">—</span></div>`;
+  return `<div class="eo-met" title="${_esc(txt)}"><span class="eo-rot">${rot}</span>
+    <span class="eo-bar"><i style="width:${pct}%;background:${_corPct(pct)}"></i></span>
+    <span class="eo-pct" style="color:${_corPct(pct)}">${pct}%</span></div>`;
+}
+
+export async function htmlEstadoObrasSemana() {
+  const podeMO = canAccessSection('historico'), podeEQ = canAccessSection('equipamentos');
+  if (!podeMO && !podeEQ) return '';
+  const dias = _painelSemana();
+  const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
+  const lista = _estadoObrasCalcular(dias, await _estadoObrasCarregar(dias, podeMO, podeEQ));
+  _estadoObras = new Map(lista.map(o => [o.obra.id, { ...o, semanaTxt, podeMO, podeEQ }]));
+  const icon = '<path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z"/>';
+  const corpo = lista.length ? lista.map(o => `<div class="eo-row" role="button" tabindex="0" onclick="abrirEstadoObra('${_esc(o.obra.id)}')" onkeydown="if(event.key==='Enter')abrirEstadoObra('${_esc(o.obra.id)}')">
+      <div class="eo-nome">${_esc(o.obra.nome)}</div>
+      <div class="eo-mets">
+        ${podeMO ? _eoMetrica('MO', o.mo, `${o.equipa.size} pessoas · ${o.aus} dias de ausência`) : ''}
+        ${podeEQ ? _eoMetrica('EQ', o.eq, `${o.equips.length - o.eqNaoOp} de ${o.equips.length} equipamentos operacionais`) : ''}
+      </div>
+    </div>`).join('') : _painelVazio('Sem dados de equipas ou equipamentos nas obras ativas.');
+  return _painelCardHtml('Estado das obras', `Esta semana · ${semanaTxt} · toque numa obra para o detalhe`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
+}
+
+const _MO_CEL = {
+  P: ['✓', 'eo-c-ok', 'Presença'], F: ['F', 'eo-c-fer', 'Férias'], J: ['FJ', 'eo-c-fj', 'Falta justificada'],
+  I: ['FI', 'eo-c-fi', 'Falta injustificada'], V: ['P', 'eo-c-prev', 'Férias previstas'], '-': ['·', 'eo-c-nd', 'Sem registo'],
+};
+
+export function abrirEstadoObra(id) {
+  const o = _estadoObras.get(id);
+  if (!o) return;
+  document.getElementById('meo-title').textContent = o.obra.nome;
+  document.getElementById('meo-sub').textContent = `Semana de ${o.semanaTxt}`;
+
+  const cab = (rot, pct, resumo) => `<div class="eo-det-hdr">
+    <div class="eo-det-pct" style="color:${pct == null ? 'var(--gray-400)' : _corPct(pct)}">${pct == null ? '—' : pct + '%'}</div>
+    <div><div style="font-size:14px;font-weight:600;color:var(--gray-800)">${rot}</div><div style="font-size:12px;color:var(--gray-500)">${resumo}</div></div></div>`;
+
+  let html = '';
+  if (o.podeMO) {
+    const linhas = [...o.equipa.entries()].map(([n, cel]) => ({ ...(_painelPessoa(n)), cel }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+    html += `<div class="eo-sec">${cab('Mão-de-obra', o.mo, o.equipa.size
+      ? `${o.equipa.size} pessoas · ${o.aus} de ${o.equipa.size * o.uteis.length} dias-pessoa com férias/faltas`
+      : 'Sem equipa registada nesta obra')}
+      ${linhas.length ? `<div class="eo-tab"><div class="eo-tr eo-th"><span></span>${_DIAS_CURTO.slice(0, 5).map(d => `<span>${d}</span>`).join('')}</div>
+      ${linhas.map(p => `<div class="eo-tr"><span class="eo-pn"><b>${_esc(p.nome)}</b>${p.func ? `<small>${_esc(p.func)}</small>` : ''}</span>
+        ${p.cel.map(c => `<span><i class="eo-c ${_MO_CEL[c][1]}" title="${_MO_CEL[c][2]}">${_MO_CEL[c][0]}</i></span>`).join('')}</div>`).join('')}</div>
+      <div class="eo-leg">${['P', 'F', 'J', 'I', 'V', '-'].map(k => `<span><i class="eo-c ${_MO_CEL[k][1]}">${_MO_CEL[k][0]}</i> ${_MO_CEL[k][2]}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }
+  if (o.podeEQ) {
+    const eqs = [...o.equips].sort((a, b) => (_EQ_NAO_OP.includes(b.estado) - _EQ_NAO_OP.includes(a.estado)) || a.nome.localeCompare(b.nome, 'pt'));
+    html += `<div class="eo-sec">${cab('Equipamentos', o.eq, o.equips.length
+      ? `${o.equips.length - o.eqNaoOp} de ${o.equips.length} operacionais · ${o.eqNaoOp} em avaria/manutenção/parados`
+      : 'Sem equipamentos atribuídos a esta obra')}
+      ${eqs.map(e => {
+        const nao = _EQ_NAO_OP.includes(e.estado);
+        const sub = [e.codigo, e.matricula, e.propriedade === 'aluguer' ? 'Aluguer' : ''].filter(Boolean).join(' · ');
+        return `<div class="eo-eq${nao ? ' nao' : ''}"><div style="min-width:0"><div class="eo-eq-n">${_esc(e.nome)}</div>
+          ${sub ? `<small>${_esc(sub)}</small>` : ''}
+          ${nao ? e.pend.slice(0, 2).map(m => `<small style="color:var(--orange)">⚠ ${_esc(m.descricao)}${m.data ? ' · ' + fmtPT(m.data) : ''}</small>`).join('') : ''}</div>
+          <span class="eq-est-badge ${_EQ_ESTADO_CLS[e.estado] || 'eq-est-ok'}">${_EQ_ESTADO_TXT[e.estado] || _esc(e.estado)}</span></div>`;
+      }).join('')}
+    </div>`;
+  }
+  document.getElementById('meo-body').innerHTML = html;
+  openModal('modal-estado-obra');
 }
 
 // Lista de períodos: últimos 12 meses + o próximo, valor "ano-mês"

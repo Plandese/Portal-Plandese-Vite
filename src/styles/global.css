@@ -2235,3 +2235,40 @@ td>.pl-load{padding:24px 20px}
 @keyframes plShine{from{background-position:100% 0}to{background-position:0% 0}}
 @keyframes plBreath{0%,100%{transform:scale(.94)}50%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.pl-logo{animation:plShine 3s linear infinite}}
+
+/* ── Painel: estado das obras (MO / EQ) ───────────────────────────── */
+.eo-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 8px;margin:0 -8px;border-bottom:1px solid var(--gray-100);border-radius:8px;cursor:pointer;transition:background .15s}
+.eo-row:last-child{border-bottom:none}
+.eo-row:hover,.eo-row:focus-visible{background:var(--blue-50);outline:none}
+.eo-nome{font-size:13px;font-weight:500;color:var(--gray-800);min-width:0;flex:1 1 auto}
+.eo-mets{display:flex;flex-direction:column;gap:5px;flex:none;width:170px}
+.eo-met{display:flex;align-items:center;gap:8px;font-size:11px}
+.eo-rot{width:18px;font-weight:600;color:var(--gray-500)}
+.eo-bar{flex:1;height:6px;border-radius:99px;background:var(--gray-100);overflow:hidden}
+.eo-bar i{display:block;height:100%;border-radius:99px}
+.eo-pct{width:34px;text-align:right;font-weight:700}
+.eo-txt{flex:1;text-align:right}
+@media(max-width:480px){.eo-row{flex-direction:column;align-items:stretch;gap:6px}.eo-mets{width:auto}}
+.eo-sec{margin-top:16px}
+.eo-det-hdr{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.eo-det-pct{font-size:26px;font-weight:700;min-width:64px}
+.eo-tab{border:1px solid var(--gray-100);border-radius:10px;overflow:hidden}
+.eo-tr{display:grid;grid-template-columns:minmax(0,1fr) repeat(5,38px);align-items:center;padding:6px 10px;border-bottom:1px solid var(--gray-100);text-align:center;font-size:11px}
+.eo-tr:last-child{border-bottom:none}
+.eo-th{background:var(--gray-50);color:var(--gray-500);font-weight:600}
+.eo-pn{text-align:left;min-width:0;display:flex;flex-direction:column}
+.eo-pn b{font-size:12px;font-weight:500;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eo-pn small,.eo-eq small{font-size:10px;color:var(--gray-400);display:block}
+.eo-c{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:20px;padding:0 4px;border-radius:6px;font-style:normal;font-size:10px;font-weight:700}
+.eo-c-ok{background:var(--green-bg);color:var(--green)}
+.eo-c-fer{background:var(--blue-100);color:var(--blue-700)}
+.eo-c-fj{background:var(--orange-bg);color:var(--orange)}
+.eo-c-fi{background:var(--red-bg);color:var(--red)}
+.eo-c-prev{background:var(--blue-50);color:var(--blue-500);border:1px dashed var(--blue-300)}
+.eo-c-nd{background:var(--gray-50);color:var(--gray-300)}
+.eo-leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:11px;color:var(--gray-500)}
+.eo-leg span{display:inline-flex;align-items:center;gap:5px}
+.eo-eq{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100)}
+.eo-eq:last-child{border-bottom:none}
+.eo-eq-n{font-size:13px;color:var(--gray-800)}
+.eo-eq.nao .eo-eq-n{font-weight:600}
