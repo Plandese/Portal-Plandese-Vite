@@ -2,6 +2,7 @@
 //  ADMIN — Painel principal e Fecho de Mês
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
+import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
@@ -192,8 +193,15 @@ async function renderFechoMes(){
   if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-500)">A carregar dados…</td></tr>';
 
   try {
-    const {data: regs, error} = await sb.from('registos_ponto').select('*').gte('data', dIniStr).lte('data', dFimStr);
-    if(error) throw new Error(error.message);
+    window._fechoMesData = null; // nunca exportar dados de outro período/estado
+    // Só dias de obra já aprovados pelo diretor de obra entram no fecho
+    const {regs, pendentes} = await carregarRegistosFecho(dIniStr, dFimStr);
+    if(infoEl && pendentes.length){
+      const semObra = pendentes.filter(p => p.obraId === '_sem').length;
+      infoEl.innerHTML = _esc(infoEl.textContent) + ' · <span style="color:var(--orange,#ea580c)">⚠ ' + pendentes.length
+        + ' dia(s) de obra por aprovar pelo diretor de obra — não incluídos'
+        + (semObra ? ' (' + semObra + ' sem obra)' : '') + '</span>';
+    }
 
     // Construir mapa: data → colabNumero → registo
     const regMap = {};
@@ -241,7 +249,7 @@ async function renderFechoMes(){
     if(!tbody) return;
 
     if(rows.length === 0){
-      tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-400)">Sem registos para este período (' + dIniStr + ' a ' + dFimStr + '). Total de registos carregados: ' + (regs||[]).length + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-400)">Sem registos aprovados para este período (' + dIniStr + ' a ' + dFimStr + ').' + (pendentes.length ? ' Aguardam aprovação do diretor de obra.' : '') + '</td></tr>';
       const totaisEl = document.getElementById('fecho-totais');
       if(totaisEl) totaisEl.style.display = 'none';
       return;

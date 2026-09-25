@@ -48,6 +48,40 @@ export async function carregarDados() {
 }
 
 // ═══════════════════════════════════════
+//  SUPABASE — REGISTOS PARA A FOLHA DE FECHO
+// ═══════════════════════════════════════
+// O Supabase devolve no máximo 1000 linhas por pedido; um mês inteiro passa disso.
+async function _lerTudo(tabela, dIni, dFim, ordem) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    let q = sb.from(tabela).select('*').gte('data', dIni).lte('data', dFim);
+    ordem.forEach(c => { q = q.order(c); });
+    const { data, error } = await q.range(from, from + 999);
+    if (error) throw new Error(error.message);
+    out.push(...data);
+    if (data.length < 1000) return out;
+  }
+}
+
+// Só entra na folha de fecho o que o diretor de obra já aprovou (aprovacoes_ponto: obra + dia).
+// Registos de dias por aprovar — ou sem obra, que não têm quem os aprove — ficam de fora
+// e vêm em `pendentes` ([{obraId, data}], sem repetidos) para o ecrã os poder avisar.
+export async function carregarRegistosFecho(dIni, dFim) {
+  const [regs, aprov] = await Promise.all([
+    _lerTudo('registos_ponto', dIni, dFim, ['data', 'colab_numero', 'obra_id', 'encarregado_id']),
+    _lerTudo('aprovacoes_ponto', dIni, dFim, ['data', 'obra_id']),
+  ]);
+  const aprovados = new Set(aprov.map(a => a.obra_id + '|' + a.data));
+  const pend = new Map();
+  const aprovadosRegs = regs.filter(r => {
+    if (r.obra_id && aprovados.has(r.obra_id + '|' + r.data)) return true;
+    pend.set((r.obra_id || '_sem') + '|' + r.data, { obraId: r.obra_id || '_sem', data: r.data });
+    return false;
+  });
+  return { regs: aprovadosRegs, pendentes: [...pend.values()] };
+}
+
+// ═══════════════════════════════════════
 //  SUPABASE — GUARDAR REGISTO
 // ═══════════════════════════════════════
 export async function sbSaveRegisto(dk, n) {

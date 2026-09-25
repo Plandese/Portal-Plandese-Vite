@@ -2,6 +2,7 @@
 //  PONTO — Histórico semanal e exportação
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
+import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, isWeekend, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT, DIAS_PT_EXP, TIPOS } from '../config.js';
@@ -734,7 +735,11 @@ export async function exportMensal(){
   const dStrs=datas.map(d=>fmt(d));
 
   showToast('A carregar dados do servidor...');
-  const {data:regs}=await sb.from('registos_ponto').select('*').gte('data',dStrs[0]).lte('data',dStrs[dStrs.length-1]);
+  // Só dias de obra já aprovados pelo diretor de obra entram no fecho mensal
+  let regs, pendentes;
+  try{ ({regs,pendentes}=await carregarRegistosFecho(dStrs[0],dStrs[dStrs.length-1])); }
+  catch(e){ showToast('Erro ao carregar dados: '+(e.message||e)); return; }
+  if(pendentes.length) showToast(`${pendentes.length} dia(s) de obra por aprovar ficam fora do fecho`);
   const regMap={};
   (regs||[]).forEach(r=>{ if(!regMap[r.data])regMap[r.data]={}; if(!regMap[r.data][r.colab_numero])regMap[r.data][r.colab_numero]=[]; regMap[r.data][r.colab_numero].push(r); });
 
