@@ -154,6 +154,17 @@ function pedirNovaPassword(nome){
   });
 }
 
+// Ecrã de carregamento a toda a largura, com o logo Plandese (criado só uma vez)
+function mostrarLoading(msg){
+  let ls=document.getElementById('loading-screen');
+  if(!ls){
+    document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><span class="pl-logo lg light"></span><div style="color:white;margin-top:20px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg"></div></div>');
+    ls=document.getElementById('loading-screen');
+  }
+  document.getElementById('loading-msg').textContent=msg;
+}
+function esconderLoading(){ document.getElementById('loading-screen')?.remove(); }
+
 // ── Entra na app já autenticado (usado pelo login manual e pela sessão guardada) ──
 export async function entrarComoUtilizador(authedUser) {
   // Password provisória (posta pelo admin) ou exposta: tem de a trocar antes de entrar
@@ -165,16 +176,15 @@ export async function entrarComoUtilizador(authedUser) {
   localStorage.setItem('plandese_session',JSON.stringify({key:authedUser.username,nome:authedUser.nome,role:authedUser.role,initials:authedUser.initials||''}));
   document.getElementById('login-screen').style.display='none';
   // Escolha do modo de visualização (telemóvel / computador) — só se ainda não houver preferência guardada
-  if(authedUser.role!=='encarregado' && !getDeviceMode()) await showDeviceChooser();
-  document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><span class="pl-logo lg light"></span><div style="color:white;margin-top:20px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
+  if(authedUser.role!=='encarregado' && !getDeviceMode()){ esconderLoading(); await showDeviceChooser(); }
+  mostrarLoading('A carregar obras e colaboradores...');
   try {
-    document.getElementById('loading-msg').textContent='A carregar obras e colaboradores...';
     await R.carregarDados();
     mostrarDiag(`✓ Dados carregados: ${S.OBRAS.length} obras, ${S.COLABORADORES.length} colaboradores`,'#15803D');
   } catch(e){
     mostrarDiag('❌ Erro ao carregar dados: '+e.message,'#B91C1C');
   }
-  const ls=document.getElementById('loading-screen');if(ls)ls.remove();
+  esconderLoading();
   const device=applyDeviceClass();
   if(authedUser.role==='encarregado'){
     document.body.classList.add('enc-mode');
@@ -205,7 +215,7 @@ export async function doLogin() {
   const u=document.getElementById('lu').value.trim().toLowerCase();
   const p=document.getElementById('lp').value;
   const btn=document.querySelector('.btn-login');
-  btn.textContent='A ligar ao Supabase...'; btn.disabled=true;
+  btn.innerHTML='<span class="pl-logo sm light"></span>A entrar...'; btn.classList.add('loading'); btn.disabled=true;
   let authedUser=null;
   try {
     mostrarDiag('A ligar ao Supabase...','#1d4ed8');
@@ -225,7 +235,7 @@ export async function doLogin() {
   } catch(e){
     mostrarDiag('⚠️ Sem ligação ao servidor — tente novamente','#B45309');
   }
-  btn.textContent='Entrar'; btn.disabled=false;
+  btn.textContent='Entrar'; btn.classList.remove('loading'); btn.disabled=false;
   if(authedUser){
     await entrarComoUtilizador(authedUser);
   } else {
@@ -236,6 +246,12 @@ export async function doLogin() {
 // ── Restaura a sessão ao (re)abrir a página, sem pedir login outra vez ──
 // Exige sessão válida no Supabase Auth; a sessão antiga só em localStorage já não chega.
 export async function tentarSessaoGuardada() {
+  // Havia sessão guardada: mostra o loader em vez do formulário de login enquanto a restaura
+  if(localStorage.getItem('plandese_session')) mostrarLoading('A iniciar sessão...');
+  try { return await restaurarSessao(); }
+  finally { if(!S.currentUser) esconderLoading(); }
+}
+async function restaurarSessao() {
   const {data:{session}}=await sb.auth.getSession();
   const username=session?.user?.app_metadata?.username;
   if(!username){ localStorage.removeItem('plandese_session'); return false; }
