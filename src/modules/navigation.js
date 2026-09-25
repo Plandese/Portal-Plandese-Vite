@@ -92,7 +92,11 @@ export let goTo = function(id, btn){
 
 export async function refreshPortal(){
   const btn = document.getElementById('btn-refresh');
-  if(btn){ btn.disabled=true; btn.classList.add('refreshing'); }
+  if(btn){
+    btn.disabled=true; btn.classList.add('refreshing');
+    btn.querySelector('svg')?.style.setProperty('display','none');
+    btn.insertAdjacentHTML('afterbegin','<span class="pl-logo sm"></span>');
+  }
   try {
     await R.carregarDados();
     const activeSection = document.querySelector('.section.active');
@@ -123,7 +127,12 @@ export async function refreshPortal(){
   } catch(e){
     R.mostrarDiag?.('❌ Erro ao actualizar: '+e.message,'#B91C1C');
   } finally {
-    if(btn){ btn.disabled=false; btn.classList.remove('refreshing'); }
+    if(btn){
+      btn.disabled=false; btn.classList.remove('refreshing');
+      btn.querySelector('.pl-logo')?.remove();
+      btn.querySelector('svg')?.style.removeProperty('display');
+    }
+    if(document.getElementById('settings-panel')?.classList.contains('open')) window.toggleSettingsPanel?.();
   }
 }
 
