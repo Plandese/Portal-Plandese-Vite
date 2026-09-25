@@ -19,7 +19,7 @@ export function novaObra(){
   document.getElementById('modal-obra').classList.add('open');
 }
 
-let _obrHideInativas=false;
+let _obrHideInativas=true;
 
 export function obrToggleHideInativas(){
   _obrHideInativas=document.getElementById('obr-hide-inativas').checked;

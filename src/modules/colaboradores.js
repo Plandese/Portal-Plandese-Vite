@@ -5,7 +5,7 @@ import { S, R } from '../state.js';
 import { sbSaveColab, sbToggleColab } from '../db.js';
 import { closeModal, flashAlert } from './navigation.js';
 
-let _colabHideInativos=false;
+let _colabHideInativos=true;
 
 export function colabToggleHideInativos(){
   _colabHideInativos=document.getElementById('colab-hide-inativos').checked;

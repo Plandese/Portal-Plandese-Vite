@@ -1296,7 +1296,7 @@
           <div><div class="pg-title">Lista de Obras</div><div class="pg-sub">Obras disponíveis para os encarregados</div></div>
           <div style="display:flex;align-items:center;gap:16px">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none">
-              <input type="checkbox" id="obr-hide-inativas" onchange="obrToggleHideInativas()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
+              <input type="checkbox" id="obr-hide-inativas" checked onchange="obrToggleHideInativas()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
               Ocultar inativas
             </label>
             <button class="btn btn-primary" onclick="novaObra()">
@@ -1327,7 +1327,7 @@
             </select>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none;align-self:flex-end;padding-bottom:8px">
-            <input type="checkbox" id="colab-hide-inativos" onchange="colabToggleHideInativos()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
+            <input type="checkbox" id="colab-hide-inativos" checked onchange="colabToggleHideInativos()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
             Ocultar inativos
           </label>
         </div>
