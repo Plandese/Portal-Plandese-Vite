@@ -570,7 +570,7 @@ async function loadMOAWeek(){
   const obraFil=document.getElementById('moa-f-obra').value;
   document.getElementById('moa-week-nav').style.display='flex';
   const res=document.getElementById('moa-resultado');
-  res.innerHTML='<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">A carregar...</div>';
+  res.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
   let rows, aprovRows;
   try{
     let q=sb.from('registos_ponto_moa').select('*').gte('data',dStrs[0]).lte('data',dStrs[6]);

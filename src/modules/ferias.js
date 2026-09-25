@@ -255,7 +255,7 @@ export async function renderMapaFerias() {
 
   _applyLockBtn();
 
-  cont.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:40px;font-size:13px">A carregar...</div>';
+  cont.innerHTML = '<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
 
   const dIni = `${_ano}-01-01`;
   const dFim = `${_ano}-12-31`;

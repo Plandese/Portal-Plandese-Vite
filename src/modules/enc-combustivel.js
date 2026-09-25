@@ -167,7 +167,7 @@ async function encOpenFuelModal(){
   modal.style.display='flex';
   const obras=_encObrasComb();
   if(!obras.length){box.innerHTML='<div class="enc-fuel-empty">Sem obra atribuída.</div>';return;}
-  box.innerHTML='<div class="enc-fuel-empty">A carregar…</div>';
+  box.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
   try{
     const {data,error}=await sb.from('registos_combustivel')
       .select('data,litros,movimento,tipo_registo,equipamento_nome,obra_nome,encarregado_nome')

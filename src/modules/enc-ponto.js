@@ -166,7 +166,7 @@ async function encOpenWeatherModal(){
   const list=document.getElementById('enc-weather-forecast');
   if(!modal||!list) return;
   modal.style.display='flex';
-  list.innerHTML=`<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">A carregar previsão...</div>`;
+  list.innerHTML=`<div class="pl-load"><span class="pl-logo"></span>A carregar previsão…</div>`;
   if(!_encWeatherCoords){
     list.innerHTML=`<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Localização não disponível</div>`;
     return;
@@ -643,7 +643,7 @@ async function encLoadHistorico(){
   const data=document.getElementById('enc-hist-data').value;
   const res=document.getElementById('enc-hist-resultado');
   if(!data){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400)">Selecione uma data.</div>';return;}
-  res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400)">A carregar…</div>';
+  res.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
   // Cada encarregado só vê os registos que ele próprio submeteu — nunca os
   // de outros encarregados/obras, mesmo que sejam do mesmo dia.
   const encId=S.currentUser?.key||null;

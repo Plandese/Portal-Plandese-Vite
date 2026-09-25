@@ -423,7 +423,7 @@ async function abrirMapaComparativo(id) {
   if (!m) return;
 
   const body = document.getElementById('modal-mapa-view-body');
-  if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">A carregar mapa...</div>';
+  if (body) body.innerHTML = '<div class="pl-load"><span class="pl-logo"></span>A carregar mapa…</div>';
   openModal('modal-mapa-view');
 
   try {

@@ -23,7 +23,7 @@ async function loadCombustivelAdmin(){
   const tbody=document.getElementById('comb-tbody');
   const empty=document.getElementById('comb-empty');
   console.log('[COMB] loadCombustivelAdmin called, ini=',document.getElementById('comb-f-ini')?.value);
-  tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray-400)">A carregar…</td></tr>';
+  tbody.innerHTML='<tr><td colspan="9"><div class="pl-load"><span class="pl-logo"></span>A carregar…</div></td></tr>';
   empty.style.display='none';
   try{
     // ── 1. Carregar TODOS os registos (sem filtro de data) para KPIs globais ──

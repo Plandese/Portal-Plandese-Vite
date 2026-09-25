@@ -372,7 +372,7 @@ export async function renderAnalise(){
     if(sub) sub.textContent = 'Férias e faltas desta semana';
     if(!canAccessSection('historico')){ body.innerHTML = '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; return; }
     _loading = true;
-    body.innerHTML = '<div class="anl-loading"><div class="anl-spin"></div>A carregar dados…</div>';
+    body.innerHTML = '<div class="pl-load" style="padding:60px 20px"><span class="pl-logo"></span>A carregar dados…</div>';
     try { body.innerHTML = await htmlFeriasFaltasSemana(); }
     catch(e){ body.innerHTML = `<div class="anl-vazio">Não foi possível carregar os dados: ${e.message || e}</div>`; }
     finally { _loading = false; }
@@ -385,7 +385,7 @@ export async function renderAnalise(){
   if(sub) sub.textContent = _labelPeriodo() + (_obra ? ' · ' + _obraNome(_obra) : ' · todas as obras');
 
   _loading = true;
-  body.innerHTML = '<div class="anl-loading"><div class="anl-spin"></div>A carregar dados…</div>';
+  body.innerHTML = '<div class="pl-load" style="padding:60px 20px"><span class="pl-logo"></span>A carregar dados…</div>';
 
   let d;
   try { d = await _carregar(); }

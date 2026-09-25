@@ -124,7 +124,7 @@ async function renderPainel() {
   if (!canAccessSection('historico')) { grid.innerHTML = ''; return; }
 
   const seq = ++_painelSeq;
-  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400);font-size:14px">A carregar folhas de ponto…</div>';
+  grid.innerHTML = '<div class="pl-load" style="grid-column:1/-1;padding:60px 20px"><span class="pl-logo"></span>A carregar folhas de ponto…</div>';
 
   const html = await htmlFeriasFaltasSemana();
   if (seq !== _painelSeq) return;
@@ -190,7 +190,7 @@ async function renderFechoMes(){
   if(infoEl) infoEl.textContent = 'Período: ' + dIniStr.split('-').reverse().join('/') + ' a ' + dFimStr.split('-').reverse().join('/');
 
   const tbody = document.getElementById('fecho-tbody');
-  if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-500)">A carregar dados…</td></tr>';
+  if(tbody) tbody.innerHTML = '<tr><td colspan="10"><div class="pl-load"><span class="pl-logo"></span>A carregar dados…</div></td></tr>';
 
   try {
     window._fechoMesData = null; // nunca exportar dados de outro período/estado

@@ -352,7 +352,7 @@ export async function renderHistSemana(){
   const oo = document.getElementById('f-obra').value;
 
   const cont = document.getElementById('hist-resultado');
-  cont.innerHTML='<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">A carregar...</div>';
+  cont.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
 
   let regs, aprov;
   try {
@@ -1100,7 +1100,7 @@ export async function loadWeek(){
   const obraFilter=document.getElementById('sw-obra').value;
   const semLabel=`${fmtPT(dStrs[0])} — ${fmtPT(dStrs[6])}`;
   const cont=document.getElementById('week-content');
-  cont.innerHTML='<div style="text-align:center;color:var(--gray-400);padding:32px">A carregar semana...</div>';
+  cont.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar semana…</div>';
   let query=sb.from('registos_ponto').select('*').in('data',dStrs);
   if(obraFilter)query=query.eq('obra_id',obraFilter);
   const {data:regs}=await query;

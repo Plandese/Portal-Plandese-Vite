@@ -166,7 +166,7 @@ export async function entrarComoUtilizador(authedUser) {
   document.getElementById('login-screen').style.display='none';
   // Escolha do modo de visualização (telemóvel / computador) — só se ainda não houver preferência guardada
   if(authedUser.role!=='encarregado' && !getDeviceMode()) await showDeviceChooser();
-  document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><div style="width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite"></div><div style="color:white;margin-top:16px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
+  document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><span class="pl-logo lg light"></span><div style="color:white;margin-top:20px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg">A carregar dados...</div></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>');
   try {
     document.getElementById('loading-msg').textContent='A carregar obras e colaboradores...';
     await R.carregarDados();
