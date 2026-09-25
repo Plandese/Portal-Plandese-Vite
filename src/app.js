@@ -58,7 +58,7 @@ import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, mo
 import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
 
 // Admin/Painel
-import { renderPainel, abrirEstadoObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
+import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
 
 // Fornecedores
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
@@ -148,7 +148,7 @@ Object.assign(window, {
   dropboxLogin, dropboxLogout, dropboxIsConnected,
 
   // Navegação admin
-  abrirEstadoObra,
+  abrirEstadoObra, painelMudarSemana, painelSetObra,
   goTo, toggleNavGrp, refreshPortal,
 
   // Modais genéricos

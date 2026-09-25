@@ -7,7 +7,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { fmt, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { ROLE_ACCESS } from '../config.js';
-import { htmlFeriasFaltasSemana, htmlEstadoObrasSemana } from './admin.js';
+import { htmlFeriasFaltasSemana, htmlEstadoObrasSemana, htmlFiltrosPainel } from './admin.js';
 import { canAccessSection } from './permissions.js';
 
 // Por enquanto a Análise mostra só quem está de férias/falta esta semana (o mesmo
@@ -373,7 +373,7 @@ export async function renderAnalise(){
     if(!canAccessSection('historico')){ body.innerHTML = '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; return; }
     _loading = true;
     body.innerHTML = '<div class="pl-load" style="padding:60px 20px"><span class="pl-logo"></span>A carregar dados…</div>';
-    try { const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), htmlFeriasFaltasSemana()]); body.innerHTML = estado + ferias; }
+    try { const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), htmlFeriasFaltasSemana()]); body.innerHTML = htmlFiltrosPainel() + estado + ferias; }
     catch(e){ body.innerHTML = `<div class="anl-vazio">Não foi possível carregar os dados: ${e.message || e}</div>`; }
     finally { _loading = false; }
     return;

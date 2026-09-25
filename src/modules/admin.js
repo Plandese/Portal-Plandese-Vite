@@ -17,10 +17,15 @@ const _DIAS_CURTO = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const _ymd = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-// Segunda a domingo da semana corrente
-function _painelSemana() {
+// Filtro geral do Painel Principal: semana (0 = atual, -1 = anterior, +1 = seguinte...) e obra ('' = todas)
+let _pOffset = 0;
+let _pObra = '';
+
+// Segunda a domingo da semana corrente (ou deslocada de `offset` semanas)
+function _painelSemana(offset = _pOffset) {
   const mon = getMonday(new Date());
   mon.setHours(12,0,0,0);
+  mon.setDate(mon.getDate() + 7 * offset);
   return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d; });
 }
 
@@ -28,19 +33,39 @@ function _painelSemana() {
 // encarregados lançaram entretanto) e recorre ao estado local se falhar.
 async function _painelCarregarSemana(dias) {
   const ini = _ymd(dias[0]), fim = _ymd(dias[6]);
+  const obra = _pObra;
   const local = () => dias.flatMap(d => (S.REGISTOS[_ymd(d)] || []).map(r => ({ data: _ymd(d), colab: r.colabN, obra: r.obra || null, tipo: r.tipo || 'Presença' })));
-  let registos, previstas = [];
+  let registos, previstas = [], equipa = null;
   try {
-    const { data, error } = await sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo').gte('data', ini).lte('data', fim);
+    // Com uma obra escolhida vai-se buscar também a semana anterior, para saber quem é da equipa
+    const { data, error } = await sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo').gte('data', obra ? _ymd(_inicioLookback(dias)) : ini).lte('data', fim);
     if (error) throw error;
     registos = (data || []).map(r => ({ data: r.data, colab: r.colab_numero, obra: r.obra_id || null, tipo: r.tipo || 'Presença' }));
-  } catch (e) { console.warn('painel (registos):', e); registos = local(); }
+    if (obra) {
+      equipa = new Set([..._obraPorColab(data || []).entries()].filter(([, o]) => o === obra).map(([n]) => n));
+      registos = registos.filter(r => r.data >= ini && equipa.has(r.colab));
+    }
+  } catch (e) { console.warn('painel (registos):', e); registos = local(); if (obra) registos = registos.filter(r => r.obra === obra); }
   try {
     const { data, error } = await sb.from('ferias_previstas').select('colab_numero,data').gte('data', ini).lte('data', fim);
     if (error) throw error;
     previstas = (data || []).map(r => ({ data: r.data, colab: r.colab_numero }));
+    if (obra) previstas = previstas.filter(p => equipa?.has(p.colab));
   } catch (e) { console.warn('painel (férias previstas):', e); }
   return { registos, previstas };
+}
+
+// Equipa de cada obra = obra do registo mais recente de cada colaborador (semana anterior à escolhida
+// em diante; nas semanas futuras parte-se da semana atual, que é a última com registos)
+function _inicioLookback(dias) {
+  const d = new Date(Math.min(dias[0], _painelSemana(0)[0]));
+  d.setDate(d.getDate() - 7);
+  return d;
+}
+function _obraPorColab(regs) {
+  const ult = new Map();
+  regs.filter(r => r.obra_id).forEach(r => { const a = ult.get(r.colab_numero); if (!a || r.data > a.data) ult.set(r.colab_numero, r); });
+  return new Map([...ult].map(([n, r]) => [n, r.obra_id]));
 }
 
 function _painelPessoa(n) {
@@ -119,6 +144,8 @@ async function renderPainel() {
   const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
   const sub = document.getElementById('painel-sub');
   if (sub) sub.textContent = `Folhas de ponto · semana de ${semanaTxt}`;
+  const filtros = document.getElementById('painel-filtros');
+  if (filtros) filtros.innerHTML = htmlFiltrosPainel();
 
   // Os dados vêm das folhas de ponto e dos equipamentos — só para quem tem acesso a essas secções
   const podeFolhas = canAccessSection('historico');
@@ -139,7 +166,7 @@ export async function htmlFeriasFaltasSemana() {
   const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
   const { registos, previstas } = await _painelCarregarSemana(dias);
   const iconAus = '<path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11z"/>';
-  return _painelCardHtml('Férias e faltas', `Esta semana · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
+  return _painelCardHtml('Férias e faltas', `${_rotSemana()} · ${semanaTxt}`, 'var(--orange)', 'var(--orange-bg)', iconAus, _painelHtmlAusentes(registos, previstas, dias));
 }
 
 // ── Painel Principal — estado das obras na semana (MO e EQ) ───────
@@ -160,7 +187,7 @@ const _normNome = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, ''
 function _corPct(p) { return p >= 85 ? 'var(--green)' : p >= 65 ? 'var(--orange)' : 'var(--red)'; }
 
 async function _estadoObrasCarregar(dias, podeMO, podeEQ) {
-  const monAnt = new Date(dias[0]); monAnt.setDate(monAnt.getDate() - 7);
+  const monAnt = _inicioLookback(dias);
   const ini = _ymd(dias[0]), fim = _ymd(dias[6]);
   const q = async (fn, fallback) => { try { const { data, error } = await fn(); if (error) throw error; return data || fallback; } catch (e) { console.warn('estado das obras:', e); return fallback; } };
   const [regs, prev, equips, manut] = await Promise.all([
@@ -178,9 +205,7 @@ function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
   const porObra = new Map(obras.map(o => [o.id, { obra: o, equipa: new Map(), equips: [] }]));
 
   // Cada colaborador conta na obra do seu registo mais recente (esta semana ou a anterior)
-  const ult = new Map();
-  regs.filter(r => r.obra_id).forEach(r => { const a = ult.get(r.colab_numero); if (!a || r.data > a.data) ult.set(r.colab_numero, r); });
-  ult.forEach((r, n) => { porObra.get(r.obra_id)?.equipa.set(n, {}); });
+  _obraPorColab(regs).forEach((obraId, n) => { porObra.get(obraId)?.equipa.set(n, {}); });
 
   const dia = new Map(); // "colab|data" → tipo
   regs.forEach(r => dia.set(r.colab_numero + '|' + r.data, r.tipo || 'Presença'));
@@ -219,7 +244,7 @@ function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
     o.eq = o.equips.length ? Math.round(100 * (o.equips.length - o.eqNaoOp) / o.equips.length) : null;
   });
 
-  return [...porObra.values()].filter(o => o.equipa.size || o.equips.length)
+  return [...porObra.values()].filter(o => _pObra ? o.obra.id === _pObra : (o.equipa.size || o.equips.length))
     .sort((a, b) => a.obra.nome.localeCompare(b.obra.nome, 'pt'));
 }
 
@@ -233,20 +258,57 @@ function _eoMetrica(rot, pct, txt) {
 export async function htmlEstadoObrasSemana() {
   const podeMO = canAccessSection('historico'), podeEQ = canAccessSection('equipamentos');
   if (!podeMO && !podeEQ) return '';
-  const dias = _painelSemana();
+  const dias = _painelSemana(_pOffset);
   const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
-  const lista = _estadoObrasCalcular(dias, await _estadoObrasCarregar(dias, podeMO, podeEQ));
-  _estadoObras = new Map(lista.map(o => [o.obra.id, { ...o, semanaTxt, podeMO, podeEQ }]));
+  // O estado dos equipamentos só existe "agora" (sem histórico), por isso o EQ só vale na semana atual
+  const eqAtivo = podeEQ && _pOffset === 0;
+  const lista = _estadoObrasCalcular(dias, await _estadoObrasCarregar(dias, podeMO, eqAtivo));
+  _estadoObras = new Map(lista.map(o => [o.obra.id, { ...o, semanaTxt, podeMO, podeEQ, eqAtivo }]));
   const icon = '<path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z"/>';
-  const corpo = lista.length ? lista.map(o => `<div class="eo-row" role="button" tabindex="0" onclick="abrirEstadoObra('${_esc(o.obra.id)}')" onkeydown="if(event.key==='Enter')abrirEstadoObra('${_esc(o.obra.id)}')">
+
+  const nota = podeEQ && !eqAtivo ? '<div class="eo-nota">EQ mostra o estado atual dos equipamentos, por isso só está disponível na semana atual.</div>' : '';
+
+  const eqTit = (o) => eqAtivo ? `${o.equips.length - o.eqNaoOp} de ${o.equips.length} equipamentos operacionais` : 'Só disponível na semana atual';
+  const corpo = nota + (lista.length ? lista.map(o => `<div class="eo-row" role="button" tabindex="0" onclick="abrirEstadoObra('${_esc(o.obra.id)}')" onkeydown="if(event.key==='Enter')abrirEstadoObra('${_esc(o.obra.id)}')">
       <div class="eo-nome">${_esc(o.obra.nome)}</div>
       <div class="eo-mets">
         ${podeMO ? _eoMetrica('MO', o.mo, `${o.equipa.size} pessoas · ${o.aus} dias de ausência`) : ''}
-        ${podeEQ ? _eoMetrica('EQ', o.eq, `${o.equips.length - o.eqNaoOp} de ${o.equips.length} equipamentos operacionais`) : ''}
+        ${podeEQ ? _eoMetrica('EQ', o.eq, eqTit(o)) : ''}
       </div>
-    </div>`).join('') : _painelVazio('Sem dados de equipas ou equipamentos nas obras ativas.');
-  return _painelCardHtml('Estado das obras', `Esta semana · ${semanaTxt} · toque numa obra para o detalhe`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
+    </div>`).join('') : _painelVazio(_pObra ? 'Sem equipa nem equipamentos registados nesta obra.' : 'Sem dados de equipas ou equipamentos nas obras ativas.'));
+  return _painelCardHtml('Estado das obras', `${_rotSemana()} · ${semanaTxt} · toque numa obra para o detalhe`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
 }
+
+// ── Filtro geral do Painel (semana + obra) ───────────────────────
+function _rotSemana() {
+  return _pOffset === 0 ? 'Esta semana' : _pOffset === -1 ? 'Semana passada' : _pOffset === 1 ? 'Próxima semana'
+    : _pOffset < 0 ? `Há ${-_pOffset} semanas` : `Daqui a ${_pOffset} semanas`;
+}
+
+// Barra com a semana e a obra; aplica-se a todos os cartões do Painel Principal
+export function htmlFiltrosPainel() {
+  if (!canAccessSection('historico') && !canAccessSection('equipamentos')) return '';
+  const dias = _painelSemana();
+  const opcoes = S.OBRAS.filter(o => o.ativa).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+    .map(o => `<option value="${_esc(o.id)}"${o.id === _pObra ? ' selected' : ''}>${_esc(o.nome)}</option>`).join('');
+  return `<div class="eo-bar-nav">
+    <div class="eo-sem">
+      <button type="button" class="eo-nav" onclick="painelMudarSemana(-1)" title="Semana anterior" aria-label="Semana anterior">‹</button>
+      <div class="eo-sem-txt"><b>${_rotSemana()}</b><small>${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}</small></div>
+      <button type="button" class="eo-nav" onclick="painelMudarSemana(1)" title="Semana seguinte" aria-label="Semana seguinte">›</button>
+      ${_pOffset !== 0 ? '<button type="button" class="eo-hoje" onclick="painelMudarSemana(0)">Hoje</button>' : ''}
+    </div>
+    <select class="eo-sel" onchange="painelSetObra(this.value)" aria-label="Obra"><option value="">Todas as obras</option>${opcoes}</select>
+  </div>`;
+}
+
+// Volta a desenhar o ecrã onde o filtro está (Painel no computador, Análise no telemóvel)
+function _painelRedesenhar() {
+  if (document.getElementById('sec-analise')?.classList.contains('active')) R.renderAnalise?.();
+  else renderPainel();
+}
+export function painelMudarSemana(delta) { _pOffset = delta === 0 ? 0 : _pOffset + delta; _painelRedesenhar(); }
+export function painelSetObra(id) { _pObra = id || ''; _painelRedesenhar(); }
 
 const _MO_CEL = {
   P: ['✓', 'eo-c-ok', 'Presença'], F: ['F', 'eo-c-fer', 'Férias'], J: ['FJ', 'eo-c-fj', 'Falta justificada'],
@@ -276,7 +338,7 @@ export function abrirEstadoObra(id) {
       <div class="eo-leg">${['P', 'F', 'J', 'I', 'V', '-'].map(k => `<span><i class="eo-c ${_MO_CEL[k][1]}">${_MO_CEL[k][0]}</i> ${_MO_CEL[k][2]}</span>`).join('')}</div>` : ''}
     </div>`;
   }
-  if (o.podeEQ) {
+  if (o.podeEQ && o.eqAtivo) {
     const eqs = [...o.equips].sort((a, b) => (_EQ_NAO_OP.includes(b.estado) - _EQ_NAO_OP.includes(a.estado)) || a.nome.localeCompare(b.nome, 'pt'));
     html += `<div class="eo-sec">${cab('Equipamentos', o.eq, o.equips.length
       ? `${o.equips.length - o.eqNaoOp} de ${o.equips.length} operacionais · ${o.eqNaoOp} em avaria/manutenção/parados`
@@ -291,6 +353,7 @@ export function abrirEstadoObra(id) {
       }).join('')}
     </div>`;
   }
+  if (o.podeEQ && !o.eqAtivo) html += '<div class="eo-nota" style="margin-top:14px">Os equipamentos só são mostrados na semana atual (não há histórico do estado).</div>';
   document.getElementById('meo-body').innerHTML = html;
   openModal('modal-estado-obra');
 }
