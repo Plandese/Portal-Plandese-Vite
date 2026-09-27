@@ -1885,6 +1885,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar XLSX
             </button>
+            <button class="btn btn-primary" onclick="abrirCombFormRegisto()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Registo
+            </button>
           </div>
         </div>
 
@@ -1918,135 +1922,11 @@
           </div>
         </div>
 
-        <!-- KPIs Combustível (período + stock real) -->
-        <div id="comb-kpis" style="display:none;margin-bottom:16px">
-
-          <!-- IDs legados (ocultos) para retrocompatibilidade -->
-          <span id="comb-k-total" style="display:none">0</span>
-          <span id="comb-k-litros" style="display:none">0</span>
-          <span id="comb-k-gasoleo" style="display:none">0</span>
-          <span id="comb-k-gasolina" style="display:none">0</span>
-
-          <!-- Linha: Entradas + Saídas + Stock Real -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 210px;gap:12px;margin-bottom:12px">
-
-            <!-- Entradas -->
-            <div class="card" style="padding:16px 20px">
-              <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
-                <span style="display:inline-flex;width:20px;height:20px;background:#dcfce7;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16a34a">↓</span>
-                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#16a34a">Entradas no Depósito</span>
-                <span style="font-size:10px;color:var(--gray-400);margin-left:auto">acumulado real</span>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#f0fdf4">
-                  <div style="font-size:9px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hoje</div>
-                  <div id="comb-k-ent-dia" style="font-size:17px;font-weight:700;color:#16a34a;line-height:1">—</div>
-                  <div style="font-size:9px;color:#86efac;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#f0fdf4">
-                  <div style="font-size:9px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Semana</div>
-                  <div id="comb-k-ent-sem" style="font-size:17px;font-weight:700;color:#16a34a;line-height:1">—</div>
-                  <div style="font-size:9px;color:#86efac;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#f0fdf4">
-                  <div style="font-size:9px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Mês</div>
-                  <div id="comb-k-ent-mes" style="font-size:17px;font-weight:700;color:#16a34a;line-height:1">—</div>
-                  <div style="font-size:9px;color:#86efac;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#f0fdf4">
-                  <div style="font-size:9px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ano</div>
-                  <div id="comb-k-ent-ano" style="font-size:17px;font-weight:700;color:#16a34a;line-height:1">—</div>
-                  <div style="font-size:9px;color:#86efac;margin-top:3px">litros</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Saídas -->
-            <div class="card" style="padding:16px 20px">
-              <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
-                <span style="display:inline-flex;width:20px;height:20px;background:#fee2e2;border-radius:50%;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#dc2626">↑</span>
-                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#dc2626">Saídas</span>
-                <span style="font-size:10px;color:var(--gray-400);margin-left:auto">depósito + viaturas</span>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#fef2f2">
-                  <div style="font-size:9px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hoje</div>
-                  <div id="comb-k-sai-dia" style="font-size:17px;font-weight:700;color:#dc2626;line-height:1">—</div>
-                  <div style="font-size:9px;color:#fca5a5;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#fef2f2">
-                  <div style="font-size:9px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Semana</div>
-                  <div id="comb-k-sai-sem" style="font-size:17px;font-weight:700;color:#dc2626;line-height:1">—</div>
-                  <div style="font-size:9px;color:#fca5a5;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#fef2f2">
-                  <div style="font-size:9px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Mês</div>
-                  <div id="comb-k-sai-mes" style="font-size:17px;font-weight:700;color:#dc2626;line-height:1">—</div>
-                  <div style="font-size:9px;color:#fca5a5;margin-top:3px">litros</div>
-                </div>
-                <div style="text-align:center;padding:8px 4px;border-radius:8px;background:#fef2f2">
-                  <div style="font-size:9px;color:#fca5a5;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Ano</div>
-                  <div id="comb-k-sai-ano" style="font-size:17px;font-weight:700;color:#dc2626;line-height:1">—</div>
-                  <div style="font-size:9px;color:#fca5a5;margin-top:3px">litros</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Stock Real -->
-            <div class="card" style="padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--blue-50);border:1.5px solid var(--blue-200)">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--blue-600);margin-bottom:10px">Stock Real Acumulado</div>
-              <div id="comb-k-stock" style="font-size:30px;font-weight:700;color:var(--blue-700);line-height:1;font-variant-numeric:tabular-nums">—</div>
-              <div style="font-size:11px;color:var(--blue-500);margin-top:6px">litros em depósito</div>
-              <div id="comb-k-stock-sub" style="font-size:10px;color:var(--gray-400);margin-top:10px;line-height:1.4">Entradas − Saídas<br>todas as obras</div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Toggle Vista -->
-        <div id="comb-toggle-bar" style="display:none;align-items:center;justify-content:flex-end;margin-bottom:12px">
-          <div style="display:flex;gap:0;background:var(--gray-100);border-radius:8px;padding:3px">
-            <button id="comb-btn-tabela" onclick="toggleCombView('tabela')" style="padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);background:var(--white);color:var(--gray-800);box-shadow:0 1px 3px rgba(0,0,0,.1);transition:all .15s">
-              ☰ Tabela
-            </button>
-            <button id="comb-btn-obras" onclick="toggleCombView('obras')" style="padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-500);box-shadow:none;transition:all .15s">
-              ⊞ Por Obra
-            </button>
-          </div>
-        </div>
-
-        <!-- Vista Tabela -->
-        <div id="comb-view-tabela" class="card" style="padding:0;overflow:hidden">
-          <div class="tbl-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Viatura / Máquina</th>
-                  <th>Obra</th>
-                  <th>Movimento</th>
-                  <th>Litros</th>
-                  <th>Tipo</th>
-                  <th>Fornecedor</th>
-                  <th>Encarregado</th>
-                  <th>Obs.</th>
-                </tr>
-              </thead>
-              <tbody id="comb-tbody"></tbody>
-            </table>
-          </div>
-          <div id="comb-empty" class="fat-empty" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-            <div style="margin-top:6px">Sem registos. Defina o período e clique em "Pesquisar".</div>
-          </div>
-        </div>
-
-        <!-- Vista Por Obra (cartões) -->
-        <div id="comb-view-obras" style="display:none">
-          <div id="comb-obras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-          <div id="comb-obras-empty" class="fat-empty" style="display:none">
-            <div style="margin-top:6px">Sem registos com obra associada.</div>
-          </div>
+        <!-- Stock por obra (cartões) -->
+        <div id="comb-obras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+        <div id="comb-obras-empty" class="fat-empty" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+          <div style="margin-top:6px">Sem registos. Defina o período e clique em "Pesquisar".</div>
         </div>
 
       </section>
@@ -3532,6 +3412,133 @@
     <div id="meqh-list" style="max-height:380px;overflow-y:auto;margin-top:4px"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-eq-hist')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE OBRA — COMBUSTÍVEL -->
+<div class="modal-bg" id="modal-comb-obra" onclick="if(event.target===this)closeModal('modal-comb-obra')">
+  <div class="modal" style="width:900px;max-width:96vw">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div>
+        <div class="modal-title" id="mcob-title">Obra</div>
+        <div class="modal-sub" id="mcob-sub">—</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div id="mcob-stock-box"></div>
+        <button class="btn btn-primary btn-sm" onclick="combAdicionarRegistoDaObra()">+ Registo</button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;gap:0;background:var(--gray-100);border-radius:8px;padding:3px" id="mcob-periodo-tabs">
+          <button data-p="dia" class="mcob-p-btn" onclick="combDetSetPeriodo('dia')" style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s">Dia</button>
+          <button data-p="semana" class="mcob-p-btn" onclick="combDetSetPeriodo('semana')" style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s">Semana</button>
+          <button data-p="mes" class="mcob-p-btn" onclick="combDetSetPeriodo('mes')" style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s">Mês</button>
+          <button data-p="tudo" class="mcob-p-btn" onclick="combDetSetPeriodo('tudo')" style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s">Tudo</button>
+        </div>
+        <div id="mcob-nav" style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="combDetNav(-1)" title="Período anterior">‹</button>
+          <span id="mcob-nav-label" style="font-size:12px;font-weight:600;color:var(--gray-700);min-width:140px;text-align:center;display:inline-block"></span>
+          <button class="btn btn-secondary btn-sm" onclick="combDetNav(1)" title="Período seguinte">›</button>
+        </div>
+      </div>
+      <select id="mcob-equip-filter" onchange="combDetSetEquip(this.value)" style="padding:7px 10px;font-size:12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white);max-width:220px">
+        <option value="">Todas as viaturas/equip.</option>
+      </select>
+    </div>
+
+    <div id="mcob-resumo" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
+
+    <div class="tbl-wrap" style="max-height:340px;overflow-y:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Viatura / Máquina</th>
+            <th>Movimento</th>
+            <th>Litros</th>
+            <th>Tipo</th>
+            <th>Fornecedor</th>
+            <th>Encarregado</th>
+            <th>Obs.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="mcob-tbody"></tbody>
+      </table>
+    </div>
+    <div id="mcob-empty" class="fat-empty" style="display:none;padding:20px 0">Sem registos neste período.</div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-comb-obra')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CRIAR/EDITAR REGISTO — COMBUSTÍVEL -->
+<div class="modal-bg" id="modal-comb-form" onclick="if(event.target===this)closeModal('modal-comb-form')">
+  <div class="modal" style="width:480px">
+    <div class="modal-title" id="mcf-title">Novo registo</div>
+    <div class="modal-sub">Registo de combustível</div>
+    <input type="hidden" id="mcf-id"/>
+
+    <div class="field">
+      <label>Tipo de registo</label>
+      <select id="mcf-tipo-registo" onchange="combFormTipoChange()">
+        <option value="deposito">Depósito de obra</option>
+        <option value="viatura">Viatura / Equipamento</option>
+      </select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Data</label><input type="date" id="mcf-data"/></div>
+      <div class="field"><label>Litros</label><input type="number" id="mcf-litros" step="0.01" min="0" placeholder="0.00"/></div>
+    </div>
+
+    <div class="field">
+      <label>Obra</label>
+      <select id="mcf-obra"><option value="">— Sem obra —</option></select>
+    </div>
+
+    <div class="field" id="mcf-movimento-field">
+      <label>Movimento</label>
+      <select id="mcf-movimento">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+    </div>
+
+    <div class="field" id="mcf-equip-field" style="display:none">
+      <label>Viatura / Equipamento</label>
+      <select id="mcf-equip"><option value="">— Selecione —</option></select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field">
+        <label>Tipo de combustível</label>
+        <select id="mcf-tipo-comb">
+          <option>Gasóleo</option>
+          <option>Gasolina</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="field" id="mcf-fornecedor-field" style="display:none">
+        <label>Fornecedor</label>
+        <input type="text" id="mcf-fornecedor" placeholder="Ex: Galp Setúbal"/>
+      </div>
+    </div>
+
+    <div class="field"><label>Encarregado</label><input type="text" id="mcf-encarregado" placeholder="Nome"/></div>
+    <div class="field"><label>Observações</label><textarea id="mcf-obs" rows="2" style="width:100%;padding:13px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;resize:vertical"></textarea></div>
+
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary" id="mcf-del-btn" style="color:var(--red);border-color:var(--red-bg);display:none" onclick="apagarRegistoCombustivel()">Apagar</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closeModal('modal-comb-form')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarRegistoCombustivel()">Guardar</button>
+      </div>
     </div>
   </div>
 </div>
