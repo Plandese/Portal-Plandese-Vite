@@ -11,6 +11,7 @@ let EQ_MOVIMENTOS = JSON.parse(localStorage.getItem('plandese_eq_mov')||'[]');
 let EQ_MANUT = [];
 let _eqMap = null, _eqMapMarkers = [], _editingEqId = null, _eqManutId = null;
 let _qrGpsLat = null, _qrGpsLng = null, _qrEquipId = null;
+let _eqView = 'lista', _eqObraGroups = [];
 
 // ═══════════════════════════════════════
 //  EQUIPAMENTOS E LOGÍSTICA
@@ -99,7 +100,8 @@ function eqToRow(eq){
 function eqManutFromRow(row){
   return { id:row.id, equipId:row.equip_id, data:row.data||'', descricao:row.descricao,
            custo:row.custo==null?'':row.custo, estado:row.estado||'pendente',
-           origem:row.origem||'portal', criadoEm:row.criado_em };
+           origem:row.origem||'portal', solicitanteNome:row.solicitante_nome||'',
+           obraNome:row.obra_nome||'', criadoEm:row.criado_em };
 }
 
 // ── Helpers ────────────────────────────
@@ -148,64 +150,195 @@ function updateEqKPIs(){
   if(kMan) kMan.textContent = EQUIPAMENTOS.filter(e=>(e.estado||'operacional')!=='operacional').length;
   const nb = document.getElementById('nb-eq');
   if(nb) nb.textContent = total;
+  const equipIds = new Set(EQUIPAMENTOS.map(e=>e.id));
+  const nPendManut = EQ_MANUT.filter(m=>m.estado==='pendente' && equipIds.has(m.equipId)).length;
+  const nbManut = document.getElementById('eq-tab-manut-nb');
+  if(nbManut){ nbManut.hidden = !nPendManut; nbManut.textContent = nPendManut; }
 }
 
-// ── Tabela ─────────────────────────────
-function eqFillLocFilter(){
-  const sel = document.getElementById('eq-f-loc');
-  if(!sel) return;
-  const locs = [...new Set(EQUIPAMENTOS.map(e=>e.ultimoLocal).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
-  const sig  = locs.join('|');
-  if(sel.dataset.sig===sig) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Todas</option>' + locs.map(l=>`<option value="${eqEsc(l)}">${eqEsc(l)}</option>`).join('');
-  sel.value = locs.includes(cur)?cur:'';
-  sel.dataset.sig = sig;
+// ── Vistas (Lista / Por Obra / Manutenção) ─
+function switchEqView(view){
+  _eqView = view;
+  ['lista','obra','manut'].forEach(v=>{
+    const panel = document.getElementById('eq-view-'+v);
+    const btn   = document.getElementById('eq-tab-btn-'+v);
+    if(panel) panel.style.display = v===view ? '' : 'none';
+    if(btn)   btn.classList.toggle('active', v===view);
+  });
+  if(view==='obra')  renderEqPorObra();
+  if(view==='manut') renderEqManutBoard();
 }
-function renderEquipamentos(){
-  const val    = id => (document.getElementById(id)||{value:''}).value;
-  const search = val('eq-f-search').toLowerCase().trim();
-  const cat = val('eq-f-cat'), est = val('eq-f-est'), prop = val('eq-f-prop');
-  eqFillLocFilter();
-  const loc    = val('eq-f-loc');
-  const list   = EQUIPAMENTOS.filter(eq=>{
-    if(cat  && eq.categoria!==cat) return false;
-    if(est  && (eq.estado||'operacional')!==est) return false;
-    if(prop && (eq.propriedade||'propria')!==prop) return false;
-    if(loc  && eq.ultimoLocal!==loc) return false;
-    if(!search) return true;
-    return [eq.nome,eq.serie,eq.matricula,eq.codigo,eq.marcaModelo,eq.condutor,eq.fornecedor].join(' ').toLowerCase().includes(search);
-  }).sort((a,b)=>(a.ultimoLocal||'zzzz').localeCompare(b.ultimoLocal||'zzzz','pt') || a.nome.localeCompare(b.nome,'pt'));
-  const tbody  = document.getElementById('eq-tbody');
-  const empty  = document.getElementById('eq-empty');
-  if(!tbody) return;
-  if(!list.length){ tbody.innerHTML=''; if(empty) empty.style.display=''; updateEqKPIs(); return; }
+
+// ── Vista "Por Obra" ────────────────────
+function renderEqPorObra(){
+  const grid  = document.getElementById('eq-obras-grid');
+  const empty = document.getElementById('eq-obras-empty');
+  if(!grid) return;
+  const map = {};
+  EQUIPAMENTOS.forEach(eq=>{
+    const key = eq.ultimoLocal || '__sem_local__';
+    if(!map[key]) map[key] = { nome: eq.ultimoLocal || 'Sem localização registada', items: [] };
+    map[key].items.push(eq);
+  });
+  const semLocal = map['__sem_local__'];
+  delete map['__sem_local__'];
+  const obras = Object.values(map).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  if(semLocal) obras.push(semLocal);
+  _eqObraGroups = obras;
+  if(!obras.length){ grid.innerHTML=''; if(empty) empty.style.display=''; return; }
   if(empty) empty.style.display='none';
-  tbody.innerHTML = list.map(eq=>{
-    const ult    = eq.ultimoLocal||'—';
-    const dt     = eq.ultimoRegisto ? eqFmtDt(new Date(eq.ultimoRegisto)) : null;
-    const ago    = eq.ultimoRegisto ? eqTimeAgo(new Date(eq.ultimoRegisto)) : null;
-    const coords = eq.ultimoLat ? `<div style="font-size:10px;color:var(--gray-400);font-family:'DM Mono',monospace">${(+eq.ultimoLat).toFixed(5)}, ${(+eq.ultimoLng).toFixed(5)}</div>` : '';
-    const sub    = [eq.matricula, eq.codigo&&('Nº '+eq.codigo), eq.marcaModelo].filter(Boolean).map(eqEsc).join(' · ');
-    const pend   = eqPendentes(eq.id).length;
-    const vals   = eqValChip('Seguro',eq.seguroValidade)+eqValChip('IPO',eq.ipoValidade)+eqValChip('Garantia',eq.garantiaAte);
-    return `<tr>
-      <td>
-        <div style="font-weight:600;color:var(--gray-900)">${eqEsc(eq.nome)}</div>
-        ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:1px">${sub}</div>`:''}
-        ${eq.condutor?`<div style="font-size:11px;color:var(--gray-400);margin-top:1px">Condutor/resp.: ${eqEsc(eq.condutor)}</div>`:''}
-        ${eq.descricao?`<div style="font-size:11px;color:var(--gray-400);margin-top:1px">${eqEsc(eq.descricao)}</div>`:''}
-      </td>
-      <td>${eqCatBadge(eq.categoria)}${eq.propriedade==='aluguer'?'<span class="eq-prop-badge">Aluguer</span>':''}
-        ${eq.fornecedor?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${eqEsc(eq.fornecedor)}</div>`:''}
-      </td>
-      <td>${eqEstadoBadge(eq.estado)}</td>
-      <td><span style="font-family:'DM Mono',monospace;font-size:12px">${eqEsc(eq.serie)||'—'}</span></td>
-      <td><div style="font-size:13px">${eqEsc(ult)}</div>${coords}
-        ${dt?`<div style="font-size:11px;color:var(--gray-400)">${dt}${ago?' · '+ago:''}</div>`:''}
-      </td>
-      <td>${vals||'<span style="color:var(--gray-300)">—</span>'}</td>
-      <td style="white-space:nowrap">
+  grid.innerHTML = obras.map((ob,i)=>{
+    const total = ob.items.length;
+    const op    = ob.items.filter(e=>(e.estado||'operacional')==='operacional').length;
+    const man   = ob.items.filter(e=>['manutencao','oficina'].includes(e.estado)).length;
+    const par   = ob.items.filter(e=>e.estado==='parada').length;
+    const pend  = ob.items.reduce((s,e)=>s+eqPendentes(e.id).length,0);
+    const chips = [
+      op  ? `<span style="font-size:11px;font-weight:600;color:var(--green,#16a34a)">${op} operacional${op!==1?'ais':''}</span>` : '',
+      man ? `<span style="font-size:11px;font-weight:600;color:#b45309">${man} em manutenção</span>` : '',
+      par ? `<span style="font-size:11px;font-weight:600;color:#b91c1c">${par} parado${par!==1?'s':''}</span>` : ''
+    ].filter(Boolean).join(' · ');
+    return `<div class="card" style="padding:16px 18px;cursor:pointer" onclick="abrirEqObraDetalhe(${i})" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${eqEsc(ob.nome)}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${total} equipamento${total!==1?'s':''}${chips?' · '+chips:''}</div>
+        </div>
+        ${pend?`<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#b91c1c">Pendente</div>
+          <div style="font-size:18px;font-weight:700;color:#b91c1c;line-height:1">${pend}</div>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _eqObraRowHtml(eq){
+  const pend = eqPendentes(eq.id).length;
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--gray-100)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${eqEsc(eq.nome)}</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[eqCatBadge(eq.categoria),eqEstadoBadge(eq.estado)].join(' ')}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="openEqManut('${eq.id}')" title="Manutenção">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>${pend?`<span class="eq-pend-dot">${pend}</span>`:''}
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="editEquipamento('${eq.id}')" title="Editar">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    </button>
+  </div>`;
+}
+
+function abrirEqObraDetalhe(i){
+  const ob = _eqObraGroups[i]; if(!ob) return;
+  document.getElementById('meqo-title').textContent = ob.nome;
+  document.getElementById('meqo-sub').textContent = `${ob.items.length} equipamento${ob.items.length!==1?'s':''}`;
+  document.getElementById('meqo-list').innerHTML = ob.items
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+    .map(_eqObraRowHtml).join('');
+  openModal('modal-eq-obra-detalhe');
+}
+
+// ── Vista "Manutenção" (quadro Pendente/Resolvida) ──
+function eqManutOrigemBadge(m){
+  const isEnc = m.origem==='encarregado';
+  return `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:5px;background:${isEnc?'var(--blue-50)':'var(--gray-100)'};color:${isEnc?'var(--blue-600)':'var(--gray-500)'};flex-shrink:0">${isEnc?'Encarregado':'Portal'}</span>`;
+}
+
+function _eqManutFillFiltros(){
+  const selObra = document.getElementById('eq-manut-f-obra');
+  if(selObra){
+    const locs = [...new Set(EQUIPAMENTOS.map(e=>e.ultimoLocal).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+    const cur = selObra.value;
+    selObra.innerHTML = '<option value="">Todas as obras</option>' + locs.map(l=>`<option value="${eqEsc(l)}">${eqEsc(l)}</option>`).join('');
+    if(locs.includes(cur)) selObra.value = cur;
+  }
+  const selEquip = document.getElementById('eq-manut-f-equip');
+  if(selEquip){
+    const cur = selEquip.value;
+    const ordenados = EQUIPAMENTOS.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+    selEquip.innerHTML = '<option value="">Todos os equipamentos</option>' + ordenados.map(e=>`<option value="${e.id}">${eqEsc(e.nome)}</option>`).join('');
+    if(EQUIPAMENTOS.some(e=>e.id===cur)) selEquip.value = cur;
+  }
+}
+
+function renderEqManutBoard(){
+  _eqManutFillFiltros();
+  const obraFilt  = document.getElementById('eq-manut-f-obra')?.value  || '';
+  const equipFilt = document.getElementById('eq-manut-f-equip')?.value || '';
+  const equipMap  = Object.fromEntries(EQUIPAMENTOS.map(e=>[e.id,e]));
+  let items = EQ_MANUT.filter(m=>equipMap[m.equipId]);
+  if(equipFilt) items = items.filter(m=>m.equipId===equipFilt);
+  if(obraFilt)  items = items.filter(m=>(equipMap[m.equipId]?.ultimoLocal||'')===obraFilt);
+  const pend = items.filter(m=>m.estado==='pendente').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  const done = items.filter(m=>m.estado==='resolvida').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+
+  const cardHtml = m=>{
+    const eq   = equipMap[m.equipId];
+    const meta = [m.data?eqDatePT(m.data):'', m.custo!==''?(+m.custo).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €':''].filter(Boolean).join(' · ');
+    const rodape = [eq?.ultimoLocal, meta, m.solicitanteNome].filter(Boolean).join(' · ');
+    return `<div class="card" style="padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="openEqManut('${m.equipId}')">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${eqEsc(eq?eq.nome:m.equipId)}</div>
+        ${eqManutOrigemBadge(m)}
+      </div>
+      <div style="font-size:12px;color:var(--gray-600);margin-top:5px">${eqEsc(m.descricao)}</div>
+      ${rodape?`<div style="font-size:11px;color:var(--gray-400);margin-top:6px">${eqEsc(rodape)}</div>`:''}
+    </div>`;
+  };
+  const colP = document.getElementById('eq-manut-col-pendente');
+  const colD = document.getElementById('eq-manut-col-resolvida');
+  if(colP) colP.innerHTML = pend.length ? pend.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções pendentes</div>';
+  if(colD) colD.innerHTML = done.length ? done.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções resolvidas</div>';
+  const cP = document.getElementById('eq-manut-count-pend'); if(cP) cP.textContent = pend.length;
+  const cD = document.getElementById('eq-manut-count-done'); if(cD) cD.textContent = done.length;
+}
+
+function abrirEqManutPicker(){
+  const search = document.getElementById('eqmp-search');
+  if(search) search.value='';
+  _renderEqManutPickList('');
+  openModal('modal-eq-manut-pick');
+}
+
+function _renderEqManutPickList(term){
+  const list = document.getElementById('eqmp-list');
+  if(!list) return;
+  const t = term.toLowerCase().trim();
+  const items = EQUIPAMENTOS
+    .filter(e=>!t || [e.nome,e.matricula,e.codigo].join(' ').toLowerCase().includes(t))
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+    .slice(0,60);
+  list.innerHTML = items.length ? items.map(e=>`<button type="button" onclick="closeModal('modal-eq-manut-pick');openEqManut('${e.id}')" style="display:block;width:100%;text-align:left;padding:9px 10px;border:none;border-bottom:1px solid var(--gray-100);background:none;cursor:pointer;font-family:var(--font);font-size:13px;color:var(--gray-800)">
+    <strong>${eqEsc(e.nome)}</strong>${e.ultimoLocal?` <span style="color:var(--gray-400);font-size:11px">· ${eqEsc(e.ultimoLocal)}</span>`:''}
+  </button>`).join('') : '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:12px">Sem resultados</div>';
+}
+
+function eqManutPickFiltra(v){ _renderEqManutPickList(v); }
+
+// ── KPIs (sem tabela — a vista "Lista" usa apenas mapa + pesquisa) ──
+function renderEquipamentos(){
+  updateEqKPIs();
+}
+
+// ── Pesquisa de equipamento (vista "Lista") ──
+function _eqBuscaRowHtml(eq){
+  const ult  = eq.ultimoLocal||'Sem localização registada';
+  const sub  = [eq.matricula, eq.codigo&&('Nº '+eq.codigo), eq.marcaModelo].filter(Boolean).map(eqEsc).join(' · ');
+  const pend = eqPendentes(eq.id).length;
+  const vals = eqValChip('Seguro',eq.seguroValidade)+eqValChip('IPO',eq.ipoValidade)+eqValChip('Garantia',eq.garantiaAte);
+  return `<div class="card" style="padding:12px 16px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:700;color:var(--gray-900)">${eqEsc(eq.nome)}</span>
+          ${eqCatBadge(eq.categoria)}${eqEstadoBadge(eq.estado)}${eq.propriedade==='aluguer'?'<span class="eq-prop-badge">Aluguer</span>':''}
+        </div>
+        ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:3px">${sub}</div>`:''}
+        <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${eqEsc(ult)}</div>
+        ${vals?`<div style="margin-top:4px">${vals}</div>`:''}
+      </div>
+      <div style="white-space:nowrap;flex-shrink:0">
         <button class="btn btn-secondary btn-sm" onclick="showQrCode('${eq.id}')" title="Ver QR Code">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>
           QR
@@ -219,10 +352,24 @@ function renderEquipamentos(){
         <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="editEquipamento('${eq.id}')" title="Editar">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
-      </td>
-    </tr>`;
-  }).join('');
-  updateEqKPIs();
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderEqBusca(){
+  const box  = document.getElementById('eq-busca-resultados');
+  const hint = document.getElementById('eq-busca-hint');
+  if(!box) return;
+  const term = (document.getElementById('eq-busca-input')?.value||'').toLowerCase().trim();
+  if(!term){ box.innerHTML=''; if(hint) hint.style.display=''; return; }
+  if(hint) hint.style.display='none';
+  const list = EQUIPAMENTOS.filter(eq=>
+    [eq.nome,eq.serie,eq.matricula,eq.codigo,eq.marcaModelo,eq.condutor,eq.fornecedor].join(' ').toLowerCase().includes(term)
+  ).sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).slice(0,40);
+  box.innerHTML = list.length
+    ? list.map(_eqBuscaRowHtml).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem resultados para "${eqEsc(term)}"</div>`;
 }
 
 // ── Mapa Leaflet ────────────────────────
@@ -467,11 +614,14 @@ function renderEqManut(){
   }
   list.innerHTML=items.map(m=>{
     const done=m.estado==='resolvida';
-    const meta=[m.data?eqDatePT(m.data):'', m.custo!==''?(+m.custo).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €':''].filter(Boolean).join(' · ');
+    const meta=[m.data?eqDatePT(m.data):'', m.custo!==''?(+m.custo).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €':'', m.solicitanteNome].filter(Boolean).join(' · ');
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 2px;border-bottom:1px solid var(--gray-100)">
       <input type="checkbox" ${done?'checked':''} onchange="toggleEqManut(${m.id})" title="${done?'Marcar como pendente':'Marcar como resolvida'}" style="margin-top:3px;flex-shrink:0"/>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:${done?'var(--gray-400)':'var(--gray-900)'};${done?'text-decoration:line-through':''}">${eqEsc(m.descricao)}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="font-size:13px;color:${done?'var(--gray-400)':'var(--gray-900)'};${done?'text-decoration:line-through':''}">${eqEsc(m.descricao)}</div>
+          ${eqManutOrigemBadge(m)}
+        </div>
         ${meta?`<div style="font-size:11px;color:var(--gray-400);margin-top:2px">${meta}</div>`:''}
       </div>
       <button class="btn btn-secondary btn-sm" onclick="removeEqManut(${m.id})" title="Apagar" style="color:var(--red)">×</button>
@@ -487,29 +637,38 @@ function openEqManut(id){
   renderEqManut();
   openModal('modal-eq-manut');
 }
+function _eqManutRefreshViews(){
+  renderEquipamentos();
+  if(_eqView==='obra')  renderEqPorObra();
+  if(_eqView==='manut') renderEqManutBoard();
+}
 async function addEqManut(){
   const desc=document.getElementById('meqm-desc').value.trim();
   if(!desc){ showToast('Descreva a manutenção'); return; }
   const data=document.getElementById('meqm-data').value||null;
   const custo=eqNum(document.getElementById('meqm-custo').value);
-  const {data:ins,error}=await sb.from('eq_manutencoes').insert({equip_id:_eqManutId,descricao:desc,data,custo,estado:'pendente',origem:'portal'}).select().single();
+  const eq=EQUIPAMENTOS.find(e=>e.id===_eqManutId);
+  const {data:ins,error}=await sb.from('eq_manutencoes').insert({
+    equip_id:_eqManutId,descricao:desc,data,custo,estado:'pendente',origem:'portal',
+    solicitante_nome:S.currentUser?.nome||null, obra_nome:eq?.ultimoLocal||null
+  }).select().single();
   if(error||!ins){ showToast('Erro ao guardar a manutenção'); return; }
   EQ_MANUT.push(eqManutFromRow(ins));
   ['meqm-desc','meqm-data','meqm-custo'].forEach(i=>eqSet(i,''));
-  renderEqManut(); renderEquipamentos();
+  renderEqManut(); _eqManutRefreshViews();
 }
 async function toggleEqManut(id){
   const m=EQ_MANUT.find(x=>x.id===id); if(!m) return;
   const novo=m.estado==='pendente'?'resolvida':'pendente';
   const {error}=await sb.from('eq_manutencoes').update({estado:novo}).eq('id',id);
   if(error){ showToast('Erro ao atualizar a manutenção'); renderEqManut(); return; }
-  m.estado=novo; renderEqManut(); renderEquipamentos();
+  m.estado=novo; renderEqManut(); _eqManutRefreshViews();
 }
 async function removeEqManut(id){
   if(!confirm('Apagar este registo de manutenção?')) return;
   const {error}=await sb.from('eq_manutencoes').delete().eq('id',id);
   if(error){ showToast('Erro ao apagar a manutenção'); return; }
-  EQ_MANUT=EQ_MANUT.filter(x=>x.id!==id); renderEqManut(); renderEquipamentos();
+  EQ_MANUT=EQ_MANUT.filter(x=>x.id!==id); renderEqManut(); _eqManutRefreshViews();
 }
 
 function sbUpdateEquipamentoLocal(id, ultimoLocal, ultimoLat, ultimoLng, ultimoRegisto){
@@ -527,6 +686,8 @@ async function initEquipamentos(){
   setTimeout(()=>{ initEqMap(); }, 120);
   await sbLoadEquipamentos();
   renderEquipamentos(); refreshEqMap();
+  if(_eqView==='obra')  renderEqPorObra();
+  if(_eqView==='manut') renderEqManutBoard();
 }
 
 // ═══════════════════════════════════════
@@ -633,13 +794,15 @@ function submitQrRegistration(){
 // ═══════════════════════════════════════
 
 export {
-  EQUIPAMENTOS, EQ_MOVIMENTOS,
-  EQ_CATS, eqFmtDt, saveEqLocal,
-  renderEquipamentos, updateEqKPIs,
+  EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_MANUT,
+  EQ_CATS, eqFmtDt, eqDatePT, saveEqLocal,
+  renderEquipamentos, updateEqKPIs, renderEqBusca,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, addEqManut, toggleEqManut, removeEqManut,
+  openEqManut, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  switchEqView, renderEqPorObra, abrirEqObraDetalhe,
+  renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
   initEquipamentos, initQrRegistration, submitQrRegistration
 };

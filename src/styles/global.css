@@ -1228,8 +1228,7 @@ body.device-mobile #lst-body{flex-direction:column}
 body.device-mobile #lst-left{padding:12px 16px}
 body.device-mobile #lst-right{width:100%!important;max-height:34vh;border-left:none;border-top:4px solid var(--gray-100)}
 
-/* Equipamentos e Logística em telemóvel: sem KPIs nem exportação */
-body.device-mobile #eq-export-btn,
+/* Equipamentos e Logística em telemóvel: sem KPIs */
 body.device-mobile #eq-kpis-wrap{display:none}
 
 /* App-bar chip hidden on mobile */
@@ -2055,9 +2054,9 @@ body:not(.app-ativa) .bottom-nav{display:none!important}
 #enc-app #enc-screen-historico-enc{overflow:hidden}
 #enc-app #enc-screen-combustivel > div[style*="overflow-y:auto"],
 #enc-app #enc-screen-comb-deposito > div[style*="overflow-y:auto"]{width:100%}
-/* Formulários de equipamento/viatura (após QR): passam a fazer scroll */
-#enc-app #enc-equip-state-form,#enc-app #comb-viatura-state-form,
-#enc-app #enc-equip-state-success,#enc-app #comb-viatura-state-success{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* Formulários de equipamento/viatura (após identificação): passam a fazer scroll */
+#enc-app #enc-eq-state-form-reg,#enc-app #enc-eq-state-form-man,#enc-app #comb-viatura-state-form,
+#enc-app #enc-eq-state-acao,#enc-app #enc-eq-state-sucesso,#enc-app #comb-viatura-state-success{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
 /* ── Encarregado: seletor de viatura/equipamento (página inteira) ── */
 #enc-app .comb-picker{position:fixed;inset:0;z-index:600;background:var(--gray-50);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}

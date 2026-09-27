@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  ENC-EQUIP — Scanner QR Encarregado
+//  ENC-EQUIP — Identificação (QR ou lista) + Registo/Manutenção — Encarregado
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
@@ -7,20 +7,42 @@ import { showToast } from './navigation.js';
 import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
 
 let _encHtml5Qr = null;
-let _encQrEquipId = null;
 let _encQrGpsLat = null, _encQrGpsLng = null;
+let _encEqEquip = null;   // {id, nome, categoria, ultimo_local} — equipamento identificado (por QR ou lista)
+let _encEqAction = null;  // 'registo' | 'manut'
+let _encEqCache = null;   // cache da lista de equipamentos para escolha manual
 
-function _encEquipShowState(state){
-  document.getElementById('enc-equip-state-scanner').style.display = state==='scanner' ? '' : 'none';
-  const fEl=document.getElementById('enc-equip-state-form');
-  fEl.style.display = state==='form' ? 'flex' : 'none';
-  if(state==='form') fEl.style.flexDirection='column';
-  const sEl=document.getElementById('enc-equip-state-success');
-  sEl.style.display = state==='success' ? 'flex' : 'none';
-  if(state==='success') sEl.style.flexDirection='column';
+function _encEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// ── QR Scanner ─────────────────────────
+const _ENC_EQ_STATES = ['metodo','scanner','lista','acao','form-reg','form-man','sucesso'];
+function _encEqShowState(state){
+  _ENC_EQ_STATES.forEach(s=>{
+    const el = document.getElementById('enc-eq-state-'+s);
+    if(!el) return;
+    el.style.display = (s===state) ? 'flex' : 'none';
+  });
+}
+
+// ── Entrada no ecrã (a partir do bento do encarregado) ──
+function encEqAbrir(){
+  stopEncQrScanner();
+  _encEqEquip=null; _encEqAction=null;
+  _encEqShowState('metodo');
+}
+
+function encEqVoltarMetodo(){
+  stopEncQrScanner();
+  _encEqEquip=null; _encEqAction=null;
+  _encEqShowState('metodo');
+}
+
+// ── Método 1: QR code ───────────────────
+function encEqEscolherMetodoQR(){
+  _encEqShowState('scanner');
+  setTimeout(()=>startEncQrScanner(), 200);
+}
 
 function startEncQrScanner(){
   const readerEl = document.getElementById('enc-qr-reader');
@@ -68,32 +90,90 @@ async function onEncQrScanned(text){
     setTimeout(()=>startEncQrScanner(), 2500);
     return;
   }
-  _encQrEquipId=equipId;
-  _encQrGpsLat=null; _encQrGpsLng=null;
   // Info do equipamento — primeiro local, depois Supabase se não encontrar
   let eq=EQUIPAMENTOS.find(e=>e.id===equipId);
   if(!eq){
-    // Mostrar estado de carregamento enquanto busca
-    document.getElementById('enc-eq-nome').textContent='A carregar…';
-    document.getElementById('enc-eq-cat').textContent='';
-    _encEquipShowState('form');
     eq=await sbFetchEquipamentoById(equipId);
     if(eq){ EQUIPAMENTOS.push(eq); saveEqLocal(); }
-  } else {
-    _encEquipShowState('form');
   }
-  document.getElementById('enc-eq-nome').textContent=eq?eq.nome:`Equipamento ${equipId}`;
-  document.getElementById('enc-eq-cat').textContent=eq?(EQ_CATS[eq.categoria]?.label||'Equipamento'):'Equipamento';
-  // Preencher obras
+  _encEqIrParaAcao({
+    id: equipId,
+    nome: eq?eq.nome:`Equipamento ${equipId}`,
+    categoria: eq?eq.categoria:null,
+    ultimo_local: eq?eq.ultimoLocal:null
+  });
+}
+
+// ── Método 2: escolha manual da lista ───
+async function encEqEscolherMetodoLista(){
+  _encEqShowState('lista');
+  const search=document.getElementById('enc-eq-lista-search');
+  if(search) search.value='';
+  const list=document.getElementById('enc-eq-lista-list');
+  if(list) list.innerHTML='<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:12px">A carregar equipamentos…</div>';
+  if(!_encEqCache){
+    try{
+      const {data,error}=await sb.from('equipamentos').select('id,nome,categoria,ultimo_local').order('nome');
+      if(error) throw error;
+      _encEqCache=data||[];
+    }catch(e){ console.warn('encEqEscolherMetodoLista:',e); _encEqCache=EQUIPAMENTOS.map(e=>({id:e.id,nome:e.nome,categoria:e.categoria,ultimo_local:e.ultimoLocal})); }
+  }
+  encEqListaFiltra('');
+}
+
+function encEqListaFiltra(term){
+  const list=document.getElementById('enc-eq-lista-list');
+  if(!list) return;
+  const t=(term||'').toLowerCase().trim();
+  const items=(_encEqCache||[]).filter(e=>!t||e.nome.toLowerCase().includes(t)).slice(0,80);
+  list.innerHTML = items.length ? items.map(e=>`<button type="button" onclick="encEqListaEscolher('${e.id}')" style="display:block;width:100%;text-align:left;padding:11px 12px;margin-bottom:6px;border:1px solid var(--gray-200);border-radius:10px;background:var(--white);cursor:pointer;font-family:var(--font)">
+    <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${_encEsc(e.nome)}</div>
+    ${e.ultimo_local?`<div style="font-size:11px;color:var(--gray-400);margin-top:2px">${_encEsc(e.ultimo_local)}</div>`:''}
+  </button>`).join('') : '<div style="padding:24px;text-align:center;color:var(--gray-400);font-size:12px">Sem resultados</div>';
+}
+
+function encEqListaEscolher(id){
+  const eq=(_encEqCache||[]).find(e=>e.id===id); if(!eq) return;
+  _encEqIrParaAcao(eq);
+}
+
+// ── Equipamento identificado → escolher ação ──
+function _encEqIrParaAcao(eq){
+  _encEqEquip = eq;
+  document.getElementById('enc-eq-act-nome').textContent = eq.nome;
+  document.getElementById('enc-eq-act-cat').textContent = EQ_CATS[eq.categoria]?.label || 'Equipamento';
+  _encEqShowState('acao');
+}
+
+function encEqVoltarAcao(){
+  _encEqShowState('acao');
+}
+
+function encEqEscolherAcao(acao){
+  if(!_encEqEquip) return;
+  _encEqAction = acao;
+  if(acao==='registo'){
+    _encEqPrepFormRegisto();
+    _encEqShowState('form-reg');
+  } else {
+    _encEqPrepFormManut();
+    _encEqShowState('form-man');
+  }
+}
+
+// ── Formulário: registar localização ────
+function _encEqPrepFormRegisto(){
+  const eq=_encEqEquip;
+  document.getElementById('enc-eq-nome').textContent=eq.nome;
+  document.getElementById('enc-eq-cat').textContent=EQ_CATS[eq.categoria]?.label||'Equipamento';
   const sel=document.getElementById('enc-eq-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
   S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
-  // Reset form
   document.getElementById('enc-eq-obs').value='';
   document.getElementById('enc-eq-use-gps').checked=true;
   document.getElementById('enc-eq-loc-dot').className='qr-loc-dot loading';
   document.getElementById('enc-eq-loc-txt').textContent='A obter localização GPS…';
-  // GPS
+  _encQrGpsLat=null; _encQrGpsLng=null;
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
       _encQrGpsLat=pos.coords.latitude; _encQrGpsLng=pos.coords.longitude;
@@ -111,15 +191,9 @@ async function onEncQrScanned(text){
   }
 }
 
-function encScanNovamente(){
-  _encQrEquipId=null; _encQrGpsLat=null; _encQrGpsLng=null;
-  document.getElementById('enc-qr-reader').innerHTML='';
-  _encEquipShowState('scanner');
-  setTimeout(()=>startEncQrScanner(), 350);
-}
-
 function submitEncEquipamento(){
-  if(!_encQrEquipId){ showToast('Nenhum equipamento seleccionado'); return; }
+  if(!_encEqEquip){ showToast('Nenhum equipamento seleccionado'); return; }
+  const equipId =_encEqEquip.id;
   const obraId  =document.getElementById('enc-eq-obra-sel').value;
   const obs     =document.getElementById('enc-eq-obs').value.trim();
   const useGps  =document.getElementById('enc-eq-use-gps').checked;
@@ -129,13 +203,13 @@ function submitEncEquipamento(){
   const obraNome=selOpt&&obraId?selOpt.textContent:null;
   const mov={
     id:'MOV'+Date.now().toString(36).toUpperCase(),
-    equipId:_encQrEquipId, obraId:obraId||null, obraNome:obraNome||null,
+    equipId, obraId:obraId||null, obraNome:obraNome||null,
     lat:(useGps&&_encQrGpsLat)?_encQrGpsLat:null,
     lng:(useGps&&_encQrGpsLng)?_encQrGpsLng:null,
     obs, encarregado:encNome, criadoEm:new Date().toISOString()
   };
   EQ_MOVIMENTOS.push(mov);
-  const idx=EQUIPAMENTOS.findIndex(e=>e.id===_encQrEquipId);
+  const idx=EQUIPAMENTOS.findIndex(e=>e.id===equipId);
   if(idx>=0){
     EQUIPAMENTOS[idx].ultimoLocal   =obraNome||(mov.lat?`${mov.lat.toFixed(4)}, ${mov.lng.toFixed(4)}`:'Registado');
     EQUIPAMENTOS[idx].ultimoLat     =mov.lat;
@@ -146,21 +220,59 @@ function submitEncEquipamento(){
   // Actualizar tabela e mapa do admin em tempo real (mesma SPA)
   try{ renderEquipamentos(); refreshEqMap(); updateEqKPIs(); }catch(e){}
   // Guardar movimento em Supabase
-  try{ sb.from('eq_movimentos').insert({equip_id:_encQrEquipId,obra_id:mov.obraId,obra_nome:mov.obraNome,lat:mov.lat,lng:mov.lng,obs:mov.obs,encarregado:mov.encarregado,criado_em:mov.criadoEm}).then(()=>{}).catch(()=>{}); }catch(e){}
+  try{ sb.from('eq_movimentos').insert({equip_id:equipId,obra_id:mov.obraId,obra_nome:mov.obraNome,lat:mov.lat,lng:mov.lng,obs:mov.obs,encarregado:mov.encarregado,criado_em:mov.criadoEm}).then(()=>{}).catch(()=>{}); }catch(e){}
   // Actualizar último local do equipamento em Supabase
-  const _eIdx=EQUIPAMENTOS.findIndex(e=>e.id===_encQrEquipId);
-  if(_eIdx>=0){ sbUpdateEquipamentoLocal(_encQrEquipId,EQUIPAMENTOS[_eIdx].ultimoLocal,EQUIPAMENTOS[_eIdx].ultimoLat,EQUIPAMENTOS[_eIdx].ultimoLng,EQUIPAMENTOS[_eIdx].ultimoRegisto); }
-  const eq=EQUIPAMENTOS.find(e=>e.id===_encQrEquipId);
-  document.getElementById('enc-eq-success-txt').innerHTML=
+  const _eIdx=EQUIPAMENTOS.findIndex(e=>e.id===equipId);
+  if(_eIdx>=0){ sbUpdateEquipamentoLocal(equipId,EQUIPAMENTOS[_eIdx].ultimoLocal,EQUIPAMENTOS[_eIdx].ultimoLat,EQUIPAMENTOS[_eIdx].ultimoLng,EQUIPAMENTOS[_eIdx].ultimoRegisto); }
+  document.getElementById('enc-eq-sucesso-titulo').textContent='Localização registada!';
+  document.getElementById('enc-eq-sucesso-txt').innerHTML=
     `<strong>${encNome}</strong> registou<br>`+
-    `<strong>${eq?eq.nome:_encQrEquipId}</strong><br>`+
-    (obraNome?`em <strong>${obraNome}</strong>`:'sem obra associada')+
+    `<strong>${_encEsc(_encEqEquip.nome)}</strong><br>`+
+    (obraNome?`em <strong>${_encEsc(obraNome)}</strong>`:'sem obra associada')+
     `<br><span style="font-size:11px;opacity:.65;display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
-  _encEquipShowState('success');
-  R.emitEvent?.({ acao:'Equipamento registado: '+(eq?eq.nome:_encQrEquipId)+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
+  _encEqShowState('sucesso');
+  R.emitEvent?.({ acao:'Equipamento registado: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
 }
 
-// ═══════════════════════════════════════
-//  PRODUÇÃO — DADOS E FUNÇÕES
+// ── Formulário: pedir manutenção ────────
+function _encEqPrepFormManut(){
+  const eq=_encEqEquip;
+  document.getElementById('enc-manut-eq-nome').textContent=eq.nome;
+  document.getElementById('enc-manut-eq-cat').textContent=EQ_CATS[eq.categoria]?.label||'Equipamento';
+  const descEl=document.getElementById('enc-manut-desc');
+  if(descEl) descEl.value='';
+  const sel=document.getElementById('enc-manut-obra-sel');
+  sel.innerHTML='<option value="">Selecionar obra…</option>';
+  S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.nome; op.textContent=o.nome; sel.appendChild(op); });
+  const ultimoLocal = eq.ultimo_local || eq.ultimoLocal;
+  if(ultimoLocal && [...sel.options].some(o=>o.value===ultimoLocal)) sel.value=ultimoLocal;
+}
 
-export { _encEquipShowState, startEncQrScanner, stopEncQrScanner, onEncQrScanned, encScanNovamente, submitEncEquipamento };
+async function submitEncManutencao(){
+  if(!_encEqEquip){ showToast('Nenhum equipamento seleccionado'); return; }
+  const desc=document.getElementById('enc-manut-desc').value.trim();
+  if(!desc){ showToast('Descreva o problema'); return; }
+  const obraNome=document.getElementById('enc-manut-obra-sel').value||null;
+  const nome=S.currentUser?.nome||'Encarregado';
+  const {error}=await sb.from('eq_manutencoes').insert({
+    equip_id:_encEqEquip.id, descricao:desc, estado:'pendente', origem:'encarregado',
+    solicitante_nome:nome, obra_nome:obraNome
+  });
+  if(error){ console.warn('submitEncManutencao:',error); showToast('Erro ao enviar o pedido'); return; }
+  document.getElementById('enc-eq-sucesso-titulo').textContent='Pedido enviado!';
+  document.getElementById('enc-eq-sucesso-txt').innerHTML=
+    `<strong>${_encEsc(nome)}</strong> pediu manutenção para<br>`+
+    `<strong>${_encEsc(_encEqEquip.nome)}</strong>`+
+    (obraNome?`<br>em <strong>${_encEsc(obraNome)}</strong>`:'')+
+    `<br><span style="font-size:11px;opacity:.65;display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
+  _encEqShowState('sucesso');
+  R.emitEvent?.({ acao:'Pedido de manutenção: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
+}
+
+export {
+  encEqAbrir, encEqVoltarMetodo,
+  encEqEscolherMetodoQR, startEncQrScanner, stopEncQrScanner, onEncQrScanned,
+  encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher,
+  encEqVoltarAcao, encEqEscolherAcao,
+  submitEncEquipamento, submitEncManutencao
+};

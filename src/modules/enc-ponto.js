@@ -7,7 +7,7 @@ import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
 import { TIPOS, ENC_MODULES } from '../config.js';
 import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
-import { _encEquipShowState, startEncQrScanner, stopEncQrScanner } from './enc-equip.js';
+import { encEqAbrir, stopEncQrScanner } from './enc-equip.js';
 import { stopCombQrScanner, encUpdateFuelWidget } from './enc-combustivel.js';
 
 // ═══════════════════════════════════════
@@ -743,8 +743,7 @@ function encGoEquipamentos(){
   const s=document.getElementById('enc-screen-equip');
   s.style.display='flex'; s.style.flexDirection='column';
   _encSetNav('equip');
-  _encEquipShowState('scanner');
-  setTimeout(()=>startEncQrScanner(), 350);
+  encEqAbrir();
 }
 
 // ════════════════════════════════════════════════

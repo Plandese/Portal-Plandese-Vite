@@ -217,14 +217,44 @@
           <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         </button>
         <div class="enc-hdr-info">
-          <div class="enc-hdr-t">Registo de Equipamento</div>
-          <div class="enc-hdr-s">Localização por QR code</div>
+          <div class="enc-hdr-t">Equipamentos</div>
+          <div class="enc-hdr-s">Localização e manutenção</div>
         </div>
         <div class="enc-hdr-chip cyan">Equip.</div>
       </div>
 
-      <!-- Estado 1: SCANNER -->
-      <div id="enc-equip-state-scanner">
+      <!-- Estado 1: ESCOLHER MÉTODO DE IDENTIFICAÇÃO -->
+      <div id="enc-eq-state-metodo" style="display:flex;flex:1;flex-direction:column;overflow-y:auto;padding:8px clamp(14px,4vw,22px) 24px">
+        <button class="enc-mode-card" onclick="encEqEscolherMetodoQR()" style="margin-bottom:14px">
+          <div class="enc-mode-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01"/><path d="M18 14h.01"/><path d="M21 14h.01"/><path d="M14 18h.01"/><path d="M18 18h.01"/><path d="M21 18h.01"/><path d="M14 21h.01"/><path d="M18 21h.01"/><path d="M21 21h.01"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="enc-mode-title">Ler QR code</div>
+            <div class="enc-mode-desc">Aponte a câmara ao QR code do equipamento</div>
+          </div>
+          <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </button>
+        <button class="enc-mode-card" onclick="encEqEscolherMetodoLista()">
+          <div class="enc-mode-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="enc-mode-title">Escolher da lista</div>
+            <div class="enc-mode-desc">Pesquise e selecione o equipamento manualmente</div>
+          </div>
+          <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </button>
+      </div>
+
+      <!-- Estado 2a: SCANNER QR -->
+      <div id="enc-eq-state-scanner" style="display:none;flex:1;flex-direction:column">
+        <div style="padding:6px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <button onclick="encEqVoltarMetodo()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar
+          </button>
+        </div>
         <div class="enc-qr-wrap">
           <div id="enc-qr-reader"></div>
           <div class="enc-qr-hint">
@@ -234,12 +264,69 @@
         </div>
       </div>
 
-      <!-- Estado 2: FORMULÁRIO (após leitura) -->
-      <div id="enc-equip-state-form" style="display:none;flex:1;flex-direction:column">
+      <!-- Estado 2b: LISTA MANUAL -->
+      <div id="enc-eq-state-lista" style="display:none;flex:1;flex-direction:column;min-height:0">
+        <div style="padding:6px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <button onclick="encEqVoltarMetodo()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar
+          </button>
+        </div>
+        <div style="padding:10px clamp(16px,4vw,24px) 10px;flex-shrink:0">
+          <input type="text" class="enc-input" id="enc-eq-lista-search" placeholder="Pesquisar equipamento…" oninput="encEqListaFiltra(this.value)"/>
+        </div>
+        <div id="enc-eq-lista-list" style="flex:1;overflow-y:auto;padding:0 clamp(16px,4vw,24px) 16px"></div>
+      </div>
+
+      <!-- Estado 3: ESCOLHER AÇÃO -->
+      <div id="enc-eq-state-acao" style="display:none;flex:1;flex-direction:column">
+        <div style="padding:6px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <button onclick="encEqVoltarMetodo()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Escolher outro equipamento
+          </button>
+        </div>
+        <div style="padding:12px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <div class="qr-equip-info">
+            <div class="qr-equip-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div>
+              <div class="qr-equip-name" id="enc-eq-act-nome">—</div>
+              <div class="qr-equip-cat" id="enc-eq-act-cat" style="font-size:12px;color:var(--gray-500);margin-top:2px">—</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px clamp(14px,4vw,22px) 24px">
+          <button class="enc-mode-card" onclick="encEqEscolherAcao('registo')" style="margin-bottom:14px">
+            <div class="enc-mode-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="enc-mode-title">Registar localização</div>
+              <div class="enc-mode-desc">Marcar a obra/GPS onde o equipamento está agora</div>
+            </div>
+            <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </button>
+          <button class="enc-mode-card" onclick="encEqEscolherAcao('manut')">
+            <div class="enc-mode-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="enc-mode-title">Pedir manutenção</div>
+              <div class="enc-mode-desc">Reportar uma avaria ou necessidade de manutenção</div>
+            </div>
+            <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado 4a: FORMULÁRIO — REGISTAR LOCALIZAÇÃO -->
+      <div id="enc-eq-state-form-reg" style="display:none;flex:1;flex-direction:column">
         <div style="padding:6px clamp(16px,4vw,24px) 10px;position:relative;z-index:1">
-          <button onclick="encScanNovamente()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Ler outro QR
+          <button onclick="encEqVoltarAcao()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar
           </button>
         </div>
         <div class="enc-equip-form-card">
@@ -283,17 +370,52 @@
         </div>
       </div>
 
-      <!-- Estado 3: SUCESSO -->
-      <div id="enc-equip-state-success" style="display:none;flex:1;flex-direction:column">
+      <!-- Estado 4b: FORMULÁRIO — PEDIR MANUTENÇÃO -->
+      <div id="enc-eq-state-form-man" style="display:none;flex:1;flex-direction:column">
+        <div style="padding:6px clamp(16px,4vw,24px) 10px;position:relative;z-index:1">
+          <button onclick="encEqVoltarAcao()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Voltar
+          </button>
+        </div>
+        <div class="enc-equip-form-card">
+          <div class="qr-equip-info" style="margin-bottom:16px">
+            <div class="qr-equip-icon" style="background:#b45309">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div>
+              <div class="qr-equip-name" id="enc-manut-eq-nome">—</div>
+              <div class="qr-equip-cat" id="enc-manut-eq-cat" style="font-size:12px;color:var(--gray-500);margin-top:2px">—</div>
+            </div>
+          </div>
+          <div class="enc-field">
+            <label>Obra <span style="font-weight:400;color:var(--gray-400)">(opcional)</span></label>
+            <select class="enc-input enc-select" id="enc-manut-obra-sel">
+              <option value="">Selecionar obra…</option>
+            </select>
+          </div>
+          <div class="enc-field">
+            <label>O que se passa?</label>
+            <textarea class="enc-input" id="enc-manut-desc" rows="3" style="resize:vertical;min-height:72px" placeholder="Ex: Fuga de óleo, pneu furado, motor não liga…"></textarea>
+          </div>
+          <button class="enc-btn" style="background:linear-gradient(135deg,#b45309,#d97706)" onclick="submitEncManutencao()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg>
+            Enviar pedido de manutenção
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado 5: SUCESSO (unificado) -->
+      <div id="enc-eq-state-sucesso" style="display:none;flex:1;flex-direction:column">
         <div class="enc-equip-success">
           <div style="width:68px;height:68px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:34px;height:34px;color:var(--green)"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <div style="font-size:clamp(18px,5vw,22px);font-weight:700;color:var(--gray-900);margin-bottom:10px">Localização registada!</div>
-          <div style="font-size:14px;color:var(--gray-500);line-height:1.7" id="enc-eq-success-txt"></div>
-          <button class="enc-btn" style="margin-top:28px;max-width:320px" onclick="encScanNovamente()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Registar outro equipamento
+          <div style="font-size:clamp(18px,5vw,22px);font-weight:700;color:var(--gray-900);margin-bottom:10px" id="enc-eq-sucesso-titulo">Concluído!</div>
+          <div style="font-size:14px;color:var(--gray-500);line-height:1.7" id="enc-eq-sucesso-txt"></div>
+          <button class="enc-btn" style="margin-top:28px;max-width:320px" onclick="encEqAbrir()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Identificar outro equipamento
           </button>
           <button class="enc-btn" style="margin-top:10px;max-width:320px;background:var(--white);border:1px solid var(--gray-200);color:var(--gray-700)" onclick="encVoltarHome()">
             Menu principal
@@ -333,13 +455,13 @@
         <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
       </button>
 
-      <!-- Opção 2: Viaturas / Equipamentos -->
+      <!-- Opção 2: Abastecimento Bombas -->
       <button class="enc-mode-card" onclick="encGoCombViatura()">
         <div class="enc-mode-icon" style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div class="enc-mode-title">Viaturas / Equipamentos</div>
+          <div class="enc-mode-title">Abastecimento Bombas</div>
           <div class="enc-mode-desc">Ler QR code da viatura ou máquina para registar abastecimento</div>
         </div>
         <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
@@ -387,6 +509,28 @@
           </div>
         </div>
 
+        <!-- Equipamento (obrigatório apenas na saída) -->
+        <div class="enc-field" id="dep-equip-wrap" style="display:none">
+          <label>Equipamento que recebeu o combustível</label>
+          <div id="dep-equip-choice" style="display:flex;gap:10px">
+            <button type="button" onclick="depAbrirScannerEquip()" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);color:var(--gray-700);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01"/><path d="M18 14h.01"/><path d="M21 14h.01"/><path d="M14 18h.01"/><path d="M18 18h.01"/><path d="M21 18h.01"/><path d="M14 21h.01"/><path d="M18 21h.01"/><path d="M21 21h.01"/></svg>
+              Ler QR code
+            </button>
+            <button type="button" onclick="depAbrirPickerEquip()" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);color:var(--gray-700);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Escolher da lista
+            </button>
+          </div>
+          <div id="dep-equip-chosen" style="display:none;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-100);border-radius:var(--radius-lg)">
+            <div style="width:34px;height:34px;border-radius:9px;background:var(--blue-500);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--gray-900)" id="dep-equip-chosen-nome">—</div>
+            <button type="button" onclick="depTrocarEquip()" style="background:none;border:none;color:var(--blue-600);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">Trocar</button>
+          </div>
+        </div>
+
         <div class="enc-field">
           <label>Data</label>
           <input type="date" id="dep-data" class="enc-input"/>
@@ -431,6 +575,26 @@
         </button>
       </div>
     </div>
+
+    <!-- Overlay: Ler QR code do equipamento (saída do depósito) -->
+    <div id="dep-equip-scanner" style="display:none;position:fixed;inset:0;z-index:600;background:var(--white);flex-direction:column;padding-top:env(safe-area-inset-top,0px)">
+      <div class="enc-hdr" style="width:100%">
+        <button class="enc-hdr-back" onclick="depFecharScannerEquip()">
+          <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <div class="enc-hdr-info">
+          <div class="enc-hdr-t">Ler QR code</div>
+          <div class="enc-hdr-s">Equipamento que recebeu o combustível</div>
+        </div>
+      </div>
+      <div class="enc-qr-wrap">
+        <div id="dep-qr-reader"></div>
+        <div class="enc-qr-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;opacity:.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01"/><path d="M18 14h.01"/><path d="M21 14h.01"/><path d="M14 18h.01"/><path d="M18 18h.01"/><path d="M21 18h.01"/><path d="M14 21h.01"/><path d="M18 21h.01"/><path d="M21 21h.01"/></svg>
+          Aponte a câmara para o QR code do equipamento
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ECRÃ: VIATURAS / EQUIPAMENTOS — QR + MANUAL -->
@@ -461,10 +625,10 @@
           <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         </button>
         <div class="enc-hdr-info">
-          <div class="enc-hdr-t">Viatura / Equipamento</div>
+          <div class="enc-hdr-t">Abastecimento Bombas</div>
           <div class="enc-hdr-s">Abastecimento por QR code</div>
         </div>
-        <div class="enc-hdr-chip cyan">Viatura</div>
+        <div class="enc-hdr-chip cyan">Bomba</div>
       </div>
 
       <!-- Estado: SCANNER QR -->
@@ -1093,10 +1257,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           <span class="nav-label">Lista de Preços</span>
         </button>
-        <button class="nav-btn" onclick="goTo('pendentes-tavira',this)" id="nav-pendentes-tavira">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          <span class="nav-label">Pendentes Tavira</span>
-        </button>
       </div>
 
       <button class="nav-lbl" data-grp="def" onclick="toggleNavGrp('def')" type="button">
@@ -1124,6 +1284,12 @@
           <span class="nb" id="nb-fornecedores" hidden></span>
         </button>
       </div>
+
+      <!-- Item temporário: remover daqui a umas semanas -->
+      <button class="nav-btn" onclick="goTo('pendentes-tavira',this)" id="nav-pendentes-tavira" style="margin:8px 0 0 0;border-radius:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span class="nav-label">Pendentes Tavira</span>
+      </button>
 
       <!-- Perfil do utilizador no fundo da sidebar -->
       <div class="sidebar-user" id="sidebar-user" onclick="openProfileModal()">
@@ -1773,10 +1939,6 @@
         <div class="pg-hdr">
           <div><div class="pg-title">Equipamentos e Logística</div><div class="pg-sub">Base de dados de viaturas, máquinas e equipamentos — ficha técnica, manutenção e localização por QR code</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary" id="eq-export-btn" onclick="exportEquipamentosXLSX()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar
-            </button>
             <button class="btn btn-primary" onclick="openEqModal()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Novo equipamento
@@ -1794,81 +1956,99 @@
           <div class="eq-kpi red"><div class="eq-kpi-label">Manutenção / paradas</div><div class="eq-kpi-value" id="eq-k-man">0</div><div class="eq-kpi-sub">fora de operação normal</div></div>
         </div>
 
-        <!-- Mapa -->
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:14px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
-            <div style="font-size:14px;font-weight:600;color:var(--gray-900)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;color:var(--blue-500)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Localização atual dos equipamentos
+        <!-- Tabs de vista -->
+        <div class="fp-tab-bar">
+          <button class="fp-tab active" id="eq-tab-btn-lista" onclick="switchEqView('lista')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Lista
+          </button>
+          <button class="fp-tab" id="eq-tab-btn-obra" onclick="switchEqView('obra')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Por Obra
+          </button>
+          <button class="fp-tab" id="eq-tab-btn-manut" onclick="switchEqView('manut')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Manutenção
+            <span class="nb" id="eq-tab-manut-nb" hidden></span>
+          </button>
+        </div>
+
+        <!-- ═══ VISTA: LISTA ═══ -->
+        <div id="eq-view-lista">
+          <!-- Mapa -->
+          <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:14px;font-weight:600;color:var(--gray-900)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;color:var(--blue-500)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Localização atual dos equipamentos
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="refreshEqMap()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Atualizar
+              </button>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="refreshEqMap()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              Atualizar
-            </button>
+            <div id="eq-map"></div>
+            <div id="eq-map-empty" style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px;display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;color:var(--gray-300);display:block;margin:0 auto 8px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Nenhum equipamento com localização GPS registada ainda.
+            </div>
           </div>
-          <div id="eq-map"></div>
-          <div id="eq-map-empty" style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px;display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;color:var(--gray-300);display:block;margin:0 auto 8px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Nenhum equipamento com localização GPS registada ainda.
+
+          <!-- Pesquisa -->
+          <div class="card" style="padding:16px 18px">
+            <div class="field" style="margin-bottom:0">
+              <label>Pesquisar equipamento</label>
+              <input type="text" id="eq-busca-input" placeholder="Nome, matrícula, nº série, condutor…" oninput="renderEqBusca()"/>
+            </div>
+            <div id="eq-busca-hint" style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Escreva para pesquisar um equipamento específico.</div>
+            <div id="eq-busca-resultados" style="margin-top:10px"></div>
           </div>
         </div>
 
-        <!-- Filtros -->
-        <div class="filter-bar">
-          <div class="field"><label>Pesquisa</label><input type="text" id="eq-f-search" placeholder="Nome, matrícula, nº série, condutor…" oninput="renderEquipamentos()"/></div>
-          <div class="field"><label>Categoria</label>
-            <select id="eq-f-cat" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
-              <option value="">Todas</option>
-              <option value="maquina">Máquina</option>
-              <option value="veiculo">Veículo</option>
-              <option value="ferramenta">Ferramenta</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div class="field"><label>Estado</label>
-            <select id="eq-f-est" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
-              <option value="">Todos</option>
-              <option value="operacional">Operacional</option>
-              <option value="manutencao">Manutenção</option>
-              <option value="oficina">Em oficina</option>
-              <option value="parada">Parada</option>
-            </select>
-          </div>
-          <div class="field"><label>Propriedade</label>
-            <select id="eq-f-prop" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
-              <option value="">Todas</option>
-              <option value="propria">Própria</option>
-              <option value="aluguer">Aluguer</option>
-            </select>
-          </div>
-          <div class="field"><label>Localização</label>
-            <select id="eq-f-loc" onchange="renderEquipamentos()" style="padding:7px 10px;font-size:13px">
-              <option value="">Todas</option>
-            </select>
+        <!-- ═══ VISTA: POR OBRA ═══ -->
+        <div id="eq-view-obra" style="display:none">
+          <div id="eq-obras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:16px"></div>
+          <div id="eq-obras-empty" class="fat-empty" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <div style="margin-top:6px">Sem equipamentos registados em nenhuma obra ainda.</div>
           </div>
         </div>
 
-        <!-- Tabela -->
-        <div class="card" style="padding:0;overflow:hidden">
-          <div class="tbl-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Equipamento</th>
-                  <th>Categoria</th>
-                  <th>Estado</th>
-                  <th>Nº série</th>
-                  <th>Localização</th>
-                  <th>Validades</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="eq-tbody"></tbody>
-            </table>
+        <!-- ═══ VISTA: MANUTENÇÃO ═══ -->
+        <div id="eq-view-manut" style="display:none">
+          <div class="filter-bar">
+            <div class="field"><label>Obra</label>
+              <select id="eq-manut-f-obra" onchange="renderEqManutBoard()" style="padding:7px 10px;font-size:13px">
+                <option value="">Todas as obras</option>
+              </select>
+            </div>
+            <div class="field"><label>Equipamento</label>
+              <select id="eq-manut-f-equip" onchange="renderEqManutBoard()" style="padding:7px 10px;font-size:13px">
+                <option value="">Todos os equipamentos</option>
+              </select>
+            </div>
+            <div class="field" style="align-self:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="abrirEqManutPicker()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Nova manutenção
+              </button>
+            </div>
           </div>
-          <div id="eq-empty" class="fat-empty" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            <div style="margin-top:6px">Sem equipamentos. Clique em "Novo equipamento" para adicionar.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="card" style="padding:14px 16px">
+              <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:#b91c1c;display:inline-block"></span>
+                Pendente <span id="eq-manut-count-pend" style="color:var(--gray-400);font-weight:600">0</span>
+              </div>
+              <div id="eq-manut-col-pendente"></div>
+            </div>
+            <div class="card" style="padding:14px 16px">
+              <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--green,#16a34a);display:inline-block"></span>
+                Resolvida <span id="eq-manut-count-done" style="color:var(--gray-400);font-weight:600">0</span>
+              </div>
+              <div id="eq-manut-col-resolvida"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -3412,6 +3592,31 @@
     <div id="meqh-list" style="max-height:380px;overflow-y:auto;margin-top:4px"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-eq-hist')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE OBRA — EQUIPAMENTOS -->
+<div class="modal-bg" id="modal-eq-obra-detalhe">
+  <div class="modal" style="width:520px">
+    <div class="modal-title" id="meqo-title">Obra</div>
+    <div class="modal-sub" id="meqo-sub">Equipamentos nesta obra</div>
+    <div id="meqo-list" style="max-height:420px;overflow-y:auto;margin-top:4px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-eq-obra-detalhe')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ESCOLHER EQUIPAMENTO — NOVA MANUTENÇÃO -->
+<div class="modal-bg" id="modal-eq-manut-pick">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">Nova manutenção</div>
+    <div class="modal-sub">Escolha o equipamento</div>
+    <div class="field" style="margin-top:10px"><input type="text" id="eqmp-search" placeholder="Pesquisar equipamento…" oninput="eqManutPickFiltra(this.value)"/></div>
+    <div id="eqmp-list" style="max-height:340px;overflow-y:auto;margin-top:6px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-eq-manut-pick')">Fechar</button>
     </div>
   </div>
 </div>

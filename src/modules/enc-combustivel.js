@@ -28,7 +28,9 @@ function _combFillListaEquip(){
 const _norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const _escH = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-function combAbrirPicker(){
+let _combPickerOnSelect = null;
+function combAbrirPicker(onSelect){
+  _combPickerOnSelect = onSelect || (value=>{ document.getElementById('comb-viatura-nome-input').value=value; });
   const pk=document.getElementById('comb-picker');
   pk.hidden=false;
   const q=document.getElementById('comb-picker-q');
@@ -41,7 +43,7 @@ function combFecharPicker(){
 }
 function combPickerSetCat(cat){ _combPickerCat=cat; combPickerRender(); }
 function combPickerEscolher(value){
-  document.getElementById('comb-viatura-nome-input').value=value;
+  (_combPickerOnSelect||(()=>{}))(value);
   combFecharPicker();
 }
 function combPickerUsarTexto(){
@@ -87,6 +89,8 @@ document.addEventListener('click',e=>{
 });
 
 let _depMovimento = 'entrada';
+let _depEquip = null;   // {id, nome} — equipamento que recebeu o combustível (só em saída)
+let _depHtml5Qr = null;
 let _combHtml5Qr = null;
 let _combQrEquipId = null;
 let _combModoManual = false;
@@ -157,6 +161,94 @@ function depSetMovimento(tipo){
     btnE.style.background='#f3f4f6'; btnE.style.borderColor='#d1d5db'; btnE.style.color='#6b7280';
     btnE.style.boxShadow='none'; btnE.style.transform='scale(1)';
   }
+  const wrap=document.getElementById('dep-equip-wrap');
+  if(wrap) wrap.style.display = tipo==='saida' ? 'block' : 'none';
+  if(tipo==='entrada'){ _depEquip=null; _depRenderEquipEscolhido(); }
+}
+
+// ── Equipamento associado à saída do depósito (QR ou lista) ──
+function _depRenderEquipEscolhido(){
+  const chosen=document.getElementById('dep-equip-chosen');
+  const choice=document.getElementById('dep-equip-choice');
+  if(!chosen||!choice) return;
+  if(_depEquip){
+    document.getElementById('dep-equip-chosen-nome').textContent=_depEquip.nome;
+    chosen.style.display='flex';
+    choice.style.display='none';
+  } else {
+    chosen.style.display='none';
+    choice.style.display='flex';
+  }
+}
+function depTrocarEquip(){ _depEquip=null; _depRenderEquipEscolhido(); }
+
+function depAbrirPickerEquip(){
+  _combFillListaEquip();
+  sbLoadEquipamentos().then(_combFillListaEquip).catch(()=>{});
+  combAbrirPicker(value=>{
+    const escolhido=_combEqOpts.get(value);
+    _depEquip = escolhido ? {id:escolhido.id, nome:escolhido.nome} : {id:null, nome:value};
+    _depRenderEquipEscolhido();
+  });
+}
+
+function depAbrirScannerEquip(){
+  const ov=document.getElementById('dep-equip-scanner');
+  if(!ov) return;
+  ov.style.display='flex';
+  document.getElementById('dep-qr-reader').innerHTML='';
+  startDepQrScanner();
+}
+function depFecharScannerEquip(){
+  stopDepQrScanner();
+  const ov=document.getElementById('dep-equip-scanner');
+  if(ov) ov.style.display='none';
+}
+function startDepQrScanner(){
+  const readerEl=document.getElementById('dep-qr-reader');
+  if(!readerEl) return;
+  if(typeof Html5Qrcode==='undefined'){
+    readerEl.innerHTML=`<div style="padding:28px 20px;text-align:center;background:rgba(0,0,0,.25);border-radius:12px;color:rgba(255,255,255,.75);font-size:13px;line-height:1.6">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:36px;height:36px;display:block;margin:0 auto 10px;opacity:.7"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M20 5h-6v6h6V5z"/></svg>
+      Leitor QR não disponível. Utilize "Escolher da lista".</div>`; return;
+  }
+  if(_depHtml5Qr){try{_depHtml5Qr.stop();}catch(e){} _depHtml5Qr=null;}
+  _depHtml5Qr=new Html5Qrcode('dep-qr-reader');
+  _depHtml5Qr.start(
+    {facingMode:'environment'},
+    {fps:10, qrbox:{width:220,height:220}, aspectRatio:1.0},
+    (decoded)=>{ onDepQrScanned(decoded); },
+    ()=>{}
+  ).catch(err=>{
+    console.warn('Dep QR scanner:',err);
+    readerEl.innerHTML=`<div style="padding:24px 20px;text-align:center;background:rgba(0,0,0,.25);border-radius:12px;color:rgba(255,255,255,.75);font-size:13px;line-height:1.7">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:32px;height:32px;display:block;margin:0 auto 10px;opacity:.7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      Câmara não acessível.<br>
+      <span style="font-size:11px;opacity:.8">Utilize "Escolher da lista".</span>
+    </div>`;
+  });
+}
+function stopDepQrScanner(){
+  if(_depHtml5Qr){try{_depHtml5Qr.stop();}catch(e){} _depHtml5Qr=null;}
+}
+async function onDepQrScanned(text){
+  stopDepQrScanner();
+  let equipId=null;
+  try{ const u=new URL(text); equipId=u.searchParams.get('reg'); }catch(e){}
+  if(!equipId && /^EQ[A-Z0-9]+$/.test(text)) equipId=text;
+  if(!equipId){
+    showToast('QR code não reconhecido como equipamento Plandese');
+    setTimeout(()=>startDepQrScanner(), 2500);
+    return;
+  }
+  let eq=EQUIPAMENTOS.find(e=>e.id===equipId);
+  if(!eq){
+    eq=await sbFetchEquipamentoById(equipId).catch(()=>null);
+    if(eq){ EQUIPAMENTOS.push(eq); saveEqLocal(); }
+  }
+  _depEquip = {id:equipId, nome: eq?eq.nome:`Equipamento ${equipId}`};
+  depFecharScannerEquip();
+  _depRenderEquipEscolhido();
 }
 
 // Resumo dos últimos registos de gasóleo das obras do encarregado
@@ -213,6 +305,8 @@ function encGoCombDeposito(){
   document.getElementById('dep-tipo').value='Gasóleo';
   document.getElementById('dep-alert').style.display='none';
   _depMovimento='entrada';
+  _depEquip=null;
+  _depRenderEquipEscolhido();
   depSetMovimento('entrada');
 }
 
@@ -227,13 +321,14 @@ async function encSubmeterCombDeposito(){
   if(!data){showToast('Selecione a data');return;}
   if(!obraId){showToast('Selecione a obra do depósito');return;}
   if(!litros||litros<=0){showToast('Indique a quantidade de litros');return;}
+  if(_depMovimento==='saida' && !_depEquip){showToast('Escolha o equipamento que recebeu o combustível');return;}
   const btn=document.getElementById('dep-submit-btn');
   if(btn){btn.disabled=true;}
   try{
     const {error}=await sb.from('registos_combustivel').insert({
       data,
-      equipamento_id:null,
-      equipamento_nome:'Depósito de Obra',
+      equipamento_id:_depMovimento==='saida'?(_depEquip.id||null):null,
+      equipamento_nome:_depMovimento==='saida'?_depEquip.nome:'Depósito de Obra',
       obra_id:obraId,
       obra_nome:obraNome,
       litros,
@@ -247,12 +342,14 @@ async function encSubmeterCombDeposito(){
     document.getElementById('dep-alert').style.display='block';
     showToast((_depMovimento==='entrada'?'Entrada':'Saída')+' no depósito registada ✓');
     encUpdateFuelWidget();
-    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:''), seccao:'combustivel' });
+    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:'')+(_depMovimento==='saida'?' · '+_depEquip.nome:''), seccao:'combustivel' });
     setTimeout(()=>{
       document.getElementById('dep-litros').value='';
       document.getElementById('dep-obs').value='';
       document.getElementById('dep-obra').value='';
       document.getElementById('dep-alert').style.display='none';
+      _depEquip=null;
+      _depRenderEquipEscolhido();
       if(btn){btn.disabled=false;}
     },1800);
   }catch(e){
@@ -817,6 +914,7 @@ window.chatOnInput      = chatOnInput;
 
 export {
   encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
+  depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip,
   encGoCombViatura, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encSubmeterCombustivel,
   combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto,
