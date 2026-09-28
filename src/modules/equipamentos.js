@@ -129,25 +129,9 @@ function showEqAlert(msg){
   setTimeout(()=>el.classList.remove('show'), 3000);
 }
 
-// ── KPIs ───────────────────────────────
+// ── Badges (contagem na sidebar + pendentes na tab de manutenção) ──
 function updateEqKPIs(){
-  const total    = EQUIPAMENTOS.length;
-  const today    = new Date(); today.setHours(0,0,0,0);
-  const ago7     = new Date(Date.now() - 7*24*3600*1000);
-  const monSem   = new Date(); monSem.setDate(monSem.getDate()-monSem.getDay()); monSem.setHours(0,0,0,0);
-  let emObra = 0, semReg = 0;
-  EQUIPAMENTOS.forEach(eq=>{
-    const ul = eq.ultimoRegisto ? new Date(eq.ultimoRegisto) : null;
-    if(ul && ul >= today) emObra++;
-    if(!ul || ul < ago7) semReg++;
-  });
-  const movSem = EQ_MOVIMENTOS.filter(m=>new Date(m.criadoEm)>=monSem).length;
-  document.getElementById('eq-k-total').textContent = total;
-  document.getElementById('eq-k-obra').textContent  = emObra;
-  document.getElementById('eq-k-sem').textContent   = semReg;
-  document.getElementById('eq-k-mov').textContent   = movSem;
-  const kMan = document.getElementById('eq-k-man');
-  if(kMan) kMan.textContent = EQUIPAMENTOS.filter(e=>(e.estado||'operacional')!=='operacional').length;
+  const total = EQUIPAMENTOS.length;
   const nb = document.getElementById('nb-eq');
   if(nb) nb.textContent = total;
   const equipIds = new Set(EQUIPAMENTOS.map(e=>e.id));

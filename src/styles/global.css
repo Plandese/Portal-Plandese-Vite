@@ -594,18 +594,10 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 /* ─────────────────────────────────────────────────────
    EQUIPAMENTOS E LOGÍSTICA
 ───────────────────────────────────────────────────── */
-.eq-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-.eq-kpi{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.eq-kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
-.eq-kpi.blue::before{background:var(--blue-500)}.eq-kpi.green::before{background:var(--green)}.eq-kpi.yellow::before{background:var(--yellow)}.eq-kpi.orange::before{background:var(--orange)}
-.eq-kpi-label{font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
-.eq-kpi-value{font-size:22px;font-weight:700;color:var(--gray-900);letter-spacing:-.4px}
-.eq-kpi-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
 #eq-map{height:360px;border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden}
 .eq-cat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-cat-maquina{background:#EDE9FE;color:#6D28D9}.eq-cat-veiculo{background:#DBEAFE;color:#1D4ED8}
 .eq-cat-ferramenta{background:#FEF3C7;color:#92400E}.eq-cat-outro{background:var(--gray-100);color:var(--gray-600)}
-.eq-kpi.red::before{background:var(--red)}
 .eq-est-badge,.eq-prop-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-est-ok{background:#DCFCE7;color:#15803D}.eq-est-man{background:#FEF3C7;color:#B45309}.eq-est-par{background:#FEE2E2;color:#B91C1C}
 .eq-prop-badge{background:#FEF9C3;color:#854D0E;margin-left:4px}
@@ -1236,9 +1228,6 @@ body.device-mobile #lst-body{flex-direction:column}
 body.device-mobile #lst-left{padding:12px 16px}
 body.device-mobile #lst-right{width:100%!important;max-height:34vh;border-left:none;border-top:4px solid var(--gray-100)}
 
-/* Equipamentos e Logística em telemóvel: sem KPIs */
-body.device-mobile #eq-kpis-wrap{display:none}
-
 /* App-bar chip hidden on mobile */
 body.device-mobile .app-bar-chip .app-bar-nm,
 body.device-mobile .app-bar-chip .app-bar-role{display:none}
@@ -1371,7 +1360,7 @@ hr{border:none;border-top:1px solid var(--gray-100);margin:16px 0}
   backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
   border:1px solid var(--glass-brd);border-radius:var(--radius-lg);box-shadow:var(--shadow);
 }
-.fat-kpi,.prod-kpi,.cmp-kpi,.eq-kpi{
+.fat-kpi,.prod-kpi,.cmp-kpi{
   background:var(--glass-bg);
   backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
   border:1px solid var(--glass-brd);border-radius:var(--radius-lg);
