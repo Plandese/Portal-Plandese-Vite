@@ -643,12 +643,39 @@ function encGoHistoricoEnc(){
   encLoadHistorico();
 }
 
+// ── Edição do próprio registo no histórico (até 24h após o registo) ────────
+// Uma vez que o diretor de obra aprove o dia da obra (aprovacoes_ponto /
+// aprovacoes_ponto_moa), ou passadas 24h sobre o registo, o encarregado deixa
+// de poder editar — fica só a marca "✓ Visto". Aplicado também no servidor
+// (triggers fn_trg_ponto_enc_janela_edicao / _moa), esta lógica no ecrã é só
+// para a UI refletir o estado sem tentar uma alteração que o servidor recusa.
+let _encHistIndex={};
+let _encHistEditCtx=null;
+
+function _encDentro24h(criadoEm){
+  if(!criadoEm) return false;
+  return (Date.now()-new Date(criadoEm).getTime())<24*60*60*1000;
+}
+
+function _encVistoBadgeHTML(aprov){
+  const quem=S.USERS?.[aprov.aprovado_por]?.nome||aprov.aprovado_por;
+  const quando=aprov.aprovado_em?new Date(aprov.aprovado_em).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  return `<span class="badge b-green" title="Aprovado por ${quem}${quando?' em '+quando:''}" style="margin-left:6px;white-space:nowrap">✓ Visto</span>`;
+}
+
+function _encRegStatusHTML(key, aprov, criadoEm){
+  if(aprov) return _encVistoBadgeHTML(aprov);
+  if(_encDentro24h(criadoEm)) return `<button type="button" class="badge b-blue" style="margin-left:6px;border:none;cursor:pointer;font-family:var(--font);white-space:nowrap" onclick="event.stopPropagation();encHistOpenEdit('${key}')">✏️ Editar</button>`;
+  return `<span class="badge b-gray" style="margin-left:6px;font-size:10px;white-space:nowrap" title="Prazo de 24h para editar terminou — peça ao diretor de obra">🔒 fora do prazo</span>`;
+}
+
 async function encLoadHistorico(){
   const tipo=document.getElementById('enc-hist-tipo').value;
   const data=document.getElementById('enc-hist-data').value;
   const res=document.getElementById('enc-hist-resultado');
   if(!data){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400)">Selecione uma data.</div>';return;}
   res.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
+  _encHistIndex={};
   // Cada encarregado só vê os registos que ele próprio submeteu — nunca os
   // de outros encarregados/obras, mesmo que sejam do mesmo dia.
   const encId=S.currentUser?.key||null;
@@ -657,8 +684,12 @@ async function encLoadHistorico(){
     if(tipo==='plandese'){
       let q=sb.from('registos_ponto').select('*').eq('data',data);
       q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
-      const {data:rows}=await q.order('colab_numero');
+      const [{data:rows}, {data:aprovRows}] = await Promise.all([
+        q.order('colab_numero'),
+        sb.from('aprovacoes_ponto').select('obra_id,aprovado_por,aprovado_em').eq('data',data),
+      ]);
       if(!rows||!rows.length){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:14px">Sem registos para este dia.</div>';return;}
+      const aprovMap={}; (aprovRows||[]).forEach(a=>{aprovMap[a.obra_id]=a;});
       const dateObj=new Date(data+'T12:00:00');
       // Colaboradores com ≥2 registos neste dia → assinalar para verificação
       const dupCount={};
@@ -670,11 +701,14 @@ async function encLoadHistorico(){
         const ob=S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
         const h=calcH(r.entrada?.slice(0,5)||'',r.saida?.slice(0,5)||'',dateObj);
         const dupBadge=(dupCount[r.colab_numero]>=2)?`<span title="Vários registos neste dia — verificar" style="display:inline-block;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:6px">⚠ verificar</span>`:'';
+        const key=`p_${r.id}`;
+        _encHistIndex[key]={kind:'plandese',id:r.id,dateStr:data,obraId:r.obra_id,entrada:r.entrada?.slice(0,5)||'',saida:r.saida?.slice(0,5)||'',tipoReg:r.tipo||'Presença',criadoEm:r.criado_em,nome};
+        const statusHTML=_encRegStatusHTML(key, aprovMap[r.obra_id], r.criado_em);
         html+=`<div class="enc-card" style="margin:0;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:34px;height:34px;border-radius:50%;background:var(--blue-100);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--blue-600);flex-shrink:0">${nome.charAt(0)}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:700;font-size:14px;color:var(--gray-900)">${nome}${dupBadge}</div>
+              <div style="font-weight:700;font-size:14px;color:var(--gray-900);display:flex;align-items:center;flex-wrap:wrap">${nome}${dupBadge}${statusHTML}</div>
               <div style="font-size:12px;color:var(--gray-500)">${ob}</div>
             </div>
             <div style="text-align:right">
@@ -691,19 +725,26 @@ async function encLoadHistorico(){
       // encAlugSubmeter) — filtrar por nome é o melhor sinal disponível.
       let q=sb.from('registos_ponto_moa').select('*').eq('data',data);
       if(encNome) q=q.eq('encarregado_nome',encNome);
-      const {data:rows}=await q.order('empresa_moa_nome');
+      const [{data:rows}, {data:aprovRows}] = await Promise.all([
+        q.order('empresa_moa_nome'),
+        sb.from('aprovacoes_ponto_moa').select('obra_id,aprovado_por,aprovado_em').eq('data',data),
+      ]);
       if(!rows||!rows.length){res.innerHTML='<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:14px">Sem registos de MO Aluguer para este dia.</div>';return;}
+      const aprovMap={}; (aprovRows||[]).forEach(a=>{aprovMap[a.obra_id]=a;});
       const dateObj=new Date(data+'T12:00:00');
       let html='<div style="display:flex;flex-direction:column;gap:10px">';
       rows.forEach(r=>{
         const ob=S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
         const h=calcH(r.entrada?.slice(0,5)||'',r.saida?.slice(0,5)||'',dateObj);
+        const key=`m_${r.id}`;
+        _encHistIndex[key]={kind:'aluguer',id:r.id,dateStr:data,obraId:r.obra_id,entrada:r.entrada?.slice(0,5)||'',saida:r.saida?.slice(0,5)||'',criadoEm:r.criado_em,nome:r.trabalhador_nome};
+        const statusHTML=_encRegStatusHTML(key, aprovMap[r.obra_id], r.criado_em);
         html+=`<div class="enc-card" style="margin:0;padding:14px 16px">
           <div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">${r.empresa_moa_nome||'—'}</div>
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:34px;height:34px;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#7c3aed;flex-shrink:0">${(r.trabalhador_nome||'?').charAt(0)}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:700;font-size:14px;color:var(--gray-900)">${r.trabalhador_nome||'—'}</div>
+              <div style="font-weight:700;font-size:14px;color:var(--gray-900);display:flex;align-items:center;flex-wrap:wrap">${r.trabalhador_nome||'—'}${statusHTML}</div>
               <div style="font-size:12px;color:var(--gray-500)">${ob}</div>
             </div>
             <div style="text-align:right">
@@ -718,6 +759,74 @@ async function encLoadHistorico(){
     }
   }catch(e){
     res.innerHTML=`<div style="text-align:center;padding:32px;color:#b91c1c;font-size:13px">Erro: ${e.message}</div>`;
+  }
+}
+
+function encHistOpenEdit(key){
+  const ctx=_encHistIndex[key];
+  if(!ctx) return;
+  _encHistEditCtx=ctx;
+  const modal=document.getElementById('enc-hist-edit-modal');
+  const content=document.getElementById('enc-hist-edit-content');
+  if(!modal||!content) return;
+  const isMoa=ctx.kind==='aluguer';
+  content.innerHTML=`
+    <div style="font-weight:700;color:var(--gray-900);margin-bottom:2px">${ctx.nome||''}</div>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px">${fmtPT(ctx.dateStr)}</div>
+    <div style="display:flex;gap:10px;margin-bottom:${isMoa?'4':'12'}px">
+      <div style="flex:1"><label style="font-size:11px;color:var(--gray-500);display:block;margin-bottom:4px">Entrada</label>
+        <input type="time" id="ehe-entrada" value="${ctx.entrada||''}" style="width:100%;padding:9px 10px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font)"/></div>
+      <div style="flex:1"><label style="font-size:11px;color:var(--gray-500);display:block;margin-bottom:4px">Saída</label>
+        <input type="time" id="ehe-saida" value="${ctx.saida||''}" style="width:100%;padding:9px 10px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font)"/></div>
+    </div>
+    ${!isMoa?`<div style="margin-bottom:16px">
+      <label style="font-size:11px;color:var(--gray-500);display:block;margin-bottom:4px">Tipo</label>
+      <select id="ehe-tipo" onchange="encHistTipoChangeEdit()" style="width:100%;padding:9px 10px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white)">
+        ${TIPOS.map(t=>`<option${ctx.tipoReg===t?' selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>`:'<div style="height:16px"></div>'}
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="encHistSaveEdit()">Guardar alterações</button>
+  `;
+  if(!isMoa) encHistTipoChangeEdit();
+  modal.style.display='flex';
+}
+
+function encHistTipoChangeEdit(){
+  const tipo=document.getElementById('ehe-tipo')?.value;
+  const isPresenca=tipo==='Presença';
+  ['ehe-entrada','ehe-saida'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.disabled=!isPresenca;
+    if(!isPresenca) el.value='';
+  });
+}
+
+function encHistCloseEdit(){
+  const modal=document.getElementById('enc-hist-edit-modal');
+  if(modal) modal.style.display='none';
+  _encHistEditCtx=null;
+}
+
+async function encHistSaveEdit(){
+  const ctx=_encHistEditCtx;
+  if(!ctx) return;
+  const isMoa=ctx.kind==='aluguer';
+  const entrada=document.getElementById('ehe-entrada')?.value||null;
+  const saida=document.getElementById('ehe-saida')?.value||null;
+  const tipo=isMoa?null:(document.getElementById('ehe-tipo')?.value||'Presença');
+  const payload=isMoa
+    ? {entrada, saida, editado_por:S.currentUser?.nome||S.currentUser?.key||'—', editado_em:new Date().toISOString()}
+    : {entrada:tipo==='Presença'?entrada:null, saida:tipo==='Presença'?saida:null, tipo, editado_por:S.currentUser?.nome||S.currentUser?.key||'—', editado_em:new Date().toISOString()};
+  try{
+    const table=isMoa?'registos_ponto_moa':'registos_ponto';
+    const {error}=await sb.from(table).update(payload).eq('id',ctx.id);
+    if(error) throw error;
+    showToast('Registo atualizado ✓');
+    encHistCloseEdit();
+    await encLoadHistorico();
+  }catch(e){
+    showToast('Não foi possível guardar: '+(e.message||e));
   }
 }
 
@@ -794,6 +903,7 @@ export {
   encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc,
   encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel,
   encVoltarHome, _encHideAll,
+  encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit,
   encOpenWeatherModal, encCloseWeatherModal,
   encOpenPrazoModal, encClosePrazoModal
 };
