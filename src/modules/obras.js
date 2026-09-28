@@ -7,6 +7,9 @@ import { sbToggleObra } from '../db.js';
 import { closeModal, populateFilterSelects, flashAlert } from './navigation.js';
 import { fmtPT } from '../utils/helpers.js';
 
+let _moDiretoresExtra=[];
+let _moEncarregadosExtra=[];
+
 export function novaObra(){
   document.getElementById('mo-title').textContent='Nova obra';
   document.getElementById('mo-id').value='';
@@ -14,8 +17,11 @@ export function novaObra(){
   document.getElementById('mo-local').value='';
   document.getElementById('mo-desc').value='';
   document.getElementById('mo-prazo').value='';
+  _moDiretoresExtra=[];
+  _moEncarregadosExtra=[];
   _populateEncSelect('');
   _populateDiretorSelect('');
+  _renderMoExtras();
   document.getElementById('modal-obra').classList.add('open');
 }
 
@@ -26,10 +32,16 @@ export function obrToggleHideInativas(){
   renderObras();
 }
 
+function _nomeUser(id){ return S.USERS[id]?.nome || id; }
+
 function _pessoas(o){
+  const diretores=[o.diretor_id, ...(o.diretores_extra||[])].filter(Boolean);
+  const encs=[o.encarregado_id, ...(o.encarregados_extra||[])].filter(Boolean);
   return {
-    diretorNome: o.diretor_id ? (S.USERS[o.diretor_id]?.nome || o.diretor_id) : null,
-    encNome: o.encarregado_id ? (S.USERS[o.encarregado_id]?.nome || o.encarregado_id) : null
+    diretorNome: diretores.length ? _nomeUser(diretores[0]) + (diretores.length>1 ? ` +${diretores.length-1}` : '') : null,
+    diretorTitle: diretores.map(_nomeUser).join(', '),
+    encNome: encs.length ? _nomeUser(encs[0]) + (encs.length>1 ? ` +${encs.length-1}` : '') : null,
+    encTitle: encs.map(_nomeUser).join(', ')
   };
 }
 
@@ -37,13 +49,13 @@ function _renderObrasLista(lista){
   const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='padding:0;overflow:hidden';
   const tblWrap=document.createElement('div');tblWrap.className='tbl-wrap';
   const rows=lista.map(o=>{
-    const {diretorNome,encNome}=_pessoas(o);
+    const {diretorNome,diretorTitle,encNome,encTitle}=_pessoas(o);
     return `<tr>
       <td><span style="width:8px;height:8px;border-radius:50%;background:${o.ativa?'var(--green)':'var(--gray-300)'};display:inline-block;margin-right:8px"></span><span style="font-weight:500">${o.nome}</span></td>
       <td style="color:var(--gray-500)">${o.local||'—'}</td>
       <td style="color:var(--gray-500)">${o.prazo?fmtPT(o.prazo):'—'}</td>
-      <td style="color:var(--gray-500)">${diretorNome||'—'}</td>
-      <td style="color:var(--gray-500)">${encNome||'—'}</td>
+      <td style="color:var(--gray-500)" title="${diretorTitle}">${diretorNome||'—'}</td>
+      <td style="color:var(--gray-500)" title="${encTitle}">${encNome||'—'}</td>
       <td><span class="badge ${o.ativa?'b-green':'b-gray'}">${o.ativa?'Ativa':'Inativa'}</span></td>
       <td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm" style="background:${o.ativa?'var(--yellow-bg)':'var(--green-bg)'};color:${o.ativa?'var(--yellow)':'var(--green)'};border:1px solid ${o.ativa?'#FDE68A':'var(--green-light)'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div></td>
     </tr>`;
@@ -70,8 +82,11 @@ export function editObra(id){
   document.getElementById('mo-local').value=o.local||'';
   document.getElementById('mo-desc').value=o.desc||'';
   document.getElementById('mo-prazo').value=o.prazo||'';
+  _moDiretoresExtra=[...(o.diretores_extra||[])];
+  _moEncarregadosExtra=[...(o.encarregados_extra||[])];
   _populateEncSelect(o.encarregado_id||'');
   _populateDiretorSelect(o.diretor_id||'');
+  _renderMoExtras();
   document.getElementById('modal-obra').classList.add('open');
 }
 
@@ -99,6 +114,71 @@ function _populateDiretorSelect(selectedId=''){
   });
 }
 
+// ── Diretores/encarregados adicionais (além do principal, acima) ──
+function _chipsHTML(ids, onRemove){
+  return ids.map(id=>`<span class="mo-chip">${_nomeUser(id)}<button type="button" onclick="${onRemove}('${id}')" aria-label="Remover">×</button></span>`).join('');
+}
+
+function _renderMoExtras(){
+  const diretorPrincipal=document.getElementById('mo-diretor')?.value||'';
+  const encPrincipal=document.getElementById('mo-encarregado')?.value||'';
+
+  const listaDir=document.getElementById('mo-diretores-extra');
+  if(listaDir) listaDir.innerHTML=_chipsHTML(_moDiretoresExtra,'moRemoveDiretorExtra');
+  const addDir=document.getElementById('mo-diretor-extra-add');
+  if(addDir){
+    addDir.innerHTML='<option value="">+ adicionar diretor…</option>';
+    Object.entries(S.USERS||{}).filter(([un,u])=>u.role==='diretor_obra' && un!==diretorPrincipal && !_moDiretoresExtra.includes(un))
+      .forEach(([un,u])=>{ const op=document.createElement('option'); op.value=un; op.textContent=u.nome||un; addDir.appendChild(op); });
+  }
+
+  const listaEnc=document.getElementById('mo-encarregados-extra');
+  if(listaEnc) listaEnc.innerHTML=_chipsHTML(_moEncarregadosExtra,'moRemoveEncarregadoExtra');
+  const addEnc=document.getElementById('mo-encarregado-extra-add');
+  if(addEnc){
+    addEnc.innerHTML='<option value="">+ adicionar encarregado…</option>';
+    Object.entries(S.USERS||{}).filter(([un,u])=>u.role==='encarregado' && un!==encPrincipal && !_moEncarregadosExtra.includes(un))
+      .forEach(([un,u])=>{ const op=document.createElement('option'); op.value=un; op.textContent=u.nome||un; addEnc.appendChild(op); });
+  }
+}
+
+export function moRefreshExtraAdds(){ _renderMoExtras(); }
+
+export function moAddDiretorExtra(id){
+  if(!id || _moDiretoresExtra.includes(id)) return;
+  _moDiretoresExtra.push(id);
+  _renderMoExtras();
+}
+export function moRemoveDiretorExtra(id){
+  _moDiretoresExtra=_moDiretoresExtra.filter(x=>x!==id);
+  _renderMoExtras();
+}
+export function moAddEncarregadoExtra(id){
+  if(!id || _moEncarregadosExtra.includes(id)) return;
+  _moEncarregadosExtra.push(id);
+  _renderMoExtras();
+}
+export function moRemoveEncarregadoExtra(id){
+  _moEncarregadosExtra=_moEncarregadosExtra.filter(x=>x!==id);
+  _renderMoExtras();
+}
+
+// Sincroniza uma tabela de junção (obra_diretores_extra / obra_encarregados_extra)
+// com a lista atual, inserindo os novos e apagando os removidos.
+async function _syncObraExtra(table, col, obraId, novos, antigos){
+  const antigosSet=new Set(antigos), novosSet=new Set(novos);
+  const aAdicionar=novos.filter(x=>!antigosSet.has(x));
+  const aRemover=antigos.filter(x=>!novosSet.has(x));
+  if(aAdicionar.length){
+    const {error}=await sb.from(table).insert(aAdicionar.map(id=>({obra_id:obraId,[col]:id})));
+    if(error) throw error;
+  }
+  if(aRemover.length){
+    const {error}=await sb.from(table).delete().eq('obra_id',obraId).in(col,aRemover);
+    if(error) throw error;
+  }
+}
+
 export async function saveObra(){
   const nome=document.getElementById('mo-nome').value.trim();if(!nome){alert('Nome obrigatório.');return;}
   const id=document.getElementById('mo-id').value||('obra_'+Date.now());
@@ -107,13 +187,18 @@ export async function saveObra(){
   const encarregado_id=document.getElementById('mo-encarregado').value||null;
   const diretor_id=document.getElementById('mo-diretor').value||null;
   const ativa=existing>=0?S.OBRAS[existing].ativa:true;
-  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa,prazo,encarregado_id,diretor_id};
+  const diretores_extra=[..._moDiretoresExtra], encarregados_extra=[..._moEncarregadosExtra];
+  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa,prazo,encarregado_id,diretor_id,diretores_extra,encarregados_extra};
   try {
     const {error} = await sb.from('obras').upsert({
       id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa,
       prazo:prazo||null, encarregado_id:encarregado_id||null, diretor_id:diretor_id||null
     });
     if(error) throw error;
+    const antigoDir=existing>=0?(S.OBRAS[existing].diretores_extra||[]):[];
+    const antigoEnc=existing>=0?(S.OBRAS[existing].encarregados_extra||[]):[];
+    await _syncObraExtra('obra_diretores_extra','diretor_id',id,diretores_extra,antigoDir);
+    await _syncObraExtra('obra_encarregados_extra','encarregado_id',id,encarregados_extra,antigoEnc);
     if(existing>=0)S.OBRAS[existing]={...S.OBRAS[existing],...rec};else S.OBRAS.push(rec);
     closeModal('modal-obra');renderObras();populateFilterSelects();flashAlert('obra-alert');
     R.emitEvent?.({ acao:(existing>=0?'Obra atualizada':'Nova obra')+': '+nome, seccao:'obras' });

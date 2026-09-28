@@ -850,9 +850,11 @@ function editarFatura(id){
   if(aproBar){
     const isPending = f.status === 'pendente_aprovacao';
     const obraFatura = S.OBRAS.find(o=>o.nome===f.centroCusto);
+    const uKey = S.currentUser?.key;
     const canApprove = S.currentUser?.role === 'admin' ||
-      obraFatura?.encarregado_id === S.currentUser?.key ||
-      obraFatura?.diretor_id === S.currentUser?.key;
+      obraFatura?.encarregado_id === uKey || obraFatura?.diretor_id === uKey ||
+      (obraFatura?.encarregados_extra||[]).includes(uKey) ||
+      (obraFatura?.diretores_extra||[]).includes(uKey);
     aproBar.style.display = (isPending && canApprove) ? 'flex' : 'none';
   }
 
@@ -1166,17 +1168,20 @@ async function fssSave(){
   // Notificação
   if(_fssFat.centroCusto){
     const obra = S.OBRAS.find(o=>o.nome===_fssFat.centroCusto);
-    const encUsername = obra?.encarregado_id;
+    const destinatarios = [...new Set([
+      obra?.encarregado_id, obra?.diretor_id,
+      ...(obra?.encarregados_extra||[]), ...(obra?.diretores_extra||[])
+    ].filter(u => u && u !== S.currentUser?.key))];
     const msg = `Fatura pendente de aprovação: ${_fssFat.fornecedor||''}${_fssFat.total?' · '+_fssFat.total+'€':''} (${_fssFat.centroCusto})`;
     R.emitEvent?.({ acao: msg, seccao:'faturas' });
-    // Notificação direta ao diretor de obra
-    if(encUsername && encUsername !== S.currentUser?.key){
+    // Notificação direta ao(s) diretor(es)/encarregado(s) da obra
+    if(destinatarios.length){
       try{
-        await sb.from('notificacoes').insert({
+        await sb.from('notificacoes').insert(destinatarios.map(destinatario => ({
           actor: S.currentUser?.key||null,
           actor_nome: S.currentUser?.nome||'Sistema',
-          acao: msg, seccao:'faturas', destinatario: encUsername
-        });
+          acao: msg, seccao:'faturas', destinatario
+        })));
       } catch(e){ console.warn('Notif encarregado:', e); }
     }
     showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);

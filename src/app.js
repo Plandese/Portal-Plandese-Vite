@@ -16,7 +16,7 @@ import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, cl
 import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, hpDeleteCell, _hpClosePopover, aprovarDiaPonto, retirarAprovacaoPonto } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
-import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas } from './modules/obras.js';
+import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
 import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos } from './modules/colaboradores.js';
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
@@ -166,6 +166,7 @@ Object.assign(window, {
 
   // Obras
   renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, saveObraExtra,
+  moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra,
 
   // Colaboradores
   renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos,

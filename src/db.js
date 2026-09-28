@@ -18,7 +18,12 @@ export async function carregarDados() {
     // Obras
     const {data: obras} = await sb.from('obras').select('*').order('nome');
     if (obras) {
-      S.OBRAS = obras.map(o => ({id:o.id, nome:o.nome, local:o.local||'', desc:o.descricao||'', ativa:o.ativa, prazo:o.prazo||null, encarregado_id:o.encarregado_id||null, diretor_id:o.diretor_id||null}));
+      const {data: direxs} = await sb.from('obra_diretores_extra').select('obra_id,diretor_id');
+      const {data: encexs} = await sb.from('obra_encarregados_extra').select('obra_id,encarregado_id');
+      const direxPorObra = {}, encexPorObra = {};
+      (direxs||[]).forEach(r => { (direxPorObra[r.obra_id] ||= []).push(r.diretor_id); });
+      (encexs||[]).forEach(r => { (encexPorObra[r.obra_id] ||= []).push(r.encarregado_id); });
+      S.OBRAS = obras.map(o => ({id:o.id, nome:o.nome, local:o.local||'', desc:o.descricao||'', ativa:o.ativa, prazo:o.prazo||null, encarregado_id:o.encarregado_id||null, diretor_id:o.diretor_id||null, diretores_extra:direxPorObra[o.id]||[], encarregados_extra:encexPorObra[o.id]||[]}));
     }
     // Empresas MOA e colaboradores
     await R.loadEmpresasMOA?.();

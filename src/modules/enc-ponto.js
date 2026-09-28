@@ -17,8 +17,8 @@ import { stopCombQrScanner, encUpdateFuelWidget } from './enc-combustivel.js';
 
 function _encObraDoEncarregado(){
   const username=S.currentUser?.key;
-  return S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.prazo)
-    .find(o=>o.encarregado_id===username);
+  return S.OBRAS.filter(o=>o.ativa&&o.prazo&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)))
+    .sort((a,b)=>a.prazo.localeCompare(b.prazo))[0];
 }
 
 function _encUpdatePrazoWidget(){
@@ -246,7 +246,12 @@ async function initEnc(){
   // Buscar obras do Supabase
   try {
     const {data:obras}=await sb.from('obras').select('*').eq('ativa',true).order('nome');
-    if(obras&&obras.length>0) S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa,prazo:o.prazo||null,encarregado_id:o.encarregado_id||null}));
+    if(obras&&obras.length>0){
+      const {data:encexs}=await sb.from('obra_encarregados_extra').select('obra_id,encarregado_id');
+      const encexPorObra={};
+      (encexs||[]).forEach(r=>{ (encexPorObra[r.obra_id] ||= []).push(r.encarregado_id); });
+      S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa,prazo:o.prazo||null,encarregado_id:o.encarregado_id||null,encarregados_extra:encexPorObra[o.id]||[]}));
+    }
   } catch(e){ console.warn('obras:',e); }
   // Buscar colaboradores
   try {

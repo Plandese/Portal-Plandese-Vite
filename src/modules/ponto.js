@@ -245,7 +245,9 @@ function _aprovInfo(a){
 export function podeAprovarObra(obraId){
   const u = S.currentUser;
   if (!u || !obraId || obraId === '_sem') return false;
-  return u.role === 'admin' || S.OBRAS.find(o => o.id === obraId)?.diretor_id === u.key;
+  if (u.role === 'admin') return true;
+  const o = S.OBRAS.find(o => o.id === obraId);
+  return !!o && (o.diretor_id === u.key || (o.diretores_extra||[]).includes(u.key));
 }
 
 export function aprovCelulaHTML({ a, pode, temRegistos, onAprovar, onRetirar }){
@@ -274,8 +276,9 @@ function _aprovResumoHTML(obraId){
   const { obraMap, dStrs, aprov } = _histCache;
   const diasComReg = dStrs.filter((ds, i) => Object.values(obraMap[obraId]).some(cells => cells[i].length));
   const nAprov = diasComReg.filter(ds => aprov?.[_aprovKey(obraId, ds)]).length;
-  const diretor = S.OBRAS.find(o => o.id === obraId)?.diretor_id;
-  const nomeDir = diretor ? (S.USERS?.[diretor]?.nome || diretor) : 'sem diretor atribuído';
+  const o = S.OBRAS.find(o => o.id === obraId);
+  const diretores = [o?.diretor_id, ...(o?.diretores_extra||[])].filter(Boolean);
+  const nomeDir = diretores.length ? diretores.map(d => S.USERS?.[d]?.nome || d).join(', ') : 'sem diretor atribuído';
   const cls = nAprov === diasComReg.length ? 'b-green' : 'b-yellow';
   return `<span class="badge ${cls}" title="Diretor de obra: ${nomeDir}">${nAprov}/${diasComReg.length} dias aprovados · ${nomeDir}</span>`;
 }

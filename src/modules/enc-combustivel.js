@@ -113,7 +113,8 @@ function _encHideAll(){
 
 // Cartão da home: litros de gasóleo em stock no(s) depósito(s) da(s) obra(s) do encarregado
 function _encObrasComb(){
-  return S.OBRAS.filter(o=>o.ativa&&o.encarregado_id&&o.encarregado_id===S.currentUser?.key);
+  const username=S.currentUser?.key;
+  return S.OBRAS.filter(o=>o.ativa&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)));
 }
 
 async function encUpdateFuelWidget(){

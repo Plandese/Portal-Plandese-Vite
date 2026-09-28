@@ -2801,9 +2801,19 @@
     <div class="field"><label>Localização</label><input type="text" id="mo-local" placeholder="Ex: Rua das Flores, Aveiro"/></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field"><label>Prazo de entrega</label><input type="date" id="mo-prazo"/></div>
-      <div class="field"><label>Encarregado</label><select id="mo-encarregado"><option value="">— Nenhum —</option></select></div>
+      <div class="field"><label>Encarregado</label><select id="mo-encarregado" onchange="moRefreshExtraAdds()"><option value="">— Nenhum —</option></select></div>
     </div>
-    <div class="field"><label>Diretor de Obra</label><select id="mo-diretor"><option value="">— Nenhum —</option></select></div>
+    <div class="field">
+      <label>Encarregados adicionais</label>
+      <select id="mo-encarregado-extra-add" onchange="moAddEncarregadoExtra(this.value)"><option value="">+ adicionar encarregado…</option></select>
+      <div id="mo-encarregados-extra" class="mo-chips"></div>
+    </div>
+    <div class="field"><label>Diretor de Obra</label><select id="mo-diretor" onchange="moRefreshExtraAdds()"><option value="">— Nenhum —</option></select></div>
+    <div class="field">
+      <label>Diretores adicionais</label>
+      <select id="mo-diretor-extra-add" onchange="moAddDiretorExtra(this.value)"><option value="">+ adicionar diretor…</option></select>
+      <div id="mo-diretores-extra" class="mo-chips"></div>
+    </div>
     <div class="field"><label>Notas</label><textarea id="mo-desc" style="resize:vertical;min-height:60px" placeholder="Notas..."></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-obra')">Cancelar</button>

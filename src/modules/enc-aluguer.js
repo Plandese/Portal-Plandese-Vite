@@ -634,8 +634,9 @@ function _moaResumoHTML(obraId){
   const {obraMap,dStrs,aprov}=_moaCache;
   const dias=dStrs.filter((ds,i)=>Object.values(obraMap[obraId]).some(t=>t.cells[i].length));
   const n=dias.filter(ds=>aprov[_moaAprovKey(obraId,ds)]).length;
-  const dir=S.OBRAS.find(o=>o.id===obraId)?.diretor_id;
-  const nomeDir=dir?(S.USERS?.[dir]?.nome||dir):'sem diretor atribuído';
+  const o=S.OBRAS.find(o=>o.id===obraId);
+  const diretores=[o?.diretor_id, ...(o?.diretores_extra||[])].filter(Boolean);
+  const nomeDir=diretores.length?diretores.map(d=>S.USERS?.[d]?.nome||d).join(', '):'sem diretor atribuído';
   return `<span class="badge ${n===dias.length?'b-green':'b-yellow'}" title="Diretor de obra: ${nomeDir}">${n}/${dias.length} dias aprovados · ${nomeDir}</span>`;
 }
 
