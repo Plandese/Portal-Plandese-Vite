@@ -7,7 +7,7 @@ import { S, R } from './state.js';
 import { carregarDados } from './db.js';
 
 // Auth
-import { mostrarDiag, applyDeviceClass, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword } from './modules/auth.js';
+import { mostrarDiag, applyDeviceClass, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword, togglePasswordVisibility } from './modules/auth.js';
 
 // Navigation
 import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
@@ -137,7 +137,7 @@ tentarSessaoGuardada();
 // ── Expor todas as funções ao window para handlers HTML inline ──
 Object.assign(window, {
   // Auth
-  doLogin, doLogout,
+  doLogin, doLogout, togglePasswordVisibility,
 
   // Análise de dados (modo telemóvel)
   renderAnalise, anlSetPeriodo, anlSetObra,

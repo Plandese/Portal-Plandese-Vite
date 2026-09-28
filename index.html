@@ -30,7 +30,7 @@
     <div class="login-card-sub">Introduza as suas credenciais para entrar</div>
     <div class="login-error" id="login-error">Credenciais incorretas. Tente novamente.</div>
     <div class="field"><label>Utilizador</label><input type="text" id="lu" placeholder="nome.apelido" autocomplete="username"/></div>
-    <div class="field"><label>Password</label><input type="password" id="lp" placeholder="••••••••" autocomplete="current-password"/></div>
+    <div class="field"><label>Password</label><div class="pwd-wrap"><input type="password" id="lp" placeholder="••••••••" autocomplete="current-password"/><button type="button" class="pwd-eye" onclick="togglePasswordVisibility(this)" aria-label="Mostrar password"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
     <p class="login-hint">
 </p>

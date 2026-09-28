@@ -5,6 +5,19 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { USERS_BASE, ROLE_LABELS } from '../config.js';
 
+const _EYE_ON  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 8 11 8a17.4 17.4 0 0 1-4.24 5.27"/><path d="M6.61 6.61A17.5 17.5 0 0 0 1 12s4 8 11 8a9.87 9.87 0 0 0 5.11-1.43"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+// Alterna type="password"/"text" no input irmão e troca o ícone do olho
+export function togglePasswordVisibility(btn) {
+  const input = btn.parentElement.querySelector('input');
+  if (!input) return;
+  const mostrar = input.type === 'password';
+  input.type = mostrar ? 'text' : 'password';
+  btn.innerHTML = mostrar ? _EYE_OFF : _EYE_ON;
+  btn.setAttribute('aria-label', mostrar ? 'Ocultar password' : 'Mostrar password');
+}
+
 export function mostrarDiag(msg, cor='#1d4ed8') {
   let d = document.getElementById('diag-box');
   if (!d) {
