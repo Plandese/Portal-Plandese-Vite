@@ -356,6 +356,20 @@ function renderEqBusca(){
     : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem resultados para "${eqEsc(term)}"</div>`;
 }
 
+// Mostra todos os equipamentos (sem filtro nem limite de 40) na mesma zona
+// de resultados da pesquisa — atalho para quem quer ver o inventário
+// completo em vez de ter de escrever um termo.
+function eqVerListaCompleta(){
+  const box  = document.getElementById('eq-busca-resultados');
+  const hint = document.getElementById('eq-busca-hint');
+  if(!box) return;
+  if(hint) hint.style.display='none';
+  const list = [...EQUIPAMENTOS].sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  box.innerHTML = list.length
+    ? list.map(_eqBuscaRowHtml).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem equipamentos registados.</div>`;
+}
+
 // ── Mapa Leaflet ────────────────────────
 function initEqMap(){
   const mapEl = document.getElementById('eq-map');
@@ -780,7 +794,7 @@ function submitQrRegistration(){
 export {
   EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_MANUT,
   EQ_CATS, eqFmtDt, eqDatePT, saveEqLocal,
-  renderEquipamentos, updateEqKPIs, renderEqBusca,
+  renderEquipamentos, updateEqKPIs, renderEqBusca, eqVerListaCompleta,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
