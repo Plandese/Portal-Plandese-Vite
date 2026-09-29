@@ -905,7 +905,7 @@ function _moaRenderPopover(anchorEl) {
       <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="moaSaveRow()">Guardar</button>
       <button class="btn btn-secondary btn-sm" onclick="_moaClosePopover()">Cancelar</button>
     </div>
-    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red);color:#fff" onclick="moaAnularRow()">Apagar registo</button>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red);color:#fff" onclick="moaAnularRow(event)">Apagar registo</button>
   `;
   document.getElementById('moa-entrada').value = row.entrada?.slice(0, 5) || '';
   document.getElementById('moa-saida').value = row.saida?.slice(0, 5) || '';
@@ -950,10 +950,17 @@ async function moaSaveRow() {
   }
 }
 
-async function moaAnularRow() {
+// Dois cliques em vez de confirm(): os diálogos nativos são bloqueados em alguns
+// ecrãs/webviews e o botão parecia "não fazer nada".
+async function moaAnularRow(evt) {
   if (!_moaCurrent) return;
-  const r = _moaCurrent.row;
-  if (!confirm(`APAGAR o registo de ${r?.trabalhador_nome || 'este trabalhador'} em ${fmtPT(r?.data)}? Deixa de aparecer na folha de ponto e não pode ser recuperado.`)) return;
+  const btn = evt?.currentTarget;
+  if (btn && btn.dataset.armado !== '1') {
+    btn.dataset.armado = '1';
+    btn.textContent = 'Clique de novo para apagar mesmo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armado = ''; btn.textContent = 'Apagar registo'; } }, 4000);
+    return;
+  }
   try {
     const { data, error } = await sb.from('registos_ponto_moa').delete().eq('id', _moaCurrent.id).select('id');
     if (error) throw error;

@@ -95,7 +95,7 @@ function _hpRenderPopover(anchorEl) {
       <button class="btn btn-secondary btn-sm" onclick="_hpClosePopover()">Cancelar</button>
     </div>
     <button id="hp-anular-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red-bg);color:var(--red)" onclick="hpAnularCell()">Anular registo</button>
-    <button id="hp-apagar-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red);color:#fff" onclick="hpDeleteCell()">Apagar registo</button>
+    <button id="hp-apagar-btn" class="btn btn-sm" style="width:100%;justify-content:center;margin-top:6px;background:var(--red);color:#fff" onclick="hpDeleteCell(event)">Apagar registo</button>
   `;
   document.getElementById('hp-nome').textContent = ctx.colab?.nome || '';
   document.getElementById('hp-data').textContent = fmtPT(ctx.dateStr);
@@ -199,10 +199,17 @@ export async function hpAnularCell() {
 
 // Apaga mesmo o registo (deixa de aparecer na folha de ponto), ao contrário de
 // "Anular", que mantém a linha marcada como Anulado.
-export async function hpDeleteCell() {
+export async function hpDeleteCell(evt) {
   const reg = _hpCurrent?.reg;
   if (!reg) return;
-  if (!confirm('APAGAR este registo de ponto? Deixa de aparecer na folha de ponto e não pode ser recuperado.\n\nPara o manter marcado como anulado, use "Anular registo".')) return;
+  // Dois cliques em vez de confirm(): diálogos nativos podem estar bloqueados.
+  const btn = evt?.currentTarget;
+  if (btn && btn.dataset.armado !== '1') {
+    btn.dataset.armado = '1';
+    btn.textContent = 'Clique de novo para apagar mesmo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armado = ''; btn.textContent = 'Apagar registo'; } }, 4000);
+    return;
+  }
   const { colabN, dateStr, obraId } = _hpCurrent;
   try {
     let q = sb.from('registos_ponto').delete();
