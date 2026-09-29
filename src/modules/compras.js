@@ -174,172 +174,205 @@ function dataLimiteBadge(dl, estado) {
   return `<span class="dl-ok">${label}</span>`;
 }
 
-// ── KPIs ─────────────────────────────────────────────────────────
+// ── Contagem de pendentes (sidebar + separador "Encomendas") ─────
 function atualizaKPIsCompras() {
-  const total = COMPRAS.length;
-  const pend  = COMPRAS.filter(c => c.estado === 'pendente').length;
-  const enc   = COMPRAS.filter(c => c.estado === 'encomendado').length;
-  const ent   = COMPRAS.filter(c => c.estado === 'entregue').length;
-  const el = id => document.getElementById(id);
-  if(el('cmp-k-total')) el('cmp-k-total').textContent = total;
-  if(el('cmp-k-pend'))  el('cmp-k-pend').textContent  = pend;
-  if(el('cmp-k-enc'))   el('cmp-k-enc').textContent   = enc;
-  if(el('cmp-k-ent'))   el('cmp-k-ent').textContent   = ent;
+  const pend = COMPRAS.filter(c => c.estado !== 'entregue').length;
   const nb = document.getElementById('nb-cmp');
   if (nb) { nb.textContent = pend; nb.style.display = pend > 0 ? '' : 'none'; }
+  const nbTab = document.getElementById('cmp-tab-pend-nb');
+  if (nbTab) { nbTab.hidden = !pend; nbTab.textContent = pend; }
 }
 
-// ── Filtros e render (agrupado por obra) ─────────────────────────
-function filtraCompras() {
-  const srch = (document.getElementById('cmp-f-search')?.value||'').toLowerCase();
-  const obra = document.getElementById('cmp-f-obra')?.value||'';
-  const est  = document.getElementById('cmp-f-estado')?.value||'';
-  const urg  = document.getElementById('cmp-f-urg')?.value||'';
-  return COMPRAS.filter(c => {
-    if (srch && !c.titulo.toLowerCase().includes(srch) &&
-        !(c.fornecedor||'').toLowerCase().includes(srch) &&
-        !(c.criadoNome||'').toLowerCase().includes(srch)) return false;
-    if (obra && c.obraId !== obra) return false;
-    if (est  && c.estado !== est)  return false;
-    if (urg  && c.urgencia !== urg) return false;
-    return true;
-  });
+// ── Utilitários de apresentação ──────────────────────────────────
+function cmpEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _cmpObraNome(c) {
+  return c.obraId ? (S.OBRAS.find(o => o.id === c.obraId)?.nome || c.obraId) : 'Sem obra associada';
+}
+// Notas sem a marca de importação nem markdown, cortadas para pré-visualização
+function _cmpNotasResumo(c, max = 140) {
+  const t = (c.notas || '')
+    .replace(/\[Importado do Trello:[^\]]*\]/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[~*>\\]/g, '')
+    .replace(/\s+/g, ' ').trim();
+  return t.length > max ? t.slice(0, max).trimEnd() + '…' : t;
+}
+const _CMP_ICO_EDIT = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+const _CMP_ICO_MAPA = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>';
+
+function cmpAbrirMapaComp(id) {
+  window.goTo('mapas-comparativos', document.getElementById('nav-mapas-comp'));
+  setTimeout(() => window.openModalMapa?.(id), 200);
 }
 
-// ── Vista activa ─────────────────────────────────────────────────
+// ── Vistas (Lista / Por Obra / Encomendas) ───────────────────────
 let _cmpView = 'lista';
+let _cmpObraGroups = [];
 
-export function cmpSetView(mode) {
-  _cmpView = mode;
-  ['lista','cards','resumo'].forEach(m => {
-    document.getElementById('cmp-vbtn-'+m)?.classList.toggle('active', m === mode);
+export function cmpSetView(view) {
+  _cmpView = view;
+  ['lista','obra','estado'].forEach(v => {
+    const panel = document.getElementById('cmp-view-' + v);
+    const btn   = document.getElementById('cmp-tab-btn-' + v);
+    if (panel) panel.style.display = v === view ? '' : 'none';
+    if (btn)   btn.classList.toggle('active', v === view);
   });
   renderCompras();
 }
 
-// ── Agrupamento auxiliar ──────────────────────────────────────────
-function _cmpGrupos(lista) {
-  const grupos = {};
-  lista.forEach(c => {
-    const k = c.obraId || '__sem_obra__';
-    if (!grupos[k]) grupos[k] = [];
-    grupos[k].push(c);
-  });
-  return Object.keys(grupos).sort((a,b) => {
-    if (a === '__sem_obra__') return 1;
-    if (b === '__sem_obra__') return -1;
-    const na = S.OBRAS.find(o=>o.id===a)?.nome||'';
-    const nb = S.OBRAS.find(o=>o.id===b)?.nome||'';
-    return na.localeCompare(nb, 'pt');
-  }).map(k => ({
-    k,
-    nome: k === '__sem_obra__' ? 'Sem obra associada' : (S.OBRAS.find(o=>o.id===k)?.nome || k),
-    items: grupos[k]
-  }));
+// ── Vista "Lista" (pesquisa) ─────────────────────────────────────
+function _cmpBuscaRowHtml(c) {
+  const forn = cmpFornDisplay(c);
+  const sub  = [cmpEsc(_cmpObraNome(c)), forn !== '—' ? forn : ''].filter(Boolean).join(' · ');
+  const notas = _cmpNotasResumo(c);
+  const dl = c.dataLimite && c.estado !== 'entregue' ? `<span style="font-size:11px;margin-left:8px">${dataLimiteBadge(c.dataLimite, c.estado)}</span>` : '';
+  return `<div class="card" style="padding:12px 16px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:700;color:var(--gray-900)">${cmpEsc(c.titulo)}</span>
+          ${urgBadge(c.urgencia)}${cmpEstadoBadge(c.estado)}
+        </div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:3px">${sub}${dl}</div>
+        ${notas ? `<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${cmpEsc(notas)}</div>` : ''}
+        ${cmpWorkflowBadges(c)}
+      </div>
+      <div style="white-space:nowrap;flex-shrink:0">
+        ${c.estado === 'aprovado' ? `<button class="btn btn-secondary btn-sm" onclick="cmpAbrirMapaComp('${c.id}')" title="Criar mapa comparativo">${_CMP_ICO_MAPA} Mapa</button>` : ''}
+        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button>
+      </div>
+    </div>
+  </div>`;
 }
 
-// ── Vista: Lista (tabela agrupada) ───────────────────────────────
-function _renderLista(lista) {
-  const grupos = _cmpGrupos(lista);
-  let html = `<div class="card" style="padding:0;overflow:hidden"><div class="tbl-wrap"><table>
-    <thead><tr><th>Título</th><th>Fornecedor</th><th>Urgência</th><th>Estado</th><th>Entrega limite</th><th>Criado por</th><th></th></tr></thead>
-    <tbody>`;
-  grupos.forEach(({nome, items}) => {
-    html += `<tr class="cmp-group-row"><td colspan="7">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;vertical-align:middle;margin-right:5px"><path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3z"/></svg>
-      ${nome} <span style="font-weight:400;color:var(--gray-400);margin-left:6px">(${items.length})</span>
-    </td></tr>`;
-    items.forEach(c => {
-      const autorNome = c.criadoNome || c.criadoPor || '—';
-      const emailIco = c.emailNotif ? `<span title="${c.emailNotif}" style="margin-left:4px;color:var(--blue-500)"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;vertical-align:middle"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>` : '';
-      const mapIco = (c.localLat && c.localLng) ? `<a href="https://www.openstreetmap.org/?mlat=${c.localLat}&mlon=${c.localLng}#map=16/${c.localLat}/${c.localLng}" target="_blank" title="${c.local}" style="color:var(--blue-500);display:inline-flex;align-items:center;gap:3px;font-size:11px;text-decoration:none"><svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Ver mapa</a>` : '';
-      html += `<tr>
-        <td style="max-width:220px"><strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titulo}</strong>${c.local ? `<div>${mapIco || `<span style="font-size:11px;color:var(--gray-400)">${c.local}</span>`}</div>` : ''}</td>
-        <td style="color:var(--gray-600);max-width:180px">${cmpFornDisplay(c)}</td>
-        <td>${urgBadge(c.urgencia)}</td>
-        <td>${cmpEstadoBadge(c.estado)}${cmpWorkflowBadges(c)}</td>
-        <td>${dataLimiteBadge(c.dataLimite, c.estado)}</td>
-        <td style="font-size:12px;color:var(--gray-700);white-space:nowrap">${autorNome}${emailIco}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="editarCompra('${c.id}')">Editar</button></td>
-      </tr>`;
-    });
-  });
-  html += `</tbody></table></div></div>`;
-  return html;
+function _cmpOrdenar(lista) {
+  return [...lista].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || '') || a.titulo.localeCompare(b.titulo, 'pt'));
 }
 
-// ── Vista: Cartões por obra ──────────────────────────────────────
-function _renderCards(lista) {
-  const grupos = _cmpGrupos(lista);
-  const ESTADO_COR = { pendente:'#F59E0B', aprovado:'#3B82F6', encomendado:'#8B5CF6', entregue:'#10B981' };
-  let html = '<div style="display:flex;flex-direction:column;gap:20px">';
-  grupos.forEach(({nome, items}) => {
-    html += `<div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:12px 18px;background:var(--gray-50);border-bottom:1.5px solid var(--gray-200);display:flex;align-items:center;gap:10px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--blue-500);flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span style="font-size:14px;font-weight:700;color:var(--gray-900)">${nome}</span>
-        <span style="margin-left:auto;font-size:12px;color:var(--gray-500);font-weight:500">${items.length} pedido${items.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:0">`;
-    items.forEach((c, i) => {
-      const forn = cmpFornDisplay(c);
-      const urgColor = c.urgencia === 'Muito Urgente' ? '#EF4444' : c.urgencia === 'Urgente' ? '#F59E0B' : '#6B7280';
-      const estadoCor = ESTADO_COR[c.estado] || '#6B7280';
-      html += `<div style="display:flex;align-items:center;gap:14px;padding:11px 18px;${i > 0 ? 'border-top:1px solid var(--gray-100)' : ''};cursor:pointer;transition:background 0.1s" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''" onclick="editarCompra('${c.id}')">
-        <div style="width:4px;height:36px;border-radius:3px;background:${estadoCor};flex-shrink:0"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titulo}</div>
-          <div style="font-size:12px;color:var(--gray-500);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${forn ? `<span>${forn}</span>` : ''}
-            ${c.dataLimite ? `<span>📅 ${fmtPT(c.dataLimite)}</span>` : ''}
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          ${urgBadge(c.urgencia)}
-          ${cmpEstadoBadge(c.estado)}
-        </div>
-      </div>`;
-    });
-    html += `</div></div>`;
-  });
-  html += '</div>';
-  return html;
+function _cmpRenderBusca() {
+  const box  = document.getElementById('cmp-busca-resultados');
+  const hint = document.getElementById('cmp-busca-hint');
+  if (!box) return;
+  const term = (document.getElementById('cmp-busca-input')?.value || '').toLowerCase().trim();
+  if (!term) { box.innerHTML = ''; if (hint) hint.style.display = ''; return; }
+  if (hint) hint.style.display = 'none';
+  const list = _cmpOrdenar(COMPRAS.filter(c =>
+    [c.titulo, c.fornecedor, (c.fornecedores || []).join(' '), c.notas, c.criadoNome, _cmpObraNome(c)].join(' ').toLowerCase().includes(term)
+  )).slice(0, 40);
+  box.innerHTML = list.length
+    ? list.map(_cmpBuscaRowHtml).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem resultados para "${cmpEsc(term)}"</div>`;
 }
 
-// ── Vista: Resumo por obra ───────────────────────────────────────
-function _renderResumo(lista) {
-  const grupos = _cmpGrupos(lista);
-  const urgentes = lista.filter(c => c.urgencia === 'Muito Urgente' || c.urgencia === 'Urgente').length;
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">`;
-  grupos.forEach(({nome, items}) => {
-    const pend = items.filter(c => c.estado === 'pendente').length;
-    const aprov = items.filter(c => c.estado === 'aprovado').length;
-    const enc  = items.filter(c => c.estado === 'encomendado').length;
-    const ent  = items.filter(c => c.estado === 'entregue').length;
-    const urg  = items.filter(c => c.urgencia === 'Muito Urgente' || c.urgencia === 'Urgente').length;
-    const pct  = items.length ? Math.round(ent / items.length * 100) : 0;
-    html += `<div class="card" style="padding:18px 20px;cursor:pointer" onclick="document.getElementById('cmp-f-obra').value='${items[0]?.obraId||''}';renderCompras();cmpSetView('cards')">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--gray-900);line-height:1.3">${nome}</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:2px">${items.length} pedido${items.length!==1?'s':''}</div>
+// Mostra todos os pedidos (sem filtro nem limite) na zona de resultados da pesquisa
+function cmpVerListaCompleta() {
+  const box  = document.getElementById('cmp-busca-resultados');
+  const hint = document.getElementById('cmp-busca-hint');
+  const inp  = document.getElementById('cmp-busca-input');
+  if (!box) return;
+  if (inp) inp.value = '';
+  if (hint) hint.style.display = 'none';
+  const list = _cmpOrdenar(COMPRAS);
+  box.innerHTML = list.length
+    ? list.map(_cmpBuscaRowHtml).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem pedidos de compra registados.</div>`;
+}
+
+// ── Vista "Por Obra" ─────────────────────────────────────────────
+function _cmpRenderPorObra() {
+  const grid  = document.getElementById('cmp-obras-grid');
+  const empty = document.getElementById('cmp-obras-empty');
+  if (!grid) return;
+  const map = {};
+  COMPRAS.forEach(c => {
+    const key = c.obraId || '__sem_obra__';
+    if (!map[key]) map[key] = { nome: _cmpObraNome(c), items: [] };
+    map[key].items.push(c);
+  });
+  const semObra = map['__sem_obra__'];
+  delete map['__sem_obra__'];
+  const obras = Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  if (semObra) obras.push(semObra);
+  _cmpObraGroups = obras;
+  if (!obras.length) { grid.innerHTML = ''; if (empty) empty.style.display = ''; return; }
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = obras.map((ob, i) => {
+    const total = ob.items.length;
+    const pend  = ob.items.filter(c => c.estado !== 'entregue').length;
+    const ent   = total - pend;
+    const urg   = ob.items.filter(c => c.estado !== 'entregue' && (c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente')).length;
+    const chips = [
+      ent ? `<span style="font-size:11px;font-weight:600;color:var(--green,#16a34a)">${ent} entregue${ent !== 1 ? 's' : ''}</span>` : '',
+      urg ? `<span style="font-size:11px;font-weight:600;color:#b45309">${urg} urgente${urg !== 1 ? 's' : ''}</span>` : ''
+    ].filter(Boolean).join(' · ');
+    return `<div class="card" style="padding:16px 18px;cursor:pointer" onclick="abrirCmpObraDetalhe(${i})" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cmpEsc(ob.nome)}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${total} pedido${total !== 1 ? 's' : ''}${chips ? ' · ' + chips : ''}</div>
         </div>
-        ${urg ? `<span style="font-size:11px;font-weight:700;color:#EF4444;background:#FEF2F2;border-radius:20px;padding:3px 10px;white-space:nowrap">${urg} urgente${urg!==1?'s':''}</span>` : ''}
+        ${pend ? `<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#b91c1c">Pendente</div>
+          <div style="font-size:18px;font-weight:700;color:#b91c1c;line-height:1">${pend}</div>
+        </div>` : ''}
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-        ${pend  ? `<span style="font-size:11px;font-weight:600;color:#92400E;background:#FEF3C7;border-radius:20px;padding:3px 10px">${pend} pendente${pend!==1?'s':''}</span>` : ''}
-        ${aprov ? `<span style="font-size:11px;font-weight:600;color:#1E40AF;background:#DBEAFE;border-radius:20px;padding:3px 10px">${aprov} aprovado${aprov!==1?'s':''}</span>` : ''}
-        ${enc   ? `<span style="font-size:11px;font-weight:600;color:#5B21B6;background:#EDE9FE;border-radius:20px;padding:3px 10px">${enc} encomendado${enc!==1?'s':''}</span>` : ''}
-        ${ent   ? `<span style="font-size:11px;font-weight:600;color:#065F46;background:#D1FAE5;border-radius:20px;padding:3px 10px">${ent} entregue${ent!==1?'s':''}</span>` : ''}
-      </div>
-      <div style="background:var(--gray-100);border-radius:4px;height:6px;overflow:hidden">
-        <div style="height:100%;border-radius:4px;background:#10B981;width:${pct}%;transition:width 0.4s"></div>
-      </div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:5px;text-align:right">${pct}% concluído</div>
     </div>`;
-  });
-  html += '</div>';
-  return html;
+  }).join('');
+}
+
+function _cmpObraRowHtml(c) {
+  const notas = _cmpNotasResumo(c, 90);
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--gray-100)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${cmpEsc(c.titulo)}</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[urgBadge(c.urgencia), cmpEstadoBadge(c.estado)].join(' ')}${notas ? ' ' + cmpEsc(notas) : ''}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-cmp-obra-detalhe');editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button>
+  </div>`;
+}
+
+function abrirCmpObraDetalhe(i) {
+  const ob = _cmpObraGroups[i]; if (!ob) return;
+  document.getElementById('mcmpo-title').textContent = ob.nome;
+  document.getElementById('mcmpo-sub').textContent = `${ob.items.length} pedido${ob.items.length !== 1 ? 's' : ''}`;
+  document.getElementById('mcmpo-list').innerHTML = _cmpOrdenar(ob.items).map(_cmpObraRowHtml).join('');
+  window.openModal('modal-cmp-obra-detalhe');
+}
+
+// ── Vista "Encomendas" (quadro Pendente / Entregue) ──────────────
+function filtraCompras() {
+  const obra = document.getElementById('cmp-f-obra')?.value || '';
+  const urg  = document.getElementById('cmp-f-urg')?.value || '';
+  return COMPRAS.filter(c => (!obra || c.obraId === obra) && (!urg || c.urgencia === urg));
+}
+
+function _cmpRenderBoard() {
+  const items = filtraCompras();
+  const pend = _cmpOrdenar(items.filter(c => c.estado !== 'entregue'));
+  const done = _cmpOrdenar(items.filter(c => c.estado === 'entregue'));
+  const cardHtml = c => {
+    const notas = _cmpNotasResumo(c);
+    const forn  = cmpFornDisplay(c);
+    const rodape = [_cmpObraNome(c), forn !== '—' ? forn : '', c.dataLimite ? fmtPT(c.dataLimite) : '', c.criadoNome].filter(Boolean).join(' · ');
+    return `<div class="card" style="padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="editarCompra('${c.id}')">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${cmpEsc(c.titulo)}</div>
+        ${cmpEstadoBadge(c.estado)}
+      </div>
+      ${notas ? `<div style="font-size:12px;color:var(--gray-600);margin-top:5px">${cmpEsc(notas)}</div>` : ''}
+      <div style="margin-top:5px">${urgBadge(c.urgencia)}${cmpWorkflowBadges(c)}</div>
+      ${rodape ? `<div style="font-size:11px;color:var(--gray-400);margin-top:6px">${cmpEsc(rodape)}</div>` : ''}
+    </div>`;
+  };
+  const colP = document.getElementById('cmp-col-pendente');
+  const colD = document.getElementById('cmp-col-entregue');
+  if (colP) colP.innerHTML = pend.length ? pend.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem pedidos pendentes</div>';
+  if (colD) colD.innerHTML = done.length ? done.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem pedidos entregues</div>';
+  const cP = document.getElementById('cmp-count-pend'); if (cP) cP.textContent = pend.length;
+  const cD = document.getElementById('cmp-count-done'); if (cD) cD.textContent = done.length;
 }
 
 // ── Vista mobile: pesquisa de obra + resumo de pedidos pendentes/resolvidos ──
@@ -450,28 +483,17 @@ function _renderMobileCompras(area) {
 }
 
 function renderCompras() {
+  atualizaKPIsCompras();
   const area = document.getElementById('cmp-view-area');
-  if (!area) return;
   if (document.body.classList.contains('device-mobile')) {
     const empty = document.getElementById('cmp-empty');
     if (empty) empty.style.display = 'none';
-    _renderMobileCompras(area);
-    atualizaKPIsCompras();
+    if (area) _renderMobileCompras(area);
     return;
   }
-  const lista = filtraCompras();
-  const empty = document.getElementById('cmp-empty');
-  if (lista.length === 0) {
-    area.innerHTML = '';
-    if (empty) empty.style.display = '';
-    atualizaKPIsCompras();
-    return;
-  }
-  if (empty) empty.style.display = 'none';
-  if (_cmpView === 'cards')  area.innerHTML = _renderCards(lista);
-  else if (_cmpView === 'resumo') area.innerHTML = _renderResumo(lista);
-  else area.innerHTML = _renderLista(lista);
-  atualizaKPIsCompras();
+  if (_cmpView === 'obra')        _cmpRenderPorObra();
+  else if (_cmpView === 'estado') _cmpRenderBoard();
+  else                            _cmpRenderBusca();
 }
 
 // ── Selects de obras ─────────────────────────────────────────────
@@ -1246,5 +1268,6 @@ export {
   cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
   openCompraModal, enviarEmailNotificacao, initCompras,
-  urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras
+  urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras,
+  cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp
 };

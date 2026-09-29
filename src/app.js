@@ -35,7 +35,7 @@ import { ensurePushSubscription, requestPushPermission, pushStatus, capturePendi
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura } from './modules/faturas.js';
 
 // Compras
-import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
+import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
 
 // Equipamentos
 import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
@@ -195,7 +195,7 @@ Object.assign(window, {
   cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido,
   cmpAddForn, cmpRemoveForn,
   abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais,
-  uploadListaExcel, uploadListaExcelFile,
+  uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp,
   cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
   openCompraModal,

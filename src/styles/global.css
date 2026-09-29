@@ -2296,3 +2296,8 @@ td>.pl-load{padding:24px 20px}
   #enc-app .enc-equip-body > .enc-hdr,#enc-app .enc-body > .enc-hdr{width:100%;max-width:580px}
   #enc-app .enc-equip-body > .enc-qr-wrap{width:100%;max-width:580px}
 }
+body.device-mobile #cmp-tabs-wrap,
+body.device-mobile #cmp-view-lista,
+body.device-mobile #cmp-view-obra,
+body.device-mobile #cmp-view-estado{display:none!important}
+body:not(.device-mobile) #cmp-view-area{display:none}
