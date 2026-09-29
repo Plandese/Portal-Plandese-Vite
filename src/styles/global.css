@@ -2280,3 +2280,19 @@ td>.pl-load{padding:24px 20px}
 .eo-nota{font-size:11px;color:var(--gray-500);background:var(--gray-50);border-radius:8px;padding:6px 10px;margin-bottom:6px}
 #painel-filtros .eo-bar-nav{margin-bottom:0;justify-content:flex-end}
 #anl-body > .eo-bar-nav{margin-bottom:14px}
+
+/* ═══ Portal do encarregado — ecrãs de formulário centrados e no topo (desktop/tablet) ═══
+   Os ecrãs usavam justify-content:flex-end (cartão colado ao fundo) e alguns não
+   centravam o conteúdo. Aqui todos passam a coluna de 580px centrada, a começar no topo. */
+@media(min-width:640px){
+  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat){
+    align-items:center!important;
+    justify-content:flex-start!important;
+  }
+  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat) > *{
+    width:100%;max-width:580px;margin-left:auto;margin-right:auto;
+  }
+  .enc-body,.enc-equip-body{justify-content:flex-start}
+  #enc-app .enc-equip-body > .enc-hdr,#enc-app .enc-body > .enc-hdr{width:100%;max-width:580px}
+  #enc-app .enc-equip-body > .enc-qr-wrap{width:100%;max-width:580px}
+}
