@@ -561,7 +561,7 @@ function _histDrawResultado(){
       grandN+=rN;grandE+=rE;grandT+=rT;
       tbody+=`<tr style="${rowNum%2===0?'background:var(--gray-50)':''}">
         <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-400);font-weight:700;text-align:center">${n}</td>
-        <td style="font-weight:500;font-size:13px;white-space:nowrap">${c.nome}</td>
+        <td style="font-weight:500;font-size:13px;white-space:nowrap;cursor:pointer" title="Ver resumo mensal" onclick="abrirResumoPonto(${n},'${dStrs[0]}')">${c.nome}</td>
         <td style="font-size:11px;color:var(--gray-500)">${c.func}</td>
         ${dayCells}
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--green);font-weight:700;text-align:center;border-left:2px solid var(--gray-200)">${fmtH(rN)}</td>

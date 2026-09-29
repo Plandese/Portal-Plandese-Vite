@@ -6,6 +6,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend } from '../utils/helpers.js';
 import { podeAprovarObra, aprovCelulaHTML } from './ponto.js';
 import { showToast } from './navigation.js';
+import { abrirResumoMOA } from './resumo-colab.js';
 
 // ── MOA — Estado ──────────────────────
 let encAlugEmpresaId='', encAlugEmpresaNome='', encAlugObraId='', encAlugData='', encAlugHoraIni='08:00', encAlugHoraFim='17:00';
@@ -557,7 +558,8 @@ function navMOASemana(dir){
 // totais de horas, edição por célula e aprovação diária pelo diretor de obra.
 let _moaCache=null;     // {rows, obraMap, dupByDay, days, dStrs, dayNames, semLabel, aprov}
 let _moaDiaSel=null;    // dia selecionado na vista de lista (telemóvel)
-let _moaCellIndex={};   // cellKey → [registos]
+let _moaCellIndex={};
+let _moaTrabIndex={};  // obra__trabalhador → dados do trabalhador (resumo mensal)   // cellKey → [registos]
 const _moaAprovKey=(obraId,ds)=>`${obraId}|${ds}`;
 const _MOA_DAY_NAMES=['2ª Feira','3ª Feira','4ª Feira','5ª Feira','6ª Feira','Sábado','Domingo'];
 
@@ -613,6 +615,12 @@ async function loadMOAWeek(){
   _moaDraw();
 }
 
+function moaAbrirResumo(key){
+  const t=_moaTrabIndex[key]; if(!t||!_moaCache) return;
+  const emp=t.cells.flat()[0]?.empresa_moa_id||null;
+  abrirResumoMOA({colabId:t.colabId,empresaId:emp,nome:t.nome,funcao:t.funcao,empresa:t.empresa},_moaCache.dStrs[0]);
+}
+
 function moaSelectDia(ds){ if(_moaCache?.dStrs.includes(ds)){ _moaDiaSel=ds; _moaDraw(); } }
 
 function _moaFotoDe(t){
@@ -655,7 +663,7 @@ function _moaDraw(){
   if(!_moaCache) return;
   const {obraMap,dupByDay,days,dStrs,dayNames,aprov}=_moaCache;
   const res=document.getElementById('moa-resultado'); if(!res) return;
-  _moaCellIndex={}; _moaClosePopover();
+  _moaCellIndex={}; _moaTrabIndex={}; _moaClosePopover();
 
   let nDias=0,nAprov=0;
   Object.keys(obraMap).filter(id=>id!=='_sem').forEach(id=>dStrs.forEach((ds,i)=>{
@@ -704,6 +712,7 @@ function _moaDraw(){
     let tbody='<tbody>', totN=0,totE=0,totT=0, rowNum=1;
     _moaSortedTrabs(obraData).forEach(tKey=>{
       const t=obraData[tKey];
+      _moaTrabIndex[`${obraId}__${tKey}`]=t;
       let rN=0,rE=0,rT=0, dayCells='';
       t.cells.forEach((regs,i)=>{
         const cellKey=`${obraId}__${tKey}__${i}`;
@@ -717,7 +726,7 @@ function _moaDraw(){
       totN+=rN; totE+=rE; totT+=rT;
       const tv={nome:t.nome,foto_path:_moaFotoDe(t)};
       tbody+=`<tr style="${rowNum%2===0?'background:var(--gray-50)':''}">
-        <td style="font-weight:500;font-size:13px;white-space:nowrap"><div style="display:flex;align-items:center;gap:8px">${_moaAvatarHTML(tv,24)}<span>${t.nome}</span></div></td>
+        <td style="font-weight:500;font-size:13px;white-space:nowrap;cursor:pointer" title="Ver resumo mensal" onclick="moaAbrirResumo('${obraId}__${tKey}')"><div style="display:flex;align-items:center;gap:8px">${_moaAvatarHTML(tv,24)}<span>${t.nome}</span></div></td>
         <td style="font-size:11px;color:var(--gray-500);white-space:nowrap">${t.empresa}</td>
         <td style="font-size:11px;color:var(--gray-500)">${t.funcao||'—'}</td>
         ${dayCells}
@@ -986,5 +995,5 @@ export {
   buildAlugList, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
   applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters,
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
-  moaEditCell, moaPickReg, moaSelectDia, aprovarDiaMOA, retirarAprovacaoMOA
+  moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, aprovarDiaMOA, retirarAprovacaoMOA
 };
