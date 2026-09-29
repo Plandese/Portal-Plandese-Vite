@@ -311,7 +311,7 @@ function _cmpRenderPorObra() {
     return `<div class="card" style="padding:16px 18px;cursor:pointer" onclick="abrirCmpObraDetalhe(${i})" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cmpEsc(ob.nome)}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900);line-height:1.3">${cmpEsc(ob.nome)}</div>
           <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${total} pedido${total !== 1 ? 's' : ''}${chips ? ' · ' + chips : ''}</div>
         </div>
         ${pend ? `<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0">
