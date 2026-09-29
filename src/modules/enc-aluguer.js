@@ -186,6 +186,12 @@ async function toggleEmpresaMOA(id){
   renderEmpresasMOA();
 }
 
+// Fluxo do encarregado — espelho do da MO Plandese (enc-ponto.js), com estado e
+// registos independentes: todas as consultas/gravações são filtradas pelo
+// encarregado_id de quem está autenticado, por isso nunca se misturam dados
+// entre encarregados.
+let _alugAnterior={data:null,colabIds:[]}; // equipa do último registo deste encarregado nesta obra/empresa
+
 async function encAlugPassarTrabalhadores(){
   const empresaId=document.getElementById('enc-alug-empresa').value;
   const empresaNome=document.getElementById('enc-alug-empresa').options[document.getElementById('enc-alug-empresa').selectedIndex]?.text||'';
@@ -200,10 +206,10 @@ async function encAlugPassarTrabalhadores(){
   encAlugEmpresaId=empresaId; encAlugEmpresaNome=empresaNome;
   encAlugObraId=obraId; encAlugData=data;
   encAlugHoraIni=ini; encAlugHoraFim=fim;
-  // Pré-carregar colaboradores registados da empresa selecionada
-  const colabsPreDef=(COLABORADORES_MOA[empresaId]||[]);
-  encAlugTrabalhadores=colabsPreDef.map(c=>_novoTrab(c));
-  // Atualizar resumo
+  // Lista sempre vazia à partida (como na MO Plandese): os trabalhadores são
+  // adicionados um a um ou pela sugestão verde da equipa anterior.
+  encAlugTrabalhadores=[];
+  _alugAnterior={data:null,colabIds:[]};
   const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'—';
   const [y,m,d]=data.split('-');
   document.getElementById('enc-alug-resumo-empresa').textContent=empresaNome;
@@ -212,12 +218,78 @@ async function encAlugPassarTrabalhadores(){
   const screenB=document.getElementById('enc-alug-screen-b');
   screenB.style.display='flex'; screenB.style.flexDirection='column';
   buildAlugList();
+  await Promise.all([_alugMostrarExistentes(), carregarEquipaAnteriorAlug()]);
 }
 
 function encAlugVoltarA(){
   document.getElementById('enc-alug-screen-a').style.display='block';
   const screenB=document.getElementById('enc-alug-screen-b');
   screenB.style.display='none';
+}
+
+// Consulta base: só os registos deste encarregado
+function _alugQueryMeus(cols){
+  const encId=S.currentUser?.key||null;
+  const q=sb.from('registos_ponto_moa').select(cols);
+  return encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
+}
+
+async function _alugMostrarExistentes(){
+  const box=document.getElementById('enc-alug-existentes-box');
+  if(!box) return;
+  box.style.display='none';
+  try{
+    const {data:regs}=await _alugQueryMeus('trabalhador_nome')
+      .eq('data',encAlugData).eq('obra_id',encAlugObraId).eq('empresa_moa_id',encAlugEmpresaId);
+    if(!regs?.length) return;
+    const nomes=[...new Set(regs.map(r=>(r.trabalhador_nome||'').split(' ')[0]).filter(Boolean))];
+    document.getElementById('enc-alug-existentes-txt').textContent=
+      `Já ${nomes.length===1?'está':'estão'} registado${nomes.length===1?'':'s'} hoje nesta obra: ${nomes.join(', ')}. Para editar as horas de alguém, adiciona-o novamente à lista abaixo.`;
+    box.style.display='flex';
+  }catch(e){}
+}
+
+// Equipa do registo anterior deste encarregado (mesma obra e empresa), a verde
+async function carregarEquipaAnteriorAlug(){
+  const box=document.getElementById('alug-ontem-box');
+  if(!box) return;
+  try{
+    const {data:regs}=await _alugQueryMeus('colab_moa_id, data')
+      .lt('data',encAlugData).eq('obra_id',encAlugObraId).eq('empresa_moa_id',encAlugEmpresaId)
+      .not('colab_moa_id','is',null).order('data',{ascending:false}).limit(50);
+    if(!regs?.length){ _alugAnterior={data:null,colabIds:[]}; _alugDesenharAnterior(); return; }
+    const dataAnt=regs[0].data;
+    _alugAnterior={data:dataAnt,colabIds:[...new Set(regs.filter(r=>r.data===dataAnt).map(r=>r.colab_moa_id))]};
+  }catch(e){ _alugAnterior={data:null,colabIds:[]}; }
+  _alugDesenharAnterior();
+}
+
+function _alugDesenharAnterior(){
+  const box=document.getElementById('alug-ontem-box');
+  if(!box) return;
+  const jaNaLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
+  const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[])
+    .filter(c=>_alugAnterior.colabIds.includes(c.id)&&!jaNaLista.has(c.id));
+  if(!_alugAnterior.data||!disp.length){ box.style.display='none'; return; }
+  document.getElementById('alug-ontem-label').textContent=`Equipa de ${fmtPT(_alugAnterior.data)}`;
+  const lista=document.getElementById('alug-ontem-lista'); lista.innerHTML='';
+  disp.forEach(c=>{
+    const chip=document.createElement('button');
+    chip.style.cssText='padding:6px 12px;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-light);border-radius:20px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer';
+    chip.textContent=`+ ${c.nome.split(' ')[0]}`;
+    chip.onclick=()=>{ encAlugTrabalhadores.push(_novoTrab(c)); buildAlugList(); };
+    lista.appendChild(chip);
+  });
+  box.style.display='block';
+}
+
+function adicionarTodosAnteriorAlug(){
+  const jaNaLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
+  const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[]).filter(c=>_alugAnterior.colabIds.includes(c.id)&&!jaNaLista.has(c.id));
+  if(!disp.length){showToast('Todos já adicionados');return;}
+  disp.forEach(c=>encAlugTrabalhadores.push(_novoTrab(c)));
+  buildAlugList();
+  showToast(`${disp.length} trabalhadores adicionados ✓`);
 }
 
 function _novoTrab(c){
@@ -230,62 +302,63 @@ function _fillEncTrabSel(){
   if(!sel) return;
   const naLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
   const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[]).filter(c=>!naLista.has(c.id));
-  sel.innerHTML=`<option value="">${disp.length?'— Selecione o trabalhador —':'Todos os registados já estão na lista'}</option>`+
-    disp.map(c=>`<option value="${c.id}">${c.nome}${c.funcao?' · '+c.funcao:''}</option>`).join('');
+  sel.innerHTML=`<option value="">${disp.length?'— Selecionar —':'Todos os registados já estão na lista'}</option>`+
+    disp.map(c=>`<option value="${c.id}">${c.nome}${c.funcao?' ('+c.funcao+')':''}</option>`).join('');
 }
 
 function encAlugAddTrabalhador(){
   const sel=document.getElementById('enc-alug-sel-trab');
   const c=(COLABORADORES_MOA[encAlugEmpresaId]||[]).find(x=>x.id===sel?.value);
-  if(!c){showToast('Selecione um trabalhador ou registe um novo');return;}
+  if(!c){showToast('Selecione um trabalhador');return;}
   encAlugTrabalhadores.push(_novoTrab(c));
   buildAlugList();
+  showToast('Trabalhador adicionado ✓');
+}
+
+function _alugHorasHTML(h){
+  return (h.n>0?`<span class="mob-horas-n">${fmtH(h.n)}</span>`:'')+(h.e>0?` +<span class="mob-horas-e">${fmtH(h.e)}E</span>`:'')+(h.t===0?'<span style="color:var(--gray-300)">—</span>':'');
+}
+function _alugEstado(t,h){
+  if(h.t>0) return {cls:'completo',badge:'<span class="badge b-green">✓</span>'};
+  if(t.entrada) return {cls:'parcial',badge:'<span class="badge b-blue">Em curso</span>'};
+  return {cls:'',badge:''};
 }
 
 function buildAlugList(){
   const cont=document.getElementById('enc-alug-list'); cont.innerHTML='';
   if(!encAlugTrabalhadores.length){
     cont.innerHTML='<div style="text-align:center;padding:32px 16px;color:var(--gray-400);font-size:14px">Adicione trabalhadores acima para iniciar o registo.</div>';
-    encAlugUpdateStats([]);_fillEncTrabSel();return;
-  }
-  // Separador informativo quando há colaboradores pré-carregados
-  const temPreDef=(COLABORADORES_MOA[encAlugEmpresaId]||[]).length>0;
-  if(temPreDef){
-    const sep=document.createElement('div');
-    sep.style.cssText='font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;padding:8px 4px 4px;display:flex;align-items:center;gap:6px';
-    sep.innerHTML=`<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> Lista pré-carregada · remova os ausentes`;
-    cont.appendChild(sep);
+    encAlugUpdateStats([]);_fillEncTrabSel();_alugDesenharAnterior();return;
   }
   const dateObj=new Date(encAlugData+'T12:00:00');
-  const cards=encAlugTrabalhadores.map(t=>{
+  encAlugTrabalhadores.forEach(t=>{
     const h=calcH(t.entrada,t.saida,dateObj);
+    const st=_alugEstado(t,h);
     const card=document.createElement('div');
-    card.className='mob-colab-card';
+    card.className=`mob-colab-card ${st.cls}`; card.id='ea-'+t.id;
     card.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div class="mob-colab-top">
         ${_moaAvatarHTML(t,36)}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nome}</div>
-          ${t.funcao?`<div style="font-size:11px;color:#7c3aed;font-weight:500;margin-bottom:1px">${t.funcao}</div>`:''}
-          <div class="mob-horas" id="alug-horas-${t.id}">${h.t>0?`<span class="mob-horas-n">${fmtH(h.n)}</span>${h.e>0?` +<span class="mob-horas-e">${fmtH(h.e)}E</span>`:''}` : '<span style="color:var(--gray-300)">—</span>'}</div>
-        </div>
-        <button onclick="encAlugRemover(${t.id})" style="padding:4px 8px;background:#fee2e2;border:none;border-radius:6px;color:#b91c1c;font-size:11px;font-weight:600;cursor:pointer">✕ Remover</button>
+        <div class="mob-colab-info"><div class="mob-colab-name">${t.nome}</div><div class="mob-colab-func">${t.funcao||''}</div></div>
+        <div class="mob-colab-status">${st.badge}</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Entrada</div>
-          <input type="time" value="${t.entrada}" class="enc-input enc-time" style="width:100%;font-size:13px;padding:6px 10px" onchange="encAlugSetHora(${t.id},'entrada',this.value)"/>
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Saída</div>
-          <input type="time" value="${t.saida}" class="enc-input enc-time" style="width:100%;font-size:13px;padding:6px 10px" onchange="encAlugSetHora(${t.id},'saida',this.value)"/>
-        </div>
+      <div class="mob-colab-times">
+        <div class="mob-time-block"><div class="mob-time-lbl">Entrada</div>
+          <input type="time" class="mob-time-inp ${t.entrada?'filled':''}" value="${t.entrada||''}" onchange="encAlugSetHora(${t.id},'entrada',this.value)"/></div>
+        <div class="mob-time-block"><div class="mob-time-lbl">Saída</div>
+          <input type="time" class="mob-time-inp ${t.saida?'filled':''}" value="${t.saida||''}" onchange="encAlugSetHora(${t.id},'saida',this.value)"/></div>
+        <div class="mob-time-block"><div class="mob-time-lbl">Horas</div>
+          <div class="mob-horas-box" id="alug-horas-${t.id}">${_alugHorasHTML(h)}</div></div>
+      </div>
+      <div class="mob-colab-bottom">
+        <div style="flex:1"></div>
+        <button class="mob-rem-btn" onclick="encAlugRemover(${t.id})">×</button>
       </div>`;
-    return card;
+    cont.appendChild(card);
   });
-  cards.forEach(c=>cont.appendChild(c));
   encAlugUpdateStats(encAlugTrabalhadores);
   _fillEncTrabSel();
+  _alugDesenharAnterior();
   _moaCarregarFotos(cont);
 }
 
@@ -293,23 +366,39 @@ function encAlugSetHora(id,campo,val){
   const t=encAlugTrabalhadores.find(x=>x.id===id);
   if(!t)return;
   t[campo]=val;
-  const dateObj=new Date(encAlugData+'T12:00:00');
-  const h=calcH(t.entrada,t.saida,dateObj);
+  const h=calcH(t.entrada,t.saida,new Date(encAlugData+'T12:00:00'));
   const hEl=document.getElementById(`alug-horas-${id}`);
-  if(hEl) hEl.innerHTML=h.t>0?`<span class="mob-horas-n">${fmtH(h.n)}</span>${h.e>0?` +<span class="mob-horas-e">${fmtH(h.e)}E</span>`:''}` : '<span style="color:var(--gray-300)">—</span>';
+  if(hEl) hEl.innerHTML=_alugHorasHTML(h);
+  const card=document.getElementById('ea-'+id);
+  if(card){
+    const st=_alugEstado(t,h);
+    card.className=`mob-colab-card ${st.cls}`;
+    const s=card.querySelector('.mob-colab-status'); if(s) s.innerHTML=st.badge;
+    card.querySelectorAll('.mob-time-inp').forEach((inp,i)=>inp.classList.toggle('filled',!!(i===0?t.entrada:t.saida)));
+  }
   encAlugUpdateStats(encAlugTrabalhadores);
 }
 
-function encAlugRemover(id){
-  encAlugTrabalhadores=encAlugTrabalhadores.filter(t=>t.id!==id);
+async function encAlugRemover(id){
+  const t=encAlugTrabalhadores.find(x=>x.id===id);
+  encAlugTrabalhadores=encAlugTrabalhadores.filter(x=>x.id!==id);
   buildAlugList();
+  // Como na MO Plandese: remover da lista apaga também o registo já gravado deste encarregado
+  if(t?.colabId){
+    try{
+      const encId=S.currentUser?.key||null;
+      let dq=sb.from('registos_ponto_moa').delete().eq('data',encAlugData).eq('obra_id',encAlugObraId).eq('colab_moa_id',t.colabId);
+      dq=encId!=null?dq.eq('encarregado_id',encId):dq.is('encarregado_id',null);
+      await dq;
+    }catch(e){}
+  }
 }
 
 function encAlugUpdateStats(lista){
   const dateObj=new Date(encAlugData+'T12:00:00');
-  let tn=0,te=0,tt=0;
-  lista.forEach(t=>{const h=calcH(t.entrada,t.saida,dateObj);tn+=h.n;te+=h.e;tt+=h.t;});
-  document.getElementById('alug-st-p').textContent=lista.length;
+  let tn=0,te=0,tt=0,pres=0;
+  lista.forEach(t=>{const h=calcH(t.entrada,t.saida,dateObj);tn+=h.n;te+=h.e;tt+=h.t;if(h.t>0)pres++;});
+  document.getElementById('alug-st-p').textContent=pres;
   document.getElementById('alug-st-n').textContent=fmtH(tn)||'0h';
   document.getElementById('alug-st-e').textContent=fmtH(te)||'0h';
   document.getElementById('alug-st-t').textContent=fmtH(tt)||'0h';
@@ -319,27 +408,35 @@ async function encAlugSubmeter(){
   if(!encAlugTrabalhadores.length){showToast('Adicione pelo menos um trabalhador');return;}
   const btn=document.querySelector('#enc-alug-screen-b .mob-save-btn');
   if(btn){btn.disabled=true;btn.textContent='A guardar…';}
+  const encId=S.currentUser?.key||null;
   try{
-    const rows=encAlugTrabalhadores.map(t=>({
-      data:encAlugData,
-      empresa_moa_id:encAlugEmpresaId,
-      empresa_moa_nome:encAlugEmpresaNome,
-      trabalhador_nome:t.nome,
-      trabalhador_funcao:t.funcao||null,
-      colab_moa_id:t.colabId||null,
-      obra_id:encAlugObraId,
-      entrada:t.entrada,
-      saida:t.saida,
-      encarregado_nome:S.currentUser?.nome||'',
-      criado_em:new Date().toISOString()
-    }));
-    const {error}=await sb.from('registos_ponto_moa').insert(rows);
-    if(error)throw error;
-    showToast(`✓ ${encAlugTrabalhadores.length} registo(s) guardado(s)!`);
+    // Registos já gravados deste encarregado neste dia/obra → atualizar em vez de duplicar
+    const {data:exist,error:e0}=await _alugQueryMeus('id, colab_moa_id')
+      .eq('data',encAlugData).eq('obra_id',encAlugObraId).not('colab_moa_id','is',null);
+    if(e0) throw e0;
+    const idPorColab={}; (exist||[]).forEach(r=>{idPorColab[r.colab_moa_id]=r.id;});
+    const agora=new Date().toISOString();
+    const novos=[], edits=[];
+    encAlugTrabalhadores.forEach(t=>{
+      const base={
+        data:encAlugData, empresa_moa_id:encAlugEmpresaId, empresa_moa_nome:encAlugEmpresaNome,
+        trabalhador_nome:t.nome, trabalhador_funcao:t.funcao||null, colab_moa_id:t.colabId||null,
+        obra_id:encAlugObraId, entrada:t.entrada||null, saida:t.saida||null,
+        encarregado_id:encId, encarregado_nome:S.currentUser?.nome||'',
+      };
+      const idEx=t.colabId?idPorColab[t.colabId]:null;
+      if(idEx) edits.push({id:idEx,row:{entrada:base.entrada,saida:base.saida,editado_por:S.currentUser?.nome||S.currentUser?.key||'—',editado_em:agora}});
+      else novos.push({...base,criado_em:agora});
+    });
+    if(novos.length){ const {error}=await sb.from('registos_ponto_moa').insert(novos); if(error) throw error; }
+    for(const e of edits){ const {error}=await sb.from('registos_ponto_moa').update(e.row).eq('id',e.id); if(error) throw error; }
+    showToast('Registo submetido com sucesso! ✓');
+    try{ localStorage.setItem(`enc_done_aluguer_${fmt(new Date())}`,'1'); }catch(e){}
+    R.emitEvent?.({acao:'MO Aluguer submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+encAlugTrabalhadores.length+' trab.)',seccao:'historico'});
     setTimeout(()=>encVoltarHome(),1500);
   }catch(e){
-    showToast('Erro ao guardar: '+(e.message||e));
-    if(btn){btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Submeter registo';}
+    showToast('⚠️ Não foi possível submeter: '+(e.message||e));
+    if(btn){btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg> Submeter registo';}
   }
 }
 
@@ -999,7 +1096,7 @@ export {
   moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar,
   renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA,
   encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador,
-  buildAlugList, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
+  buildAlugList, adicionarTodosAnteriorAlug, carregarEquipaAnteriorAlug, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
   applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters,
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
   moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, aprovarDiaMOA, retirarAprovacaoMOA

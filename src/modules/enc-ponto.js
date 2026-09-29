@@ -679,7 +679,6 @@ async function encLoadHistorico(){
   // Cada encarregado só vê os registos que ele próprio submeteu — nunca os
   // de outros encarregados/obras, mesmo que sejam do mesmo dia.
   const encId=S.currentUser?.key||null;
-  const encNome=S.currentUser?.nome||null;
   try{
     if(tipo==='plandese'){
       let q=sb.from('registos_ponto').select('*').eq('data',data);
@@ -721,10 +720,9 @@ async function encLoadHistorico(){
       html+='</div>';
       res.innerHTML=html;
     } else {
-      // registos_ponto_moa não tem encarregado_id (só o nome, gravado em
-      // encAlugSubmeter) — filtrar por nome é o melhor sinal disponível.
+      // Só os registos deste encarregado (encarregado_id; a RLS também o garante)
       let q=sb.from('registos_ponto_moa').select('*').eq('data',data);
-      if(encNome) q=q.eq('encarregado_nome',encNome);
+      q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
       const [{data:rows}, {data:aprovRows}] = await Promise.all([
         q.order('empresa_moa_nome'),
         sb.from('aprovacoes_ponto_moa').select('obra_id,aprovado_por,aprovado_em').eq('data',data),
