@@ -178,14 +178,14 @@ function renderEqPorObra(){
     const par   = ob.items.filter(e=>e.estado==='parada').length;
     const pend  = ob.items.reduce((s,e)=>s+eqPendentes(e.id).length,0);
     const chips = [
-      op  ? `<span style="font-size:11px;font-weight:600;color:var(--green,#16a34a)">${op} operacional${op!==1?'ais':''}</span>` : '',
+      op  ? `<span style="font-size:11px;font-weight:600;color:var(--green,#16a34a)">${op!==1?op+' operacionais':op+' operacional'}</span>` : '',
       man ? `<span style="font-size:11px;font-weight:600;color:#b45309">${man} em manutenção</span>` : '',
       par ? `<span style="font-size:11px;font-weight:600;color:#b91c1c">${par} parado${par!==1?'s':''}</span>` : ''
     ].filter(Boolean).join(' · ');
     return `<div class="card" style="padding:16px 18px;cursor:pointer" onclick="abrirEqObraDetalhe(${i})" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${eqEsc(ob.nome)}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900);line-height:1.3;overflow-wrap:anywhere">${eqEsc(ob.nome)}</div>
           <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${total} equipamento${total!==1?'s':''}${chips?' · '+chips:''}</div>
         </div>
         ${pend?`<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0">
