@@ -125,11 +125,13 @@ function badge(){
 export function chatSetConv(k){
   _conv = k || null;
   $('chat-layout')?.classList.add('em-conv');
+  $('chat-fab-panel')?.classList.add('em-conv');
   renderChat(true);
 }
 
 export function chatVoltar(){
   $('chat-layout')?.classList.remove('em-conv');
+  $('chat-fab-panel')?.classList.remove('em-conv');
 }
 
 // ── Página ─────────────────────────────────────────────────────────
@@ -149,12 +151,8 @@ function renderConvTitulo(){
   if(sb2) sb2.textContent = _conv ? (_online.has(_conv) ? 'online' : 'offline') : membros().length + ' participantes';
   const av = $('chat-conv-av');
   if(av) av.textContent = _conv ? iniciaisDe(_conv) : '#';
-  const sel = $('cw-conv');
-  if(sel){
-    const por = naoLidas();
-    const op = (k, nome) => `<option value="${esc(k)}"${(k || null) === _conv ? ' selected' : ''}>${esc(nome)}${por[k] ? ` (${por[k]})` : ''}</option>`;
-    sel.innerHTML = op('', 'Geral — toda a equipa') + membros().filter(m => m.key !== me()).map(m => op(m.key, m.nome)).join('');
-  }
+  const wt = $('cw-conv-title');
+  if(wt) wt.textContent = _conv ? nomeDe(_conv) : 'Geral — toda a equipa';
 }
 
 function renderOnlineBar(){
@@ -177,7 +175,8 @@ function fmtLista(iso){
 
 function renderPessoas(){
   renderConvTitulo();
-  const el = $('chat-pessoas'); if(!el) return;
+  const alvos = ['chat-pessoas', 'cw-pessoas'].map($).filter(Boolean);
+  if(!alvos.length) return;
   const por = naoLidas();
   const itens = [{ k:'', nome:'Geral', ini:'#', geral:true }].concat(
     membros().filter(m => m.key !== me()).map(m => ({ k:m.key, nome:m.nome, ini:m.initials, role:m.role })));
@@ -186,7 +185,7 @@ function renderPessoas(){
   itens.sort((a, b) =>
     ((b.ult?.criado_em || '') > (a.ult?.criado_em || '') ? 1 : (b.ult?.criado_em || '') < (a.ult?.criado_em || '') ? -1 : 0)
     || (_online.has(b.k) - _online.has(a.k)) || a.nome.localeCompare(b.nome));
-  el.innerHTML = [geral, ...itens].map(i => {
+  const html = [geral, ...itens].map(i => {
     const on = i.geral || _online.has(i.k);
     const prev = i.ult
       ? `${i.ult.autor === me() ? 'Eu: ' : (i.geral ? esc(nomeDe(i.ult.autor).split(' ')[0]) + ': ' : '')}${esc(i.ult.texto)}`
@@ -198,6 +197,7 @@ function renderPessoas(){
         <div class="chat-pessoa-l2"><small>${prev}</small>${por[i.k] ? `<span class="chat-nl">${por[i.k]}</span>` : ''}</div>
       </div></button>`;
   }).join('');
+  alvos.forEach(el => { el.innerHTML = html; });
 }
 
 const fmtHora = iso => new Date(iso).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
@@ -300,6 +300,7 @@ export function chatTogglePainel(abrir){
   const on = typeof abrir === 'boolean' ? abrir : !pn.classList.contains('open');
   pn.classList.toggle('open', on);
   if(on){
+    renderPessoas();
     posicionarPainel();
     renderMsgs(true);
     renderOnlineBar();
@@ -315,12 +316,18 @@ function criarFab(){
   fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="chat-fab-badge" id="chat-fab-badge" hidden></span>';
   const pn = document.createElement('div');
   pn.id = 'chat-fab-panel';
-  pn.innerHTML = `<div class="cw-hdr"><div><b>Chat da equipa</b><small id="cw-online"></small><select id="cw-conv" onchange="chatSetConv(this.value)"></select></div>
+  pn.innerHTML = `<div class="cw-hdr"><div><b>Chat da equipa</b><small id="cw-online"></small></div>
       <div class="cw-acts"><button type="button" title="Abrir em página inteira" onclick="goTo('chat');chatTogglePainel(false)">⤢</button>
       <button type="button" title="Fechar" onclick="chatTogglePainel(false)">×</button></div></div>
-    <div class="chat-msgs" id="cw-msgs"></div>
-    <div class="chat-compose"><textarea id="cw-in" rows="1" placeholder="Escreva uma mensagem…" onkeydown="chatKey(event)" oninput="chatAutoH(this)"></textarea>
-    <button class="btn btn-primary btn-sm" type="button" onclick="chatEnviar('cw-in')">Enviar</button></div>`;
+    <div class="cw-body">
+      <div class="cw-side" id="cw-pessoas"></div>
+      <div class="cw-conv">
+        <div class="cw-conv-hdr"><button type="button" class="chat-back" onclick="chatVoltar()" title="Voltar">‹</button><b id="cw-conv-title">Geral — toda a equipa</b></div>
+        <div class="chat-msgs" id="cw-msgs"></div>
+        <div class="chat-compose"><textarea id="cw-in" rows="1" placeholder="Escreva uma mensagem…" onkeydown="chatKey(event)" oninput="chatAutoH(this)"></textarea>
+        <button class="btn btn-primary btn-sm" type="button" onclick="chatEnviar('cw-in')">Enviar</button></div>
+      </div>
+    </div>`;
   document.body.append(fab, pn);
 
   const ini = lerPos() || { x: window.innerWidth - FAB - 18, y: window.innerHeight - FAB - 90 };

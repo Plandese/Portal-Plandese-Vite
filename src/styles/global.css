@@ -2354,7 +2354,7 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 #chat-fab svg{width:26px;height:26px;pointer-events:none}
 .chat-fab-badge{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
 .chat-fab-badge[hidden]{display:none}
-#chat-fab-panel{position:fixed;z-index:901;width:340px;height:440px;max-height:calc(100vh - 16px);background:var(--white);border-radius:16px;
+#chat-fab-panel{position:fixed;z-index:901;width:600px;height:480px;max-height:calc(100vh - 16px);background:var(--white);border-radius:16px;
   box-shadow:0 18px 50px rgba(15,37,87,.28),0 2px 8px rgba(0,0,0,.12);display:none;flex-direction:column;overflow:hidden;border:1px solid var(--gray-200)}
 #chat-fab-panel.open{display:flex}
 .cw-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--grad-brand);color:#fff}
@@ -2366,7 +2366,7 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 #chat-fab-panel .chat-row{max-width:90%}
 #chat-fab-panel .chat-tx{font-size:13px}
 body:has(#sec-chat.active) #chat-fab,body:has(#sec-chat.active) #chat-fab-panel{display:none}
-@media(max-width:600px){#chat-fab-panel{width:calc(100vw - 16px)}}
+
 
 /* Conversas privadas */
 .chat-conv-hdr{padding:11px 16px;font-weight:700;font-size:14px;border-bottom:1px solid var(--gray-200);color:var(--gray-900)}
@@ -2376,7 +2376,7 @@ button.chat-pessoa.sel{background:var(--blue-50)}
 .chat-pessoa-geral .chat-av{background:var(--blue-500);color:#fff}
 .chat-pessoa-geral .chat-dot{display:none}
 .chat-nl{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:99px;display:flex;align-items:center;justify-content:center}
-#cw-conv{margin-top:3px;background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;font:inherit;font-size:11px;padding:2px 4px;max-width:200px}
+#cw-conv-unused{margin-top:3px;background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;font:inherit;font-size:11px;padding:2px 4px;max-width:200px}
 #cw-conv option{color:var(--gray-900)}
 
 /* ═══ Estilo WhatsApp: contactos à esquerda, conversa à direita ═══ */
@@ -2408,4 +2408,22 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
   .chat-layout.em-conv .chat-side{display:none}
   .chat-layout.em-conv .chat-main{display:flex}
   .chat-back{display:block}
+}
+
+/* Mini-chat: contactos à esquerda, conversa à direita */
+.cw-body{flex:1;display:flex;min-height:0}
+.cw-side{width:210px;flex:none;border-right:1px solid var(--gray-200);overflow-y:auto;background:var(--white)}
+.cw-conv{flex:1;min-width:0;display:flex;flex-direction:column}
+.cw-conv-hdr{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px}
+.cw-side button.chat-pessoa{padding:8px 10px;gap:9px}
+.cw-side .chat-av{width:30px;height:30px;font-size:11px}
+.cw-side .chat-pessoa-l1 b{font-size:12.5px}
+.cw-side .chat-pessoa-l2 small,.cw-side .chat-pessoa-h{font-size:10.5px}
+@media(max-width:700px){
+  #chat-fab-panel{width:calc(100vw - 16px)}
+  .cw-side{width:100%;border-right:0}
+  .cw-conv{display:none}
+  #chat-fab-panel.em-conv .cw-side{display:none}
+  #chat-fab-panel.em-conv .cw-conv{display:flex}
+  .cw-conv .chat-back{display:block}
 }
