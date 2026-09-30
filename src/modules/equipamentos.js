@@ -143,7 +143,8 @@ function updateEqKPIs(){
 // ── Vistas (Lista / Por Obra / Manutenção) ─
 function switchEqView(view){
   _eqView = view;
-  ['lista','obra','manut','loc'].forEach(v=>{
+  const tb=document.getElementById('eq-tab-bar'); if(tb) tb.style.display = view==='det' ? 'none' : '';
+  ['lista','obra','manut','loc','det'].forEach(v=>{
     const panel = document.getElementById('eq-view-'+v);
     const btn   = document.getElementById('eq-tab-btn-'+v);
     if(panel) panel.style.display = v===view ? '' : 'none';
@@ -338,7 +339,7 @@ function _eqBuscaRowHtml(eq){
   const sub  = [eq.matricula, eq.codigo&&('Nº '+eq.codigo), eq.marcaModelo].filter(Boolean).map(eqEsc).join(' · ');
   const pend = eqPendentes(eq.id).length;
   const vals = eqValChip('Seguro',eq.seguroValidade)+eqValChip('IPO',eq.ipoValidade)+eqValChip('Garantia',eq.garantiaAte);
-  return `<div class="card eq-row" style="padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="eqToggleAcoes(this,event)">
+  return `<div class="card eq-row" style="padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="abrirEqDetalhe('${eq.id}')">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -349,33 +350,41 @@ function _eqBuscaRowHtml(eq){
         <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${eqEsc(ult)}</div>
         ${vals?`<div style="margin-top:4px">${vals}</div>`:''}
       </div>
-      <div class="eq-row-acoes" style="display:none;white-space:nowrap;flex-shrink:0">
-        <button class="btn btn-secondary btn-sm" onclick="showQrCode('${eq.id}')" title="Ver QR Code">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>
-          QR
-        </button>
-        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="openEqManut('${eq.id}')" title="Manutenção">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>${pend?`<span class="eq-pend-dot">${pend}</span>`:''}
-        </button>
-        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="showEqHistorico('${eq.id}')" title="Histórico">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-        </button>
-        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="editEquipamento('${eq.id}')" title="Editar">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-        </button>
-      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
   </div>`;
 }
 
-// Clicar no equipamento mostra/esconde os botões de ação (QR, manutenção, histórico, editar)
-function eqToggleAcoes(card,evt){
-  if(evt?.target.closest('button')) return;
-  const ac=card.querySelector('.eq-row-acoes'); if(!ac) return;
-  const abrir=ac.style.display==='none';
-  card.parentElement?.querySelectorAll('.eq-row-acoes').forEach(x=>{ x.style.display='none'; });
-  if(abrir) ac.style.display='';
+// Página de detalhe do equipamento: escolher entre QR, manutenção, histórico e edição
+let _eqViewAnterior = 'lista';
+function abrirEqDetalhe(id){
+  const eq = EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
+  const pend = eqPendentes(eq.id).length;
+  const sub  = [eq.matricula, eq.codigo&&('Nº '+eq.codigo), eq.marcaModelo].filter(Boolean).map(eqEsc).join(' · ');
+  const opt = (icon,titulo,desc,click,extra='')=>`<button type="button" onclick="${click}" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px;text-align:left;cursor:pointer;background:var(--card-bg,rgba(255,255,255,.62));border:1px solid var(--gray-200,#e4e9f1);border-radius:16px;color:var(--gray-900)">
+      <span style="display:flex;align-items:center;gap:8px;color:var(--blue,#2563eb)">${icon}${extra}</span>
+      <span style="font-size:15px;font-weight:700">${titulo}</span>
+      <span style="font-size:12px;color:var(--gray-500)">${desc}</span></button>`;
+  const box = document.getElementById('eq-view-det'); if(!box) return;
+  box.innerHTML = `<button class="btn btn-secondary btn-sm" onclick="fecharEqDetalhe()" style="margin-bottom:14px">← Voltar</button>
+    <div class="card" style="padding:16px 18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:18px;font-weight:700;color:var(--gray-900)">${eqEsc(eq.nome)}</span>
+        ${eqCatBadge(eq.categoria)}${eqEstadoBadge(eq.estado)}
+      </div>
+      ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${sub}</div>`:''}
+      <div style="font-size:12px;color:var(--gray-400);margin-top:3px">${eqEsc(eq.ultimoLocal||'Sem localização registada')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>`,'QR Code','Ver e imprimir o código do equipamento',`showQrCode('${eq.id}')`)}
+      ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,'Manutenção','Pedidos e registos de manutenção',`openEqManut('${eq.id}')`,pend?`<span class="eq-pend-dot">${pend}</span>`:'')}
+      ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`,'Histórico','Movimentos e localizações anteriores',`showEqHistorico('${eq.id}')`)}
+      ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,'Editar registo','Alterar os dados do equipamento',`editEquipamento('${eq.id}')`)}
+    </div>`;
+  _eqViewAnterior = _eqView==='det' ? _eqViewAnterior : _eqView;
+  switchEqView('det');
 }
+function fecharEqDetalhe(){ switchEqView(_eqViewAnterior||'lista'); }
 
 function renderEqBusca(){
   const box  = document.getElementById('eq-busca-resultados');
@@ -846,7 +855,7 @@ export {
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, eqManutFotoAbrir, eqToggleAcoes, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  openEqManut, eqManutFotoAbrir, abrirEqDetalhe, fecharEqDetalhe, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
