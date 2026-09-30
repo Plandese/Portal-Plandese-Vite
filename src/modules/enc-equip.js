@@ -241,11 +241,61 @@ function _encEqPrepFormManut(){
   document.getElementById('enc-manut-eq-cat').textContent=EQ_CATS[eq.categoria]?.label||'Equipamento';
   const descEl=document.getElementById('enc-manut-desc');
   if(descEl) descEl.value='';
+  _encManutFotos=[]; _encManutFotosRender();
   const sel=document.getElementById('enc-manut-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
   S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.nome; op.textContent=o.nome; sel.appendChild(op); });
   const ultimoLocal = eq.ultimo_local || eq.ultimoLocal;
   if(ultimoLocal && [...sel.options].some(o=>o.value===ultimoLocal)) sel.value=ultimoLocal;
+}
+
+// ── Fotografias do pedido de manutenção ────────
+const ENC_MANUT_MAX_FOTOS=5;
+const ENC_MANUT_BUCKET='eq-manut-fotos';
+let _encManutFotos=[]; // [{blob,url}]
+
+function _encManutComprimir(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const M=1280, k=Math.min(1,M/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas'); cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(img.src);
+      cv.toBlob(b=>b?resolve(b):reject(new Error('falha ao processar a fotografia')),'image/jpeg',0.8);
+    };
+    img.onerror=()=>reject(new Error('ficheiro de imagem inválido'));
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+function _encManutFotosRender(){
+  const box=document.getElementById('enc-manut-fotos'); if(!box) return;
+  const thumb='position:relative;width:76px;height:76px;border-radius:12px;overflow:hidden;border:1px solid var(--gray-200,#e4e9f1)';
+  let h=_encManutFotos.map((f,i)=>`<div style="${thumb}"><img src="${f.url}" style="width:100%;height:100%;object-fit:cover"/>
+    <button type="button" onclick="encManutFotoRemover(${i})" aria-label="Remover fotografia" style="position:absolute;top:3px;right:3px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;line-height:1;cursor:pointer">×</button></div>`).join('');
+  if(_encManutFotos.length<ENC_MANUT_MAX_FOTOS){
+    h+=`<button type="button" onclick="document.getElementById('enc-manut-foto-inp').click()" style="width:76px;height:76px;border:1.5px dashed var(--gray-300,#c9d1df);border-radius:12px;background:transparent;color:var(--gray-500);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Adicionar</button>`;
+  }
+  box.innerHTML=h;
+}
+
+async function encManutFotoAdd(inp){
+  const files=[...(inp.files||[])]; inp.value='';
+  for(const f of files){
+    if(_encManutFotos.length>=ENC_MANUT_MAX_FOTOS){ showToast('Máximo de '+ENC_MANUT_MAX_FOTOS+' fotografias'); break; }
+    try{
+      const blob=await _encManutComprimir(f);
+      _encManutFotos.push({blob,url:URL.createObjectURL(blob)});
+    }catch(e){ console.warn('encManutFotoAdd:',e); showToast('Não foi possível usar essa fotografia'); }
+  }
+  _encManutFotosRender();
+}
+
+function encManutFotoRemover(i){
+  const f=_encManutFotos[i]; if(!f) return;
+  URL.revokeObjectURL(f.url); _encManutFotos.splice(i,1); _encManutFotosRender();
 }
 
 async function submitEncManutencao(){
@@ -254,11 +304,32 @@ async function submitEncManutencao(){
   if(!desc){ showToast('Descreva o problema'); return; }
   const obraNome=document.getElementById('enc-manut-obra-sel').value||null;
   const nome=S.currentUser?.nome||'Encarregado';
+  const btn=document.querySelector('#enc-eq-state-form-man .enc-btn');
+  if(btn) btn.disabled=true;
+  const paths=[];
+  const base=`${_encEqEquip.id}/${Date.now()}`;
+  for(let i=0;i<_encManutFotos.length;i++){
+    const path=`${base}_${i}.jpg`;
+    const {error:upErr}=await sb.storage.from(ENC_MANUT_BUCKET).upload(path,_encManutFotos[i].blob,{contentType:'image/jpeg'});
+    if(upErr){
+      console.warn('submitEncManutencao foto:',upErr);
+      if(paths.length) sb.storage.from(ENC_MANUT_BUCKET).remove(paths).catch(()=>{});
+      if(btn) btn.disabled=false;
+      showToast('Erro ao enviar as fotografias'); return;
+    }
+    paths.push(path);
+  }
   const {error}=await sb.from('eq_manutencoes').insert({
     equip_id:_encEqEquip.id, descricao:desc, estado:'pendente', origem:'encarregado',
-    solicitante_nome:nome, obra_nome:obraNome
+    solicitante_nome:nome, obra_nome:obraNome, fotos:paths
   });
-  if(error){ console.warn('submitEncManutencao:',error); showToast('Erro ao enviar o pedido'); return; }
+  if(btn) btn.disabled=false;
+  if(error){
+    console.warn('submitEncManutencao:',error);
+    if(paths.length) sb.storage.from(ENC_MANUT_BUCKET).remove(paths).catch(()=>{});
+    showToast('Erro ao enviar o pedido'); return;
+  }
+  _encManutFotos.forEach(f=>URL.revokeObjectURL(f.url)); _encManutFotos=[];
   document.getElementById('enc-eq-sucesso-titulo').textContent='Pedido enviado!';
   document.getElementById('enc-eq-sucesso-txt').innerHTML=
     `<strong>${_encEsc(nome)}</strong> pediu manutenção para<br>`+
@@ -274,5 +345,5 @@ export {
   encEqEscolherMetodoQR, startEncQrScanner, stopEncQrScanner, onEncQrScanned,
   encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher,
   encEqVoltarAcao, encEqEscolherAcao,
-  submitEncEquipamento, submitEncManutencao
+  submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover
 };

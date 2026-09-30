@@ -38,7 +38,7 @@ import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatu
 import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
 
 // Equipamentos
-import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
+import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
 
 // Combustível admin
 import { loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip, abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
@@ -47,7 +47,7 @@ import { loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra,
 import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal, encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit } from './modules/enc-ponto.js';
 
 // Enc-equip
-import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, submitEncEquipamento, submitEncManutencao } from './modules/enc-equip.js';
+import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
 
 // Enc-combustivel + chat
 import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
@@ -208,7 +208,7 @@ Object.assign(window, {
   renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento,
   saveEquipamento, apagarEquipamento, refreshEqMap,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, addEqManut, toggleEqManut, removeEqManut,
+  openEqManut, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
 
@@ -238,7 +238,7 @@ Object.assign(window, {
   // Encarregado — equipamentos (QR ou lista → registo/manutenção)
   encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista,
   encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao,
-  submitEncEquipamento, submitEncManutencao,
+  submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover,
 
   // Encarregado — combustível
   encOpenFuelModal, encCloseFuelModal,

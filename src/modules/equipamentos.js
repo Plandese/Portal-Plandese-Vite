@@ -101,7 +101,7 @@ function eqManutFromRow(row){
   return { id:row.id, equipId:row.equip_id, data:row.data||'', descricao:row.descricao,
            custo:row.custo==null?'':row.custo, estado:row.estado||'pendente',
            origem:row.origem||'portal', solicitanteNome:row.solicitante_nome||'',
-           obraNome:row.obra_nome||'', criadoEm:row.criado_em };
+           obraNome:row.obra_nome||'', criadoEm:row.criado_em, fotos:row.fotos||[] };
 }
 
 // ── Helpers ────────────────────────────
@@ -224,6 +224,30 @@ function abrirEqObraDetalhe(i){
 }
 
 // ── Vista "Manutenção" (quadro Pendente/Resolvida) ──
+// Miniaturas das fotografias de um pedido (bucket privado → URLs assinados, carregados após o render)
+function eqManutFotosHtml(m){
+  if(!m.fotos?.length) return '';
+  return `<div class="eq-manut-fotos" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">`+
+    m.fotos.map(p=>`<img data-foto-path="${eqEsc(p)}" alt="Fotografia" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--gray-200,#e4e9f1);background:var(--gray-100,#f1f4f9);cursor:zoom-in" onclick="event.stopPropagation();eqManutFotoAbrir(this)"/>`).join('')+`</div>`;
+}
+async function eqManutCarregarFotos(root){
+  const imgs=[...(root?.querySelectorAll('img[data-foto-path]:not([src])')||[])];
+  if(!imgs.length) return;
+  const paths=[...new Set(imgs.map(i=>i.dataset.fotoPath))];
+  const {data,error}=await sb.storage.from('eq-manut-fotos').createSignedUrls(paths,3600);
+  if(error||!data) return;
+  const map=Object.fromEntries(data.map(d=>[d.path,d.signedUrl]));
+  imgs.forEach(i=>{ if(map[i.dataset.fotoPath]) i.src=map[i.dataset.fotoPath]; });
+}
+function eqManutFotoAbrir(img){
+  if(!img.src) return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out';
+  ov.innerHTML=`<img src="${img.src}" style="max-width:100%;max-height:100%;border-radius:10px"/>`;
+  ov.onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+}
+
 function eqManutOrigemBadge(m){
   const isEnc = m.origem==='encarregado';
   return `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:5px;background:${isEnc?'var(--blue-50)':'var(--gray-100)'};color:${isEnc?'var(--blue-600)':'var(--gray-500)'};flex-shrink:0">${isEnc?'Encarregado':'Portal'}</span>`;
@@ -268,12 +292,14 @@ function renderEqManutBoard(){
       </div>
       <div style="font-size:12px;color:var(--gray-600);margin-top:5px">${eqEsc(m.descricao)}</div>
       ${rodape?`<div style="font-size:11px;color:var(--gray-400);margin-top:6px">${eqEsc(rodape)}</div>`:''}
+      ${eqManutFotosHtml(m)}
     </div>`;
   };
   const colP = document.getElementById('eq-manut-col-pendente');
   const colD = document.getElementById('eq-manut-col-resolvida');
   if(colP) colP.innerHTML = pend.length ? pend.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções pendentes</div>';
   if(colD) colD.innerHTML = done.length ? done.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções resolvidas</div>';
+  eqManutCarregarFotos(colP); eqManutCarregarFotos(colD);
   const cP = document.getElementById('eq-manut-count-pend'); if(cP) cP.textContent = pend.length;
   const cD = document.getElementById('eq-manut-count-done'); if(cD) cD.textContent = done.length;
 }
@@ -621,10 +647,12 @@ function renderEqManut(){
           ${eqManutOrigemBadge(m)}
         </div>
         ${meta?`<div style="font-size:11px;color:var(--gray-400);margin-top:2px">${meta}</div>`:''}
+        ${eqManutFotosHtml(m)}
       </div>
       <button class="btn btn-secondary btn-sm" onclick="removeEqManut(${m.id})" title="Apagar" style="color:var(--red)">×</button>
     </div>`;
   }).join('');
+  eqManutCarregarFotos(list);
 }
 function openEqManut(id){
   const eq=EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
@@ -798,7 +826,7 @@ export {
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  openEqManut, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,

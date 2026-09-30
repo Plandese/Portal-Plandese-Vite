@@ -398,6 +398,11 @@
             <label>O que se passa?</label>
             <textarea class="enc-input" id="enc-manut-desc" rows="3" style="resize:vertical;min-height:72px" placeholder="Ex: Fuga de óleo, pneu furado, motor não liga…"></textarea>
           </div>
+          <div class="enc-field">
+            <label>Fotografias <span style="font-weight:400;color:var(--gray-400)">(opcional · até 5)</span></label>
+            <div id="enc-manut-fotos" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <input type="file" id="enc-manut-foto-inp" accept="image/*" multiple style="display:none" onchange="encManutFotoAdd(this)"/>
+          </div>
           <button class="enc-btn" style="background:linear-gradient(135deg,#b45309,#d97706)" onclick="submitEncManutencao()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg>
             Enviar pedido de manutenção
