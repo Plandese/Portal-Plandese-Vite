@@ -338,18 +338,18 @@ function _eqBuscaRowHtml(eq){
   const sub  = [eq.matricula, eq.codigo&&('Nº '+eq.codigo), eq.marcaModelo].filter(Boolean).map(eqEsc).join(' · ');
   const pend = eqPendentes(eq.id).length;
   const vals = eqValChip('Seguro',eq.seguroValidade)+eqValChip('IPO',eq.ipoValidade)+eqValChip('Garantia',eq.garantiaAte);
-  return `<div class="card" style="padding:12px 16px;margin-bottom:8px">
+  return `<div class="card eq-row" style="padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="eqToggleAcoes(this,event)">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-weight:700;color:var(--gray-900)">${eqEsc(eq.nome)}</span>
-          ${eqCatBadge(eq.categoria)}${eqEstadoBadge(eq.estado)}${eq.propriedade==='aluguer'?'<span class="eq-prop-badge">Aluguer</span>':''}
+          ${eqCatBadge(eq.categoria)}${eqEstadoBadge(eq.estado)}${eq.propriedade==='aluguer'?'<span class="eq-prop-badge">Aluguer</span>':''}${pend?`<span class="eq-pend-dot" title="Manutenções pendentes" style="position:static">${pend}</span>`:''}
         </div>
         ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:3px">${sub}</div>`:''}
         <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${eqEsc(ult)}</div>
         ${vals?`<div style="margin-top:4px">${vals}</div>`:''}
       </div>
-      <div style="white-space:nowrap;flex-shrink:0">
+      <div class="eq-row-acoes" style="display:none;white-space:nowrap;flex-shrink:0">
         <button class="btn btn-secondary btn-sm" onclick="showQrCode('${eq.id}')" title="Ver QR Code">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>
           QR
@@ -366,6 +366,15 @@ function _eqBuscaRowHtml(eq){
       </div>
     </div>
   </div>`;
+}
+
+// Clicar no equipamento mostra/esconde os botões de ação (QR, manutenção, histórico, editar)
+function eqToggleAcoes(card,evt){
+  if(evt?.target.closest('button')) return;
+  const ac=card.querySelector('.eq-row-acoes'); if(!ac) return;
+  const abrir=ac.style.display==='none';
+  card.parentElement?.querySelectorAll('.eq-row-acoes').forEach(x=>{ x.style.display='none'; });
+  if(abrir) ac.style.display='';
 }
 
 function renderEqBusca(){
@@ -837,7 +846,7 @@ export {
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  openEqManut, eqManutFotoAbrir, eqToggleAcoes, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
