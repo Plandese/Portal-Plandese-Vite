@@ -1997,7 +1997,7 @@
         <div class="alert alert-ok" id="eq-alert">Equipamento guardado.</div>
 
         <!-- Tabs de vista -->
-        <div class="fp-tab-bar" id="eq-tab-bar">
+        <div class="fp-tab-bar">
           <button class="fp-tab active" id="eq-tab-btn-lista" onclick="switchEqView('lista')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             Lista
@@ -2035,9 +2035,6 @@
             <div id="eq-busca-resultados" style="margin-top:10px"></div>
           </div>
         </div>
-
-        <!-- ═══ PÁGINA: DETALHE DO EQUIPAMENTO ═══ -->
-        <div id="eq-view-det" style="display:none"></div>
 
         <!-- ═══ VISTA: LOCALIZAÇÃO ═══ -->
         <div id="eq-view-loc" style="display:none">
@@ -3524,6 +3521,13 @@
 </div>
 
 <!-- MODAL EQUIPAMENTO -->
+<div class="modal-bg" id="modal-eq-det">
+  <div class="modal" style="width:620px">
+    <div id="meqd-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-eq-det')">Fechar</button></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-equip">
   <div class="modal" style="width:640px">
     <div class="modal-title" id="meq-title">Novo equipamento</div>
