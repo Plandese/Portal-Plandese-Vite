@@ -2436,3 +2436,20 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--white);border:1px solid var(--gray-200);
   border-radius:12px;box-shadow:0 10px 30px rgba(15,37,87,.22);font-size:13px;color:var(--gray-800)}
 #push-prompt span{flex:1;min-width:200px}
+
+/* ═══ Telemóvel: chat fixo junto à barra inferior + ecrã completo ═══ */
+.chat-close{display:none;background:none;border:0;font-size:28px;line-height:1;cursor:pointer;color:var(--gray-700);padding:0 8px 0 0}
+body.device-mobile #chat-fab{left:50%!important;top:auto!important;bottom:calc(50px + env(safe-area-inset-bottom));transform:translateX(-50%);cursor:pointer;z-index:260}
+body.device-mobile #chat-fab:hover{transform:translateX(-50%)}
+body.device-mobile #chat-fab-panel{display:none!important}
+body.device-mobile #sec-chat.active{position:fixed;inset:0;z-index:1000;background:var(--white);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 0}
+body.device-mobile #sec-chat .pg-hdr{display:none}
+body.device-mobile #sec-chat .chat-layout{flex:1;height:auto;min-height:0;border:0;border-radius:0;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}
+body.device-mobile #sec-chat .chat-side{order:0;border-right:0}
+body.device-mobile #sec-chat .chat-main{display:none;height:100%}
+body.device-mobile #sec-chat .chat-layout.em-conv .chat-side{display:none}
+body.device-mobile #sec-chat .chat-layout.em-conv .chat-main{display:flex}
+body.device-mobile #sec-chat .chat-back{display:block}
+body.device-mobile #sec-chat .chat-close{display:block}
+body.device-mobile #sec-chat .chat-side-title{display:flex;align-items:center;font-size:15px;text-transform:none;letter-spacing:0;color:var(--gray-900);padding:10px 12px}
+body.device-mobile #sec-chat .chat-compose{padding-bottom:calc(10px + env(safe-area-inset-bottom))}

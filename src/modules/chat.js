@@ -282,6 +282,7 @@ function limitar(x, y){
   };
 }
 function aplicarPos(fab, pos){
+  if(modoMovel()){ fab.style.left = fab.style.top = ''; return pos; }
   const p = limitar(pos.x, pos.y);
   fab.style.left = p.x + 'px'; fab.style.top = p.y + 'px';
   posicionarPainel();
@@ -335,11 +336,13 @@ function criarFab(){
     </div>`;
   document.body.append(fab, pn);
 
+  if(modoMovel()) fab.style.left = fab.style.top = '';
   const ini = lerPos() || { x: window.innerWidth - FAB - 18, y: window.innerHeight - FAB - 90 };
   aplicarPos(fab, ini);
 
   let drag = null;
   fab.addEventListener('pointerdown', e => {
+    if(modoMovel()) return;
     drag = { sx: e.clientX, sy: e.clientY, ox: fab.offsetLeft, oy: fab.offsetTop, moveu: false };
     fab.setPointerCapture(e.pointerId);
   });
@@ -350,6 +353,7 @@ function criarFab(){
     drag.moveu = true; fab.classList.add('drag');
     aplicarPos(fab, { x: drag.ox + dx, y: drag.oy + dy });
   });
+  fab.addEventListener('click', () => { if(modoMovel()) chatAbrirMovel(); });
   fab.addEventListener('pointerup', e => {
     if(!drag) return;
     const d = drag; drag = null;
@@ -408,4 +412,19 @@ export function chatAbrirNotif(n){
   $('chat-layout')?.classList.add('em-conv');
   chatTogglePainel(false);
   window.goTo('chat');
+}
+
+// ── Telemóvel: botão fixo junto à barra inferior, chat em ecrã completo ──
+const modoMovel = () => document.body.classList.contains('device-mobile');
+let _prevSec = null;
+
+function chatAbrirMovel(){
+  _prevSec = document.querySelector('.section.active')?.id.replace(/^sec-/, '') || null;
+  if(_prevSec === 'chat') _prevSec = null;
+  chatVoltar(); // começa na lista de conversas, como no WhatsApp
+  window.goTo('chat');
+}
+
+export function chatFechar(){
+  window.goTo(_prevSec || (modoMovel() ? 'analise' : 'painel'));
 }
