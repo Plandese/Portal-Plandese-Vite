@@ -2431,3 +2431,8 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
 .user-search{margin:0 0 12px}
 .user-search input{width:100%;max-width:360px;font-family:var(--font);font-size:13px;padding:9px 12px;border:1px solid var(--gray-300);border-radius:10px;background:var(--white);color:var(--gray-800);outline:none}
 .user-search input:focus{border-color:var(--blue-400)}
+
+#push-prompt{position:fixed;z-index:950;top:72px;left:50%;transform:translateX(-50%);max-width:min(560px,calc(100vw - 24px));
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--white);border:1px solid var(--gray-200);
+  border-radius:12px;box-shadow:0 10px 30px rgba(15,37,87,.22);font-size:13px;color:var(--gray-800)}
+#push-prompt span{flex:1;min-width:200px}

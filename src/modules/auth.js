@@ -205,6 +205,7 @@ export async function entrarComoUtilizador(authedUser) {
     document.getElementById('enc-name').textContent=authedUser.nome;
     await R.initEnc();
     R.ensurePushSubscription?.();
+    R.initPushPrompt?.();
   } else {
     document.getElementById('admin-app').style.display='flex';
     document.body.classList.add('app-ativa');
@@ -284,6 +285,7 @@ async function restaurarSessao() {
 }
 
 export function doLogout() {
+  document.getElementById('push-prompt')?.remove();
   R.chatStop?.();
   S.currentUser = null;
   localStorage.removeItem('plandese_session');

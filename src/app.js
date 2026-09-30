@@ -29,7 +29,7 @@ import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotif
 import { renderNotifSubs, toggleNotifSub } from './modules/notif-subs.js';
 import { renderCalWidget, initCalendario, calMudarMes, calHoje, calSelDia, calNovoEvento, calAbrirEvento, calToggleDiaInteiro, calFecharModal, calGuardar, calApagar, calToggleConcluido, calSetVisib, calFiltrarPessoas, calTogglePessoa } from './modules/calendario.js';
 import { initNotifPage, ntfOnInsert, ntfFiltro, renderNotifPage, ntfToggleLida, ntfApagar, ntfAbrir, ntfMarcarTodasLidas, ntfApagarLidas, ntfTogglePref } from './modules/notif-page.js';
-import { ensurePushSubscription, requestPushPermission, pushStatus, capturePendingSectionFromURL, applyPendingSection } from './modules/push.js';
+import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStatus, capturePendingSectionFromURL, applyPendingSection } from './modules/push.js';
 
 // Faturas
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura } from './modules/faturas.js';
@@ -102,7 +102,7 @@ Object.assign(R, {
   initAdmin,
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
-  ensurePushSubscription, applyPendingSection,
+  ensurePushSubscription, initPushPrompt, applyPendingSection,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
   loadCombustivelAdmin, renderProdDashboard,

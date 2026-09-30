@@ -110,3 +110,33 @@ if('serviceWorker' in navigator){
     else _pendingSection = e.data.seccao;
   });
 }
+
+// ── Convite para ativar as notificações no dispositivo ──────────────
+// O browser só deixa pedir permissão após um toque do utilizador, por isso mostramos
+// um aviso discreto com botão. "Agora não" adia 7 dias.
+const PROMPT_KEY = 'plandese_push_prompt_ate';
+
+export function initPushPrompt(){
+  try {
+    document.getElementById('push-prompt')?.remove();
+    const st = pushStatus();
+    if(st !== 'default' && st !== 'precisa-instalar') return;
+    if(Number(localStorage.getItem(PROMPT_KEY) || 0) > Date.now()) return;
+    const el = document.createElement('div');
+    el.id = 'push-prompt';
+    const txt = st === 'precisa-instalar'
+      ? 'Para receber notificações no iPhone, adicione o Portal ao ecrã principal (Partilhar → Adicionar ao Ecrã Principal).'
+      : 'Quer receber as notificações (incluindo o chat) no telemóvel?';
+    el.innerHTML = `<span>${txt}</span>` +
+      (st === 'default' ? '<button type="button" class="btn btn-primary btn-sm" id="push-prompt-ok">Ativar</button>' : '') +
+      '<button type="button" class="btn btn-secondary btn-sm" id="push-prompt-no">Agora não</button>';
+    document.body.appendChild(el);
+    const fechar = dias => {
+      try{ localStorage.setItem(PROMPT_KEY, String(Date.now() + dias * 864e5)); }catch(e){}
+      el.remove();
+    };
+    el.querySelector('#push-prompt-no').onclick = () => fechar(7);
+    const ok = el.querySelector('#push-prompt-ok');
+    if(ok) ok.onclick = async () => { await requestPushPermission(); el.remove(); };
+  } catch(e){ console.warn('initPushPrompt:', e); }
+}
