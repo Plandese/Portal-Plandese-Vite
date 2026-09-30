@@ -525,6 +525,7 @@ function openEqModal(eq=null){
   eqSet('meq-valor',d.valorAquisicao); eqSet('meq-garantia',d.garantiaAte);
   const del=document.getElementById('meq-del-btn'); if(del) del.style.display=eq?'':'none';
   openModal('modal-equip');
+  document.querySelectorAll('#modal-equip .modal > div').forEach(d=>{ d.scrollTop=0; });
 }
 function editEquipamento(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); if(eq) openEqModal(eq); }
 function saveEquipamento(){
