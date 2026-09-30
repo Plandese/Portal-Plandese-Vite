@@ -70,6 +70,7 @@ export function chatStop(){
   if(_presCh){ try{ sb.removeChannel(_presCh); }catch(e){} _presCh = null; }
   _msgs = []; _online = new Set(); _started = false;
   const b = $('nb-chat'); if(b) b.hidden = true;
+  const g = $('chat-gear-dot'); if(g) g.hidden = true;
 }
 
 // ── Não lidas ──────────────────────────────────────────────────────
@@ -85,6 +86,7 @@ function badge(){
   const b = $('nb-chat'); if(!b) return;
   b.textContent = n > 99 ? '99+' : n;
   b.hidden = !n || aChatAberto();
+  const g = $('chat-gear-dot'); if(g) g.hidden = b.hidden;
 }
 
 // ── Página ─────────────────────────────────────────────────────────
