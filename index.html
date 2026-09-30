@@ -2150,10 +2150,19 @@
 
         <!-- ═══ VISTA: CONSUMO DE EQUIPAMENTOS ═══ -->
         <div id="comb-view-cons" style="display:none">
-          <div id="comb-equip-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-          <div id="comb-equip-empty" class="fat-empty" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-            <div style="margin-top:6px">Ainda não há abastecimentos de viaturas ou máquinas registados.</div>
+          <div class="card" style="padding:16px 18px">
+            <div style="display:flex;align-items:flex-end;gap:10px">
+              <div class="field" style="margin-bottom:0;flex:1">
+                <label>Pesquisar equipamento</label>
+                <input type="text" id="comb-busca-input" placeholder="Nome, matrícula, obra, combustível…" oninput="combBuscaRender()" autocomplete="off"/>
+              </div>
+              <button class="btn btn-secondary" style="flex-shrink:0" onclick="combVerListaCompleta()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Lista completa
+              </button>
+            </div>
+            <div id="comb-busca-hint" style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Escreva para pesquisar um equipamento específico, ou veja a lista completa.</div>
+            <div id="comb-busca-resultados" style="margin-top:10px"></div>
           </div>
         </div>
 

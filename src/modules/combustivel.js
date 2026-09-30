@@ -138,33 +138,73 @@ let _combDetEquipId=null;
 const _isAbastecimento=r=>r.tipo_registo==='viatura'&&r.equipamento_id;
 const _fmtL=n=>n.toFixed(1).replace('.',',')+' L';
 
+// ── Consumo de Equipamentos: lista com pesquisa e "Lista completa" ──
+let _combEquipLista=[];
+let _combEquipTodos=false;
+const _semAcentos=t=>String(t??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
 function renderCombEquipCards(rows){
-  const grid=document.getElementById('comb-equip-grid');
-  const emptyEl=document.getElementById('comb-equip-empty');
-  if(!grid) return;
   const map={};
   rows.filter(_isAbastecimento).forEach(r=>{
     const m=map[r.equipamento_id]||(map[r.equipamento_id]={id:r.equipamento_id,nome:r.equipamento_nome||r.equipamento_id,rows:[]});
     m.rows.push(r);
   });
-  const lista=Object.values(map).map(m=>{
+  _combEquipLista=Object.values(map).map(m=>{
     const eq=EQUIPAMENTOS.find(e=>e.id===m.id);
-    return {...m,nome:eq?.nome||m.nome,litros:_sumL(m.rows,()=>true),ultimo:m.rows.reduce((d,r)=>r.data>d?r.data:d,'')};
+    const obras=[...new Set(m.rows.map(r=>r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome).filter(Boolean))];
+    const tipos=[...new Set(m.rows.map(r=>r.tipo_combustivel).filter(Boolean))];
+    const nome=eq?.nome||m.nome;
+    // Texto pesquisável: tudo o que identifica o equipamento e onde/como abasteceu
+    const texto=_semAcentos([nome,eq?.matricula,eq?.marcaModelo,eq?.codigo,eq?.serie,eq?.condutor,obras.join(' '),tipos.join(' '),m.rows.map(r=>r.fornecedor).join(' ')].join(' '));
+    return {...m,nome,obras,tipos,texto,litros:_sumL(m.rows,()=>true),ultimo:m.rows.reduce((d,r)=>r.data>d?r.data:d,'')};
   }).sort((a,b)=>b.litros-a.litros);
-  if(!lista.length){grid.innerHTML='';emptyEl.style.display='';return;}
-  emptyEl.style.display='none';
-  grid.innerHTML=lista.map(m=>`<div class="card" style="padding:18px 20px;cursor:pointer" onclick="abrirCombEquipDetalhe('${m.id}')" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <div style="min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--gray-900);line-height:1.3;overflow-wrap:anywhere">${_escHtml(m.nome)}</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${m.rows.length} abastecimento${m.rows.length!==1?'s':''} · último a ${fmtPT(m.ultimo)}</div>
-        </div>
-        <div style="background:var(--blue-50);border:1.5px solid var(--blue-200);border-radius:10px;padding:10px 16px;text-align:center;flex-shrink:0">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:4px">Consumo</div>
-          <div style="font-size:20px;font-weight:700;color:var(--blue-700);line-height:1;font-variant-numeric:tabular-nums">${_fmtL(m.litros)}</div>
-        </div>
+  _combBuscaMostrar();
+}
+
+function _combEquipRowHtml(m){
+  const sub=[m.obras.slice(0,2).join(', ')+(m.obras.length>2?'…':''),m.tipos.join(', ')].filter(Boolean).map(_escHtml).join(' · ');
+  return `<div class="card" style="padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="abrirCombEquipDetalhe('${m.id}')">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-weight:700;color:var(--gray-900)">${_escHtml(m.nome)}</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:3px">${m.rows.length} abastecimento${m.rows.length!==1?'s':''} · último a ${fmtPT(m.ultimo)}</div>
+        ${sub?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${sub}</div>`:''}
       </div>
-    </div>`).join('');
+      <div style="background:var(--blue-50);border:1.5px solid var(--blue-200);border-radius:10px;padding:8px 14px;text-align:center;flex-shrink:0">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:3px">Consumo</div>
+        <div style="font-size:18px;font-weight:700;color:var(--blue-700);line-height:1;font-variant-numeric:tabular-nums">${_fmtL(m.litros)}</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>`;
+}
+
+function _combBuscaMostrar(){
+  const box=document.getElementById('comb-busca-resultados');
+  const hint=document.getElementById('comb-busca-hint');
+  if(!box) return;
+  const termo=_semAcentos(document.getElementById('comb-busca-input')?.value||'').trim();
+  if(!termo&&!_combEquipTodos){ box.innerHTML=''; if(hint) hint.style.display=''; return; }
+  if(hint) hint.style.display='none';
+  let lista=_combEquipLista;
+  if(termo){
+    // Todas as palavras escritas têm de aparecer (por qualquer ordem, sem acentos)
+    const palavras=termo.split(/\s+/);
+    lista=lista.filter(m=>palavras.every(p=>m.texto.includes(p)));
+    // Quem tem a palavra no nome aparece primeiro
+    const noNome=m=>palavras.every(p=>_semAcentos(m.nome).includes(p))?0:1;
+    lista=[...lista].sort((a,b)=>noNome(a)-noNome(b)||b.litros-a.litros);
+  }
+  box.innerHTML=lista.length
+    ? lista.map(_combEquipRowHtml).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">${termo?`Sem resultados para "${_escHtml(termo)}"`:'Ainda não há abastecimentos de viaturas ou máquinas registados.'}</div>`;
+}
+
+function combBuscaRender(){ _combEquipTodos=false; _combBuscaMostrar(); }
+function combVerListaCompleta(){
+  _combEquipTodos=true;
+  const inp=document.getElementById('comb-busca-input'); if(inp) inp.value='';
+  _combBuscaMostrar();
 }
 
 function abrirCombEquipDetalhe(equipId){
@@ -489,7 +529,7 @@ function _initCombustivelAdmin(){
 }
 
 export {
-  combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards,
+  combBuscaRender, combVerListaCompleta, combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards,
   loadCombustivelAdmin, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin,
   abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip,
   abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel
