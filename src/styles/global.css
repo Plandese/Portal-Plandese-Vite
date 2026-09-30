@@ -2344,3 +2344,26 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 .settings-item .chat-nb{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px}
 .settings-btn{position:relative}
 .chat-gear-dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid #fff}
+
+/* Bolha flutuante do chat */
+#chat-fab{position:fixed;z-index:900;width:54px;height:54px;border-radius:50%;border:0;padding:0;cursor:grab;touch-action:none;
+  background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(37,99,235,.35),0 2px 6px rgba(0,0,0,.15);transition:transform .12s}
+#chat-fab:hover{transform:scale(1.06)}
+#chat-fab.drag{cursor:grabbing;transform:scale(1.1);transition:none}
+#chat-fab svg{width:26px;height:26px;pointer-events:none}
+.chat-fab-badge{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.chat-fab-badge[hidden]{display:none}
+#chat-fab-panel{position:fixed;z-index:901;width:340px;height:440px;max-height:calc(100vh - 16px);background:var(--white);border-radius:16px;
+  box-shadow:0 18px 50px rgba(15,37,87,.28),0 2px 8px rgba(0,0,0,.12);display:none;flex-direction:column;overflow:hidden;border:1px solid var(--gray-200)}
+#chat-fab-panel.open{display:flex}
+.cw-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--grad-brand);color:#fff}
+.cw-hdr div:first-child{display:flex;flex-direction:column;line-height:1.2}
+.cw-hdr b{font-size:14px}.cw-hdr small{font-size:11px;opacity:.85}
+.cw-acts button{background:rgba(255,255,255,.2);border:0;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:16px;margin-left:4px}
+.cw-acts button:hover{background:rgba(255,255,255,.35)}
+#chat-fab-panel .chat-msgs{padding:10px}
+#chat-fab-panel .chat-row{max-width:90%}
+#chat-fab-panel .chat-tx{font-size:13px}
+body:has(#sec-chat.active) #chat-fab,body:has(#sec-chat.active) #chat-fab-panel{display:none}
+@media(max-width:600px){#chat-fab-panel{width:calc(100vw - 16px)}}

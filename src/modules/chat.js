@@ -17,7 +17,7 @@ const ESC = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ESC[c]);
 const me = () => S.currentUser?.key;
 const lastKey = () => 'plandese_chat_lido_' + me();
-const aChatAberto = () => $('sec-chat')?.classList.contains('active');
+const aChatAberto = () => !!$('sec-chat')?.classList.contains('active') || !!$('chat-fab-panel')?.classList.contains('open');
 
 function membros(){
   return Object.entries(S.USERS || {})
@@ -61,6 +61,7 @@ export async function initChat(){
   }).subscribe(async st => {
     if(st === 'SUBSCRIBED') await _presCh.track({ at: new Date().toISOString() });
   });
+  criarFab();
   badge();
   if(aChatAberto()) renderChat();
 }
@@ -69,6 +70,7 @@ export function chatStop(){
   if(_msgCh){ try{ sb.removeChannel(_msgCh); }catch(e){} _msgCh = null; }
   if(_presCh){ try{ sb.removeChannel(_presCh); }catch(e){} _presCh = null; }
   _msgs = []; _online = new Set(); _started = false;
+  $('chat-fab')?.remove(); $('chat-fab-panel')?.remove();
   const b = $('nb-chat'); if(b) b.hidden = true;
   const g = $('chat-gear-dot'); if(g) g.hidden = true;
 }
@@ -83,10 +85,12 @@ function marcarLido(){
 function badge(){
   const l = lidoAte();
   const n = _msgs.filter(m => m.autor !== me() && m.criado_em > l).length;
-  const b = $('nb-chat'); if(!b) return;
+  const b = $('nb-chat') || document.createElement('span');
   b.textContent = n > 99 ? '99+' : n;
   b.hidden = !n || aChatAberto();
   const g = $('chat-gear-dot'); if(g) g.hidden = b.hidden;
+  const f = $('chat-fab-badge');
+  if(f){ f.textContent = n > 99 ? '99+' : n; f.hidden = !n || aChatAberto(); }
 }
 
 // ── Página ─────────────────────────────────────────────────────────
@@ -100,9 +104,9 @@ export function renderChat(){
 }
 
 function renderOnlineBar(){
-  const el = $('chat-online-sub'); if(!el) return;
   const n = membros().filter(m => _online.has(m.key)).length;
-  el.textContent = n ? `${n} online agora` : 'Ninguém online';
+  const txt = n ? `${n} online agora` : 'Ninguém online';
+  ['chat-online-sub','cw-online'].forEach(id => { const el = $(id); if(el) el.textContent = txt; });
 }
 
 function renderPessoas(){
@@ -129,7 +133,11 @@ function fmtDia(iso){
 }
 
 function renderMsgs(descer){
-  const box = $('chat-msgs'); if(!box) return;
+  ['chat-msgs','cw-msgs'].forEach(id => renderMsgsEm($(id), descer));
+}
+
+function renderMsgsEm(box, descer){
+  if(!box) return;
   const perto = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   let dia = '', autor = '', t = 0, html = '';
   _msgs.forEach(m => {
@@ -151,8 +159,8 @@ function renderMsgs(descer){
   if(descer || perto) box.scrollTop = box.scrollHeight;
 }
 
-export async function chatEnviar(){
-  const inp = $('chat-in'); if(!inp) return;
+export async function chatEnviar(id){
+  const inp = $(typeof id === 'string' ? id : 'chat-in'); if(!inp) return;
   const texto = inp.value.trim();
   if(!texto) return;
   inp.value = ''; chatAutoH(inp);
@@ -170,9 +178,98 @@ export async function chatApagar(id){
 }
 
 export function chatKey(e){
-  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); chatEnviar(); }
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); chatEnviar(e.target.id); }
 }
 export function chatAutoH(el){
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── Bolha flutuante (arrastável) + caixa de chat pequena ───────────
+const FAB_POS_KEY = 'plandese_chat_fab_pos';
+const FAB = 54;
+
+function lerPos(){
+  try{ const p = JSON.parse(localStorage.getItem(FAB_POS_KEY)); if(p && isFinite(p.x) && isFinite(p.y)) return p; }catch(e){}
+  return null;
+}
+function limitar(x, y){
+  return {
+    x: Math.min(Math.max(8, x), window.innerWidth - FAB - 8),
+    y: Math.min(Math.max(8, y), window.innerHeight - FAB - 8),
+  };
+}
+function aplicarPos(fab, pos){
+  const p = limitar(pos.x, pos.y);
+  fab.style.left = p.x + 'px'; fab.style.top = p.y + 'px';
+  posicionarPainel();
+  return p;
+}
+
+function posicionarPainel(){
+  const fab = $('chat-fab'), pn = $('chat-fab-panel');
+  if(!fab || !pn) return;
+  const r = fab.getBoundingClientRect();
+  const pw = pn.offsetWidth || 340, ph = pn.offsetHeight || 440;
+  let x = r.left + r.width / 2 > window.innerWidth / 2 ? r.right - pw : r.left;
+  let y = r.top + r.height / 2 > window.innerHeight / 2 ? r.top - ph - 10 : r.bottom + 10;
+  x = Math.min(Math.max(8, x), window.innerWidth - pw - 8);
+  y = Math.min(Math.max(8, y), window.innerHeight - ph - 8);
+  pn.style.left = x + 'px'; pn.style.top = y + 'px';
+}
+
+export function chatTogglePainel(abrir){
+  const pn = $('chat-fab-panel'); if(!pn) return;
+  const on = typeof abrir === 'boolean' ? abrir : !pn.classList.contains('open');
+  pn.classList.toggle('open', on);
+  if(on){
+    posicionarPainel();
+    renderMsgs(true);
+    renderOnlineBar();
+    marcarLido();
+    setTimeout(() => $('cw-in')?.focus(), 50);
+  } else badge();
+}
+
+function criarFab(){
+  if($('chat-fab')) return;
+  const fab = document.createElement('button');
+  fab.id = 'chat-fab'; fab.type = 'button'; fab.title = 'Chat da equipa';
+  fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="chat-fab-badge" id="chat-fab-badge" hidden></span>';
+  const pn = document.createElement('div');
+  pn.id = 'chat-fab-panel';
+  pn.innerHTML = `<div class="cw-hdr"><div><b>Chat da equipa</b><small id="cw-online"></small></div>
+      <div class="cw-acts"><button type="button" title="Abrir em página inteira" onclick="goTo('chat');chatTogglePainel(false)">⤢</button>
+      <button type="button" title="Fechar" onclick="chatTogglePainel(false)">×</button></div></div>
+    <div class="chat-msgs" id="cw-msgs"></div>
+    <div class="chat-compose"><textarea id="cw-in" rows="1" placeholder="Escreva uma mensagem…" onkeydown="chatKey(event)" oninput="chatAutoH(this)"></textarea>
+    <button class="btn btn-primary btn-sm" type="button" onclick="chatEnviar('cw-in')">Enviar</button></div>`;
+  document.body.append(fab, pn);
+
+  const ini = lerPos() || { x: window.innerWidth - FAB - 18, y: window.innerHeight - FAB - 90 };
+  aplicarPos(fab, ini);
+
+  let drag = null;
+  fab.addEventListener('pointerdown', e => {
+    drag = { sx: e.clientX, sy: e.clientY, ox: fab.offsetLeft, oy: fab.offsetTop, moveu: false };
+    fab.setPointerCapture(e.pointerId);
+  });
+  fab.addEventListener('pointermove', e => {
+    if(!drag) return;
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if(!drag.moveu && Math.hypot(dx, dy) < 5) return;
+    drag.moveu = true; fab.classList.add('drag');
+    aplicarPos(fab, { x: drag.ox + dx, y: drag.oy + dy });
+  });
+  fab.addEventListener('pointerup', e => {
+    if(!drag) return;
+    const d = drag; drag = null;
+    fab.classList.remove('drag');
+    try{ fab.releasePointerCapture(e.pointerId); }catch(_){}
+    if(d.moveu){
+      try{ localStorage.setItem(FAB_POS_KEY, JSON.stringify({ x: fab.offsetLeft, y: fab.offsetTop })); }catch(_){}
+    } else chatTogglePainel();
+  });
+  fab.addEventListener('pointercancel', () => { drag = null; fab.classList.remove('drag'); });
+  window.addEventListener('resize', () => { if($('chat-fab')) aplicarPos(fab, { x: fab.offsetLeft, y: fab.offsetTop }); });
 }
