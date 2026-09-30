@@ -1,16 +1,17 @@
 // ═══════════════════════════════════════
-//  CHAT INTERNO — canal geral da equipa (sem encarregados) + quem está online
+//  CHAT INTERNO — canal geral + conversas privadas (sem encarregados) + quem está online
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
 
 const ROLE_LBL = { admin:'Administrador', diretor_obra:'Diretor de Obra', compras:'Compras', financeiro:'Financeiro' };
-const PAGE = 100;
+const PAGE = 300;
 
 let _msgs = [];
 let _msgCh = null, _presCh = null;
 let _online = new Set();
 let _started = false;
+let _conv = null; // null = canal geral; senão username do interlocutor
 
 const $ = id => document.getElementById(id);
 const ESC = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
@@ -43,7 +44,8 @@ export async function initChat(){
     .on('postgres_changes', { event:'INSERT', schema:'public', table:'chat_mensagens' }, p => {
       if(_msgs.some(m => m.id === p.new.id)) return;
       _msgs.push(p.new);
-      if(aChatAberto()){ renderMsgs(true); marcarLido(); } else badge();
+      if(aChatAberto() && convDe(p.new) === (_conv || '')){ renderMsgs(true); marcarLido(); }
+      else { badge(); renderPessoas(); }
     })
     .on('postgres_changes', { event:'DELETE', schema:'public', table:'chat_mensagens' }, p => {
       _msgs = _msgs.filter(m => m.id !== p.old.id);
@@ -63,6 +65,7 @@ export async function initChat(){
   });
   criarFab();
   badge();
+  renderPessoas();
   if(aChatAberto()) renderChat();
 }
 
@@ -75,32 +78,74 @@ export function chatStop(){
   const g = $('chat-gear-dot'); if(g) g.hidden = true;
 }
 
-// ── Não lidas ──────────────────────────────────────────────────────
-function lidoAte(){ try{ return localStorage.getItem(lastKey()) || ''; }catch(e){ return ''; } }
+// ── Conversas e não lidas ──────────────────────────────────────────
+// Chave de conversa: '' = geral; senão o username do outro participante
+const convDe = m => m.para == null ? '' : (m.autor === me() ? m.para : m.autor);
+const msgsConv = () => _msgs.filter(m => convDe(m) === (_conv || ''));
+
+function lidoMap(){
+  try{
+    const raw = localStorage.getItem(lastKey());
+    if(!raw) return {};
+    if(raw[0] === '{') return JSON.parse(raw);
+    return { '': raw }; // formato antigo: só o canal geral
+  }catch(e){ return {}; }
+}
 function marcarLido(){
-  const ult = _msgs[_msgs.length - 1];
-  try{ if(ult) localStorage.setItem(lastKey(), ult.criado_em); }catch(e){}
+  const ult = msgsConv().slice(-1)[0];
+  if(ult){
+    const l = lidoMap(); l[_conv || ''] = ult.criado_em;
+    try{ localStorage.setItem(lastKey(), JSON.stringify(l)); }catch(e){}
+  }
   badge();
+  renderPessoas();
+}
+function naoLidas(){
+  const l = lidoMap(), por = {};
+  _msgs.forEach(m => {
+    if(m.autor === me()) return;
+    const k = convDe(m);
+    if(m.criado_em > (l[k] || '')) por[k] = (por[k] || 0) + 1;
+  });
+  return por;
 }
 function badge(){
-  const l = lidoAte();
-  const n = _msgs.filter(m => m.autor !== me() && m.criado_em > l).length;
+  const por = naoLidas();
+  // a conversa aberta conta como lida
+  if(aChatAberto()) delete por[_conv || ''];
+  const n = Object.values(por).reduce((a, b) => a + b, 0);
   const b = $('nb-chat') || document.createElement('span');
   b.textContent = n > 99 ? '99+' : n;
-  b.hidden = !n || aChatAberto();
+  b.hidden = !n;
   const g = $('chat-gear-dot'); if(g) g.hidden = b.hidden;
   const f = $('chat-fab-badge');
-  if(f){ f.textContent = n > 99 ? '99+' : n; f.hidden = !n || aChatAberto(); }
+  if(f){ f.textContent = n > 99 ? '99+' : n; f.hidden = !n; }
+}
+
+export function chatSetConv(k){
+  _conv = k || null;
+  renderChat(true);
 }
 
 // ── Página ─────────────────────────────────────────────────────────
-export function renderChat(){
+export function renderChat(foco){
   if(!_started){ initChat(); return; }
-  renderPessoas();
   renderOnlineBar();
+  renderConvTitulo();
   renderMsgs(true);
   marcarLido();
-  setTimeout(() => $('chat-in')?.focus(), 50);
+  if(foco !== false) setTimeout(() => ($('cw-in') && $('chat-fab-panel').classList.contains('open') ? $('cw-in') : $('chat-in'))?.focus(), 50);
+}
+
+function renderConvTitulo(){
+  const t = $('chat-conv-title');
+  if(t) t.textContent = _conv ? nomeDe(_conv) : 'Geral — toda a equipa';
+  const sel = $('cw-conv');
+  if(sel){
+    const por = naoLidas();
+    const op = (k, nome) => `<option value="${esc(k)}"${(k || null) === _conv ? ' selected' : ''}>${esc(nome)}${por[k] ? ` (${por[k]})` : ''}</option>`;
+    sel.innerHTML = op('', 'Geral — toda a equipa') + membros().filter(m => m.key !== me()).map(m => op(m.key, m.nome)).join('');
+  }
 }
 
 function renderOnlineBar(){
@@ -110,17 +155,23 @@ function renderOnlineBar(){
 }
 
 function renderPessoas(){
+  renderConvTitulo();
   const el = $('chat-pessoas'); if(!el) return;
-  const lista = membros().sort((a, b) =>
+  const por = naoLidas();
+  const lista = membros().filter(m => m.key !== me()).sort((a, b) =>
     (_online.has(b.key) - _online.has(a.key)) || a.nome.localeCompare(b.nome));
-  el.innerHTML = lista.map(m => {
+  const bdg = k => por[k] ? `<span class="chat-nl">${por[k]}</span>` : '';
+  const geral = `<button type="button" class="chat-pessoa chat-pessoa-geral on${_conv === null ? ' sel' : ''}" onclick="chatSetConv('')">
+      <div class="chat-av">#</div>
+      <div class="chat-pessoa-tx"><b>Geral</b><small>Toda a equipa</small></div>${bdg('')}</button>`;
+  el.innerHTML = geral + lista.map(m => {
     const on = _online.has(m.key);
-    return `<div class="chat-pessoa${on ? ' on' : ''}">
+    return `<button type="button" class="chat-pessoa${on ? ' on' : ''}${_conv === m.key ? ' sel' : ''}" onclick="chatSetConv('${esc(m.key)}')">
       <div class="chat-av">${esc(m.initials)}<i class="chat-dot"></i></div>
-      <div class="chat-pessoa-tx"><b>${esc(m.nome)}${m.key === me() ? ' (eu)' : ''}</b>
-      <small>${on ? 'Online' : 'Offline'} · ${esc(ROLE_LBL[m.role] || m.role)}</small></div>
-    </div>`;
-  }).join('') || '<div class="chat-vazio">Sem utilizadores</div>';
+      <div class="chat-pessoa-tx"><b>${esc(m.nome)}</b>
+      <small>${on ? 'Online' : 'Offline'} · ${esc(ROLE_LBL[m.role] || m.role)}</small></div>${bdg(m.key)}
+    </button>`;
+  }).join('');
 }
 
 const fmtHora = iso => new Date(iso).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
@@ -140,7 +191,7 @@ function renderMsgsEm(box, descer){
   if(!box) return;
   const perto = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   let dia = '', autor = '', t = 0, html = '';
-  _msgs.forEach(m => {
+  msgsConv().forEach(m => {
     const d = new Date(m.criado_em).toDateString();
     if(d !== dia){ html += `<div class="chat-dia"><span>${esc(fmtDia(m.criado_em))}</span></div>`; dia = d; autor = ''; }
     const meu = m.autor === me();
@@ -155,7 +206,7 @@ function renderMsgsEm(box, descer){
         <div class="chat-meta">${fmtHora(m.criado_em)}${meu ? `<button type="button" class="chat-del" title="Apagar" onclick="chatApagar('${m.id}')">×</button>` : ''}</div>
       </div></div>`;
   });
-  box.innerHTML = html || '<div class="chat-vazio">Ainda não há mensagens. Escreva a primeira!</div>';
+  box.innerHTML = html || `<div class="chat-vazio">${_conv ? 'Conversa privada com ' + esc(nomeDe(_conv)) + '. Só vocês os dois a veem.' : 'Ainda não há mensagens. Escreva a primeira!'}</div>`;
   if(descer || perto) box.scrollTop = box.scrollHeight;
 }
 
@@ -164,7 +215,7 @@ export async function chatEnviar(id){
   const texto = inp.value.trim();
   if(!texto) return;
   inp.value = ''; chatAutoH(inp);
-  const { data, error } = await sb.from('chat_mensagens').insert({ texto }).select().single();
+  const { data, error } = await sb.from('chat_mensagens').insert({ texto, para: _conv }).select().single();
   if(error){ inp.value = texto; window.showToast?.('Erro ao enviar mensagem'); return; }
   if(!_msgs.some(m => m.id === data.id)){ _msgs.push(data); renderMsgs(true); marcarLido(); }
 }
@@ -238,7 +289,7 @@ function criarFab(){
   fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="chat-fab-badge" id="chat-fab-badge" hidden></span>';
   const pn = document.createElement('div');
   pn.id = 'chat-fab-panel';
-  pn.innerHTML = `<div class="cw-hdr"><div><b>Chat da equipa</b><small id="cw-online"></small></div>
+  pn.innerHTML = `<div class="cw-hdr"><div><b>Chat da equipa</b><small id="cw-online"></small><select id="cw-conv" onchange="chatSetConv(this.value)"></select></div>
       <div class="cw-acts"><button type="button" title="Abrir em página inteira" onclick="goTo('chat');chatTogglePainel(false)">⤢</button>
       <button type="button" title="Fechar" onclick="chatTogglePainel(false)">×</button></div></div>
     <div class="chat-msgs" id="cw-msgs"></div>
