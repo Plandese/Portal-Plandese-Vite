@@ -383,21 +383,32 @@ function abrirEqDetalhe(id){
   openModal('modal-eq-det');
 }
 
-// Fecha a janela de opções, abre o separador Localização e destaca o equipamento no mapa
+// Janela com um mapa pequeno mostrando onde está o equipamento (fica por cima da janela de opções)
+let _eqLocMap = null;
 function eqVerLocalizacao(id){
   const eq = EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
-  if(!(eq.ultimoLat&&eq.ultimoLng)){
-    showToast(eq.ultimoLocal ? `Sem coordenadas GPS — última obra: ${eq.ultimoLocal}` : 'Este equipamento ainda não tem localização registada');
-    return;
-  }
-  closeModal('modal-eq-det');
-  switchEqView('loc');
+  const temGps = !!(eq.ultimoLat&&eq.ultimoLng);
+  document.getElementById('meql-title').textContent = eq.nome;
+  document.getElementById('meql-sub').textContent = [eq.ultimoLocal||'Sem obra registada', eq.ultimoRegisto?eqTimeAgo(new Date(eq.ultimoRegisto)):''].filter(Boolean).join(' · ');
+  const mapEl=document.getElementById('meql-map'), vazio=document.getElementById('meql-vazio');
+  mapEl.style.display = temGps ? '' : 'none';
+  vazio.style.display = temGps ? 'none' : '';
+  openModal('modal-eq-loc');
+  if(_eqLocMap){ _eqLocMap.remove(); _eqLocMap=null; }
+  if(!temGps) return;
   setTimeout(()=>{
-    const mk=_eqMapMarkerById[id]; if(!mk||!_eqMap) return;
-    _eqMap.invalidateSize();
-    _eqMap.setView(mk.getLatLng(),15);
-    mk.openPopup();
-  },50);
+    const lat=parseFloat(eq.ultimoLat), lng=parseFloat(eq.ultimoLng);
+    const colors={maquina:'#6D28D9',veiculo:'#1D4ED8',ferramenta:'#92400E',outro:'#6B7280'};
+    _eqLocMap = L.map('meql-map').setView([lat,lng],15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>', maxZoom:19
+    }).addTo(_eqLocMap);
+    const icon=L.divIcon({className:'',
+      html:`<div style="width:28px;height:28px;background:${colors[eq.categoria]||'#6B7280'};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
+      iconSize:[28,28],iconAnchor:[14,28]});
+    L.marker([lat,lng],{icon}).addTo(_eqLocMap);
+    _eqLocMap.invalidateSize();
+  },80);
 }
 
 function renderEqBusca(){
