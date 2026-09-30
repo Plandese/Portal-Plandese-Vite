@@ -49,23 +49,9 @@ async function _fetchCombRows(){
   _combAllRows=data||[];
 }
 
-function _comFiltrosAtuais(){
-  return {
-    ini:document.getElementById('comb-f-ini').value,
-    fim:document.getElementById('comb-f-fim').value,
-    equip:document.getElementById('comb-f-equip').value,
-    obraFilt:document.getElementById('comb-f-obra')?.value||''
-  };
-}
-
 function _renderCombGridFiltrada(){
-  const {ini,fim,equip,obraFilt}=_comFiltrosAtuais();
-  let filtered=_combAllRows;
-  if(ini) filtered=filtered.filter(r=>r.data&&r.data>=ini);
-  if(fim) filtered=filtered.filter(r=>r.data&&r.data<=fim);
-  if(equip) filtered=filtered.filter(r=>r.equipamento_id===equip);
-  if(obraFilt) filtered=filtered.filter(r=>r.obra_id===obraFilt);
-  renderCombObraCards(filtered);
+  renderCombObraCards(_combAllRows);
+  renderCombEquipCards(_combAllRows);
 }
 
 async function loadCombustivelAdmin(){
@@ -133,6 +119,81 @@ function renderCombObraCards(rows){
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Separadores: Depósitos Obra | Consumo de Equipamentos ──
+let _combView='dep';
+function combSwitchView(view){
+  _combView=view;
+  ['dep','cons'].forEach(v=>{
+    const panel=document.getElementById('comb-view-'+v);
+    const btn=document.getElementById('comb-tab-btn-'+v);
+    if(panel) panel.style.display=v===view?'':'none';
+    if(btn) btn.classList.toggle('active',v===view);
+  });
+}
+
+// ── Consumo de Equipamentos: um cartão por viatura/máquina com abastecimentos ──
+let _combDetEquipId=null;
+const _isAbastecimento=r=>r.tipo_registo==='viatura'&&r.equipamento_id;
+const _fmtL=n=>n.toFixed(1).replace('.',',')+' L';
+
+function renderCombEquipCards(rows){
+  const grid=document.getElementById('comb-equip-grid');
+  const emptyEl=document.getElementById('comb-equip-empty');
+  if(!grid) return;
+  const map={};
+  rows.filter(_isAbastecimento).forEach(r=>{
+    const m=map[r.equipamento_id]||(map[r.equipamento_id]={id:r.equipamento_id,nome:r.equipamento_nome||r.equipamento_id,rows:[]});
+    m.rows.push(r);
+  });
+  const lista=Object.values(map).map(m=>{
+    const eq=EQUIPAMENTOS.find(e=>e.id===m.id);
+    return {...m,nome:eq?.nome||m.nome,litros:_sumL(m.rows,()=>true),ultimo:m.rows.reduce((d,r)=>r.data>d?r.data:d,'')};
+  }).sort((a,b)=>b.litros-a.litros);
+  if(!lista.length){grid.innerHTML='';emptyEl.style.display='';return;}
+  emptyEl.style.display='none';
+  grid.innerHTML=lista.map(m=>`<div class="card" style="padding:18px 20px;cursor:pointer" onclick="abrirCombEquipDetalhe('${m.id}')" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900);line-height:1.3;overflow-wrap:anywhere">${_escHtml(m.nome)}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${m.rows.length} abastecimento${m.rows.length!==1?'s':''} · último a ${fmtPT(m.ultimo)}</div>
+        </div>
+        <div style="background:var(--blue-50);border:1.5px solid var(--blue-200);border-radius:10px;padding:10px 16px;text-align:center;flex-shrink:0">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:4px">Consumo</div>
+          <div style="font-size:20px;font-weight:700;color:var(--blue-700);line-height:1;font-variant-numeric:tabular-nums">${_fmtL(m.litros)}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function abrirCombEquipDetalhe(equipId){
+  _combDetEquipId=equipId;
+  _renderCombEquipDetalhe();
+  openModal('modal-comb-equip');
+}
+
+function _renderCombEquipDetalhe(){
+  if(!_combDetEquipId) return;
+  const rows=_combAllRows.filter(r=>_isAbastecimento(r)&&r.equipamento_id===_combDetEquipId);
+  const eq=EQUIPAMENTOS.find(e=>e.id===_combDetEquipId);
+  document.getElementById('mcoe-title').textContent=eq?.nome||rows[0]?.equipamento_nome||_combDetEquipId;
+  document.getElementById('mcoe-sub').textContent=`${rows.length} abastecimento${rows.length!==1?'s':''} registado${rows.length!==1?'s':''}`;
+  const total=_sumL(rows,()=>true);
+  const box=(lbl,val)=>`<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">${lbl}</div>
+      <div style="font-size:20px;font-weight:700;color:var(--gray-800);font-variant-numeric:tabular-nums">${val}</div></div>`;
+  document.getElementById('mcoe-resumo').innerHTML=box('Consumo total',_fmtL(total))+box('Abastecimentos',rows.length)+box('Média por abastecimento',rows.length?_fmtL(total/rows.length):'—');
+  document.getElementById('mcoe-tbody').innerHTML=rows.map(r=>`<tr>
+      <td>${fmtPT(r.data)}</td>
+      <td>${_escHtml(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—')}</td>
+      <td><span style="font-weight:700;color:#dc2626">${(parseFloat(r.litros)||0).toFixed(1)}L</span></td>
+      <td><span class="badge ${r.tipo_combustivel==='Gasóleo'?'b-blue':r.tipo_combustivel==='Gasolina'?'b-orange':'b-gray'}">${_escHtml(r.tipo_combustivel||'—')}</span></td>
+      <td>${_escHtml(r.fornecedor||'—')}</td>
+      <td>${_escHtml(r.encarregado_nome||'—')}</td>
+      <td style="color:var(--gray-500);font-size:12px">${_escHtml(r.obs||'—')}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="abrirCombFormRegisto(null,'${r.id}')">Editar</button></td>
+    </tr>`).join('');
 }
 
 // ── Detalhe da obra (modal): todos os registos + análise por dia/semana/mês ──
@@ -327,6 +388,7 @@ async function abrirCombFormRegisto(obraIdPreset,registoId){
 async function _combAtualizarAposAlteracao(){
   await _fetchCombRows();
   _renderCombGridFiltrada();
+  if(_combDetEquipId&&document.getElementById('modal-comb-equip').classList.contains('open')) _renderCombEquipDetalhe();
   if(_combDetObraId&&document.getElementById('modal-comb-obra').classList.contains('open')){
     _renderCombDetalheHeader();
     _renderCombDetalhe();
@@ -403,12 +465,7 @@ async function apagarRegistoCombustivel(){
 }
 
 function exportCombustivelXLSX(){
-  const {ini,fim,equip,obraFilt}=_comFiltrosAtuais();
-  let rows=_combAllRows;
-  if(ini) rows=rows.filter(r=>r.data&&r.data>=ini);
-  if(fim) rows=rows.filter(r=>r.data&&r.data<=fim);
-  if(equip) rows=rows.filter(r=>r.equipamento_id===equip);
-  if(obraFilt) rows=rows.filter(r=>r.obra_id===obraFilt);
+  const rows=_combAllRows;
   if(!rows.length){showToast('Sem dados para exportar');return;}
 
   const aoa=rows.map(r=>{
@@ -425,44 +482,14 @@ function exportCombustivelXLSX(){
 }
 
 function _initCombustivelAdmin(){
-  // Preencher datas padrão: ano corrente
-  const hoje=fmt(new Date());
-  const ini=hoje.slice(0,4)+'-01-01';
-  document.getElementById('comb-f-ini').value=ini;
-  document.getElementById('comb-f-fim').value=hoje;
-  // Preencher select de equipamentos
-  const sel=document.getElementById('comb-f-equip');
-  sel.innerHTML='<option value="">Todos</option>';
-  EQUIPAMENTOS.forEach(eq=>{const op=document.createElement('option');op.value=eq.id;op.textContent=eq.nome;sel.appendChild(op);});
-  // Preencher select de obras
-  const selObra=document.getElementById('comb-f-obra');
-  if(selObra){
-    const atual=selObra.value;
-    selObra.innerHTML='<option value="">Todas as obras</option>';
-    S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;selObra.appendChild(op);});
-    // Manter a obra escolhida ao voltar à secção
-    if([...selObra.options].some(o=>o.value===atual)) selObra.value=atual;
-  }
-  // Cálculo automático: qualquer alteração aos filtros atualiza logo os cartões
-  ['comb-f-ini','comb-f-fim','comb-f-equip','comb-f-obra'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el && !el.dataset.autoLoad){ el.dataset.autoLoad='1'; el.addEventListener('change',()=>loadCombustivelAdmin()); }
-  });
   loadCombustivelAdmin();
-
-  // A lista de equipamentos só é carregada ao visitar essa secção — garantir que
-  // fica disponível aqui também para o filtro e para o formulário de registo.
-  if(!EQUIPAMENTOS.length){
-    sbLoadEquipamentos().then(()=>{
-      const atual=sel.value;
-      sel.innerHTML='<option value="">Todos</option>';
-      EQUIPAMENTOS.forEach(eq=>{const op=document.createElement('option');op.value=eq.id;op.textContent=eq.nome;sel.appendChild(op);});
-      if([...sel.options].some(o=>o.value===atual)) sel.value=atual;
-    }).catch(()=>{});
-  }
+  // A lista de equipamentos só é carregada ao visitar a secção Equipamentos — garantir que
+  // fica disponível aqui também para o formulário de registo e para os nomes dos cartões.
+  if(!EQUIPAMENTOS.length) sbLoadEquipamentos().then(()=>renderCombEquipCards(_combAllRows)).catch(()=>{});
 }
 
 export {
+  combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards,
   loadCombustivelAdmin, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin,
   abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip,
   abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel

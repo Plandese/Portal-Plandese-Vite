@@ -2126,41 +2126,35 @@
           </div>
         </div>
 
-        <!-- Filtros -->
-        <div class="filter-bar" style="margin-bottom:16px">
-          <div class="field">
-            <label>Data inicial</label>
-            <input type="date" id="comb-f-ini" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white)"/>
-          </div>
-          <div class="field">
-            <label>Data final</label>
-            <input type="date" id="comb-f-fim" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white)"/>
-          </div>
-          <div class="field">
-            <label>Viatura / Máquina</label>
-            <select id="comb-f-equip" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white)">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Obra</label>
-            <select id="comb-f-obra" style="padding:7px 10px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);background:var(--white)">
-              <option value="">Todas as obras</option>
-            </select>
-          </div>
-          <div class="field" style="align-self:flex-end">
-            <button class="btn btn-primary" onclick="loadCombustivelAdmin()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Pesquisar
-            </button>
-          </div>
+        <!-- Tabs de vista -->
+        <div class="fp-tab-bar">
+          <button class="fp-tab active" id="comb-tab-btn-dep" onclick="combSwitchView('dep')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            Depósitos Obra
+          </button>
+          <button class="fp-tab" id="comb-tab-btn-cons" onclick="combSwitchView('cons')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="2" y="17" width="13" height="4" rx="2"/><path d="M4 17v-4a1 1 0 0 1 1-1h6v5"/><path d="M10 12l5-8 4 3"/><path d="M19 7l2 7"/><path d="M21 14h-3l.5 2.5"/></svg>
+            Consumo de Equipamentos
+          </button>
         </div>
 
+        <!-- ═══ VISTA: DEPÓSITOS OBRA ═══ -->
+        <div id="comb-view-dep">
         <!-- Stock por obra (cartões) -->
         <div id="comb-obras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
         <div id="comb-obras-empty" class="fat-empty" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
           <div style="margin-top:6px">Sem registos. Defina o período e clique em "Pesquisar".</div>
+        </div>
+        </div>
+
+        <!-- ═══ VISTA: CONSUMO DE EQUIPAMENTOS ═══ -->
+        <div id="comb-view-cons" style="display:none">
+          <div id="comb-equip-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+          <div id="comb-equip-empty" class="fat-empty" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            <div style="margin-top:6px">Ainda não há abastecimentos de viaturas ou máquinas registados.</div>
+          </div>
         </div>
 
       </section>
@@ -3771,6 +3765,26 @@
 
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-comb-obra')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE DE CONSUMO — EQUIPAMENTO -->
+<div class="modal-bg" id="modal-comb-equip" onclick="if(event.target===this)closeModal('modal-comb-equip')">
+  <div class="modal" style="width:900px;max-width:96vw">
+    <div class="modal-title" id="mcoe-title">Equipamento</div>
+    <div class="modal-sub" id="mcoe-sub">—</div>
+    <div id="mcoe-resumo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0"></div>
+    <div class="tbl-wrap" style="max-height:340px;overflow-y:auto">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>Obra</th><th>Litros</th><th>Tipo</th><th>Fornecedor</th><th>Encarregado</th><th>Obs.</th><th></th></tr>
+        </thead>
+        <tbody id="mcoe-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-comb-equip')">Fechar</button>
     </div>
   </div>
 </div>

@@ -41,7 +41,7 @@ import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLS
 import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, abrirEqDetalhe, eqVerLocalizacao, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
 
 // Combustível admin
-import { loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip, abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
+import { combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards, loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip, abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
 
 // Enc-ponto
 import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal, encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit } from './modules/enc-ponto.js';
@@ -217,7 +217,7 @@ Object.assign(window, {
 
   // Combustível
   loadCombustivelAdmin, exportCombustivelXLSX,
-  abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip,
+  abrirCombObraDetalhe, combSwitchView, abrirCombEquipDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip,
   abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel,
   renderCombObraCards,
 
