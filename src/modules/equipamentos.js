@@ -384,20 +384,24 @@ function abrirEqDetalhe(id){
   if(eq.ultimoLat&&eq.ultimoLng) eqCidade(eq.ultimoLat,eq.ultimoLng).then(c=>{ const el=document.getElementById('meqd-cidade'); if(el) el.textContent=c||'Ver no mapa onde está o equipamento'; });
 }
 
-// Cidade a partir das coordenadas (geocodificação inversa OpenStreetMap, com cache em memória)
-const _eqCidadeCache = {};
-async function eqCidade(lat,lng){
-  const k=(+lat).toFixed(3)+','+(+lng).toFixed(3);
-  if(k in _eqCidadeCache) return _eqCidadeCache[k];
-  let cidade='';
+// Morada a partir das coordenadas (geocodificação inversa OpenStreetMap, com cache em memória)
+const _eqMoradaCache = {};
+async function eqMorada(lat,lng){
+  const k=(+lat).toFixed(4)+','+(+lng).toFixed(4);
+  if(k in _eqMoradaCache) return _eqMoradaCache[k];
+  let m={rua:'',cidade:'',concelho:''};
   try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=pt&lat=${lat}&lon=${lng}`);
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=pt&lat=${lat}&lon=${lng}`);
     const a=(await r.json()).address||{};
-    cidade=a.city||a.town||a.village||a.municipality||a.county||'';
-  }catch(e){ console.warn('eqCidade:',e); }
-  if(cidade) _eqCidadeCache[k]=cidade;
-  return cidade;
+    const cidade=a.city||a.town||a.village||a.hamlet||a.suburb||'';
+    // Em Portugal o OSM põe o distrito em 'county'; o concelho vem em 'municipality' ou na sede (city/town)
+    const concelho=a.municipality||a.city||a.town||a.village||'';
+    m={ rua:a.road||a.pedestrian||a.neighbourhood||'', cidade, concelho };
+  }catch(e){ console.warn('eqMorada:',e); return m; }
+  if(m.cidade||m.rua) _eqMoradaCache[k]=m;
+  return m;
 }
+const eqCidade = (lat,lng)=>eqMorada(lat,lng).then(m=>m.cidade);
 
 // Janela com um mapa pequeno mostrando onde está o equipamento (fica por cima da janela de opções)
 let _eqLocMap = null;
@@ -409,9 +413,14 @@ function eqVerLocalizacao(id){
   const mapEl=document.getElementById('meql-map'), vazio=document.getElementById('meql-vazio');
   mapEl.style.display = temGps ? '' : 'none';
   vazio.style.display = temGps ? 'none' : '';
+  const mor=document.getElementById('meql-morada'); mor.textContent=''; mor.style.display=temGps?'':'none';
   openModal('modal-eq-loc');
   if(_eqLocMap){ _eqLocMap.remove(); _eqLocMap=null; }
   if(!temGps) return;
+  eqMorada(eq.ultimoLat,eq.ultimoLng).then(m=>{
+    const t=[['Rua',m.rua],['Cidade',m.cidade],['Concelho',m.concelho]].filter(x=>x[1]);
+    mor.innerHTML=t.length?t.map(([l,v])=>`<div><span style="color:var(--gray-400)">${l}</span> <strong>${eqEsc(v)}</strong></div>`).join(''):'Morada não disponível';
+  });
   setTimeout(()=>{
     const lat=parseFloat(eq.ultimoLat), lng=parseFloat(eq.ultimoLng);
     const colors={maquina:'#6D28D9',veiculo:'#1D4ED8',ferramenta:'#92400E',outro:'#6B7280'};
