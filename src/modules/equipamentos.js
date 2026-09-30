@@ -143,7 +143,7 @@ function updateEqKPIs(){
 // ── Vistas (Lista / Por Obra / Manutenção) ─
 function switchEqView(view){
   _eqView = view;
-  ['lista','obra','manut'].forEach(v=>{
+  ['lista','obra','manut','loc'].forEach(v=>{
     const panel = document.getElementById('eq-view-'+v);
     const btn   = document.getElementById('eq-tab-btn-'+v);
     if(panel) panel.style.display = v===view ? '' : 'none';
@@ -151,6 +151,7 @@ function switchEqView(view){
   });
   if(view==='obra')  renderEqPorObra();
   if(view==='manut') renderEqManutBoard();
+  if(view==='loc'){ if(!_eqMap) initEqMap(); else { _eqMap.invalidateSize(); refreshEqMap(); } }
 }
 
 // ── Vista "Por Obra" ────────────────────
@@ -709,7 +710,7 @@ function sbUpdateEquipamentoLocal(id, ultimoLocal, ultimoLat, ultimoLng, ultimoR
 // ── Init da secção ──────────────────────
 async function initEquipamentos(){
   renderEquipamentos();
-  setTimeout(()=>{ initEqMap(); }, 120);
+  setTimeout(()=>{ if(_eqView==='loc') initEqMap(); }, 120);
   await sbLoadEquipamentos();
   renderEquipamentos(); refreshEqMap();
   if(_eqView==='obra')  renderEqPorObra();

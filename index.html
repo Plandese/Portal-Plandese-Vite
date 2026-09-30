@@ -1818,6 +1818,29 @@
           </div>
         </div>
 
+        <!-- ═══ VISTA: LOCALIZAÇÃO ═══ -->
+        <div id="eq-view-loc" style="display:none">
+          <!-- Mapa -->
+          <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:14px;font-weight:600;color:var(--gray-900)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;color:var(--blue-500)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Localização atual dos equipamentos
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="refreshEqMap()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Atualizar
+              </button>
+            </div>
+            <div id="eq-map"></div>
+            <div id="eq-map-empty" style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px;display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;color:var(--gray-300);display:block;margin:0 auto 8px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Nenhum equipamento com localização GPS registada ainda.
+            </div>
+          </div>
+
+        </div>
+
         <!-- ═══ VISTA: POR OBRA ═══ -->
         <div id="cmp-view-obra" style="display:none">
           <div id="cmp-obras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;margin-bottom:16px"></div>
@@ -2002,38 +2025,23 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             Lista
           </button>
-          <button class="fp-tab" id="eq-tab-btn-obra" onclick="switchEqView('obra')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Por Obra
-          </button>
           <button class="fp-tab" id="eq-tab-btn-manut" onclick="switchEqView('manut')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             Manutenção
             <span class="nb" id="eq-tab-manut-nb" hidden></span>
           </button>
+          <button class="fp-tab" id="eq-tab-btn-obra" onclick="switchEqView('obra')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Por Obra
+          </button>
+          <button class="fp-tab" id="eq-tab-btn-loc" onclick="switchEqView('loc')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Localização
+          </button>
         </div>
 
         <!-- ═══ VISTA: LISTA ═══ -->
         <div id="eq-view-lista">
-          <!-- Mapa -->
-          <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
-              <div style="font-size:14px;font-weight:600;color:var(--gray-900)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;color:var(--blue-500)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                Localização atual dos equipamentos
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="refreshEqMap()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                Atualizar
-              </button>
-            </div>
-            <div id="eq-map"></div>
-            <div id="eq-map-empty" style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px;display:none">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;color:var(--gray-300);display:block;margin:0 auto 8px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Nenhum equipamento com localização GPS registada ainda.
-            </div>
-          </div>
-
           <!-- Pesquisa -->
           <div class="card" style="padding:16px 18px">
             <div style="display:flex;align-items:flex-end;gap:10px">
