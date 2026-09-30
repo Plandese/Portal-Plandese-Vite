@@ -650,7 +650,7 @@ function renderEqManut(){
         ${meta?`<div style="font-size:11px;color:var(--gray-400);margin-top:2px">${meta}</div>`:''}
         ${eqManutFotosHtml(m)}
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="removeEqManut(${m.id})" title="Apagar" style="color:var(--red)">×</button>
+      <button class="btn btn-secondary btn-sm" onclick="removeEqManut(${m.id},event)" title="Apagar" style="color:var(--red)">×</button>
     </div>`;
   }).join('');
   eqManutCarregarFotos(list);
@@ -691,10 +691,20 @@ async function toggleEqManut(id){
   if(error){ showToast('Erro ao atualizar a manutenção'); renderEqManut(); return; }
   m.estado=novo; renderEqManut(); _eqManutRefreshViews();
 }
-async function removeEqManut(id){
-  if(!confirm('Apagar este registo de manutenção?')) return;
-  const {error}=await sb.from('eq_manutencoes').delete().eq('id',id);
-  if(error){ showToast('Erro ao apagar a manutenção'); return; }
+// Dois cliques em vez de confirm(): os diálogos nativos são bloqueados em alguns
+// ecrãs/webviews e o botão parecia "não fazer nada".
+async function removeEqManut(id,evt){
+  const btn=evt?.currentTarget;
+  if(btn && btn.dataset.armado!=='1'){
+    btn.dataset.armado='1'; btn.textContent='Apagar?'; btn.style.width='auto';
+    setTimeout(()=>{ if(btn.isConnected){ btn.dataset.armado=''; btn.textContent='×'; btn.style.width=''; } },4000);
+    return;
+  }
+  const {data,error}=await sb.from('eq_manutencoes').delete().eq('id',id).select('fotos');
+  if(error){ console.warn('removeEqManut:',error); showToast('Erro ao apagar a manutenção'); return; }
+  if(!data?.length){ showToast('Sem permissão para apagar esta manutenção'); return; }
+  const fotos=data[0].fotos||[];
+  if(fotos.length) sb.storage.from('eq-manut-fotos').remove(fotos).catch(()=>{});
   EQ_MANUT=EQ_MANUT.filter(x=>x.id!==id); renderEqManut(); _eqManutRefreshViews();
 }
 
