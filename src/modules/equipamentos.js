@@ -644,7 +644,7 @@ function exportEquipamentosXLSX(){
   const dados=EQUIPAMENTOS.map(eq=>({
     'ID':eq.id,'Código':eq.codigo||'','Nome':eq.nome,
     'Categoria':EQ_CATS[eq.categoria]?.label||eq.categoria,
-    'Propriedade':eq.propriedade==='aluguer'?'Aluguer':'Própria',
+    'Propriedade':eq.propriedade==='aluguer'?'Aluguer':'Plandese',
     'Estado':(EQ_ESTADOS[eq.estado]||EQ_ESTADOS.operacional).label,
     'Matrícula':eq.matricula||'','Marca/modelo':eq.marcaModelo||'','Nº Série':eq.serie||'',
     'Ano':eq.ano||'','Combustível':eq.combustivel||'','Condutor/responsável':eq.condutor||'','Kms/horas':eq.kmsHoras||'',
