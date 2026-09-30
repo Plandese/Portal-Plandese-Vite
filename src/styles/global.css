@@ -2378,3 +2378,34 @@ button.chat-pessoa.sel{background:var(--blue-50)}
 .chat-nl{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:99px;display:flex;align-items:center;justify-content:center}
 #cw-conv{margin-top:3px;background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;font:inherit;font-size:11px;padding:2px 4px;max-width:200px}
 #cw-conv option{color:var(--gray-900)}
+
+/* ═══ Estilo WhatsApp: contactos à esquerda, conversa à direita ═══ */
+.chat-layout{grid-template-columns:320px minmax(0,1fr);gap:0;align-items:stretch;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);overflow:hidden;height:calc(100vh - 190px);min-height:420px}
+.chat-layout .chat-main,.chat-layout .chat-side{border:0;border-radius:0;box-shadow:none;height:100%;min-height:0}
+.chat-layout .chat-side{order:-1;border-right:1px solid var(--gray-200);padding:0;display:flex;flex-direction:column;overflow:hidden;background:var(--white)}
+.chat-side-title{padding:14px 16px 10px;margin:0;border-bottom:1px solid var(--gray-100)}
+#chat-pessoas{flex:1;overflow-y:auto}
+.chat-conv-hdr{display:flex;align-items:center;gap:10px;background:var(--gray-50)}
+.chat-conv-tx{display:flex;flex-direction:column;line-height:1.25}
+.chat-conv-tx small{font-size:11px;color:var(--gray-500);font-weight:400}
+.chat-back{display:none;background:none;border:0;font-size:26px;line-height:1;cursor:pointer;color:var(--gray-700);padding:0 4px}
+.chat-layout .chat-msgs,#chat-fab-panel .chat-msgs{background:#efeae2}
+.chat-bub{background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.chat-row.meu .chat-bub{background:#d9fdd3;color:var(--gray-900)}
+.chat-nome{color:#0a7d6b}
+button.chat-pessoa{display:flex;align-items:center;gap:12px;border-radius:0;padding:10px 14px;border-bottom:1px solid var(--gray-100);opacity:1}
+button.chat-pessoa:not(.on) .chat-av{opacity:.8}
+button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
+.chat-pessoa-l1,.chat-pessoa-l2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chat-pessoa-l2 small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;color:var(--gray-500)}
+.chat-pessoa-h{font-size:11px;color:var(--gray-500);flex:none}
+.chat-pessoa-h.nl{color:#0a7d6b;font-weight:700}
+.chat-nl{flex:none;margin-left:0;background:#25d366}
+@media(max-width:800px){
+  .chat-layout{grid-template-columns:1fr;height:calc(100vh - 250px)}
+  .chat-layout .chat-side{order:0;border-right:0}
+  .chat-layout .chat-main{display:none}
+  .chat-layout.em-conv .chat-side{display:none}
+  .chat-layout.em-conv .chat-main{display:flex}
+  .chat-back{display:block}
+}

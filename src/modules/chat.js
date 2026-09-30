@@ -124,7 +124,12 @@ function badge(){
 
 export function chatSetConv(k){
   _conv = k || null;
+  $('chat-layout')?.classList.add('em-conv');
   renderChat(true);
+}
+
+export function chatVoltar(){
+  $('chat-layout')?.classList.remove('em-conv');
 }
 
 // ── Página ─────────────────────────────────────────────────────────
@@ -140,6 +145,10 @@ export function renderChat(foco){
 function renderConvTitulo(){
   const t = $('chat-conv-title');
   if(t) t.textContent = _conv ? nomeDe(_conv) : 'Geral — toda a equipa';
+  const sb2 = $('chat-conv-sub');
+  if(sb2) sb2.textContent = _conv ? (_online.has(_conv) ? 'online' : 'offline') : membros().length + ' participantes';
+  const av = $('chat-conv-av');
+  if(av) av.textContent = _conv ? iniciaisDe(_conv) : '#';
   const sel = $('cw-conv');
   if(sel){
     const por = naoLidas();
@@ -154,23 +163,40 @@ function renderOnlineBar(){
   ['chat-online-sub','cw-online'].forEach(id => { const el = $(id); if(el) el.textContent = txt; });
 }
 
+function ultimaDe(k){
+  for(let i = _msgs.length - 1; i >= 0; i--) if(convDe(_msgs[i]) === k) return _msgs[i];
+  return null;
+}
+function fmtLista(iso){
+  const d = new Date(iso), h = new Date();
+  if(d.toDateString() === h.toDateString()) return fmtHora(iso);
+  const ontem = new Date(); ontem.setDate(h.getDate() - 1);
+  if(d.toDateString() === ontem.toDateString()) return 'Ontem';
+  return d.toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit' });
+}
+
 function renderPessoas(){
   renderConvTitulo();
   const el = $('chat-pessoas'); if(!el) return;
   const por = naoLidas();
-  const lista = membros().filter(m => m.key !== me()).sort((a, b) =>
-    (_online.has(b.key) - _online.has(a.key)) || a.nome.localeCompare(b.nome));
-  const bdg = k => por[k] ? `<span class="chat-nl">${por[k]}</span>` : '';
-  const geral = `<button type="button" class="chat-pessoa chat-pessoa-geral on${_conv === null ? ' sel' : ''}" onclick="chatSetConv('')">
-      <div class="chat-av">#</div>
-      <div class="chat-pessoa-tx"><b>Geral</b><small>Toda a equipa</small></div>${bdg('')}</button>`;
-  el.innerHTML = geral + lista.map(m => {
-    const on = _online.has(m.key);
-    return `<button type="button" class="chat-pessoa${on ? ' on' : ''}${_conv === m.key ? ' sel' : ''}" onclick="chatSetConv('${esc(m.key)}')">
-      <div class="chat-av">${esc(m.initials)}<i class="chat-dot"></i></div>
-      <div class="chat-pessoa-tx"><b>${esc(m.nome)}</b>
-      <small>${on ? 'Online' : 'Offline'} · ${esc(ROLE_LBL[m.role] || m.role)}</small></div>${bdg(m.key)}
-    </button>`;
+  const itens = [{ k:'', nome:'Geral', ini:'#', geral:true }].concat(
+    membros().filter(m => m.key !== me()).map(m => ({ k:m.key, nome:m.nome, ini:m.initials, role:m.role })));
+  itens.forEach(i => { i.ult = ultimaDe(i.k); });
+  const geral = itens.shift();
+  itens.sort((a, b) =>
+    ((b.ult?.criado_em || '') > (a.ult?.criado_em || '') ? 1 : (b.ult?.criado_em || '') < (a.ult?.criado_em || '') ? -1 : 0)
+    || (_online.has(b.k) - _online.has(a.k)) || a.nome.localeCompare(b.nome));
+  el.innerHTML = [geral, ...itens].map(i => {
+    const on = i.geral || _online.has(i.k);
+    const prev = i.ult
+      ? `${i.ult.autor === me() ? 'Eu: ' : (i.geral ? esc(nomeDe(i.ult.autor).split(' ')[0]) + ': ' : '')}${esc(i.ult.texto)}`
+      : (i.geral ? 'Toda a equipa' : esc(ROLE_LBL[i.role] || i.role));
+    return `<button type="button" class="chat-pessoa${on ? ' on' : ''}${i.geral ? ' chat-pessoa-geral' : ''}${(i.k || null) === _conv ? ' sel' : ''}" onclick="chatSetConv('${esc(i.k)}')">
+      <div class="chat-av">${esc(i.ini)}<i class="chat-dot"></i></div>
+      <div class="chat-pessoa-tx">
+        <div class="chat-pessoa-l1"><b>${esc(i.nome)}</b>${i.ult ? `<span class="chat-pessoa-h${por[i.k] ? ' nl' : ''}">${fmtLista(i.ult.criado_em)}</span>` : ''}</div>
+        <div class="chat-pessoa-l2"><small>${prev}</small>${por[i.k] ? `<span class="chat-nl">${por[i.k]}</span>` : ''}</div>
+      </div></button>`;
   }).join('');
 }
 
