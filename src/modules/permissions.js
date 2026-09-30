@@ -176,6 +176,7 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','chat'];
 // Falha "fechada": secção desconhecida ou perfil sem configuração → sem acesso (excepto admin).
 export function roleCanAccessSection(role, sec){
   if(role === 'admin') return true;
+  if(sec === 'chat') return !!role && role !== 'encarregado';
   if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
   if(!chId) return false;

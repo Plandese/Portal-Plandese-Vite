@@ -3,6 +3,9 @@
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
+import { sbInsertNotificacoes, sbMarkNotifRead } from '../db.js';
+import { renderNotifPanel } from './notifications.js';
+import { roleCanAccessSection } from './permissions.js';
 
 const ROLE_LBL = { admin:'Administrador', diretor_obra:'Diretor de Obra', compras:'Compras', financeiro:'Financeiro' };
 const PAGE = 300;
@@ -99,6 +102,7 @@ function marcarLido(){
   }
   badge();
   renderPessoas();
+  limparNotifs();
 }
 function naoLidas(){
   const l = lidoMap(), por = {};
@@ -244,6 +248,7 @@ export async function chatEnviar(id){
   const { data, error } = await sb.from('chat_mensagens').insert({ texto, para: _conv }).select().single();
   if(error){ inp.value = texto; window.showToast?.('Erro ao enviar mensagem'); return; }
   if(!_msgs.some(m => m.id === data.id)){ _msgs.push(data); renderMsgs(true); marcarLido(); }
+  notificarChat(data);
 }
 
 export async function chatApagar(id){
@@ -356,4 +361,51 @@ function criarFab(){
   });
   fab.addEventListener('pointercancel', () => { drag = null; fab.classList.remove('drag'); });
   window.addEventListener('resize', () => { if($('chat-fab')) aplicarPos(fab, { x: fab.offsetLeft, y: fab.offsetTop }); });
+}
+
+// ── Notificações ───────────────────────────────────────────────────
+// Privadas: avisam sempre o destinatário. Canal geral: só quem subscreveu "Chat"
+// (Notificações → preferências) e os administradores.
+const GERAL_TAG = '💬 Geral · ';
+const cortar = t => { const x = String(t).replace(/\s+/g, ' ').trim(); return x.length > 90 ? x.slice(0, 87) + '…' : x; };
+
+async function notificarChat(m){
+  try {
+    let dest = new Set();
+    if(m.para){
+      dest.add(m.para);
+    } else {
+      const { data: subs } = await sb.from('notif_subscriptions').select('destinatario').eq('seccao', 'chat');
+      (subs || []).forEach(x => dest.add(x.destinatario));
+      Object.entries(S.USERS || {}).forEach(([k, u]) => { if(u.role === 'admin') dest.add(k); });
+    }
+    dest.delete(me());
+    [...dest].forEach(k => { if(!roleCanAccessSection(S.USERS?.[k]?.role, 'chat')) dest.delete(k); });
+    if(!dest.size) return;
+    const acao = (m.para ? '💬 ' : GERAL_TAG) + cortar(m.texto);
+    const actor = me(), actor_nome = S.currentUser?.nome || actor;
+    await sbInsertNotificacoes([...dest].map(destinatario => ({ actor, actor_nome, acao, seccao: 'chat', destinatario })));
+    sb.functions.invoke('send-push', { body: { recipients: [...dest], acao, seccao: 'chat', actor_nome } })
+      .catch(e => console.warn('send-push falhou:', e));
+  } catch(e){ console.warn('notificarChat:', e); }
+}
+
+// Ao ler uma conversa, as notificações dela ficam lidas
+function limparNotifs(){
+  if(!aChatAberto()) return;
+  let mudou = false;
+  (S.NOTIFICACOES || []).forEach(n => {
+    if(n.seccao !== 'chat' || n.lida) return;
+    const geral = String(n.acao).startsWith(GERAL_TAG);
+    if(geral ? _conv === null : n.actor === _conv){ n.lida = true; sbMarkNotifRead(n.id); mudou = true; }
+  });
+  if(mudou) renderNotifPanel();
+}
+
+// Clique numa notificação de chat → abre a conversa certa
+export function chatAbrirNotif(n){
+  _conv = String(n.acao).startsWith(GERAL_TAG) ? null : (n.actor || null);
+  $('chat-layout')?.classList.add('em-conv');
+  chatTogglePainel(false);
+  window.goTo('chat');
 }

@@ -148,6 +148,7 @@ export async function ntfApagar(id){
 export function ntfAbrir(id){
   const n = _find(id); if(!n) return;
   if(!n.lida){ n.lida = true; sbSetNotifLida(n.id, true); _syncSino(); }
+  if(n.seccao==='chat' && window.chatAbrirNotif){ window.chatAbrirNotif(n); return; }
   goToSection(n.seccao);
 }
 
