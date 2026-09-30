@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  LEMBRETES — Quadro estilo Trello
+//  LEMBRETES — Quadro de cartões
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';

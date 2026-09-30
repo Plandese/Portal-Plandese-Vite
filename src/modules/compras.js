@@ -193,7 +193,6 @@ function _cmpObraNome(c) {
 // Notas sem a marca de importação nem markdown, cortadas para pré-visualização
 function _cmpNotasResumo(c, max = 140) {
   const t = (c.notas || '')
-    .replace(/\[Importado do Trello:[^\]]*\]/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[~*>\\]/g, '')

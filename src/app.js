@@ -89,7 +89,7 @@ import {
 // Pendentes Tavira (obras 49 e 53)
 import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, ptEnviarEmail } from './modules/pendentes-tavira.js';
 
-// Lembretes (quadro Trello)
+// Lembretes (quadro de cartões)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──

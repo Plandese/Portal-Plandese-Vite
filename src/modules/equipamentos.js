@@ -76,8 +76,7 @@ function eqFromRow(row){
     condutor:row.condutor||'', kmsHoras:row.kms_horas==null?'':row.kms_horas,
     seguroValidade:row.seguro_validade||'', ipoValidade:row.ipo_validade||'',
     fornecedor:row.fornecedor||'', dataAquisicao:row.data_aquisicao||'',
-    valorAquisicao:row.valor_aquisicao==null?'':row.valor_aquisicao, garantiaAte:row.garantia_ate||'',
-    trelloId:row.trello_id||'', trelloUrl:row.trello_url||''
+    valorAquisicao:row.valor_aquisicao==null?'':row.valor_aquisicao, garantiaAte:row.garantia_ate||''
   };
 }
 function eqToRow(eq){
@@ -93,7 +92,6 @@ function eqToRow(eq){
     seguro_validade:eq.seguroValidade||null, ipo_validade:eq.ipoValidade||null,
     fornecedor:eq.fornecedor||null, data_aquisicao:eq.dataAquisicao||null,
     valor_aquisicao:eqNum(eq.valorAquisicao), garantia_ate:eq.garantiaAte||null,
-    trello_id:eq.trelloId||null, trello_url:eq.trelloUrl||null,
     atualizado_em:new Date().toISOString()
   };
 }
@@ -525,8 +523,6 @@ function openEqModal(eq=null){
   eqSet('meq-seguro',d.seguroValidade); eqSet('meq-ipo',d.ipoValidade);
   eqSet('meq-forn',d.fornecedor); eqSet('meq-aquis',d.dataAquisicao);
   eqSet('meq-valor',d.valorAquisicao); eqSet('meq-garantia',d.garantiaAte);
-  const tl=document.getElementById('meq-trello');
-  if(tl){ tl.href=d.trelloUrl||'#'; tl.style.display=d.trelloUrl?'':'none'; }
   const del=document.getElementById('meq-del-btn'); if(del) del.style.display=eq?'':'none';
   openModal('modal-equip');
 }
@@ -657,7 +653,7 @@ function exportEquipamentosXLSX(){
     'Manutenções pendentes':eqPendentes(eq.id).map(m=>m.descricao).join('; '),
     'Descrição':eq.descricao||'','Última localização':eq.ultimoLocal||'',
     'Lat':eq.ultimoLat||'','Lng':eq.ultimoLng||'',
-    'Último registo':eq.ultimoRegisto?eqFmtDt(new Date(eq.ultimoRegisto)):'','Trello':eq.trelloUrl||''
+    'Último registo':eq.ultimoRegisto?eqFmtDt(new Date(eq.ultimoRegisto)):''
   }));
   const ws=XLSX.utils.json_to_sheet(dados); const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Equipamentos');
