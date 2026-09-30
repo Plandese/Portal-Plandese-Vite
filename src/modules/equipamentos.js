@@ -9,7 +9,7 @@ import { showToast, closeModal, openModal } from './navigation.js';
 let EQUIPAMENTOS  = JSON.parse(localStorage.getItem('plandese_eq')||'[]');
 let EQ_MOVIMENTOS = JSON.parse(localStorage.getItem('plandese_eq_mov')||'[]');
 let EQ_MANUT = [];
-let _eqMap = null, _eqMapMarkers = [], _editingEqId = null, _eqManutId = null;
+let _eqMap = null, _eqMapMarkers = [], _eqMapMarkerById = {}, _editingEqId = null, _eqManutId = null;
 let _qrGpsLat = null, _qrGpsLng = null, _qrEquipId = null;
 let _eqView = 'lista', _eqObraGroups = [];
 
@@ -378,8 +378,26 @@ function abrirEqDetalhe(id){
       ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,'Manutenção','Pedidos e registos de manutenção',`openEqManut('${eq.id}')`,pend?`<span class="eq-pend-dot">${pend}</span>`:'')}
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`,'Histórico','Movimentos e localizações anteriores',`showEqHistorico('${eq.id}')`)}
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,'Editar registo','Alterar os dados do equipamento',`editEquipamento('${eq.id}')`)}
+      ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,'Localização','Ver no mapa onde está o equipamento',`eqVerLocalizacao('${eq.id}')`)}
     </div>`;
   openModal('modal-eq-det');
+}
+
+// Fecha a janela de opções, abre o separador Localização e destaca o equipamento no mapa
+function eqVerLocalizacao(id){
+  const eq = EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
+  if(!(eq.ultimoLat&&eq.ultimoLng)){
+    showToast(eq.ultimoLocal ? `Sem coordenadas GPS — última obra: ${eq.ultimoLocal}` : 'Este equipamento ainda não tem localização registada');
+    return;
+  }
+  closeModal('modal-eq-det');
+  switchEqView('loc');
+  setTimeout(()=>{
+    const mk=_eqMapMarkerById[id]; if(!mk||!_eqMap) return;
+    _eqMap.invalidateSize();
+    _eqMap.setView(mk.getLatLng(),15);
+    mk.openPopup();
+  },50);
 }
 
 function renderEqBusca(){
@@ -415,7 +433,7 @@ function eqVerListaCompleta(){
 function initEqMap(){
   const mapEl = document.getElementById('eq-map');
   if(!mapEl) return;
-  if(_eqMap){ _eqMap.remove(); _eqMap=null; _eqMapMarkers=[]; }
+  if(_eqMap){ _eqMap.remove(); _eqMap=null; _eqMapMarkers=[]; _eqMapMarkerById={}; }
   _eqMap = L.map('eq-map').setView([38.716,-9.139], 7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>', maxZoom:19
@@ -424,7 +442,7 @@ function initEqMap(){
 }
 function refreshEqMap(){
   if(!_eqMap) return;
-  _eqMapMarkers.forEach(m=>m.remove()); _eqMapMarkers=[];
+  _eqMapMarkers.forEach(m=>m.remove()); _eqMapMarkers=[]; _eqMapMarkerById={};
   const withLoc = EQUIPAMENTOS.filter(eq=>eq.ultimoLat&&eq.ultimoLng);
   const mapEl   = document.getElementById('eq-map');
   const emptyEl = document.getElementById('eq-map-empty');
@@ -449,7 +467,8 @@ function refreshEqMap(){
       <div class="eq-popup-cat">${cat.label}${eq.serie?' · '+eq.serie:''}</div>
       <div class="eq-popup-loc">📍 ${eq.ultimoLocal||'Localização GPS'}</div>
       <div class="eq-popup-time">🕐 ${ago}</div>`;
-    _eqMapMarkers.push(L.marker([lat,lng],{icon}).addTo(_eqMap).bindPopup(popup));
+    const mk=L.marker([lat,lng],{icon}).addTo(_eqMap).bindPopup(popup);
+    _eqMapMarkers.push(mk); _eqMapMarkerById[eq.id]=mk;
     bounds.push([lat,lng]);
   });
   if(bounds.length===1) _eqMap.setView(bounds[0],14);
@@ -851,7 +870,7 @@ export {
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
-  openEqManut, eqManutFotoAbrir, abrirEqDetalhe, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  openEqManut, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
