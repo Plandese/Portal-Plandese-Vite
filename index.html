@@ -1205,6 +1205,12 @@
         <span class="nav-label">Painel Principal</span>
       </button>
 
+      <button class="nav-btn" onclick="goTo('chat',this)" id="nav-chat" style="margin:0 0 4px 0;border-radius:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="nav-label">Chat da equipa</span>
+        <span class="nb" id="nb-chat" hidden></span>
+      </button>
+
       <button class="nav-lbl" data-grp="rh" onclick="toggleNavGrp('rh')" type="button">
         <svg class="nav-lbl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span class="nav-lbl-txt">Recursos Humanos</span>
@@ -2662,6 +2668,29 @@
         </div>
         <div id="pt-lb" hidden></div>
         <div id="pt-rep" hidden></div>
+      </section>
+
+      <!-- CHAT DA EQUIPA -->
+      <section id="sec-chat" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Chat da equipa</div>
+            <div class="pg-sub" id="chat-online-sub">Conversa interna · sem encarregados</div>
+          </div>
+        </div>
+        <div class="chat-layout">
+          <div class="card chat-main">
+            <div class="chat-msgs" id="chat-msgs"></div>
+            <div class="chat-compose">
+              <textarea id="chat-in" rows="1" placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter nova linha)" onkeydown="chatKey(event)" oninput="chatAutoH(this)"></textarea>
+              <button class="btn btn-primary" type="button" onclick="chatEnviar()">Enviar</button>
+            </div>
+          </div>
+          <div class="card chat-side">
+            <div class="chat-side-title">Equipa</div>
+            <div id="chat-pessoas"></div>
+          </div>
+        </div>
       </section>
 
       <!-- CALENDÁRIO -->

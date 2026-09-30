@@ -92,6 +92,8 @@ import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, 
 // Lembretes (quadro de cartões)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
+import { initChat, chatStop, renderChat, chatEnviar, chatApagar, chatKey, chatAutoH } from './modules/chat.js';
+
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
   carregarDados,
@@ -109,6 +111,7 @@ Object.assign(R, {
   initCompras, initMOAFilters,
   renderEncModsCheckboxes,
   renderAnalise, anlResetObras,
+  initChat, chatStop,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -151,6 +154,7 @@ Object.assign(window, {
   // Navegação admin
   abrirEstadoObra, painelMudarSemana, painelSetObra,
   goTo, toggleNavGrp, refreshPortal,
+  chatEnviar, chatApagar, chatKey, chatAutoH,
 
   // Modais genéricos
   openModal, closeModal,
@@ -409,6 +413,7 @@ window.savePerfil = async function () {
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
     if (id === 'notificacoes')       { initNotifPage(); }
     if (id === 'calendario')         { initCalendario(); }
+    if (id === 'chat')               { renderChat(); }
   };
 })();
 
