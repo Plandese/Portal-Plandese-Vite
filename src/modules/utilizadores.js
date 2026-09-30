@@ -11,7 +11,17 @@ export function renderUsers(){
   const ROLE_BADGE={admin:'b-blue',diretor_obra:'b-blue',compras:'b-orange',financeiro:'b-green',comercial:'b-gray',encarregado:'b-gray'};
   const tbody=document.getElementById('user-tbody');
   tbody.innerHTML='';
-  Object.keys(S.USERS).forEach(key=>{
+  const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const q=norm(document.getElementById('user-q')?.value).trim();
+  const keys=Object.keys(S.USERS)
+    .filter(key=>{
+      if(!q) return true;
+      const u=S.USERS[key];
+      return norm(`${key} ${u.nome} ${ROLE_LABELS[u.role]||u.role}`).includes(q);
+    })
+    .sort((a,b)=>String(S.USERS[a].nome||a).localeCompare(String(S.USERS[b].nome||b),'pt',{sensitivity:'base'}));
+  if(!keys.length) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:24px">Nenhum utilizador encontrado</td></tr>';
+  keys.forEach(key=>{
     const u=S.USERS[key];
     const roleLbl=ROLE_LABELS[u.role]||u.role;
     const badgeCls=ROLE_BADGE[u.role]||'b-gray';

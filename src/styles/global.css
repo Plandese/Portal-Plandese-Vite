@@ -2427,3 +2427,7 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
   #chat-fab-panel.em-conv .cw-conv{display:flex}
   .cw-conv .chat-back{display:block}
 }
+
+.user-search{margin:0 0 12px}
+.user-search input{width:100%;max-width:360px;font-family:var(--font);font-size:13px;padding:9px 12px;border:1px solid var(--gray-300);border-radius:10px;background:var(--white);color:var(--gray-800);outline:none}
+.user-search input:focus{border-color:var(--blue-400)}
