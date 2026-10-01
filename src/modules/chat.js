@@ -214,7 +214,7 @@ function fmtDia(iso){
 }
 
 function renderMsgs(descer){
-  ['chat-msgs','cw-msgs'].forEach(id => renderMsgsEm($(id), descer));
+  ['chat-msgs-pg','cw-msgs'].forEach(id => renderMsgsEm($(id), descer));
 }
 
 function renderMsgsEm(box, descer){
