@@ -20,7 +20,8 @@ const mesLabel = ym => { const [y,m]=ym.split('-'); return MESES[parseInt(m)-1]+
 const mesLong = ym => { const [y,m]=ym.split('-'); return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(m)-1]+' '+y; };
 const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
 
-const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false);
+// O099 (CC Estrutura central) é um centro de custos, não uma empreitada
+const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.test(o.nome||''));
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 
