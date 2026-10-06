@@ -1,0 +1,229 @@
+// ═══════════════════════════════════════
+//  CONTROLO DE OBRAS — lista de empreitadas + balanço por empreitada
+//  Dados no Supabase (co_obra, co_mensal), partilhados por todos.
+// ═══════════════════════════════════════
+import { sb } from '../supabase.js';
+import { S } from '../state.js';
+import { showToast, closeModal } from './navigation.js';
+import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
+
+const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null };
+const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
+const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
+const GRUPO_KEY = { 'Mão de Obra':'mo', 'Equipamento':'eq', 'MateriaPrima':'mat', 'Geral':'geral', 'N/D':'sub' };
+
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const eur0 = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v||0);
+const pct = v => (v*100).toFixed(1).replace('.',',')+'%';
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const mesLabel = ym => { const [y,m]=ym.split('-'); return MESES[parseInt(m)-1]+'/'+y.slice(2); };
+const mesLong = ym => { const [y,m]=ym.split('-'); return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(m)-1]+' '+y; };
+const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+
+const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false);
+const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
+const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
+
+async function coLoad(){
+  const [a, b] = await Promise.all([
+    sb.from('co_obra').select('*'),
+    sb.from('co_mensal').select('*').order('mes').range(0, 4999),
+  ]);
+  if(a.error || b.error){ console.warn('co_load', a.error||b.error); showToast('Erro ao carregar o Controlo de Obras'); return; }
+  CO.extra = Object.fromEntries((a.data||[]).map(r=>[r.obra_id, r]));
+  CO.mensal = b.data||[];
+  CO.loaded = true;
+}
+
+// ── Página ────────────────────────────────────────────────────────────
+async function renderControloObras(){
+  const el = document.getElementById('co-root'); if(!el) return;
+  if(!CO.loaded){ el.innerHTML = '<div class="co-empty">A carregar…</div>'; await coLoad(); }
+  if(CO.sel && CO.sel!=='ALL' && !obrasAtivas().some(o=>o.id===CO.sel)) CO.sel = null;
+  if(CO.sel) coRenderDetail(); else coRenderList();
+}
+
+function coRenderList(){
+  const el = document.getElementById('co-root');
+  const obras = obrasAtivas();
+  if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
+  const total = coBalancoCalc(obras.map(withExtra), CO.mensal);
+  const card = (id, cor, cod, nome, c, meses) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
+      <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span></div>
+      <div class="co-ob-nome">${esc(nome)}</div>
+      <div class="co-ob-saldo">${meses?eur0(c.saldo):'—'}</div>
+      <div class="co-ob-sub">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span> margem · `:''}${meses} ${meses===1?'mês':'meses'}</div>
+      <div class="co-ob-lin"><span>Proveitos <b>${eur0(c.provTot)}</b></span><span>Custos <b>${eur0(c.custosTot)}</b></span></div>
+    </button>`;
+  const cards = obras.map((o,i) => {
+    const c = coBalancoCalc([withExtra(o)], CO.mensal), sp = split(o.nome);
+    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id).length);
+  }).join('');
+  el.innerHTML = `<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+}
+
+function coRenderDetail(){
+  const el = document.getElementById('co-root');
+  const todas = CO.sel==='ALL';
+  const obras = todas ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
+  const o = todas ? null : obras[0], sp = o ? split(o.nome) : null;
+  const ids = new Set(obras.map(x=>x.id));
+  const meses = CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes).sort();
+  const ate = meses.length ? mesLong(meses[meses.length-1]) : '—';
+  el.innerHTML = `
+    <div class="co-banner">
+      <div>
+        <button class="co-back" onclick="coVoltar()">← Empreitadas</button>
+        <p class="co-eyebrow">PLANDESE · ${todas?'Direção de Obra':esc(sp.cod||'Obra')}</p>
+        <h2>${todas?'Balanço geral das empreitadas':esc(sp.nome)}</h2>
+      </div>
+      <div class="co-banner-r">
+        ${o?`<div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button><button onclick="coEditar('${o.id}')">Editar dados</button></div>`:''}
+        <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
+      </div>
+    </div>
+    <div id="co-an-box"></div>
+    ${o?'<div id="co-lanc-box"></div>':''}`;
+  coRenderAnalise();
+  if(o) coRenderLancamentos();
+  window.scrollTo({top:0});
+}
+
+function coRenderAnalise(){
+  const box = document.getElementById('co-an-box'); if(!box) return;
+  const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
+  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal);
+}
+
+function coRenderLancamentos(){
+  const box = document.getElementById('co-lanc-box'); if(!box) return;
+  const id = CO.sel;
+  const rows = CO.mensal.filter(r=>r.obra_id===id).sort((a,b)=>a.mes.localeCompare(b.mes));
+  const cab = CAMPOS.map(([,l])=>`<th>${l}</th>`).join('');
+  const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
+  box.innerHTML = `<div class="co-an-sec">Lançamentos mensais</div>
+    <div class="co-panel"><div class="co-panel-bd">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.</div>
+      <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="month" id="co-novo-mes" class="co-in" style="width:160px;text-align:left"><button class="btn btn-secondary btn-sm" onclick="coAdicionarMes('${id}')">+ Adicionar mês</button></div>
+    </div></div>`;
+}
+
+// ── Navegação ─────────────────────────────────────────────────────────
+function coAbrir(id){ CO.sel = id; coRenderDetail(); }
+function coVoltar(){ CO.sel = null; coRenderList(); window.scrollTo({top:0}); }
+
+// ── Lançamentos ───────────────────────────────────────────────────────
+async function coUpsert(rows){
+  const { error } = await sb.from('co_mensal').upsert(rows, { onConflict:'obra_id,mes' });
+  if(error){ console.warn('co_upsert', error); showToast('Sem permissão ou erro ao guardar'); return false; }
+  return true;
+}
+function coAplicarLocal(obra_id, mes, campos){
+  let r = CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes);
+  if(!r){ r = { obra_id, mes, proveitos:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }; CO.mensal.push(r); }
+  Object.assign(r, campos);
+}
+async function coGuardarCelula(obra_id, mes, campo, inp){
+  const v = num(inp.value);
+  if(!await coUpsert([{ obra_id, mes, [campo]:v, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
+  coAplicarLocal(obra_id, mes, { [campo]:v });
+  inp.value = v ? String(v).replace('.',',') : '';
+  coRenderAnalise();
+}
+async function coAdicionarMes(obra_id){
+  const mes = document.getElementById('co-novo-mes').value;
+  if(!mes){ showToast('Escolha o mês'); return; }
+  if(CO.mensal.some(r=>r.obra_id===obra_id && r.mes===mes)){ showToast('Esse mês já existe'); return; }
+  if(!await coUpsert([{ obra_id, mes }])) return;
+  coAplicarLocal(obra_id, mes, {});
+  coRenderLancamentos(); coRenderAnalise();
+}
+async function coApagarMes(obra_id, mes){
+  if(!confirm('Apagar todos os valores de '+mesLong(mes)+'?')) return;
+  const { error } = await sb.from('co_mensal').delete().eq('obra_id',obra_id).eq('mes',mes);
+  if(error){ showToast('Sem permissão ou erro ao apagar'); return; }
+  CO.mensal = CO.mensal.filter(r=>!(r.obra_id===obra_id && r.mes===mes));
+  coRenderLancamentos(); coRenderAnalise();
+}
+
+// ── Dados da obra (sede, ajustes, nota) ───────────────────────────────
+function coEditar(obra_id){
+  const o = S.OBRAS.find(x=>x.id===obra_id), e = CO.extra[obra_id]||{};
+  document.getElementById('coo-id').value = obra_id;
+  document.getElementById('coo-nome').textContent = o ? o.nome : obra_id;
+  document.getElementById('coo-sede').value = e.sede_pct || '';
+  document.getElementById('coo-transf').value = e.transferido || '';
+  document.getElementById('coo-exist').value = e.existencias || '';
+  document.getElementById('coo-nota').value = e.nota || '';
+  document.getElementById('modal-co-obra').classList.add('open');
+}
+async function coGuardarObra(){
+  const obra_id = document.getElementById('coo-id').value;
+  const row = { obra_id, sede_pct:num(document.getElementById('coo-sede').value), transferido:num(document.getElementById('coo-transf').value),
+    existencias:num(document.getElementById('coo-exist').value), nota:document.getElementById('coo-nota').value.trim(), atualizado:new Date().toISOString() };
+  const { error } = await sb.from('co_obra').upsert(row, { onConflict:'obra_id' });
+  if(error){ console.warn('co_obra', error); showToast('Sem permissão ou erro ao guardar'); return; }
+  CO.extra[obra_id] = row;
+  closeModal('modal-co-obra');
+  if(CO.sel) coRenderDetail();
+  showToast('Dados da obra guardados');
+}
+
+// ── Importar Excel de custos ──────────────────────────────────────────
+function coImportar(obra_id){ CO.importObra = obra_id; document.getElementById('co-file-input').click(); }
+function coFicheiro(ev){
+  const file = ev.target.files && ev.target.files[0]; ev.target.value = '';
+  if(!file || !CO.importObra) return;
+  const obra_id = CO.importObra;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try{
+      const wb = XLSX.read(e.target.result, { type:'binary', cellDates:true });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
+      const norm = h => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+      let hi = -1;
+      for(let i=0;i<Math.min(rows.length,5);i++){ const r=rows[i].map(norm); if(r.includes('data')||r.includes('grupoartigo')){ hi=i; break; } }
+      if(hi<0){ showToast('Cabeçalho não encontrado no ficheiro'); return; }
+      const h = rows[hi].map(norm);
+      const col = (nome, pref, dflt) => { let c=h.indexOf(nome); if(c<0) c=h.findIndex(x=>x.startsWith(pref)); return c<0?dflt:c; };
+      const cData=col('data','data',0), cGrupo=col('grupoartigo','grupo',1), cCusto=col('custos','custo',5);
+      const cMes=h.indexOf('mes')<0?8:h.indexOf('mes'), cAno=h.indexOf('ano')<0?9:h.indexOf('ano');
+
+      const agg = {}; let n = 0;
+      for(let i=hi+1;i<rows.length;i++){
+        const r = rows[i]; if(!r || r.every(c=>c===''||c==null)) continue;
+        const v = num(r[cCusto]); if(!v) continue;
+        const grupo = String(r[cGrupo]||'').trim(); if(grupo==='Servico') continue;
+        let d = r[cData], data = '';
+        if(d instanceof Date) data = d.toISOString().slice(0,10);
+        else if(typeof d==='number') data = new Date((d-25569)*86400000).toISOString().slice(0,10);
+        else data = String(d).slice(0,10).replace(/\//g,'-');
+        let mes = data.slice(0,7);
+        const mv=r[cMes], av=r[cAno];
+        if(mv!=='' && av!=='' && String(av).trim().length===4) mes = String(av).trim()+'-'+String(mv).trim().padStart(2,'0');
+        if(!/^\d{4}-\d{2}$/.test(mes)) continue;
+        const k = GRUPO_KEY[grupo] || 'outros';
+        (agg[mes] ||= { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 })[k] += Math.abs(v); n++;
+      }
+      const ms = Object.keys(agg).sort();
+      if(!ms.length){ showToast('Nenhuma linha reconhecida'); return; }
+      if(!confirm(`Importar ${n} linhas de ${mesLabel(ms[0])} a ${mesLabel(ms[ms.length-1])} (${ms.length} meses)?\n\nOs custos destes meses são substituídos; os proveitos mantêm-se.`)) return;
+      const now = new Date().toISOString();
+      const payload = ms.map(mes => {
+        const a = agg[mes]; Object.keys(a).forEach(k=>a[k]=Math.round(a[k]*100)/100);
+        return { obra_id, mes, ...a, atualizado:now };
+      });
+      if(!await coUpsert(payload)) return;
+      payload.forEach(p => coAplicarLocal(obra_id, p.mes, p));
+      coRenderDetail();
+      showToast(`${ms.length} meses de custos importados`);
+    }catch(err){ console.error('coFicheiro', err); showToast('Erro ao processar o ficheiro: '+err.message); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+export {
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro,
+  coGuardarCelula, coAdicionarMes, coApagarMes,
+};

@@ -114,7 +114,7 @@ export async function refreshPortal(){
         'compras':         ()=>R.renderCompras?.(),
         'equipamentos':    ()=>R.renderEquipamentos?.(),
         'combustivel':     ()=>R.loadCombustivelAdmin?.(),
-        'producao':        ()=>R.renderProdDashboard?.(),
+        'producao':        ()=>R.renderControloObras?.(),
         'permissoes':      ()=>R.renderPermMatrix?.(),
         'fecho-mes':       ()=>R.renderFechoMes?.(),
         'pendentes-tavira':()=>window.goTo('pendentes-tavira'),

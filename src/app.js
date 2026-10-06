@@ -56,7 +56,7 @@ import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
-import { initProducao, renderProdDashboard, coGoList, coOpenDetail, coBalancoSel, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
+import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel
 import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
@@ -105,7 +105,7 @@ Object.assign(R, {
   ensurePushSubscription, initPushPrompt, applyPendingSection,
   renderPainel, renderFaturas, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
-  loadCombustivelAdmin, renderProdDashboard,
+  loadCombustivelAdmin, renderControloObras,
   renderFechoMes, applyFilter, renderEmpresasMOA,
   loadEmpresasMOA, loadColaboradoresMOA,
   initCompras, initMOAFilters,
@@ -170,7 +170,7 @@ Object.assign(window, {
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA,
 
   // Obras
-  renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, saveObraExtra,
+  renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas,
   moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra,
 
   // Colaboradores
@@ -263,14 +263,9 @@ Object.assign(window, {
   puEditCell, puToggleNota, puSaveNota,
   puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
 
-  // Produção / Controlo de Obras
-  coGoList, coOpenDetail, coBalancoSel,
-  editAutoFromDetail, deleteAutoFromDetail,
-  editPrevFatFromDetail, deletePrevFatFromDetail,
-  obraImportCustos, obraCustosHandleDrop, clearCustoObra,
-  editPrevFat, deletePrevFat, savePrevFat,
-  editAuto, deleteAuto, saveAuto,
-  custoHandleDrop,
+  // Controlo de Obras
+  coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro,
+  coGuardarCelula, coAdicionarMes, coApagarMes,
   exportSemanaExcel,
 
   // Notificações
@@ -405,7 +400,7 @@ window.savePerfil = async function () {
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }
-    if (id === 'producao')          { renderProdDashboard(); }
+    if (id === 'producao')          { renderControloObras(); }
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }

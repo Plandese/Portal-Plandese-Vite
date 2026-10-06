@@ -2178,189 +2178,53 @@
       <!-- ══════════════ PRODUÇÃO ══════════════ -->
       <section id="sec-producao" class="section">
         <style>
-        /* ───── Controlo de Obras (redesign) ───── */
-        #sec-producao{font-feature-settings:"ss01","cv11"}
-        .co-mono{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
-        .co-portfolio{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--gray-200);border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;margin-bottom:18px;box-shadow:var(--shadow)}
-        .co-pf-cell{background:var(--white);padding:14px 16px;display:flex;flex-direction:column;gap:5px}
-        .co-pf-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--gray-400)}
-        .co-pf-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;color:var(--gray-900);letter-spacing:-0.3px;font-variant-numeric:tabular-nums}
-        .co-pf-sub{font-size:11.5px;color:var(--gray-500);display:flex;align-items:center;gap:5px}
-        .co-pf-trend{font-size:11px;font-weight:600;padding:2px 6px;border-radius:5px;background:var(--green-bg);color:var(--green)}
-        .co-pf-cell.health{flex-direction:row;align-items:center;gap:14px}
-        .co-pf-health{flex:1;display:flex;flex-direction:column;gap:6px}
-        .co-pf-pills{display:flex;gap:4px}
-        .co-pf-pill{flex:1;height:6px;border-radius:3px;background:var(--gray-200)}
-        .co-pf-pill.ok{background:oklch(0.68 0.13 155)}.co-pf-pill.warn{background:oklch(0.78 0.13 80)}.co-pf-pill.bad{background:oklch(0.62 0.18 25)}
-        .co-pf-counts{display:flex;gap:10px;font-size:11px;color:var(--gray-500)}
-        .co-pf-counts b{color:var(--gray-900);font-weight:600}
+        #co-root{max-width:1180px}
+        .co-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+        .co-ob{background:var(--white);border:1px solid var(--gray-200);border-top:3px solid var(--dot);border-radius:12px;padding:16px;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow);transition:transform .12s,box-shadow .18s}
+        .co-ob:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+        .co-ob.total{background:#17303f;color:#eef4f7;border-color:#17303f}
+        .co-ob-top{display:flex;align-items:center;gap:8px}
+        .co-ob-dot{width:9px;height:9px;border-radius:50%;background:var(--dot)}
+        .co-ob-cod{font-size:11.5px;font-weight:700;letter-spacing:.07em;color:var(--gray-400)}
+        .co-ob.total .co-ob-cod{color:rgba(238,244,247,.65)}
+        .co-ob-nome{font-size:14px;font-weight:600;line-height:1.3;min-height:36px}
+        .co-ob-saldo{font-family:'DM Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-.3px}
+        .co-ob-sub{font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px}
+        .co-ob.total .co-ob-sub,.co-ob.total .co-ob-lin{color:rgba(238,244,247,.75)}
+        .co-ob-lin{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--gray-400);border-top:1px solid var(--gray-100);padding-top:8px;margin-top:4px}
+        .co-ob.total .co-ob-lin{border-color:rgba(255,255,255,.15)}
+        .co-ob-lin b{font-family:'DM Mono',monospace;font-weight:500;color:var(--gray-700)}
+        .co-ob.total .co-ob-lin b{color:#eef4f7}
+        .co-pill{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:20px}
+        .co-pill.good{background:var(--green-bg);color:var(--green)}.co-pill.bad{background:var(--red-bg);color:var(--red)}
+        .co-ob.total .co-pill.good{background:rgba(120,220,170,.2);color:#bdf2bd}.co-ob.total .co-pill.bad{background:rgba(255,140,140,.25);color:#ffd2cd}
 
-        .co-tools{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-        .co-search{position:relative;flex:1;min-width:220px;max-width:340px}
-        .co-search input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--gray-200);border-radius:9px;background:var(--white);font:inherit;font-size:13px;color:var(--gray-900);outline:none}
-        .co-search input:focus{border-color:var(--blue-500);box-shadow:0 0 0 3px rgba(42,102,192,.12)}
-        .co-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--gray-400)}
-        .co-chips{display:flex;gap:6px;flex-wrap:wrap}
-        .co-chip{padding:6px 11px;border-radius:7px;border:1px solid var(--gray-200);background:var(--white);font-size:12px;color:var(--gray-500);cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-weight:500;font-family:inherit}
-        .co-chip.active{background:var(--gray-900);color:#fff;border-color:var(--gray-900)}
-        .co-chip .dot{width:6px;height:6px;border-radius:50%}
-        .co-chip .dot.ok{background:oklch(0.68 0.13 155)}.co-chip .dot.warn{background:oklch(0.78 0.13 80)}.co-chip .dot.bad{background:oklch(0.62 0.18 25)}
-        .co-vt{display:inline-flex;background:var(--white);border:1px solid var(--gray-200);border-radius:9px;padding:3px;gap:2px}
-        .co-vt button{border:none;background:transparent;padding:6px 12px;font-size:12px;font-weight:600;color:var(--gray-500);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
-        .co-vt button.active{background:var(--gray-900);color:#fff}
-        .co-vt svg{width:13px;height:13px}
+        .co-banner{background:#17303f;color:#eef4f7;border-radius:14px;padding:24px 26px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+        .co-banner h2{font-size:25px;font-weight:800;letter-spacing:-.01em;margin:0}
+        .co-eyebrow{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:rgba(238,244,247,.6);margin:10px 0 6px}
+        .co-back{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#eef4f7;border-radius:7px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
+        .co-back:hover{background:rgba(255,255,255,.18)}
+        .co-banner-r{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+        .co-banner-btns{display:flex;gap:8px;flex-wrap:wrap}
+        .co-banner-btns button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#eef4f7;border-radius:7px;padding:7px 12px;font:inherit;font-size:12px;font-weight:500;cursor:pointer}
+        .co-banner-btns button:hover{background:rgba(255,255,255,.2)}
+        .co-meta{font-size:13px;color:rgba(238,244,247,.7);text-align:right;line-height:1.5}
+        .co-meta strong{color:#eef4f7}
 
-        .co-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px}
-        .co-card{background:var(--white);border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:box-shadow .18s,transform .18s,border-color .18s;cursor:pointer}
-        .co-card:hover{box-shadow:var(--shadow-md);border-color:var(--gray-300);transform:translateY(-1px)}
-        .co-card-hd{padding:14px 16px;background:linear-gradient(135deg,#143a6b 0%,#1a4fa0 60%,#2a66c0 100%);color:#fff;position:relative;overflow:hidden}
-        .co-card-hd::after{content:"";position:absolute;inset:0;background:radial-gradient(800px 120px at 100% 0%,rgba(255,255,255,.10),transparent 60%);pointer-events:none}
-        .co-card-hd-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1}
-        .co-card-num{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.6px;color:rgba(255,255,255,.65);font-weight:500}
-        .co-card-status{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-        .co-card-status.ok{background:rgba(120,220,170,.18);color:#c8f5dd}
-        .co-card-status.warn{background:rgba(255,200,120,.20);color:#ffe2b3}
-        .co-card-status.bad{background:rgba(255,140,140,.22);color:#ffd1d1}
-        .co-card-status .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
-        .co-card-name{font-size:16px;font-weight:700;margin-top:6px;line-height:1.25;letter-spacing:-0.2px;position:relative;z-index:1}
-        .co-card-loc{font-size:11.5px;color:rgba(255,255,255,.7);margin-top:3px;display:flex;align-items:center;gap:4px;position:relative;z-index:1}
-        .co-card-loc svg{width:11px;height:11px}
-        .co-kpis{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--gray-100)}
-        .co-kpi{padding:11px 12px;border-right:1px solid var(--gray-100);display:flex;flex-direction:column;gap:2px;min-width:0}
-        .co-kpi:last-child{border-right:none}
-        .co-kpi-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.55px;color:var(--gray-400)}
-        .co-kpi-val{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--gray-900);letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .co-kpi-val.pos{color:oklch(0.62 0.13 155)}.co-kpi-val.neg{color:oklch(0.58 0.18 25)}
-        .co-kpi-sub{font-size:10px;color:var(--gray-400)}
-        .co-prog-wrap{padding:12px 16px;display:flex;flex-direction:column;gap:11px;border-bottom:1px solid var(--gray-100)}
-        .co-prog{display:flex;flex-direction:column;gap:5px}
-        .co-prog-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11px}
-        .co-prog-lbl{font-weight:600;color:var(--gray-700);display:flex;align-items:center;gap:5px}
-        .co-prog-lbl svg{width:11px;height:11px;color:var(--gray-400)}
-        .co-prog-val{font-family:'DM Mono',monospace;font-weight:600;color:var(--gray-900);font-size:11.5px}
-        .co-prog-meta{font-size:10.5px;color:var(--gray-400)}
-        .co-bar{position:relative;height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden}
-        .co-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .4s ease}
-        .co-bar-fill.time{background:linear-gradient(90deg,#2a66c0,#1a4fa0)}
-        .co-bar-fill.exec{background:linear-gradient(90deg,oklch(0.68 0.13 155),oklch(0.74 0.13 155))}
-        .co-bar-fill.exec.warn{background:linear-gradient(90deg,oklch(0.78 0.13 80),oklch(0.84 0.12 75))}
-        .co-bar-fill.exec.bad{background:linear-gradient(90deg,oklch(0.62 0.18 25),oklch(0.72 0.16 25))}
-        .co-bar-marker{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--gray-900);opacity:.55;border-radius:2px}
-        .co-card-ft{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--gray-50);font-size:12px;gap:8px;min-height:44px}
-        .co-next{display:flex;align-items:center;gap:7px;color:var(--gray-500);min-width:0}
-        .co-next svg{width:13px;height:13px;color:var(--gray-400);flex-shrink:0}
-        .co-next strong{color:var(--gray-900);font-weight:600}
-        .co-open{color:var(--blue-700);font-weight:600;display:inline-flex;align-items:center;gap:3px;flex-shrink:0}
-        .co-open svg{width:12px;height:12px;transition:transform .15s}
-        .co-card:hover .co-open svg{transform:translateX(2px)}
-
-        .co-table-wrap{background:var(--white);border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
-        table.co-table{width:100%;border-collapse:collapse;font-size:13px}
-        .co-table th{background:var(--gray-50);color:var(--gray-500);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:11px 14px;border-bottom:1px solid var(--gray-200);white-space:nowrap}
-        .co-table td{padding:13px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
-        .co-table tr:last-child td{border-bottom:none}
-        .co-table tbody tr{cursor:pointer;transition:background .12s}
-        .co-table tbody tr:hover{background:var(--gray-50)}
-        .co-table .name-cell{display:flex;flex-direction:column;gap:2px}
-        .co-table .name-cell b{font-size:13.5px;font-weight:600;color:var(--gray-900)}
-        .co-table .name-cell span{font-size:11px;color:var(--gray-400)}
-        .co-table .num-col{text-align:right;font-family:'DM Mono',monospace;font-variant-numeric:tabular-nums}
-        .co-table .pos{color:oklch(0.62 0.13 155);font-weight:600}
-        .co-table .neg{color:oklch(0.58 0.18 25);font-weight:600}
-        .co-table .mini-bar{position:relative;width:90px;height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px}
-        .co-table .mini-bar-fill{position:absolute;left:0;top:0;bottom:0;background:#2a66c0;border-radius:3px}
-        .co-table .pct{font-size:11px;color:var(--gray-500);font-family:'DM Mono',monospace}
-        .co-table .status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-        .co-table .status-pill.ok{background:oklch(0.96 0.04 155);color:oklch(0.55 0.13 155)}
-        .co-table .status-pill.warn{background:oklch(0.97 0.05 85);color:oklch(0.55 0.13 80)}
-        .co-table .status-pill.bad{background:oklch(0.96 0.04 25);color:oklch(0.55 0.18 25)}
-        .co-table .status-pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
-
-        /* Detail page (overlay full-section) */
-        #co-detail{display:none;animation:coFade .25s ease}
-        #co-detail.show{display:block}
-        @keyframes coFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-        .co-crumb{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-500);margin-bottom:14px}
-        .co-crumb a{color:var(--blue-700);font-weight:500;cursor:pointer}
-        .co-crumb a:hover{text-decoration:underline}
-        .co-crumb svg{width:12px;height:12px;color:var(--gray-300)}
-        .co-hero{background:linear-gradient(135deg,#1A1F36 0%,#5249E0 70%,#635BFF 100%);color:#fff;border-radius:14px;padding:24px 26px;position:relative;overflow:hidden;margin-bottom:20px}
-        .co-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(900px 200px at 100% 0%,rgba(255,255,255,.10),transparent 60%);pointer-events:none}
-        .co-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;position:relative;z-index:1;flex-wrap:wrap}
-        .co-hero-num{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);letter-spacing:.7px}
-        .co-hero-name{font-size:24px;font-weight:700;letter-spacing:-0.4px;margin-top:4px;line-height:1.2}
-        .co-hero-loc{font-size:13px;color:rgba(255,255,255,.75);margin-top:6px;display:flex;align-items:center;gap:6px}
-        .co-hero-loc svg{width:13px;height:13px}
-        .co-hero-status{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-        .co-hero-status.ok{background:rgba(120,220,170,.22);color:#d2f5e2}
-        .co-hero-status.warn{background:rgba(255,200,120,.24);color:#ffe6c0}
-        .co-hero-status.bad{background:rgba(255,140,140,.24);color:#ffd6d6}
-        .co-hero-status .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-        .co-hero-actions{display:flex;gap:8px;margin-top:12px;position:relative;z-index:1;flex-wrap:wrap}
-        .co-hero-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
-        .co-hero-btn:hover{background:rgba(255,255,255,.2)}
-        .co-hero-btn svg{width:12px;height:12px}
-        .co-hero-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:18px;position:relative;z-index:1}
-        .co-hero-kpi{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:11px 14px}
-        .co-hero-kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65)}
-        .co-hero-kpi-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:600;letter-spacing:-0.2px;margin-top:3px}
-        .co-hero-kpi-sub{font-size:10.5px;color:rgba(255,255,255,.6);margin-top:2px}
-        .co-dt-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
-        .co-panel{background:var(--white);border:1px solid var(--gray-200);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-        .co-panel-hd{padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:8px}
-        .co-panel-title{font-size:13.5px;font-weight:700;color:var(--gray-900);letter-spacing:-0.1px;display:flex;align-items:center;gap:7px}
-        .co-panel-title svg{width:14px;height:14px;color:var(--blue-700)}
+        .co-panel{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+        .co-panel-hd{padding:13px 18px;border-bottom:1px solid var(--gray-100)}
+        .co-panel-title{font-size:13.5px;font-weight:700;color:var(--gray-900)}
         .co-panel-bd{padding:16px 18px}
-        .co-autos{display:flex;flex-direction:column;gap:0}
-        .co-auto{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;padding:12px 0;border-bottom:1px dashed var(--gray-100);align-items:center}
-        .co-auto-actions{display:flex;gap:4px;flex-shrink:0}
-        .co-auto-btn{border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit;border:1px solid;line-height:1.4}
-        .co-auto-btn.edit{background:var(--blue-50);border-color:var(--blue-200);color:var(--blue-700)}
-        .co-auto-btn.edit:hover{background:var(--blue-100)}
-        .co-auto-btn.del{background:var(--red-bg);border-color:#fca5a5;color:var(--red)}
-        .co-auto-btn.del:hover{background:#fee2e2}
-        .co-auto:last-child{border-bottom:none}
-        .co-auto-tag{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:3px 7px;border-radius:5px;background:var(--blue-50);color:var(--blue-700);white-space:nowrap}
-        .co-auto-info{min-width:0}
-        .co-auto-info b{font-size:13px;font-weight:600;color:var(--gray-900);display:block}
-        .co-auto-info span{font-size:11.5px;color:var(--gray-500)}
-        .co-auto-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:oklch(0.55 0.13 155);text-align:right}
+        .co-empty{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;background:var(--white);border-radius:14px;border:1px dashed var(--gray-200)}
         .co-pivot{width:100%;border-collapse:collapse;font-size:12px}
         .co-pivot th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);text-align:right;padding:7px 8px;border-bottom:1px solid var(--gray-100);font-family:'DM Mono',monospace}
         .co-pivot th:first-child{text-align:left}
         .co-pivot td{padding:7px 8px;text-align:right;font-family:'DM Mono',monospace;font-size:11.5px;border-bottom:1px solid var(--gray-100);color:var(--gray-700)}
         .co-pivot td:first-child{text-align:left;font-family:var(--font);font-weight:500;color:var(--gray-900)}
         .co-pivot tr.total td{background:var(--gray-50);font-weight:700;color:var(--gray-900);border-top:2px solid var(--gray-200)}
-        .co-pivot td.zero{color:var(--gray-200)}
-        .co-meta{display:flex;flex-direction:column;gap:11px}
-        .co-meta-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding-bottom:9px;border-bottom:1px dashed var(--gray-100)}
-        .co-meta-row:last-child{border-bottom:none;padding-bottom:0}
-        .co-meta-lbl{color:var(--gray-500)}
-        .co-meta-val{color:var(--gray-900);font-weight:600;text-align:right;font-family:'DM Mono',monospace}
-        .co-bal{display:flex;align-items:flex-end;gap:6px;height:140px;padding:0 4px}
-        .co-bal-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--gray-400);font-family:'DM Mono',monospace}
-        .co-bal-bars{flex:1;display:flex;align-items:flex-end;gap:2px;width:100%;justify-content:center}
-        .co-bal-bar{width:9px;border-radius:2px 2px 0 0;min-height:2px}
-        .co-bal-bar.cost{background:oklch(0.62 0.18 25);opacity:.85}
-        .co-bal-bar.rev{background:oklch(0.68 0.13 155);opacity:.85}
-        .co-empty{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;background:var(--white);border-radius:14px;border:1px dashed var(--gray-200)}
-        .co-dropzone{border:2px dashed var(--blue-300);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;font-size:13px;color:var(--blue-700);background:var(--blue-50);margin-top:10px}
-        .co-dropzone:hover{background:var(--blue-100)}
-
-        @media (max-width:1100px){
-          .co-portfolio{grid-template-columns:repeat(3,1fr)}
-          .co-pf-cell.health{grid-column:1/-1}
-          .co-pf-cell:nth-child(5){grid-column:unset}
-          .co-dt-grid{grid-template-columns:1fr}
-          .co-hero-kpis{grid-template-columns:repeat(2,1fr)}
-        }
-        @media (max-width:640px){
-          .co-portfolio{grid-template-columns:repeat(2,1fr)}
-          .co-cards{grid-template-columns:1fr}
-          .co-kpis{grid-template-columns:repeat(2,1fr)}
-          .co-kpi{border-bottom:1px solid var(--gray-100)}
-          .co-kpi:nth-child(2){border-right:none}
-        }
+        .co-in{width:96px;padding:5px 7px;border:1px solid var(--gray-200);border-radius:6px;font-family:'DM Mono',monospace;font-size:11.5px;text-align:right;background:var(--white);color:var(--gray-900)}
+        .co-in:focus{outline:none;border-color:var(--blue-500);box-shadow:0 0 0 3px rgba(42,102,192,.12)}
+        .co-x{border:none;background:none;color:var(--gray-400);cursor:pointer;font-size:13px}.co-x:hover{color:var(--red)}
         .co-an-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
         .co-an-tile{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow)}
         .co-an-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400)}
@@ -2373,143 +2237,17 @@
         .co-an-tip{display:grid;grid-template-columns:230px 1fr 100px 60px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
         .co-an-track{height:14px;background:var(--gray-100);border-radius:4px}
         .co-an-n{font-family:'DM Mono',monospace;font-size:12px;text-align:right}
-        @media(max-width:880px){.co-an-tiles{grid-template-columns:repeat(2,1fr)}.co-an-grid{grid-template-columns:1fr}.co-an-tip{grid-template-columns:1fr 90px 52px}.co-an-track{display:none}}
-        #prod-sub-custos{display:none}
+        @media(max-width:880px){.co-an-tiles{grid-template-columns:repeat(2,1fr)}.co-an-grid{grid-template-columns:1fr}.co-an-tip{grid-template-columns:1fr 90px 52px}.co-an-track{display:none}.co-banner-r,.co-meta{align-items:flex-start;text-align:left}}
         </style>
 
-        <div class="pg-hdr" id="co-list-hdr">
+        <div class="pg-hdr">
           <div>
             <div class="pg-title">Controlo de Obras</div>
-            <div class="pg-sub">Visão executiva por obra — execução temporal, faturação, custos e margem.</div>
+            <div class="pg-sub">Escolha uma empreitada para ver o balanço de custos e proveitos.</div>
           </div>
         </div>
-
-        <div id="prod-dash-empty" style="text-align:center;padding:48px 20px;color:var(--gray-400);font-size:13px;display:none">
-          Sem obras ativas. Adicione obras na secção Administração.
-        </div>
-
-        <div id="co-list-view">
-          <!-- Portfolio summary -->
-          <div class="co-portfolio" id="co-portfolio"></div>
-
-          <!-- Tools row -->
-          <div class="co-tools">
-            <div class="co-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input id="co-q" placeholder="Pesquisar obra ou número…"/>
-            </div>
-            <div class="co-chips" id="co-chips">
-              <button class="co-chip active" data-f="all">Todas <b style="color:var(--gray-400);font-weight:500" data-c="all">(0)</b></button>
-              <button class="co-chip" data-f="ok"><span class="dot ok"></span>OK <b style="color:var(--gray-400);font-weight:500" data-c="ok">(0)</b></button>
-              <button class="co-chip" data-f="warn"><span class="dot warn"></span>Atenção <b style="color:var(--gray-400);font-weight:500" data-c="warn">(0)</b></button>
-              <button class="co-chip" data-f="bad"><span class="dot bad"></span>Alerta <b style="color:var(--gray-400);font-weight:500" data-c="bad">(0)</b></button>
-            </div>
-            <div style="flex:1"></div>
-            <div class="co-vt" id="co-vt">
-              <button class="active" data-view="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Cartões</button>
-              <button data-view="table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Tabela</button>
-              <button data-view="balanco"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>Balanço</button>
-            </div>
-          </div>
-
-          <!-- Cards view -->
-          <div id="co-cards-view" class="co-cards"></div>
-
-          <!-- Balanço view -->
-          <div id="co-balanco-view" style="display:none"></div>
-
-          <!-- Table view -->
-          <div id="co-table-view" class="co-table-wrap" style="display:none">
-            <table class="co-table">
-              <thead><tr>
-                <th>Obra</th><th>Estado</th>
-                <th style="text-align:right">Contratado</th>
-                <th style="text-align:right">Faturado</th>
-                <th>Execução</th>
-                <th style="text-align:right">Margem</th>
-                <th style="text-align:right">Prev. Mês Seg.</th>
-                <th>Prazo</th><th></th>
-              </tr></thead>
-              <tbody id="co-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Detail view -->
-        <div id="co-detail">
-          <div class="co-crumb">
-            <a onclick="coGoList()">← Controlo de Obras</a>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-            <span id="co-dt-crumb">—</span>
-          </div>
-          <div class="co-hero">
-            <div class="co-hero-top">
-              <div>
-                <div class="co-hero-num" id="co-dt-num">OBRA Nº —</div>
-                <div class="co-hero-name" id="co-dt-name">—</div>
-                <div class="co-hero-loc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="co-dt-loc">—</span></div>
-                <div class="co-hero-actions">
-                  <button class="co-hero-btn" id="co-dt-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Editar dados</button>
-                  <button class="co-hero-btn" id="co-dt-newauto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Novo auto</button>
-                  <button class="co-hero-btn" id="co-dt-newprev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h5M8 18h3"/><path d="M16 16v4M14 18h4"/></svg>Nova previsão</button>
-                  <button class="co-hero-btn" id="co-dt-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Importar custos</button>
-                </div>
-              </div>
-              <div class="co-hero-status" id="co-dt-status"><span class="dot"></span><span id="co-dt-status-txt">—</span></div>
-            </div>
-            <div class="co-hero-kpis">
-              <div class="co-hero-kpi"><div class="co-hero-kpi-lbl">Contratado</div><div class="co-hero-kpi-val" id="co-dt-k-contr">—</div><div class="co-hero-kpi-sub" id="co-dt-k-contr-sub">previsão total</div></div>
-              <div class="co-hero-kpi"><div class="co-hero-kpi-lbl">Faturado</div><div class="co-hero-kpi-val" id="co-dt-k-fat">—</div><div class="co-hero-kpi-sub" id="co-dt-k-fat-sub">— autos</div></div>
-              <div class="co-hero-kpi"><div class="co-hero-kpi-lbl">Custos</div><div class="co-hero-kpi-val" id="co-dt-k-cust">—</div><div class="co-hero-kpi-sub">faturas importadas</div></div>
-              <div class="co-hero-kpi"><div class="co-hero-kpi-lbl">Margem</div><div class="co-hero-kpi-val" id="co-dt-k-marg">—</div><div class="co-hero-kpi-sub" id="co-dt-k-marg-sub">% sobre faturado</div></div>
-              <div class="co-hero-kpi"><div class="co-hero-kpi-lbl">Execução</div><div class="co-hero-kpi-val" id="co-dt-k-exec">—</div><div class="co-hero-kpi-sub" id="co-dt-k-exec-sub">faturado vs contratado</div></div>
-            </div>
-          </div>
-          <div class="co-dt-grid">
-            <div style="display:flex;flex-direction:column;gap:18px">
-              <div class="co-panel">
-                <div class="co-panel-hd">
-                  <div class="co-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>Balanço mensal</div>
-                  <div style="font-size:11.5px;color:var(--gray-500);display:flex;gap:14px">
-                    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.62 0.18 25);opacity:.85"></span>Custos</span>
-                    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.68 0.13 155);opacity:.85"></span>Proveitos</span>
-                  </div>
-                </div>
-                <div class="co-panel-bd"><div class="co-bal" id="co-dt-bal"></div></div>
-              </div>
-              <div class="co-panel">
-                <div class="co-panel-hd">
-                  <div class="co-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>Custos por grupo / mês</div>
-                </div>
-                <div class="co-panel-bd" style="overflow:auto"><div id="co-dt-pivot-wrap"></div></div>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:18px">
-              <div class="co-panel">
-                <div class="co-panel-hd">
-                  <div class="co-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Autos de medição</div>
-                  <button id="co-dt-newauto2" style="background:var(--blue-500);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><path d="M12 5v14M5 12h14"/></svg>Novo auto</button>
-                </div>
-                <div class="co-panel-bd"><div class="co-autos" id="co-dt-autos"></div></div>
-              </div>
-              <div class="co-panel">
-                <div class="co-panel-hd">
-                  <div class="co-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Previsões de Faturação</div>
-                  <button id="co-dt-newprev2" style="background:var(--blue-500);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><path d="M12 5v14M5 12h14"/></svg>Nova</button>
-                </div>
-                <div class="co-panel-bd"><div id="co-dt-prevs" style="display:flex;flex-direction:column;gap:0"></div></div>
-              </div>
-              <div class="co-panel">
-                <div class="co-panel-hd"><div class="co-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Detalhes</div></div>
-                <div class="co-panel-bd"><div class="co-meta" id="co-dt-meta"></div></div>
-              </div>
-            </div>
-          </div>
-          <div id="co-dt-analytics" style="margin-top:22px"></div>
-        </div>
-
-        <input type="file" id="custo-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="custoHandleDrop(event)"/>
-
+        <div id="co-root"></div>
+        <input type="file" id="co-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="coFicheiro(event)"/>
       </section>
 
       <!-- ══════════════ PREÇOS UNITÁRIOS ══════════════ -->
@@ -2840,26 +2578,20 @@
 </div>
 
 <!-- MODAL OBRA EXTRA (número, data início, prazo) -->
-<div class="modal-bg" id="modal-oex">
+<div class="modal-bg" id="modal-co-obra">
   <div class="modal">
-    <div class="modal-title">Detalhes da Obra</div>
-    <div class="modal-sub" id="oex-nome" style="font-weight:600;color:var(--gray-700)"></div>
-    <input type="hidden" id="oex-id"/>
-    <div class="field"><label>Número da obra</label><input type="text" id="oex-numero" placeholder="Ex: 57"/></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field"><label>Data de início</label><input type="date" id="oex-inicio"/></div>
-      <div class="field"><label>Prazo de execução</label><input type="text" id="oex-prazo" placeholder="Ex: 12 meses"/></div>
-    </div>
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400);margin:6px 0 8px">Balanço</div>
+    <div class="modal-title">Dados do balanço</div>
+    <div class="modal-sub" id="coo-nome" style="font-weight:600;color:var(--gray-700)"></div>
+    <input type="hidden" id="coo-id"/>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div class="field"><label>Custos sede (%)</label><input type="number" step="0.1" min="0" id="oex-sede" placeholder="Ex: 10"/></div>
-      <div class="field"><label>Mat. transferido (€)</label><input type="number" step="0.01" id="oex-transf" placeholder="0"/></div>
-      <div class="field"><label>Existências finais (€)</label><input type="number" step="0.01" id="oex-exist" placeholder="-20000"/></div>
+      <div class="field"><label>Custos sede (%)</label><input type="text" inputmode="decimal" id="coo-sede" placeholder="Ex: 10"/></div>
+      <div class="field"><label>Mat. transferido (€)</label><input type="text" inputmode="decimal" id="coo-transf" placeholder="0"/></div>
+      <div class="field"><label>Existências finais (€)</label><input type="text" inputmode="decimal" id="coo-exist" placeholder="-20000"/></div>
     </div>
-    <div class="field"><label>Nota da obra</label><textarea id="oex-nota" rows="3" placeholder="Explica números fora do padrão (ex.: acertos de faturação)"></textarea></div>
+    <div class="field"><label>Nota da obra</label><textarea id="coo-nota" rows="3" placeholder="Explica números fora do padrão (ex.: acertos de faturação)"></textarea></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-oex')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveObraExtra()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-co-obra')">Cancelar</button>
+      <button class="btn btn-primary" onclick="coGuardarObra()">Guardar</button>
     </div>
   </div>
 </div>
@@ -3917,77 +3649,6 @@
         <button class="btn btn-primary" onclick="guardarRegistoCombustivel()">Guardar</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- MODAL PREVISÃO DE FATURAÇÃO -->
-<div class="modal-bg" id="modal-prev-fat">
-  <div class="modal" style="width:480px">
-    <div class="modal-title" id="modal-prev-fat-title">Nova previsão de faturação</div>
-    <div class="modal-sub">Defina a previsão de faturação por obra e mês</div>
-    <div class="field">
-      <label>Obra *</label>
-      <select id="mpf-obra"></select>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field">
-        <label>Mês *</label>
-        <input type="month" id="mpf-mes"/>
-      </div>
-      <div class="field">
-        <label>Valor Previsto (€) *</label>
-        <input type="number" id="mpf-valor" placeholder="0.00" step="0.01" min="0"/>
-      </div>
-    </div>
-    <div class="field">
-      <label>Notas</label>
-      <input type="text" id="mpf-notas" placeholder="Observações opcionais…"/>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-prev-fat')">Cancelar</button>
-      <button class="btn btn-primary" onclick="savePrevFat()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL AUTO DE MEDIÇÃO -->
-<div class="modal-bg" id="modal-auto">
-  <div class="modal" style="width:500px">
-    <div class="modal-title" id="modal-auto-title">Novo auto de medição</div>
-    <div class="modal-sub">Registe o auto de medição por obra</div>
-    <div class="field">
-      <label>Tipo de Auto</label>
-      <select id="mam-tipo">
-        <option value="contratual">Contratual</option>
-        <option value="complementar">Trabalhos Complementares</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Obra *</label>
-      <select id="mam-obra"></select>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field">
-        <label>Nº do Auto</label>
-        <input type="text" id="mam-num" placeholder="Ex: A-001"/>
-      </div>
-      <div class="field">
-        <label>Data *</label>
-        <input type="date" id="mam-data"/>
-      </div>
-    </div>
-    <div class="field">
-      <label>Valor (€) *</label>
-      <input type="number" id="mam-valor" placeholder="0.00" step="0.01" min="0"/>
-    </div>
-    <div class="field">
-      <label>Descrição</label>
-      <input type="text" id="mam-desc" placeholder="Breve descrição do auto…"/>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-auto')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveAuto()">Guardar</button>
-</div>
   </div>
 </div>
 
