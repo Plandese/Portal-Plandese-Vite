@@ -2361,6 +2361,19 @@
           .co-kpi{border-bottom:1px solid var(--gray-100)}
           .co-kpi:nth-child(2){border-right:none}
         }
+        .co-an-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+        .co-an-tile{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow)}
+        .co-an-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400)}
+        .co-an-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;color:var(--gray-900);font-variant-numeric:tabular-nums}
+        .co-an-sub{font-size:11.5px;color:var(--gray-500)}
+        .co-an-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+        .co-an-sec{font-size:15px;font-weight:700;color:var(--gray-900);margin:26px 0 12px}
+        .co-an-nota{background:var(--white);border:1px solid var(--gray-200);border-left:3px solid var(--blue-500);border-radius:8px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.55;color:var(--gray-600);display:flex;gap:12px}
+        .co-an-nota b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-900);white-space:nowrap;padding-top:2px}
+        .co-an-tip{display:grid;grid-template-columns:230px 1fr 100px 60px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
+        .co-an-track{height:14px;background:var(--gray-100);border-radius:4px}
+        .co-an-n{font-family:'DM Mono',monospace;font-size:12px;text-align:right}
+        @media(max-width:880px){.co-an-tiles{grid-template-columns:repeat(2,1fr)}.co-an-grid{grid-template-columns:1fr}.co-an-tip{grid-template-columns:1fr 90px 52px}.co-an-track{display:none}}
         #prod-sub-custos{display:none}
         </style>
 
@@ -2395,11 +2408,15 @@
             <div class="co-vt" id="co-vt">
               <button class="active" data-view="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Cartões</button>
               <button data-view="table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Tabela</button>
+              <button data-view="balanco"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>Balanço</button>
             </div>
           </div>
 
           <!-- Cards view -->
           <div id="co-cards-view" class="co-cards"></div>
+
+          <!-- Balanço view -->
+          <div id="co-balanco-view" style="display:none"></div>
 
           <!-- Table view -->
           <div id="co-table-view" class="co-table-wrap" style="display:none">
@@ -2488,6 +2505,7 @@
               </div>
             </div>
           </div>
+          <div id="co-dt-analytics" style="margin-top:22px"></div>
         </div>
 
         <input type="file" id="custo-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="custoHandleDrop(event)"/>
@@ -2832,6 +2850,13 @@
       <div class="field"><label>Data de início</label><input type="date" id="oex-inicio"/></div>
       <div class="field"><label>Prazo de execução</label><input type="text" id="oex-prazo" placeholder="Ex: 12 meses"/></div>
     </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400);margin:6px 0 8px">Balanço</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div class="field"><label>Custos sede (%)</label><input type="number" step="0.1" min="0" id="oex-sede" placeholder="Ex: 10"/></div>
+      <div class="field"><label>Mat. transferido (€)</label><input type="number" step="0.01" id="oex-transf" placeholder="0"/></div>
+      <div class="field"><label>Existências finais (€)</label><input type="number" step="0.01" id="oex-exist" placeholder="-20000"/></div>
+    </div>
+    <div class="field"><label>Nota da obra</label><textarea id="oex-nota" rows="3" placeholder="Explica números fora do padrão (ex.: acertos de faturação)"></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-oex')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveObraExtra()">Guardar</button>

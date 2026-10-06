@@ -4,12 +4,13 @@
 import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal } from './navigation.js';
+import { coBalancoHtml } from './producao-balanco.js';
 
 let PREV_FATURACAO = [];
 let AUTOS_MEDICAO  = [];
 let CUSTOS_FATURAS = [];
 let OBRAS_EXTRA = {};
-let _coState = { filter: 'all', view: 'cards', q: '', detailObraId: null, wired: false };
+let _coState = { filter: 'all', view: 'cards', q: '', detailObraId: null, balObra: 'ALL', wired: false };
 let _editPrevId = null;
 let _autoSubTab = 'contratual';
 let _editAutoId = null;
@@ -181,6 +182,14 @@ function renderProdDashboard(){
   document.getElementById('co-list-view').style.display = '';
   document.getElementById('co-cards-view').style.display = _coState.view==='cards' ? '' : 'none';
   document.getElementById('co-table-view').style.display = _coState.view==='table' ? '' : 'none';
+  const balEl = document.getElementById('co-balanco-view');
+  if(balEl){
+    balEl.style.display = _coState.view==='balanco' ? '' : 'none';
+    if(_coState.view==='balanco') coRenderBalanco(obras);
+  }
+  const listaOnly = _coState.view!=='balanco' ? '' : 'none';
+  document.querySelector('#co-chips').style.display = listaOnly;
+  document.querySelector('.co-search').style.display = listaOnly;
 
   // Wire up tools once
   if(!_coState.wired){
@@ -275,6 +284,17 @@ function coBuildRow(s){
   </tr>`;
 }
 
+// ── Vista Balanço (todas as empreitadas ou uma obra) ─────────────────────
+function coRenderBalanco(obras){
+  const el = document.getElementById('co-balanco-view'); if(!el) return;
+  if(_coState.balObra!=='ALL' && !obras.some(o=>o.id===_coState.balObra)) _coState.balObra='ALL';
+  const sel = _coState.balObra==='ALL' ? obras : obras.filter(o=>o.id===_coState.balObra);
+  const chips = [`<button class="co-chip ${_coState.balObra==='ALL'?'active':''}" onclick="coBalancoSel('ALL')">Todas as empreitadas</button>`]
+    .concat(obras.map(o=>`<button class="co-chip ${_coState.balObra===o.id?'active':''}" onclick="coBalancoSel('${o.id}')">${prodEsc((OBRAS_EXTRA[o.id]||{}).numero||o.nome)}${(OBRAS_EXTRA[o.id]||{}).numero?' · '+prodEsc(o.nome):''}</button>`)).join('');
+  el.innerHTML = `<div class="co-chips" style="margin-bottom:16px">${chips}</div>` + coBalancoHtml(sel.map(o=>({id:o.id,nome:o.nome,extra:OBRAS_EXTRA[o.id]||{}})), CUSTOS_FATURAS, AUTOS_MEDICAO);
+}
+function coBalancoSel(id){ _coState.balObra=id; coRenderBalanco(S.OBRAS.filter(o=>o.ativa!==false)); }
+
 function coOpenDetail(obraId){
   _coState.detailObraId = obraId;
   document.getElementById('co-list-view').style.display='none';
@@ -340,6 +360,10 @@ function coRenderDetail(obraId){
     const ch=Math.max(2,(c/max)*120), rh=Math.max(2,(r/max)*120);
     return `<div class="co-bal-col"><div class="co-bal-bars"><div class="co-bal-bar cost" style="height:${ch}px" title="Custos: ${prodFmtEur(c)}"></div><div class="co-bal-bar rev" style="height:${rh}px" title="Proveitos: ${prodFmtEur(r)}"></div></div>${coFmtMesShort(m)}</div>`;
   }).join('') : '<div style="color:var(--gray-400);font-size:13px;text-align:center;width:100%;align-self:center">Sem movimentos para representar.</div>';
+
+  // Balanço detalhado (saldo acumulado, carga MO/equipamentos, tipologias)
+  const anEl = document.getElementById('co-dt-analytics');
+  if(anEl) anEl.innerHTML = coBalancoHtml([{id:obraId,nome:o.nome,extra:OBRAS_EXTRA[obraId]||{}}], CUSTOS_FATURAS, AUTOS_MEDICAO);
 
   // Pivot
   document.getElementById('co-dt-pivot-wrap').innerHTML = coBuildDetailPivot(obraId);
@@ -475,11 +499,16 @@ function openObraExtraModal(obraId){
   document.getElementById('oex-numero').value     = extra.numero||'';
   document.getElementById('oex-inicio').value     = extra.dataInicio||'';
   document.getElementById('oex-prazo').value      = extra.prazoExecucao||'';
+  document.getElementById('oex-sede').value       = extra.sedePct||'';
+  document.getElementById('oex-transf').value     = extra.transferido||'';
+  document.getElementById('oex-exist').value      = extra.existencias||'';
+  document.getElementById('oex-nota').value       = extra.nota||'';
   document.getElementById('modal-oex').classList.add('open');
 }
 function saveObraExtra(){
   const id=document.getElementById('oex-id').value;
-  OBRAS_EXTRA[id]={ numero:document.getElementById('oex-numero').value.trim(), dataInicio:document.getElementById('oex-inicio').value, prazoExecucao:document.getElementById('oex-prazo').value.trim() };
+  OBRAS_EXTRA[id]={ ...(OBRAS_EXTRA[id]||{}), numero:document.getElementById('oex-numero').value.trim(), dataInicio:document.getElementById('oex-inicio').value, prazoExecucao:document.getElementById('oex-prazo').value.trim(),
+    sedePct:document.getElementById('oex-sede').value.trim(), transferido:document.getElementById('oex-transf').value.trim(), existencias:document.getElementById('oex-exist').value.trim(), nota:document.getElementById('oex-nota').value.trim() };
   _saveObrasExtra(); closeModal('modal-oex'); renderProdDashboard(); showToast('Dados da obra atualizados');
 }
 
@@ -863,7 +892,7 @@ window.addEventListener('resize', function(){
 
 export {
   PREV_FATURACAO, AUTOS_MEDICAO, CUSTOS_FATURAS, OBRAS_EXTRA,
-  initProducao, renderProdDashboard, coGoList, coOpenDetail,
+  initProducao, renderProdDashboard, coGoList, coOpenDetail, coBalancoSel,
   renderPrevFat, openPrevFatModal, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail,
   renderAutos, openAutoModal, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, openAutoModalForObra,
   clearCustoObra,

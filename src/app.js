@@ -56,7 +56,7 @@ import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
-import { initProducao, renderProdDashboard, coGoList, coOpenDetail, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
+import { initProducao, renderProdDashboard, coGoList, coOpenDetail, coBalancoSel, renderPrevFat, editPrevFat, savePrevFat, deletePrevFat, deletePrevFatFromDetail, editPrevFatFromDetail, renderAutos, editAuto, saveAuto, deleteAuto, deleteAutoFromDetail, editAutoFromDetail, clearCustoObra, custoHandleDrop, obraImportCustos, obraCustosHandleDrop, saveObraExtra } from './modules/producao.js';
 
 // Admin/Painel
 import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
@@ -264,7 +264,7 @@ Object.assign(window, {
   puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
 
   // Produção / Controlo de Obras
-  coGoList, coOpenDetail,
+  coGoList, coOpenDetail, coBalancoSel,
   editAutoFromDetail, deleteAutoFromDetail,
   editPrevFatFromDetail, deletePrevFatFromDetail,
   obraImportCustos, obraCustosHandleDrop, clearCustoObra,
