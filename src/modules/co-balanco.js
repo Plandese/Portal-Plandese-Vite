@@ -41,7 +41,11 @@ function niceCeil(v){
 
 // ── Cálculo ────────────────────────────────────────────────────────────
 // obras: [{id,nome,extra}], mensal: linhas de co_mensal ({obra_id,mes,proveitos,mo,eq,mat,geral,sub,outros})
-export function coBalancoCalc(obras, mensal){
+// periodo: {de, ate} em 'YYYY-MM' (vazio = sem limite). Ajustes sem mês (transferido, existências)
+// só entram se o período incluir o último mês da obra.
+export function coBalancoCalc(obras, mensal, periodo){
+  const de = periodo && periodo.de || '', ate = periodo && periodo.ate || '';
+  const dentro = ym => (!de || ym>=de) && (!ate || ym<=ate);
   const meses = {};
   const mk = ym => meses[ym] || (meses[ym] = { ym, prov:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0, transf:0, sede:0, exist:0 });
   const tot = Object.fromEntries(TIPOLOGIAS.map(t=>[t.key,0]));
@@ -50,7 +54,8 @@ export function coBalancoCalc(obras, mensal){
   obras.forEach(o => {
     const ex = o.extra || {};
     const sedePct = (parseFloat(ex.sede_pct)||0)/100;
-    const linhas = mensal.filter(r=>r.obra_id===o.id);
+    const todas = mensal.filter(r=>r.obra_id===o.id);
+    const linhas = todas.filter(r=>dentro(r.mes));
     linhas.forEach(r => {
       const m = mk(r.mes), v = parseFloat(r.proveitos)||0;
       m.prov += v; provTot += v;
@@ -58,8 +63,8 @@ export function coBalancoCalc(obras, mensal){
       if(sedePct){ const sd=v*sedePct; m.sede+=sd; tot.sede+=sd; }
     });
     // ajustes sem mês: ficam no último mês com movimentos da obra
-    const ultimo = linhas.map(r=>r.mes).sort().pop();
-    if(ultimo){
+    const ultimo = todas.map(r=>r.mes).sort().pop();
+    if(ultimo && dentro(ultimo)){
       const transf = parseFloat(ex.transferido)||0, exist = parseFloat(ex.existencias)||0;
       if(transf){ mk(ultimo).transf += transf; tot.transf += transf; }
       if(exist){ mk(ultimo).exist += exist; tot.exist += exist; }
@@ -146,11 +151,11 @@ const legend = items => `<div style="display:flex;gap:14px;flex-wrap:wrap;font-s
 const panel = (title, desc, body) => `<div class="co-panel"><div class="co-panel-hd"><div class="co-panel-title">${title}</div></div><div class="co-panel-bd">${desc?`<div style="font-size:12px;color:var(--gray-500);margin:-4px 0 10px">${desc}</div>`:''}${body}</div></div>`;
 const tile = (lbl,val,sub,cor) => `<div class="co-an-tile"><div class="co-an-lbl">${lbl}</div><div class="co-an-val" style="${cor?'color:'+cor:''}">${val}</div><div class="co-an-sub">${sub||'&nbsp;'}</div></div>`;
 
-export function coBalancoHtml(obras, mensal){
-  const c = coBalancoCalc(obras, mensal);
+export function coBalancoHtml(obras, mensal, periodo){
+  const c = coBalancoCalc(obras, mensal, periodo);
   const unica = obras.length === 1;
   const notas = obras.filter(o=>o.extra&&o.extra.nota).map(o=>`<div class="co-an-nota"><b>Nota${unica?'':' · '+esc(o.nome)}</b><span>${esc(o.extra.nota)}</span></div>`).join('');
-  if(!c.rows.length) return notas + '<div class="co-empty">Sem lançamentos. Importe o Excel de custos e registe os proveitos mensais.</div>';
+  if(!c.rows.length) return notas + `<div class="co-empty">${periodo&&(periodo.de||periodo.ate)?'Sem lançamentos no período escolhido.':'Sem lançamentos. Importe o Excel de custos e registe os proveitos mensais.'}</div>`;
 
   const { rows, tot } = c;
   const mesesComSede = obras.some(o=>parseFloat((o.extra||{}).sede_pct));

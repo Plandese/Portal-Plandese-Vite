@@ -7,7 +7,8 @@ import { S } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
 import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
 
-const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null };
+const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'' };
+const periodo = () => ({ de:CO.de, ate:CO.ate });
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
 const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
 const GRUPO_KEY = { 'Mão de Obra':'mo', 'Equipamento':'eq', 'MateriaPrima':'mat', 'Geral':'geral', 'N/D':'sub' };
@@ -24,6 +25,20 @@ const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replac
 const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.test(o.nome||''));
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
+const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
+
+// Seletor De/Até: só afeta a análise; os lançamentos mensais mostram sempre tudo.
+function coPeriodoBar(ids){
+  const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
+  if(ms.length<2) return '';
+  const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
+  return `<div class="co-per"><span>Analisar de</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?'<button onclick="coPeriodo(\'reset\')">Limpar</button>':''}</div>`;
+}
+function coPeriodo(qual, val){
+  if(qual==='reset'){ CO.de = CO.ate = ''; }
+  else { CO[qual] = val||''; if(CO.de && CO.ate && CO.de>CO.ate){ if(qual==='de') CO.ate = CO.de; else CO.de = CO.ate; } }
+  if(CO.sel) coRenderDetail(true); else coRenderList();
+}
 
 async function coLoad(){
   const [a, b] = await Promise.all([
@@ -48,7 +63,7 @@ function coRenderList(){
   const el = document.getElementById('co-root');
   const obras = obrasAtivas();
   if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
-  const total = coBalancoCalc(obras.map(withExtra), CO.mensal);
+  const total = coBalancoCalc(obras.map(withExtra), CO.mensal, periodo());
   const card = (id, cor, cod, nome, c, meses) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
       <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span></div>
       <div class="co-ob-nome">${esc(nome)}</div>
@@ -57,19 +72,19 @@ function coRenderList(){
       <div class="co-ob-lin"><span>Proveitos <b>${eur0(c.provTot)}</b></span><span>Custos <b>${eur0(c.custosTot)}</b></span></div>
     </button>`;
   const cards = obras.map((o,i) => {
-    const c = coBalancoCalc([withExtra(o)], CO.mensal), sp = split(o.nome);
-    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id).length);
+    const c = coBalancoCalc([withExtra(o)], CO.mensal, periodo()), sp = split(o.nome);
+    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length);
   }).join('');
-  el.innerHTML = `<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+  el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
 }
 
-function coRenderDetail(){
+function coRenderDetail(manterScroll){
   const el = document.getElementById('co-root');
   const todas = CO.sel==='ALL';
   const obras = todas ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
   const o = todas ? null : obras[0], sp = o ? split(o.nome) : null;
   const ids = new Set(obras.map(x=>x.id));
-  const meses = CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes).sort();
+  const meses = CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes).sort();
   const ate = meses.length ? mesLong(meses[meses.length-1]) : '—';
   el.innerHTML = `
     <div class="co-banner">
@@ -83,17 +98,18 @@ function coRenderDetail(){
         <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
       </div>
     </div>
+    ${coPeriodoBar(ids)}
     <div id="co-an-box"></div>
     ${o?'<div id="co-lanc-box"></div>':''}`;
   coRenderAnalise();
   if(o) coRenderLancamentos();
-  window.scrollTo({top:0});
+  if(manterScroll!==true) window.scrollTo({top:0});
 }
 
 function coRenderAnalise(){
   const box = document.getElementById('co-an-box'); if(!box) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
-  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal);
+  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal, periodo());
 }
 
 function coRenderLancamentos(){
@@ -225,6 +241,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };
