@@ -5,7 +5,7 @@
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
-import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
+import { coBalancoHtml, coBalancoCalc, splitProv } from './co-balanco.js';
 import { coRelatorioPdf } from './co-relatorio.js';
 import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } from './co-pastas.js';
 
@@ -16,7 +16,7 @@ const fatorCustos = obra_id => { const f = +(CO.extra[obra_id]||{}).custos_fator
 function escalar(agg, f){ if(f===1) return agg; Object.values(agg).forEach(a => Object.keys(a).forEach(k => a[k] = Math.round(a[k]*f*100)/100)); return agg; }
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
-const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
+const CAMPOS = [['prov_contr','Prov. contratuais'],['prov_compl','Prov. complementares'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur0 = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v||0);
@@ -33,6 +33,7 @@ const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
 // ── Simulação: valores simulados ficam guardados (co_mensal.sim), a amarelo, e entram na análise ──
 // Valor efetivo = simulado, se existir, senão o real. A simulação pode ser apagada quando se quiser.
+const valorReal = (row,k) => (k==='prov_contr' || k==='prov_compl') ? splitProv(row||{})[k==='prov_contr'?'c':'k'] : (+(row||{})[k]||0);
 const hasOwn = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
 const simDe = r => (r && r.sim && typeof r.sim==='object') ? r.sim : {};
 const simTem = (o,m,k) => hasOwn(simDe(CO.mensal.find(r=>r.obra_id===o && r.mes===m)), k);
@@ -42,6 +43,10 @@ function mensalEf(){
   if(!simN()) return CO.mensal;
   return CO.mensal.map(r => { const sm = simDe(r); let c = null;
     CAMPOS.forEach(([k]) => { if(hasOwn(sm,k)){ c = c || { ...r }; c[k] = sm[k]; } });
+    if(c && (hasOwn(sm,'prov_contr') || hasOwn(sm,'prov_compl'))){
+      const b = splitProv(r), cc = hasOwn(sm,'prov_contr') ? sm.prov_contr : b.c, kk = hasOwn(sm,'prov_compl') ? sm.prov_compl : b.k;
+      c.prov_contr = cc; c.prov_compl = kk; c.proveitos = cc + kk;
+    }
     return c || r; });
 }
 function simReset(){ CO.simOn = false; }
@@ -189,7 +194,7 @@ function coRenderLancamentos(){
   const id = CO.sel;
   const rows = mensalEf().filter(r=>r.obra_id===id).sort((a,b)=>a.mes.localeCompare(b.mes));
   const cab = CAMPOS.map(([,l])=>`<th>${l}</th>`).join('');
-  const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in${simTem(id,r.mes,k)?' sim':''}" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
+  const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in${simTem(id,r.mes,k)?' sim':''}" inputmode="decimal" value="${valorReal(r,k)?String(valorReal(r,k)).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
   const nSim = simN(new Set([id]));
   const simBar = CO.simOn
     ? `<div class="co-sim-bar on"><span class="co-sim-tag">SIMULAÇÃO</span><span>Os valores que alterar ficam guardados a amarelo e entram na análise.</span><span style="margin-left:auto;display:flex;gap:6px">${nSim?`<button onclick="coSimApagar()">Apagar simulação (${nSim})</button>`:''}<button onclick="coSimToggle()">Concluir</button></span></div>`
@@ -222,14 +227,18 @@ async function coGuardarCelula(obra_id, mes, campo, inp){
   const v = num(inp.value);
   const row = CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes);
   if(CO.simOn){
-    const sm = { ...simDe(row) }, real = +(row||{})[campo]||0;
+    const sm = { ...simDe(row) }, real = valorReal(row, campo);
     if(v===real) delete sm[campo]; else sm[campo] = v;
     if(!await coUpsert([{ obra_id, mes, sim:sm, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
     coAplicarLocal(obra_id, mes, { sim:sm });
     coRenderLancamentos(); coRenderAnalise(); return;
   }
   if(simTem(obra_id, mes, campo)){ showToast('Valor simulado: use "Simular valores" para o alterar, ou apague a simulação'); coRenderLancamentos(); return; }
-  const extra = campo==='proveitos' ? { prov_contr:null, prov_compl:null } : {};
+  let extra = {};
+  if(campo==='prov_contr' || campo==='prov_compl'){   // o total de proveitos acompanha a soma das duas partes
+    const b = splitProv(row||{}), c = campo==='prov_contr' ? v : b.c, k = campo==='prov_compl' ? v : b.k;
+    extra = { prov_contr:c, prov_compl:k, proveitos:Math.round((c+k)*100)/100 };
+  }
   if(!await coUpsert([{ obra_id, mes, [campo]:v, ...extra, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
   coAplicarLocal(obra_id, mes, { [campo]:v, ...extra });
   inp.value = v ? String(v).replace('.',',') : '';

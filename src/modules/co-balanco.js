@@ -39,6 +39,14 @@ function niceCeil(v){
   return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*mag;
 }
 
+// Proveitos divididos em trabalho contratual e trabalhos complementares (a mais).
+// Linhas antigas sem divisão contam como contratuais.
+export function splitProv(r){
+  const hc = r && r.prov_contr!=null && r.prov_contr!=='', hk = r && r.prov_compl!=null && r.prov_compl!=='';
+  if(!hc && !hk) return { c: parseFloat(r && r.proveitos)||0, k: 0 };
+  return { c: parseFloat(r.prov_contr)||0, k: parseFloat(r.prov_compl)||0 };
+}
+
 // ── Cálculo ────────────────────────────────────────────────────────────
 // obras: [{id,nome,extra}], mensal: linhas de co_mensal ({obra_id,mes,proveitos,mo,eq,mat,geral,sub,outros})
 // periodo: {de, ate} em 'YYYY-MM' (vazio = sem limite). Ajustes sem mês (transferido, existências)
@@ -47,9 +55,9 @@ export function coBalancoCalc(obras, mensal, periodo){
   const de = periodo && periodo.de || '', ate = periodo && periodo.ate || '';
   const dentro = ym => (!de || ym>=de) && (!ate || ym<=ate);
   const meses = {};
-  const mk = ym => meses[ym] || (meses[ym] = { ym, prov:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0, transf:0, sede:0, exist:0 });
+  const mk = ym => meses[ym] || (meses[ym] = { ym, prov:0, provC:0, provK:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0, transf:0, sede:0, exist:0 });
   const tot = Object.fromEntries(TIPOLOGIAS.map(t=>[t.key,0]));
-  let provTot = 0;
+  let provTot = 0, provCTot = 0, provKTot = 0;
 
   obras.forEach(o => {
     const ex = o.extra || {};
@@ -58,7 +66,8 @@ export function coBalancoCalc(obras, mensal, periodo){
     const linhas = todas.filter(r=>dentro(r.mes));
     linhas.forEach(r => {
       const m = mk(r.mes), v = parseFloat(r.proveitos)||0;
-      m.prov += v; provTot += v;
+      const sp = splitProv(r);
+      m.prov += v; provTot += v; m.provC += sp.c; m.provK += sp.k; provCTot += sp.c; provKTot += sp.k;
       ['mo','eq','mat','geral','sub','outros'].forEach(k => { const x=parseFloat(r[k])||0; m[k]+=x; tot[k]+=x; });
       if(sedePct){ const sd=v*sedePct; m.sede+=sd; tot.sede+=sd; }
     });
@@ -85,7 +94,7 @@ export function coBalancoCalc(obras, mensal, periodo){
     r.margem = r.prov>0 ? r.saldo/r.prov : null;
   });
   const custosTot = TIPOLOGIAS.reduce((s,t)=>s+tot[t.key],0);
-  return { rows, tot, provTot, custosTot, saldo: provTot-custosTot, margem: provTot>0 ? (provTot-custosTot)/provTot : null };
+  return { rows, tot, provTot, provCTot, provKTot, custosTot, saldo: provTot-custosTot, margem: provTot>0 ? (provTot-custosTot)/provTot : null };
 }
 
 // ── Gráficos SVG ───────────────────────────────────────────────────────
@@ -180,7 +189,7 @@ function coBalancoHtmlMobile(obras, mensal, periodo){
   const { rows, tot } = c;
   const bom = c.saldo>=0;
   const tiles = `<div class="co-an-tiles">
-    ${tile('Proveitos', eur0(c.provTot), rows.length+(rows.length===1?' mês':' meses'), COR.prov)}
+    ${tile('Proveitos', eur0(c.provTot), provSub(c), COR.prov)}
     ${tile('Custos', eur0(c.custosTot), 'diretos + ajustes', COR.custo)}
     ${tile('Saldo', (bom?'+':'')+eur0(c.saldo), 'proveitos − custos', bom?'var(--green)':'var(--red)')}
     ${tile('Margem', c.margem===null?'—':pct(c.margem), 'sobre proveitos', bom?'var(--green)':'var(--red)')}
@@ -196,6 +205,9 @@ function coBalancoHtmlMobile(obras, mensal, periodo){
   return notas + tiles + grafico + tab + carga + tipo;
 }
 
+// Linha por baixo do total de proveitos: contratual vs complementar
+export const provSub = c => c.provKTot ? `contrat. ${eurK(c.provCTot)} · compl. ${eurK(c.provKTot)}` : (c.rows.length+(c.rows.length===1?' mês':' meses'));
+
 export function coBalancoHtml(obras, mensal, periodo, mobile){
   if(mobile) return coBalancoHtmlMobile(obras, mensal, periodo);
   const c = coBalancoCalc(obras, mensal, periodo);
@@ -206,7 +218,7 @@ export function coBalancoHtml(obras, mensal, periodo, mobile){
   const { rows, tot } = c;
   const mesesComSede = obras.some(o=>parseFloat((o.extra||{}).sede_pct));
   const tiles = `<div class="co-an-tiles">
-    ${tile('Proveitos', eur0(c.provTot), rows.length+' meses com movimento', COR.prov)}
+    ${tile('Proveitos', eur0(c.provTot), provSub(c), COR.prov)}
     ${tile('Custos totais', eur0(c.custosTot), mesesComSede?'diretos + sede + ajustes':'diretos + ajustes', COR.custo)}
     ${tile('Saldo', (c.saldo>=0?'+':'')+eur0(c.saldo), 'proveitos − custos', c.saldo>=0?'var(--green)':'var(--red)')}
     ${tile('Margem', c.margem===null?'—':pct(c.margem), 'sobre proveitos')}
@@ -240,9 +252,9 @@ export function coBalancoHtml(obras, mensal, periodo, mobile){
   const tipo = `<div class="co-an-sec">Custos por tipologia</div>` + panel('Peso de cada rubrica face ao total faturado','As rubricas que não são custo direto de obra (sede, material transferido, existências) têm cor própria.', tipoBody);
 
   // Tabela mensal
-  const tabela = `<div class="co-an-sec">Detalhe mensal</div><div class="co-panel"><div class="co-panel-bd" style="overflow:auto"><table class="co-pivot"><thead><tr><th>Mês</th><th>Custos</th><th>Proveitos</th><th>Saldo</th><th>Margem</th><th>Saldo acum.</th></tr></thead><tbody>${
-    rows.map(r=>`<tr><td>${mesLabel(r.ym)}</td><td>${eur0(r.custos)}</td><td>${eur0(r.prov)}</td><td style="color:${r.saldo<0?'var(--red)':'inherit'}">${eur0(r.saldo)}</td><td>${r.margem===null?'—':pct(r.margem)}</td><td style="color:${r.acum<0?'var(--red)':'inherit'}">${eur0(r.acum)}</td></tr>`).join('')
-  }<tr class="total"><td>TOTAL</td><td>${eur0(c.custosTot)}</td><td>${eur0(c.provTot)}</td><td>${eur0(c.saldo)}</td><td>${c.margem===null?'—':pct(c.margem)}</td><td>${eur0(c.saldo)}</td></tr></tbody></table></div></div>`;
+  const tabela = `<div class="co-an-sec">Detalhe mensal</div><div class="co-panel"><div class="co-panel-bd" style="overflow:auto"><table class="co-pivot"><thead><tr><th>Mês</th><th>Custos</th><th>Prov. contratuais</th><th>Prov. complementares</th><th>Proveitos</th><th>Saldo</th><th>Margem</th><th>Saldo acum.</th></tr></thead><tbody>${
+    rows.map(r=>`<tr><td>${mesLabel(r.ym)}</td><td>${eur0(r.custos)}</td><td>${eur0(r.provC)}</td><td>${eur0(r.provK)}</td><td>${eur0(r.prov)}</td><td style="color:${r.saldo<0?'var(--red)':'inherit'}">${eur0(r.saldo)}</td><td>${r.margem===null?'—':pct(r.margem)}</td><td style="color:${r.acum<0?'var(--red)':'inherit'}">${eur0(r.acum)}</td></tr>`).join('')
+  }<tr class="total"><td>TOTAL</td><td>${eur0(c.custosTot)}</td><td>${eur0(c.provCTot)}</td><td>${eur0(c.provKTot)}</td><td>${eur0(c.provTot)}</td><td>${eur0(c.saldo)}</td><td>${c.margem===null?'—':pct(c.margem)}</td><td>${eur0(c.saldo)}</td></tr></tbody></table></div></div>`;
 
   return notas + tiles + evo + carga + tipo + tabela;
 }
