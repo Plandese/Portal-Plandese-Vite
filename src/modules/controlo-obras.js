@@ -33,7 +33,7 @@ const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
 function coPeriodoBar(ids){
   const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
-  const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
+  const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${(CO.de||CO.ate) && !isMobile()?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
   const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="margin-left:auto;display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
   return (per||upd) ? `<div class="co-per">${per}${upd}</div><div id="co-upd-log"></div>` : '';
 }
