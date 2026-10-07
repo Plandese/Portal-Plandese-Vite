@@ -82,6 +82,33 @@ function coRenderList(){
   el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
 }
 
+// Existências (stock em obra) no período: a análise usa o último mês do período com stock lançado.
+function existInfo(obra_id){
+  const rows = CO.mensal.filter(r=>r.obra_id===obra_id && noPeriodo(r)).sort((a,b)=>a.mes.localeCompare(b.mes));
+  if(!rows.length) return { mes:'', val:0 };
+  const com = rows.filter(r=>+r.exist).pop();
+  return com ? { mes:com.mes, val:+com.exist } : { mes:rows[rows.length-1].mes, val:0 };
+}
+function existHtml(o, estilo){
+  const e = existInfo(o.id);
+  return `<label class="co-sede" ${estilo||''} title="Valor do stock de material em obra (comprado e ainda não consumido). Abate aos custos no último mês do período em análise.">Existências em obra <input type="text" inputmode="decimal" value="${e.val?String(e.val).replace('.',','):''}" placeholder="0" style="width:96px" onchange="coGuardarExist('${o.id}',this)"> €</label>
+        <div class="co-sede-val">${e.mes?(e.val?'stock a '+mesLabel(e.mes):'sem stock lançado até '+mesLabel(e.mes)):'sem meses lançados'}</div>`;
+}
+async function coGuardarExist(obra_id, inp){
+  const v = num(inp.value);
+  const rows = CO.mensal.filter(r=>r.obra_id===obra_id && noPeriodo(r)).sort((a,b)=>a.mes.localeCompare(b.mes));
+  if(!rows.length){ showToast('Sem meses lançados no período'); inp.value=''; return; }
+  const ultimo = rows[rows.length-1].mes, now = new Date().toISOString();
+  // stock é um saldo: fica só no último mês do período (os anteriores do período ficam a 0)
+  const payload = rows.filter(r => (+r.exist||0) !== (r.mes===ultimo ? v : 0))
+    .map(r => ({ obra_id, mes:r.mes, exist:(r.mes===ultimo ? v : 0), atualizado:now }));
+  if(payload.length){
+    if(!await coUpsert(payload)){ coRenderDetail(true); return; }
+    payload.forEach(p => coAplicarLocal(obra_id, p.mes, { exist:p.exist }));
+  }
+  coRenderDetail(true);
+}
+
 function coRenderDetail(manterScroll){
   const el = document.getElementById('co-root');
   const todas = CO.sel==='ALL';
@@ -95,6 +122,7 @@ function coRenderDetail(manterScroll){
       <div class="co-mb-top"><span style="display:flex;gap:8px"><button class="co-back" onclick="coVoltar()">← Empreitadas</button><button class="co-back" onclick="coRelatorio()">PDF</button></span><span class="co-mb-cod">${todas?'TODAS':esc(sp.cod||'Obra')}</span></div>
       <h2>${todas?'Balanço geral':esc(sp.nome)}</h2>
       <div class="co-mb-meta">Dados até <strong>${ate}</strong>${todas?' · '+obras.length+' empreitadas':(o.local?' · '+esc(o.local):'')}</div>
+      ${o?`<div class="co-mb-sede" style="border-top:0;padding-top:0;margin-top:10px">${existHtml(o,'style="justify-content:flex-start"')}</div>`:''}
       ${o?`<div class="co-mb-sede"><label class="co-sede" style="justify-content:flex-start">Estrutura central <input type="text" inputmode="decimal" value="${sedeVal?String(sedeVal).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label><div class="co-sede-val" id="co-sede-val"></div></div>`:''}
     </div>`;
   if(isMobile()){
@@ -116,6 +144,7 @@ function coRenderDetail(manterScroll){
         <div class="co-banner-btns" style="margin-top:14px">${o?`<button onclick="coImportar('${o.id}')">Importar custos (Excel)</button>`:''}<button onclick="coRelatorio()">Relatório PDF</button></div>
       </div>
       <div class="co-banner-r">
+        ${o?`<div class="co-sede-wrap" style="margin:0 0 12px;text-align:right">${existHtml(o,'style="justify-content:flex-end"')}</div>`:''}
         ${o?`<div class="co-sede-wrap" style="margin:0;text-align:right"><label class="co-sede" style="justify-content:flex-end" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
         <div class="co-sede-val" id="co-sede-val"></div></div>`:''}
         <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
@@ -301,6 +330,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio, coAtualizar,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };
