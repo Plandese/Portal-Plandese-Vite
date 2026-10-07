@@ -92,10 +92,11 @@ function coRenderDetail(manterScroll){
         <button class="co-back" onclick="coVoltar()">← Empreitadas</button>
         <p class="co-eyebrow">PLANDESE · ${todas?'Direção de Obra':esc(sp.cod||'Obra')}</p>
         <h2>${todas?'Balanço geral das empreitadas':esc(sp.nome)}</h2>
+        ${o?`<div class="co-sede-wrap"><label class="co-sede" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
+        <div class="co-sede-val" id="co-sede-val"></div></div>`:''}
       </div>
       <div class="co-banner-r">
-        ${o?`<label class="co-sede" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
-        <div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button><button onclick="coEditar('${o.id}')">Editar dados</button></div>`:''}
+        ${o?`<div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button></div>`:''}
         <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
       </div>
     </div>
@@ -111,6 +112,11 @@ function coRenderAnalise(){
   const box = document.getElementById('co-an-box'); if(!box) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
   box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal, periodo());
+  const sv = document.getElementById('co-sede-val');
+  if(sv && CO.sel!=='ALL'){
+    const c = coBalancoCalc(obras.map(withExtra), CO.mensal, periodo());
+    sv.innerHTML = c.tot.sede ? `<strong>${eur0(c.tot.sede)}</strong> nos meses em análise` : 'sem valor nos meses em análise';
+  }
 }
 
 function coRenderLancamentos(){
