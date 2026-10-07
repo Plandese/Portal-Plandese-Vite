@@ -284,3 +284,135 @@ body.enc-mode .m-fab,body.enc-mode .m-pill{display:none!important}
   body.forced-mobile #chat-fab{right:calc(50% - 230px + 20px)}
   body.forced-mobile #bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:460px}
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTEÚDO DOS MÓDULOS (só telemóvel) — mesmo design da shell: azul Plandese,
+   campos e botões arredondados, listas planas, separadores em controlo segmentado.
+   Tudo escopado a body.device-mobile; o portal de computador não é afetado.
+═══════════════════════════════════════════════════════════════════════════ */
+body.device-mobile[data-m-variant="color"] #admin-app .admin-main{
+  color:var(--m-ink);font-size:15px;
+}
+
+/* ── Cartões: planos, com contorno fino (como os cartões da app da CP) ── */
+body.device-mobile[data-m-variant="color"] #admin-app .card,
+body.device-mobile[data-m-variant="color"] #admin-app .balanco-chart-wrap,
+body.device-mobile[data-m-variant="color"] #admin-app .fat-kpi,
+body.device-mobile[data-m-variant="color"] #admin-app .prod-kpi,
+body.device-mobile[data-m-variant="color"] #admin-app .cmp-kpi,
+body.device-mobile[data-m-variant="color"] #admin-app .filter-bar{
+  background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;
+  border:1.5px solid #c9cfda;border-radius:14px;box-shadow:none;
+}
+body.device-mobile[data-m-variant="color"] #admin-app .card{padding:16px}
+body.device-mobile[data-m-variant="color"] #admin-app .filter-bar{padding:14px;gap:12px;margin-bottom:16px}
+body.device-mobile[data-m-variant="color"] #admin-app .fat-kpi::before,
+body.device-mobile[data-m-variant="color"] #admin-app .prod-kpi::before,
+body.device-mobile[data-m-variant="color"] #admin-app .cmp-kpi::before{background:var(--m-brand)}
+
+/* ── Campos de formulário ── */
+body.device-mobile #admin-app .field label,
+body.device-mobile .modal .field label,
+body.device-mobile #admin-app .filter-bar label{
+  font-size:13px;font-weight:600;color:var(--m-mute);text-transform:none;letter-spacing:0;margin-bottom:6px;
+}
+body.device-mobile #admin-app input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+body.device-mobile #admin-app select,
+body.device-mobile #admin-app textarea,
+body.device-mobile .modal input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+body.device-mobile .modal select,
+body.device-mobile .modal textarea{
+  min-height:48px;padding:11px 14px;border:1.5px solid #a3a9b5;border-radius:14px;background:#fff;
+  font-family:inherit;font-size:16px;color:var(--m-ink);outline:none;box-shadow:none;
+  -webkit-appearance:none;appearance:none;
+}
+body.device-mobile #admin-app textarea,body.device-mobile .modal textarea{min-height:96px;line-height:1.4}
+body.device-mobile #admin-app input:focus,body.device-mobile #admin-app select:focus,body.device-mobile #admin-app textarea:focus,
+body.device-mobile .modal input:focus,body.device-mobile .modal select:focus,body.device-mobile .modal textarea:focus{
+  border-color:var(--m-brand);box-shadow:0 0 0 3px rgba(23,63,159,.14);
+}
+body.device-mobile #admin-app select,body.device-mobile .modal select{
+  padding-right:38px;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23454d5e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+}
+body.device-mobile #admin-app input[type=checkbox],body.device-mobile .modal input[type=checkbox],
+body.device-mobile #admin-app input[type=radio],body.device-mobile .modal input[type=radio]{accent-color:var(--m-brand);width:20px;height:20px}
+body.device-mobile #admin-app input[type=date],body.device-mobile #admin-app input[type=month],body.device-mobile #admin-app input[type=week],
+body.device-mobile .modal input[type=date],body.device-mobile .modal input[type=month],body.device-mobile .modal input[type=time]{min-width:0;max-width:100%}
+
+/* ── Botões: pílulas, azul Plandese sólido (sem gradiente/sombra de desktop) ── */
+body.device-mobile #admin-app .btn,body.device-mobile .modal .btn{
+  min-height:44px;padding:10px 20px;border-radius:99px;font-size:15px;font-weight:600;justify-content:center;
+  box-shadow:none;-webkit-tap-highlight-color:transparent;
+}
+body.device-mobile #admin-app .btn svg,body.device-mobile .modal .btn svg{width:18px;height:18px}
+body.device-mobile #admin-app .btn-sm,body.device-mobile .modal .btn-sm{min-height:36px;padding:6px 14px;font-size:13.5px}
+body.device-mobile #admin-app .btn-primary,body.device-mobile #admin-app .btn-success,
+body.device-mobile .modal .btn-primary,body.device-mobile .modal .btn-success{
+  background:var(--m-brand);color:#fff;border:0;box-shadow:none;filter:none;
+}
+body.device-mobile #admin-app .btn-primary:active,body.device-mobile #admin-app .btn-success:active,
+body.device-mobile .modal .btn-primary:active,body.device-mobile .modal .btn-success:active{background:var(--m-brand-d)}
+body.device-mobile #admin-app .btn-secondary,body.device-mobile .modal .btn-secondary{
+  background:#fff;color:var(--m-brand);border:1.5px solid var(--m-brand);
+}
+body.device-mobile #admin-app .btn-secondary:active,body.device-mobile .modal .btn-secondary:active{background:#eef2fb}
+body.device-mobile #admin-app .btn-green{background:#0E9F6E;color:#fff;border:0}
+body.device-mobile #admin-app .btn-danger,body.device-mobile .modal .btn-danger{border-radius:99px}
+body.device-mobile #admin-app .btn:disabled{opacity:.4}
+/* ações principais da página ocupam a largura */
+body.device-mobile #admin-app .pg-hdr > .btn,
+body.device-mobile #admin-app .pg-hdr > div > .btn:only-child{width:100%}
+
+/* ── Separadores: controlo segmentado em pílula (como "Viagens | Comboios") ── */
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab-bar{
+  display:flex;gap:0;width:100%;padding:0;margin-bottom:20px;
+  background:#fff;border:1.5px solid #a3a9b5;border-radius:99px;overflow-x:auto;
+}
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab{
+  flex:1 0 auto;justify-content:center;min-height:44px;padding:0 18px;border-radius:99px;margin:-1px;
+  font-size:15px;font-weight:500;color:var(--m-ink);background:none;white-space:nowrap;
+}
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab.active,
+body.device-mobile[data-m-variant="color"] #admin-app .auto-tab.active{
+  background:var(--m-brand);color:#fff;font-weight:600;box-shadow:none;border-color:transparent;
+}
+body.device-mobile #admin-app .sec-tab-bar{border-bottom:1.5px solid var(--m-line);overflow-x:auto;scrollbar-width:none}
+body.device-mobile #admin-app .sec-tab-bar::-webkit-scrollbar{display:none}
+body.device-mobile #admin-app .sec-tab{flex:none;font-size:15px;font-weight:500;padding:12px 16px;color:var(--m-mute)}
+body.device-mobile #admin-app .sec-tab.active{color:var(--m-brand);border-bottom-color:var(--m-brand);font-weight:600}
+
+/* ── Tabelas: planas, linhas limpas, deslizam na horizontal sem estourar a folha ── */
+body.device-mobile #admin-app .tbl-wrap{margin:0 -18px;padding:0 18px;border-radius:0}
+body.device-mobile #admin-app table{min-width:560px}
+body.device-mobile #admin-app thead th{
+  background:#f3f5f9;color:#5d6678;font-size:11.5px;letter-spacing:.06em;padding:11px 12px;border-bottom:1.5px solid var(--m-line);
+}
+body.device-mobile #admin-app tbody td{font-size:14.5px;color:var(--m-ink);padding:13px 12px;border-bottom:1px solid var(--m-line)}
+body.device-mobile #admin-app tbody tr:hover td{background:none}
+body.device-mobile #admin-app tbody tr:active td{background:#f4f6fa}
+
+/* ── Etiquetas de estado ── */
+body.device-mobile #admin-app .badge{padding:4px 11px;font-size:12px;font-weight:600}
+body.device-mobile #admin-app .b-blue{background:#e6ecfa;color:var(--m-brand)}
+
+/* ── Alertas ── */
+body.device-mobile #admin-app .alert{border-radius:12px;font-size:14px;padding:12px 14px}
+
+/* ── Janelas (modais) como folha inferior, igual à da shell ── */
+body.device-mobile .modal-bg{background:rgba(10,18,38,.5);backdrop-filter:none;-webkit-backdrop-filter:none}
+body.device-mobile .modal{
+  background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;border:0;
+  border-radius:24px 24px 0 0;padding:14px 20px calc(20px + var(--m-safe-b));box-shadow:0 -8px 30px rgba(10,18,38,.18);
+}
+body.device-mobile .modal::before{content:'';display:block;width:44px;height:5px;border-radius:99px;background:#d3d8e1;margin:0 auto 14px}
+body.device-mobile .modal-title{font-size:19px;font-weight:700;color:var(--m-ink)}
+body.device-mobile .modal-sub{font-size:14.5px;color:var(--m-mute);line-height:1.45}
+body.device-mobile .modal-footer{flex-direction:column-reverse;gap:10px;border-top:0;padding-top:6px}
+body.device-mobile .modal-footer .btn{width:100%}
+body.device-mobile .modal-footer > div{display:flex;flex-direction:column-reverse;gap:10px;width:100%}
+body.device-mobile .modal details{border:1.5px solid var(--m-line);border-radius:14px}
+
+/* ── Títulos de secção dentro das páginas ── */
+body.device-mobile #admin-app .section h3,
+body.device-mobile #admin-app .card h3{font-size:17px;font-weight:600;color:var(--m-ink)}
