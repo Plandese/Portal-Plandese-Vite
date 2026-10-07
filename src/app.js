@@ -57,7 +57,7 @@ import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, mo
 
 // Produção
 import { bnavRegistar, bnavRender, irParaInicio } from './modules/bottom-nav.js';
-import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
+import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimRepor, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel
 import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
@@ -266,7 +266,7 @@ Object.assign(window, {
 
   // Controlo de Obras
   irParaInicio,
-  coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar,
+  coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimRepor,
   coGuardarCelula, coAdicionarMes, coApagarMes,
   exportSemanaExcel,
 

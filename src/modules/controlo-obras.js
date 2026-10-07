@@ -9,7 +9,7 @@ import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
 import { coRelatorioPdf } from './co-relatorio.js';
 import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } from './co-pastas.js';
 
-const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'' };
+const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'', simOn:false, sim:{} };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
@@ -28,6 +28,23 @@ const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.tes
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
+// ── Simulação: valores alterados só em memória (a amarelo), nada vai para a base de dados ──
+const simKey = (o,m,k) => o+'|'+m+'|'+k;
+const simTem = (o,m,k) => Object.prototype.hasOwnProperty.call(CO.sim, simKey(o,m,k));
+const simN = () => Object.keys(CO.sim).length;
+function mensalEf(){
+  if(!simN()) return CO.mensal;
+  return CO.mensal.map(r => { let c = null;
+    CAMPOS.forEach(([k]) => { if(simTem(r.obra_id,r.mes,k)){ c = c || { ...r }; c[k] = CO.sim[simKey(r.obra_id,r.mes,k)]; } });
+    return c || r; });
+}
+function simReset(){ CO.sim = {}; CO.simOn = false; }
+function coSimToggle(){
+  CO.simOn = !CO.simOn; if(!CO.simOn) CO.sim = {};
+  coRenderLancamentos(); coRenderAnalise();
+}
+function coSimRepor(){ CO.sim = {}; coRenderLancamentos(); coRenderAnalise(); }
+
 
 // Seletor De/Até: só afeta a análise; os lançamentos mensais mostram sempre tudo.
 function coPeriodoBar(ids){
@@ -57,7 +74,7 @@ async function coLoad(){
 // ── Página ────────────────────────────────────────────────────────────
 async function renderControloObras(voltarLista){
   const el = document.getElementById('co-root'); if(!el) return;
-  if(voltarLista===true) CO.sel = null;
+  if(voltarLista===true){ CO.sel = null; simReset(); }
   if(!CO.loaded){ el.innerHTML = '<div class="co-empty">A carregar…</div>'; await coLoad(); }
   if(CO.sel && CO.sel!=='ALL' && !obrasAtivas().some(o=>o.id===CO.sel)) CO.sel = null;
   if(CO.sel) coRenderDetail(); else coRenderList();
@@ -67,7 +84,7 @@ function coRenderList(){
   const el = document.getElementById('co-root');
   const obras = obrasAtivas();
   if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
-  const total = coBalancoCalc(obras.map(withExtra), CO.mensal, periodo());
+  const total = coBalancoCalc(obras.map(withExtra), mensalEf(), periodo());
   const card = (id, cor, cod, nome, c, meses) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
       <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span></div>
       <div class="co-ob-nome">${esc(nome)}</div>
@@ -76,7 +93,7 @@ function coRenderList(){
       <div class="co-ob-lin"><span>Proveitos <b>${eur0(c.provTot)}</b></span><span>Custos <b>${eur0(c.custosTot)}</b></span></div>
     </button>`;
   const cards = obras.map((o,i) => {
-    const c = coBalancoCalc([withExtra(o)], CO.mensal, periodo()), sp = split(o.nome);
+    const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
     return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length);
   }).join('');
   el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
@@ -148,10 +165,10 @@ function coRenderDetail(manterScroll){
 function coRenderAnalise(){
   const box = document.getElementById('co-an-box'); if(!box) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
-  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal, periodo(), isMobile());
+  box.innerHTML = (simN() ? `<div class="co-sim-note">⚠ Valores simulados — a análise inclui ${simN()} ${simN()===1?'alteração':'alterações'} que não ${simN()===1?'está guardada':'estão guardadas'}.</div>` : '') + coBalancoHtml(obras.map(withExtra), mensalEf(), periodo(), isMobile());
   const sv = document.getElementById('co-sede-val');
   if(sv && CO.sel!=='ALL'){
-    const c = coBalancoCalc(obras.map(withExtra), CO.mensal, periodo());
+    const c = coBalancoCalc(obras.map(withExtra), mensalEf(), periodo());
     sv.innerHTML = c.tot.sede ? `<strong>${eur0(c.tot.sede)}</strong> nos meses em análise` : 'sem valor nos meses em análise';
   }
 }
@@ -159,11 +176,15 @@ function coRenderAnalise(){
 function coRenderLancamentos(){
   const box = document.getElementById('co-lanc-box'); if(!box) return;
   const id = CO.sel;
-  const rows = CO.mensal.filter(r=>r.obra_id===id).sort((a,b)=>a.mes.localeCompare(b.mes));
+  const rows = mensalEf().filter(r=>r.obra_id===id).sort((a,b)=>a.mes.localeCompare(b.mes));
   const cab = CAMPOS.map(([,l])=>`<th>${l}</th>`).join('');
-  const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
+  const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in${simTem(id,r.mes,k)?' sim':''}" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
+  const simBar = CO.simOn
+    ? `<div class="co-sim-bar on"><span class="co-sim-tag">SIMULAÇÃO</span><span>Altere os valores para ver o efeito na análise. Nada é guardado.</span><span style="margin-left:auto;display:flex;gap:6px"><button onclick="coSimRepor()"${simN()?'':' disabled'}>↺ Repor valores</button><button onclick="coSimToggle()">Sair</button></span></div>`
+    : `<div class="co-sim-bar"><button onclick="coSimToggle()">Simular valores</button><span>Experimente valores (a amarelo) sem os guardar.</span></div>`;
   box.innerHTML = `<div class="co-an-sec">Lançamentos mensais</div>
     <div class="co-panel"><div class="co-panel-bd">
+      ${simBar}
       <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.</div>
       <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="month" id="co-novo-mes" class="co-in" style="width:160px;text-align:left"><button class="btn btn-secondary btn-sm" onclick="coAdicionarMes('${id}')">+ Adicionar mês</button></div>
@@ -171,8 +192,8 @@ function coRenderLancamentos(){
 }
 
 // ── Navegação ─────────────────────────────────────────────────────────
-function coAbrir(id){ CO.sel = id; coRenderDetail(); }
-function coVoltar(){ CO.sel = null; coRenderList(); window.scrollTo({top:0}); }
+function coAbrir(id){ simReset(); CO.sel = id; coRenderDetail(); }
+function coVoltar(){ simReset(); CO.sel = null; coRenderList(); window.scrollTo({top:0}); }
 
 // ── Lançamentos ───────────────────────────────────────────────────────
 async function coUpsert(rows){
@@ -187,12 +208,18 @@ function coAplicarLocal(obra_id, mes, campos){
 }
 async function coGuardarCelula(obra_id, mes, campo, inp){
   const v = num(inp.value);
+  if(CO.simOn){
+    const real = +((CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes)||{})[campo])||0;
+    if(v===real) delete CO.sim[simKey(obra_id,mes,campo)]; else CO.sim[simKey(obra_id,mes,campo)] = v;
+    coRenderLancamentos(); coRenderAnalise(); return;
+  }
   if(!await coUpsert([{ obra_id, mes, [campo]:v, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
   coAplicarLocal(obra_id, mes, { [campo]:v });
   inp.value = v ? String(v).replace('.',',') : '';
   coRenderAnalise();
 }
 async function coAdicionarMes(obra_id){
+  if(CO.simOn){ showToast('Saia da simulação para adicionar meses'); return; }
   const mes = document.getElementById('co-novo-mes').value;
   if(!mes){ showToast('Escolha o mês'); return; }
   if(CO.mensal.some(r=>r.obra_id===obra_id && r.mes===mes)){ showToast('Esse mês já existe'); return; }
@@ -201,6 +228,7 @@ async function coAdicionarMes(obra_id){
   coRenderLancamentos(); coRenderAnalise();
 }
 async function coApagarMes(obra_id, mes){
+  if(CO.simOn){ showToast('Saia da simulação para apagar meses'); return; }
   if(!confirm('Apagar todos os valores de '+mesLong(mes)+'?')) return;
   const { error } = await sb.from('co_mensal').delete().eq('obra_id',obra_id).eq('mes',mes);
   if(error){ showToast('Sem permissão ou erro ao apagar'); return; }
@@ -224,7 +252,8 @@ function coRelatorio(){
   if(!obras.length) return;
   const sp = todas ? null : split(obras[0].nome);
   const titulo = todas ? { cod:'', nome:'Balanço geral das empreitadas', sub:obras.length+' empreitadas' } : { cod:sp.cod, nome:sp.nome, sub:obras[0].local||'' };
-  try{ coRelatorioPdf(obras.map(withExtra), CO.mensal, periodo(), titulo); }
+  if(simN()) titulo.sub = (titulo.sub?titulo.sub+' · ':'')+'SIMULAÇÃO (valores não guardados)';
+  try{ coRelatorioPdf(obras.map(withExtra), mensalEf(), periodo(), titulo); }
   catch(err){ console.warn('coRelatorio', err); showToast(err.message||'Erro ao gerar o PDF'); }
 }
 async function coGuardarSede(obra_id, inp){
@@ -317,6 +346,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimRepor,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };
