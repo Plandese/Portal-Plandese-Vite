@@ -416,3 +416,66 @@ body.device-mobile .modal details{border:1.5px solid var(--m-line);border-radius
 /* ── Títulos de secção dentro das páginas ── */
 body.device-mobile #admin-app .section h3,
 body.device-mobile #admin-app .card h3{font-size:17px;font-weight:600;color:var(--m-ink)}
+
+/* O campo da pesquisa tem o contorno no próprio .m-search; o input fica sem moldura */
+body.device-mobile #admin-app .m-search input,
+body.device-mobile #admin-app .m-search input:focus{
+  min-height:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;outline:0!important;font-size:16.5px!important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PÁGINA PRINCIPAL (Pesquisar) — estado das obras
+   Controlos numa só linha · cartão plano · obras como linhas de lista
+═══════════════════════════════════════════════════════════════════════════ */
+.eo-chev{display:none}
+
+/* O botão "Atualizar" não é necessário; a obra vem dos favoritos, por isso o filtro de obra também não */
+body.device-mobile #sec-analise .pg-hdr .btn[title="Actualizar"]{display:none!important}
+body.device-mobile #sec-analise .pg-hdr{margin-bottom:0}
+body.device-mobile #sec-analise .pg-hdr > div{gap:0}
+
+/* Só a semana (a lista de obras segue as favoritas) */
+body.device-mobile #sec-analise .eo-sel{display:none!important}
+body.device-mobile #sec-analise .eo-bar-nav{flex-wrap:nowrap;gap:8px;margin-bottom:14px}
+body.device-mobile #sec-analise .eo-sem{flex:1.6 1 0;min-width:0;justify-content:space-between;gap:2px;height:46px;padding:0 3px;border:1.5px solid #a3a9b5;border-radius:99px;background:#fff}
+body.device-mobile #sec-analise .eo-nav{flex:none;width:28px;height:36px;border:0;border-radius:50%;background:none;color:var(--m-brand);font-size:22px;padding:0 0 3px}
+body.device-mobile #sec-analise .eo-nav:active{background:#eef2fb}
+body.device-mobile #sec-analise .eo-sem-txt{min-width:0;flex:1;overflow:hidden}
+body.device-mobile #sec-analise .eo-sem-txt b{font-size:12.5px;font-weight:600;color:var(--m-ink)}
+body.device-mobile #sec-analise .eo-sem-txt small{font-size:9.5px;letter-spacing:-.1px;color:var(--m-mute);white-space:nowrap}
+body.device-mobile #sec-analise .eo-hoje{height:30px;border-radius:99px;border:0;background:#e6ecfa;color:var(--m-brand);font-size:12px}
+body.device-mobile #sec-analise .eo-sel{
+  flex:1 1 0;max-width:none;min-width:0;height:46px!important;min-height:46px!important;
+  padding:0 24px 0 11px!important;font-size:13px!important;border-radius:99px!important;
+  background-position:right 8px center!important;background-size:16px!important;text-overflow:ellipsis;
+}
+
+/* Cartão plano, como os da shell */
+body.device-mobile #sec-analise .card{
+  background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;border:1.5px solid #d3d8e1;border-radius:18px;box-shadow:none;
+  padding:16px 16px 6px!important;margin-bottom:14px;
+}
+body.device-mobile #sec-analise .card > div:first-child{margin-bottom:6px!important}
+body.device-mobile #sec-analise .card > div:first-child > div:first-child{background:#e6ecfa!important;color:var(--m-brand)!important}
+body.device-mobile #sec-analise .card > div:first-child > div:last-child > div:first-child{font-size:17px!important;font-weight:600!important;color:var(--m-ink)!important}
+body.device-mobile #sec-analise .card > div:first-child > div:last-child > div:last-child{font-size:12.5px!important;color:var(--m-mute)!important;margin-top:1px}
+body.device-mobile #sec-analise .eo-dica{display:none}
+
+/* Obras: linhas de lista com código em cima e nome em destaque */
+body.device-mobile #sec-analise .eo-row{
+  display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;
+  margin:0;padding:14px 0;border:0;border-bottom:1px solid var(--m-line);border-radius:0;background:none;box-shadow:none;
+}
+body.device-mobile #sec-analise .eo-row:last-child{border-bottom:0}
+body.device-mobile #sec-analise .eo-row:hover{background:none}
+body.device-mobile #sec-analise .eo-row:active{background:#f4f6fa}
+body.device-mobile #sec-analise .eo-nome{flex:1 1 0;min-width:0;font-size:16.5px;font-weight:600;color:var(--m-ink);line-height:1.25}
+body.device-mobile #sec-analise .eo-cod{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--m-mute);margin-bottom:1px}
+body.device-mobile #sec-analise .eo-sep{display:none}
+body.device-mobile #sec-analise .eo-chev{display:block;flex:none;font-size:24px;line-height:1;color:#8a92a2;padding-bottom:3px}
+body.device-mobile #sec-analise .eo-mets{order:3;flex:1 1 100%;width:auto;gap:7px}
+body.device-mobile #sec-analise .eo-met{gap:10px;font-size:12px}
+body.device-mobile #sec-analise .eo-rot{width:24px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--m-mute)}
+body.device-mobile #sec-analise .eo-bar{height:6px;background:#e9edf3}
+body.device-mobile #sec-analise .eo-pct{width:40px;font-size:12.5px}
+body.device-mobile #sec-analise .eo-nota{font-size:12.5px;color:var(--m-mute);background:#f3f6fb;border-radius:12px;padding:10px 12px;margin-bottom:6px}

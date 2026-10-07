@@ -5,7 +5,7 @@
 //    · menu lateral, ecrã de notificações (X + ?) e favoritos por utilizador
 //  Só atua em body.device-mobile (a app dos encarregados não passa por aqui).
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { NAV_CHAPTERS, ROLE_LABELS } from '../config.js';
 import { fmt } from '../utils/helpers.js';
 import { canAccessSection } from './permissions.js';
@@ -19,6 +19,9 @@ const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
 const ativo = () => document.body.classList.contains('device-mobile') && !document.body.classList.contains('enc-mode');
 const toast = m => showToast(m);
 
+// Módulos que não aparecem na app de telemóvel (continuam no portal de computador)
+const OCULTOS_MOBILE = ['fecho-mes', 'mapas-comparativos', 'faturas', 'precos-unitarios', 'fornecedores'];
+
 // ── Catálogo de módulos: lido da sidebar (fonte única de verdade) ─────────────
 let CAT = null;
 function catalogo() {
@@ -26,7 +29,7 @@ function catalogo() {
   const c = {};
   document.querySelectorAll('.sidebar .nav-btn').forEach(b => {
     const m = (b.getAttribute('onclick') || '').match(/goTo\('([^']+)'/);
-    if (!m || m[1] === 'painel') return;
+    if (!m || m[1] === 'painel' || OCULTOS_MOBILE.includes(m[1])) return;
     const id = m[1], ch = NAV_CHAPTERS.find(x => x.sections.includes(id));
     c[id] = {
       id, ch: ch ? ch.id : null,
@@ -74,6 +77,8 @@ function gravar() { try { localStorage.setItem(_pk || chave(), JSON.stringify(_p
 const isFav = (k, id) => prefs().favs[k].includes(id);
 const favMods = () => prefs().favs.mods.filter(id => catalogo()[id]?.ch && canAccessSection(id));
 const favObras = () => prefs().favs.obras.filter(id => obrasAtivas().some(o => o.id === id));
+// O Estado das obras da página inicial mostra só as obras favoritas (sem favoritas, mostra todas)
+R.mFavObraIds = () => (ativo() ? favObras() : []);
 
 function registarUso(id) {
   const m = catalogo()[id];
@@ -313,7 +318,6 @@ function renderHome() {
   const box = $('m-recents'), lbl = $('m-recents-l');
   if (box) box.innerHTML = ids.map(id => `<button type="button" class="m-chip" onclick="mAbrir('${id}')">${cat[id].icon}<span>${esc(cat[id].label)}</span></button>`).join('');
   if (lbl) lbl.hidden = !ids.length;
-  const p = $('m-pill'); if (p) p.hidden = !canAccessSection('producao');
 }
 
 export function mPesquisa(q) {

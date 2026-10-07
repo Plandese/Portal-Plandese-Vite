@@ -244,8 +244,15 @@ function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
     o.eq = o.equips.length ? Math.round(100 * (o.equips.length - o.eqNaoOp) / o.equips.length) : null;
   });
 
-  return [...porObra.values()].filter(o => _pObra ? o.obra.id === _pObra : (o.equipa.size || o.equips.length))
+  const fav = R.mFavObraIds?.() || [];
+  return [...porObra.values()].filter(o => _pObra ? o.obra.id === _pObra : (o.equipa.size || o.equips.length) && (!fav.length || fav.includes(o.obra.id)))
     .sort((a, b) => a.obra.nome.localeCompare(b.obra.nome, 'pt'));
+}
+
+// "O057 - ZMC Lagos" → código e nome em separado (no telemóvel o código fica numa linha própria)
+function _eoNome(nome) {
+  const m = String(nome || '').match(/^(O\d+)\s*[-–]\s*(.+)$/);
+  return m ? `<span class="eo-cod">${_esc(m[1])}</span><span class="eo-sep"> - </span><span class="eo-nm">${_esc(m[2])}</span>` : _esc(nome);
 }
 
 function _eoMetrica(rot, pct, txt) {
@@ -270,13 +277,14 @@ export async function htmlEstadoObrasSemana() {
 
   const eqTit = (o) => eqAtivo ? `${o.equips.length - o.eqNaoOp} de ${o.equips.length} equipamentos operacionais` : 'Só disponível na semana atual';
   const corpo = nota + (lista.length ? lista.map(o => `<div class="eo-row" role="button" tabindex="0" onclick="abrirEstadoObra('${_esc(o.obra.id)}')" onkeydown="if(event.key==='Enter')abrirEstadoObra('${_esc(o.obra.id)}')">
-      <div class="eo-nome">${_esc(o.obra.nome)}</div>
+      <div class="eo-nome">${_eoNome(o.obra.nome)}</div>
       <div class="eo-mets">
         ${podeMO ? _eoMetrica('MO', o.mo, `${o.equipa.size} pessoas · ${o.aus} dias de ausência`) : ''}
         ${podeEQ ? _eoMetrica('EQ', o.eq, eqTit(o)) : ''}
       </div>
+      <span class="eo-chev" aria-hidden="true">›</span>
     </div>`).join('') : _painelVazio(_pObra ? 'Sem equipa nem equipamentos registados nesta obra.' : 'Sem dados de equipas ou equipamentos nas obras ativas.'));
-  return _painelCardHtml('Estado das obras', `${_rotSemana()} · ${semanaTxt} · toque numa obra para o detalhe`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
+  return _painelCardHtml('Estado das obras', `${_rotSemana()} · ${semanaTxt}<span class="eo-dica"> · toque numa obra para o detalhe</span>`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
 }
 
 // ── Filtro geral do Painel (semana + obra) ───────────────────────
