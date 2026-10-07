@@ -11,6 +11,9 @@ import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } f
 
 const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'', simOn:false };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
+// Fator aplicado aos custos importados do Excel (ex.: 0,5 quando o ficheiro vem com as linhas duplicadas)
+const fatorCustos = obra_id => { const f = +(CO.extra[obra_id]||{}).custos_fator; return f>0 ? f : 1; };
+function escalar(agg, f){ if(f===1) return agg; Object.values(agg).forEach(a => Object.keys(a).forEach(k => a[k] = Math.round(a[k]*f*100)/100)); return agg; }
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
 const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
@@ -305,6 +308,7 @@ async function coAtualizar(escolher){
       const sp = split(o.nome), dir = await coPastaObra(raiz, sp.cod);
       if(!dir){ linhas.push(`<b>${esc(sp.cod||o.nome)}</b> — pasta não encontrada`); continue; }
       const r = await coLerObra(dir);
+      if(r.custos) escalar(r.custos.agg, fatorCustos(o.id));
       // Só se mexe nos meses que aparecem nos ficheiros; nada do que já existe é apagado por falta de ficheiro.
       const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.provContr||{}), ...Object.keys(r.provCompl||{})]);
       let saltados = 0;
@@ -355,9 +359,12 @@ function coFicheiro(ev){
       const wb = XLSX.read(e.target.result, { type:'binary', cellDates:true });
       let agg, n;
       try{ ({ agg, n } = coParseCustos(wb)); }catch(err){ showToast(err.message+' no ficheiro'); return; }
+      const fator = fatorCustos(obra_id); escalar(agg, fator);
       const ms = Object.keys(agg).sort();
       if(!ms.length){ showToast('Nenhuma linha reconhecida'); return; }
-      if(!confirm(`Importar ${n} linhas de ${mesLabel(ms[0])} a ${mesLabel(ms[ms.length-1])} (${ms.length} meses)?\n\nOs custos destes meses são substituídos; os proveitos mantêm-se.`)) return;
+      if(!confirm(`Importar ${n} linhas de ${mesLabel(ms[0])} a ${mesLabel(ms[ms.length-1])} (${ms.length} meses)?\n\nOs custos destes meses são substituídos; os proveitos mantêm-se.${fator!==1?`
+
+Atenção: os valores do Excel são multiplicados por ${String(fator).replace('.',',')} nesta empreitada.`:''}`)) return;
       const now = new Date().toISOString();
       const payload = ms.map(mes => {
         const a = agg[mes]; Object.keys(a).forEach(k=>a[k]=Math.round(a[k]*100)/100);
