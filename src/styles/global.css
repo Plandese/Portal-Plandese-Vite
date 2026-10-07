@@ -1753,7 +1753,11 @@ tbody tr:hover td{background:rgba(37,99,235,.035)}
 .devc-card.current .devc-badge::after{content:' (actual)'}
 
 /* A barra inferior tem 7 atalhos: deixar os botões encolher em vez de transbordar */
-body.device-mobile .bottom-nav{padding:6px 2px}
+/* Cantos arredondados do ecrã: margem lateral e inferior extra para os ícones das pontas não ficarem cortados */
+body.device-mobile .bottom-nav{
+  padding:8px max(18px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
+  border-radius:22px 22px 0 0;
+}
 body.device-mobile .bnav-btn{max-width:none;flex:1 1 0;min-width:0;padding:6px 2px;font-size:9.5px;line-height:1.15}
 body.device-mobile .bnav-btn svg{width:20px;height:20px}
 
@@ -1867,7 +1871,7 @@ body.device-mobile #admin-app #dw-date-adm{
 /* Os painéis passam a folha inferior, acima da barra de navegação */
 body.device-mobile .notif-panel,
 body.device-mobile .settings-panel{
-  top:auto!important;bottom:74px!important;
+  top:auto!important;bottom:calc(82px + env(safe-area-inset-bottom))!important;
   left:12px!important;right:12px!important;width:auto!important;
   max-height:70vh;overflow-y:auto;
   transform:translateY(8px) scale(.98);
@@ -2439,7 +2443,7 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
 
 /* ═══ Telemóvel: chat fixo junto à barra inferior + ecrã completo ═══ */
 .chat-close{display:none;background:none;border:0;font-size:28px;line-height:1;cursor:pointer;color:var(--gray-700);padding:0 8px 0 0}
-body.device-mobile #chat-fab{left:50%!important;top:auto!important;bottom:calc(50px + env(safe-area-inset-bottom));transform:translateX(-50%);cursor:pointer;z-index:260}
+body.device-mobile #chat-fab{left:50%!important;top:auto!important;bottom:calc(56px + env(safe-area-inset-bottom));transform:translateX(-50%);cursor:pointer;z-index:260}
 body.device-mobile #chat-fab:hover{transform:translateX(-50%)}
 body.device-mobile #chat-fab-panel{display:none!important}
 body.device-mobile #sec-chat.active{position:fixed;inset:0;z-index:1000;background:var(--white);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 0}
