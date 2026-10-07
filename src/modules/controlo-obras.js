@@ -92,11 +92,11 @@ function coRenderDetail(manterScroll){
         <button class="co-back" onclick="coVoltar()">← Empreitadas</button>
         <p class="co-eyebrow">PLANDESE · ${todas?'Direção de Obra':esc(sp.cod||'Obra')}</p>
         <h2>${todas?'Balanço geral das empreitadas':esc(sp.nome)}</h2>
-        ${o?`<div class="co-sede-wrap"><label class="co-sede" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
-        <div class="co-sede-val" id="co-sede-val"></div></div>`:''}
+        ${o?`<div class="co-banner-btns" style="margin-top:14px"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button></div>`:''}
       </div>
       <div class="co-banner-r">
-        ${o?`<div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button></div>`:''}
+        ${o?`<div class="co-sede-wrap" style="margin:0;text-align:right"><label class="co-sede" style="justify-content:flex-end" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
+        <div class="co-sede-val" id="co-sede-val"></div></div>`:''}
         <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
       </div>
     </div>
