@@ -193,7 +193,6 @@ export async function entrarComoUtilizador(authedUser) {
   mostrarLoading('A carregar obras e colaboradores...');
   try {
     await R.carregarDados();
-    mostrarDiag(`✓ Dados carregados: ${S.OBRAS.length} obras, ${S.COLABORADORES.length} colaboradores`,'#15803D');
   } catch(e){
     mostrarDiag('❌ Erro ao carregar dados: '+e.message,'#B91C1C');
   }
@@ -244,8 +243,7 @@ export async function doLogin() {
       (users||[]).forEach(x=>{S.USERS[x.username]={nome:x.nome,initials:x.initials||x.nome.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase(),role:x.role};});
       if(!S.USERS['admin'])S.USERS['admin']={nome:USERS_BASE['admin'].nome,initials:USERS_BASE['admin'].initials,role:USERS_BASE['admin'].role};
       authedUser=(users||[]).find(x=>x.username===u)||null;
-      if(authedUser) mostrarDiag('✓ Supabase ligado — '+users.length+' utilizadores','#15803D');
-      else await sb.auth.signOut().catch(()=>{});
+      if(!authedUser) await sb.auth.signOut().catch(()=>{});
     }
   } catch(e){
     mostrarDiag('⚠️ Sem ligação ao servidor — tente novamente','#B45309');
