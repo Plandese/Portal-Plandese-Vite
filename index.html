@@ -1114,6 +1114,17 @@
 
 <!-- ══════════════ ADMIN ══════════════ -->
 <div id="admin-app" style="display:none">
+  <!-- CABEÇALHO MOBILE (estrutura da app CP): menu · logo · sino + título do ecrã -->
+  <header class="m-hdr" id="m-hdr">
+    <div class="m-hdr-pills"><i></i><i></i></div>
+    <div class="m-hdr-row">
+      <button type="button" class="m-ic" id="m-hl" onclick="mLeft()" aria-label="Menu"></button>
+      <button type="button" class="m-logo" onclick="irParaInicio()" aria-label="Página principal"><i></i><b>Plandese</b></button>
+      <button type="button" class="m-ic" id="m-hr" onclick="mRight()" aria-label="Notificações"></button>
+    </div>
+    <div class="m-hdr-title" id="m-hdr-title"></div>
+  </header>
+
   <!-- APP BAR -->
   <div class="app-bar">
     <div class="app-bar-inner">
@@ -1352,6 +1363,19 @@
       <!-- ANÁLISE DE DADOS — vista optimizada para telemóvel      -->
       <!-- ====================================================== -->
       <section id="sec-analise" class="section">
+        <div class="m-home-panel">
+          <div class="m-home-h1">Vamos trabalhar?</div>
+          <div class="m-home-h2">Pesquise módulos, obras e pessoas</div>
+          <label class="m-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="search" id="m-q" placeholder="Módulo, obra ou pessoa" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" oninput="mPesquisa(this.value)" onkeydown="if(event.key==='Enter')this.blur()"/>
+            <button type="button" class="m-search-x" id="m-search-x" hidden onclick="mPesquisaLimpar()" aria-label="Limpar pesquisa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </label>
+          <div class="m-chips-l" id="m-recents-l" hidden>Acesso rápido</div>
+          <div class="m-chips" id="m-recents"></div>
+        </div>
+        <div class="m-results" id="m-results" hidden></div>
+        <div class="m-home-body" id="m-home-body">
         <div class="pg-hdr">
           <div>
             <div class="pg-title">Análise de Dados</div>
@@ -1381,6 +1405,7 @@
         </div>
 
         <div id="anl-body"></div>
+        </div>
       </section>
 
       <!-- Modal de personalização dos widgets da Análise de Dados -->
@@ -1401,6 +1426,12 @@
           </div>
         </div>
       </div>
+
+      <!-- ══ ECRÃS DA APP MOBILE ══ -->
+      <section id="sec-m-modulos" class="section"><div id="m-mods"></div></section>
+      <section id="sec-m-favoritos" class="section"><div id="m-favs"></div></section>
+      <section id="sec-m-conta" class="section"><div id="m-acc"></div></section>
+      <section id="sec-m-defs" class="section"><div id="m-defs-box"></div></section>
 
       <section id="sec-painel" class="section">
 
@@ -2531,7 +2562,8 @@
       </section>
 
       <!-- NOTIFICAÇÕES -->
-      <section id="sec-notificacoes" class="section">
+      <section id="sec-notificacoes" class="section" data-seg="hist">
+        <div class="m-seg m-seg-only-m" id="m-ntf-seg"><button type="button" class="on" data-v="hist" onclick="mNtfSeg('hist')">Histórico</button><button type="button" data-v="prefs" onclick="mNtfSeg('prefs')">Preferências</button></div>
         <div class="pg-hdr">
           <div>
             <div class="pg-title">Notificações</div>
@@ -2629,6 +2661,22 @@
       </section>
 
     </div>
+  </div>
+
+  <!-- MENU LATERAL (hambúrguer) -->
+  <div class="m-drawer" id="m-drawer" aria-hidden="true">
+    <div class="m-drawer-scrim" onclick="mDrawer(false)"></div>
+    <aside class="m-drawer-panel" id="m-drawer-panel"></aside>
+  </div>
+
+  <!-- FOLHA INFERIOR (adicionar favoritos / ajuda) -->
+  <div class="m-sheet-bg" id="m-sheet-bg" onclick="mSheetClose()"></div>
+  <div class="m-sheet" id="m-sheet" role="dialog" aria-modal="true">
+    <div class="m-sheet-grab"></div>
+    <div class="m-sheet-h" id="m-sheet-h"></div>
+    <div class="m-sheet-s" id="m-sheet-s" hidden></div>
+    <div class="m-sheet-b" id="m-sheet-b"></div>
+    <button type="button" class="m-btn" id="m-sheet-ok" onclick="mSheetClose()">Concluir</button>
   </div>
 </div>
 
@@ -3712,12 +3760,13 @@
 
   <!-- BOTTOM NAV (mobile only) -->
   <nav class="bottom-nav" id="bottom-nav">
-    <!-- atalhos gerados por src/modules/bottom-nav.js (últimos módulos usados) -->
-    <button class="bnav-btn" onclick="toggleSettingsPanel()" id="bnav-mais" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
-      Mais
-    </button>
+    <button type="button" class="bnav-btn active" data-tab="pesquisar" onclick="mTab('pesquisar')" aria-label="Pesquisar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg><span>Pesquisar</span></button>
+    <button type="button" class="bnav-btn" data-tab="modulos" onclick="mTab('modulos')" aria-label="Módulos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg><span>Módulos</span></button>
+    <button type="button" class="bnav-btn" data-tab="favoritos" onclick="mTab('favoritos')" aria-label="Favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.7l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg><span>Favoritos</span></button>
+    <button type="button" class="bnav-btn" data-tab="conta" onclick="mTab('conta')" aria-label="myPlandese"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.2"/><path d="M5.8 19c1.6-2.6 3.6-3.7 6.2-3.7s4.6 1.1 6.2 3.7"/></svg><span>myPlandese</span></button>
   </nav>
+  <button type="button" class="m-fab" id="m-fab" onclick="mFavAdd()" aria-label="Adicionar aos favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" class="m-pill" id="m-pill" onclick="mAbrir('producao')">As minhas obras <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></button>
 <!-- MODAL PERFIL -->
 <div class="modal-bg" id="modal-perfil">
   <div class="modal" style="max-width:400px">

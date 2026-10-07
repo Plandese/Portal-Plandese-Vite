@@ -114,6 +114,7 @@ export function renderNotifPanel(){
   if(!list||!badge) return;
 
   const unread = S.NOTIFICACOES.filter(n=>!n.lida).length;
+  window.mSyncBell?.();
   if(unread>0){
     badge.textContent = unread>9?'9+':unread;
     badge.hidden = false;

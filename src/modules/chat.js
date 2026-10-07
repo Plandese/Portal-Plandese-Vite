@@ -124,6 +124,7 @@ function badge(){
   const g = $('chat-gear-dot'); if(g) g.hidden = b.hidden;
   const f = $('chat-fab-badge');
   if(f){ f.textContent = n > 99 ? '99+' : n; f.hidden = !n; }
+  window.mSyncChat?.();
 }
 
 export function chatSetConv(k){

@@ -10,6 +10,7 @@ import {
 import { canAccessSection, roleCanAccessSection } from './permissions.js';
 import { renderNotifPanel, goToSection } from './notifications.js';
 import { showToast } from './navigation.js';
+import { emptyHtml } from './m-art.js';
 
 const LIMITE = 500;
 let _todas = [];
@@ -96,6 +97,12 @@ export function renderNotifPage(){
     return true;
   });
 
+  const secNtf = document.getElementById('sec-notificacoes');
+  if(secNtf) secNtf.dataset.vazio = _todas.length ? '' : '1';
+  if(vis.length===0 && !_todas.length && document.body.classList.contains('device-mobile')){
+    list.innerHTML = emptyHtml('Não existem notificações.', 'Para começar a receber notificações, escolha nas suas preferências as secções de que quer ser avisado.');
+    return;
+  }
   if(vis.length===0){
     list.innerHTML = `<div class="notif-empty">${_todas.length?'Nenhuma notificação corresponde aos filtros':'Sem notificações'}</div>`;
     return;

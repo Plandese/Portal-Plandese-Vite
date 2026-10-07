@@ -1179,9 +1179,7 @@ body.device-tablet .admin-main{padding:16px}
 
 /* Mobile: sidebar hidden, bottom-nav shown */
 body.device-mobile .sidebar{display:none}
-body.device-mobile .bottom-nav{display:flex}
 body.enc-mode .bottom-nav{display:none!important}
-body.device-mobile .admin-main{padding:14px;padding-bottom:76px}
 body.device-mobile .admin-body{flex-direction:column}
 body.device-mobile .filter-bar{flex-direction:column;gap:8px;padding:12px}
 body.device-mobile .filter-bar .field{min-width:0;width:100%}
@@ -1752,19 +1750,9 @@ tbody tr:hover td{background:rgba(37,99,235,.035)}
 .devc-card.current .devc-badge{display:block;background:rgba(16,185,129,.22);color:#a7f3d0}
 .devc-card.current .devc-badge::after{content:' (actual)'}
 
-/* A barra inferior tem 7 atalhos: deixar os botões encolher em vez de transbordar */
-/* Cantos arredondados do ecrã: margem lateral e inferior extra para os ícones das pontas não ficarem cortados */
-body.device-mobile .bottom-nav{
-  padding:8px max(18px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
-  border-radius:22px 22px 0 0;
-}
-body.device-mobile .bnav-btn{max-width:none;flex:1 1 0;min-width:0;padding:6px 2px;font-size:9.5px;line-height:1.15}
-body.device-mobile .bnav-btn svg{width:20px;height:20px}
-
 /* ─────────────────────────────────────────────────────
    MODO TELEMÓVEL FORÇADO NUM ECRÃ GRANDE
 ───────────────────────────────────────────────────── */
-body.device-mobile .bottom-nav{display:flex!important}
 @media(min-width:900px){
   body.forced-mobile #admin-app{
     max-width:460px;margin:0 auto;background:var(--white);
@@ -1878,11 +1866,6 @@ body.device-mobile .settings-panel{
 }
 body.device-mobile .notif-panel.open,
 body.device-mobile .settings-panel.open{transform:none}
-
-/* O botão "Mais" ocupa pouco espaço para os outros atalhos respirarem */
-body.device-mobile #bnav-mais{flex:0 0 46px}
-body.device-mobile .bnav-btn{font-size:9px;gap:3px}
-body.device-mobile .bnav-btn svg{width:19px;height:19px}
 
 /* Em modo telemóvel forçado num ecrã grande, os painéis seguem a coluna */
 @media(min-width:900px){
@@ -2443,8 +2426,6 @@ button.chat-pessoa .chat-pessoa-tx{flex:1;min-width:0}
 
 /* ═══ Telemóvel: chat fixo junto à barra inferior + ecrã completo ═══ */
 .chat-close{display:none;background:none;border:0;font-size:28px;line-height:1;cursor:pointer;color:var(--gray-700);padding:0 8px 0 0}
-body.device-mobile #chat-fab{left:50%!important;top:auto!important;bottom:calc(56px + env(safe-area-inset-bottom));transform:translateX(-50%);cursor:pointer;z-index:260}
-body.device-mobile #chat-fab:hover{transform:translateX(-50%)}
 body.device-mobile #chat-fab-panel{display:none!important}
 body.device-mobile #sec-chat.active{position:fixed;inset:0;z-index:1000;background:var(--white);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 0}
 body.device-mobile #sec-chat .pg-hdr{display:none}
@@ -2457,7 +2438,3 @@ body.device-mobile #sec-chat .chat-back{display:block}
 body.device-mobile #sec-chat .chat-close{display:block}
 body.device-mobile #sec-chat .chat-side-title{display:flex;align-items:center;font-size:15px;text-transform:none;letter-spacing:0;color:var(--gray-900);padding:10px 12px}
 body.device-mobile #sec-chat .chat-compose{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-
-/* Painel "Mais": módulos sem atalho na barra inferior (só em telemóvel) */
-.mais-mods{display:none}
-body.device-mobile .mais-mods{display:block}

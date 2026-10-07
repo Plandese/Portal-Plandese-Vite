@@ -50,7 +50,7 @@ export function initAdmin(){
   // window.goTo tem os hooks de render de cada secção (definidos em app.js)
   const nav = window.goTo || goTo;
   // Em modo telemóvel a vista inicial é a Análise de Dados
-  if(document.body.classList.contains('device-mobile')) nav('analise', document.getElementById('bnav-analise'));
+  if(document.body.classList.contains('device-mobile')) nav('analise');
   else nav('painel', document.getElementById('nav-painel'));
 }
 
@@ -104,6 +104,9 @@ export async function refreshPortal(){
       const id = activeSection.id.replace(/^sec-/,'');
       const renderMap = {
         'analise':         ()=>{ R.anlResetObras?.(); R.renderAnalise?.(); },
+        'm-modulos':       ()=>window.goTo('m-modulos'),
+        'm-favoritos':     ()=>window.goTo('m-favoritos'),
+        'm-conta':         ()=>window.goTo('m-conta'),
         'painel':          ()=>R.renderPainel?.(),
         'historico':       ()=>{ R.applyFilter?.(); if(fpTabAtivo==='aluguer') window.applyMOAFilter?.(); },
         'empresas-moa':    ()=>R.renderEmpresasMOA?.(),

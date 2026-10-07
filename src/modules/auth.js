@@ -286,6 +286,7 @@ async function restaurarSessao() {
 
 export function doLogout() {
   document.getElementById('push-prompt')?.remove();
+  window.mShellReset?.();
   R.chatStop?.();
   S.currentUser = null;
   localStorage.removeItem('plandese_session');

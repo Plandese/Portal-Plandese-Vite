@@ -56,7 +56,7 @@ import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
-import { bnavRegistar, bnavRender, irParaInicio } from './modules/bottom-nav.js';
+import { mOnGoTo, mShellReset, mSyncBell, mSyncChat } from './modules/m-shell.js';
 import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel
@@ -265,7 +265,7 @@ Object.assign(window, {
   puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
 
   // Controlo de Obras
-  irParaInicio,
+  mShellReset, mSyncBell, mSyncChat,
   coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
   coGuardarCelula, coAdicionarMes, coApagarMes,
   exportSemanaExcel,
@@ -336,7 +336,7 @@ Object.assign(window, {
   document.addEventListener('click', function (e) {
     if (!open) return;
     // #settings-panel testado à parte: em telemóvel já não vive dentro do wrap
-    if (!e.target.closest('#settings-wrap') && !e.target.closest('#settings-panel') && !e.target.closest('#bnav-mais')) {
+    if (!e.target.closest('#settings-wrap') && !e.target.closest('#settings-panel')) {
       open = false;
       document.getElementById('settings-panel')?.classList.remove('open');
     }
@@ -395,7 +395,7 @@ window.savePerfil = async function () {
       return;
     }
     _orig(id, btn);
-    bnavRegistar(id); bnavRender();
+    mOnGoTo(id);
     if (id === 'analise')      { renderAnalise(); }
     if (id === 'painel')       { renderPainel(); }
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
@@ -423,8 +423,8 @@ window.escolherModoDispositivo = async function () {
   if (modo === anterior) return;
   const secAtiva = document.querySelector('.section.active');
   const idAtiva = secAtiva ? secAtiva.id.replace(/^sec-/, '') : '';
-  if (modo === 'mobile' && idAtiva === 'painel') window.goTo('analise', document.getElementById('bnav-analise'));
-  else if (modo === 'desktop' && idAtiva === 'analise') window.goTo('painel', document.getElementById('nav-painel'));
+  if (modo === 'mobile' && idAtiva === 'painel') window.goTo('analise');
+  else if (modo === 'desktop' && (idAtiva === 'analise' || idAtiva.startsWith('m-'))) window.goTo('painel', document.getElementById('nav-painel'));
 };
 
 // ── Badge de compras ao iniciar ──
