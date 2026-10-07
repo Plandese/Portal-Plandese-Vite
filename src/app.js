@@ -403,7 +403,7 @@ window.savePerfil = async function () {
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }
-    if (id === 'producao')          { renderControloObras(); }
+    if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }
