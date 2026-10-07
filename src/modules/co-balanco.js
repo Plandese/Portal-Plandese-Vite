@@ -89,7 +89,10 @@ export function coBalancoCalc(obras, mensal, periodo){
 }
 
 // ── Gráficos SVG ───────────────────────────────────────────────────────
-const W = 560, H = 230, PL = 52, PR = 10, PT = 14, PB = 26;
+let W = 560, H = 230, PL = 52;
+const PR = 10, PT = 14, PB = 26;
+// Gráficos mais estreitos para o telemóvel (as funções leem W/H/PL ao desenhar)
+const comDim = (w,h,pl,fn) => { const o=[W,H,PL]; W=w; H=h; PL=pl; try{ return fn(); } finally{ [W,H,PL]=o; } };
 const svgOpen = label => `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${label}" style="display:block;overflow:visible">`;
 const axisY = (ymax, yfn, fmt) => Array.from({length:5},(_,i)=>{
   const v=ymax*i/4, y=yfn(v);
@@ -157,7 +160,44 @@ const legend = items => `<div style="display:flex;gap:14px;flex-wrap:wrap;font-s
 const panel = (title, desc, body) => `<div class="co-panel"><div class="co-panel-hd"><div class="co-panel-title">${title}</div></div><div class="co-panel-bd">${desc?`<div style="font-size:12px;color:var(--gray-500);margin:-4px 0 10px">${desc}</div>`:''}${body}</div></div>`;
 const tile = (lbl,val,sub,cor) => `<div class="co-an-tile"><div class="co-an-lbl">${lbl}</div><div class="co-an-val" style="${cor?'color:'+cor:''}">${val}</div><div class="co-an-sub">${sub||'&nbsp;'}</div></div>`;
 
-export function coBalancoHtml(obras, mensal, periodo){
+function tipoBodyHtml(c, tot){
+  const linhas = TIPOLOGIAS.filter(t=>Math.abs(tot[t.key])>0.005);
+  const maxAbs = Math.max(1,...linhas.map(t=>Math.abs(tot[t.key])));
+  return linhas.map(t=>`<div class="co-an-tip">
+      <div>${t.label}</div>
+      <div class="co-an-track"><div style="width:${Math.abs(tot[t.key])/maxAbs*100}%;height:100%;border-radius:4px;background:${t.cor||COR.custo}"></div></div>
+      <div class="co-an-n">${eur0(tot[t.key])}</div>
+      <div class="co-an-n" style="color:var(--gray-400)">${c.provTot>0?pct(tot[t.key]/c.provTot):'—'}</div>
+    </div>`).join('') + `<div class="co-an-tip" style="border-top:1px solid var(--gray-200);font-weight:600"><div>Total</div><div></div><div class="co-an-n">${eur0(c.custosTot)}</div><div class="co-an-n">${c.provTot>0?pct(c.custosTot/c.provTot):'—'}</div></div>`;
+}
+
+// ── Versão resumida para telemóvel ─────────────────────────────────────
+function coBalancoHtmlMobile(obras, mensal, periodo){
+  const c = coBalancoCalc(obras, mensal, periodo);
+  const unica = obras.length === 1;
+  const notas = obras.filter(o=>o.extra&&o.extra.nota).map(o=>`<div class="co-an-nota"><span>${esc(o.extra.nota)}</span></div>`).join('');
+  if(!c.rows.length) return notas + `<div class="co-empty">${periodo&&(periodo.de||periodo.ate)?'Sem lançamentos no período escolhido.':'Sem lançamentos.'}</div>`;
+  const { rows, tot } = c;
+  const bom = c.saldo>=0;
+  const tiles = `<div class="co-an-tiles">
+    ${tile('Proveitos', eur0(c.provTot), rows.length+(rows.length===1?' mês':' meses'), COR.prov)}
+    ${tile('Custos', eur0(c.custosTot), 'diretos + ajustes', COR.custo)}
+    ${tile('Saldo', (bom?'+':'')+eur0(c.saldo), 'proveitos − custos', bom?'var(--green)':'var(--red)')}
+    ${tile('Margem', c.margem===null?'—':pct(c.margem), 'sobre proveitos', bom?'var(--green)':'var(--red)')}
+  </div>`;
+  const grafico = panel('Custos e proveitos por mês','',
+    comDim(340,185,38,()=>barsCustoProv(rows,r=>r.custos,r=>r.prov,'Custos','Proveitos',r=>'Saldo: '+eur0(r.saldo))) + legend([leg(COR.custo,'Custos'),leg(COR.prov,'Proveitos')]));
+  const tab = `<div class="co-panel" style="margin-top:12px"><div class="co-panel-bd" style="padding:6px 8px"><table class="co-pivot"><thead><tr><th>Mês</th><th>Prov.</th><th>Custos</th><th>Saldo</th></tr></thead><tbody>${
+    rows.map(r=>`<tr><td>${mesLabel(r.ym)}</td><td>${eurK(r.prov)}</td><td>${eurK(r.custos)}</td><td style="color:${r.saldo<0?'var(--red)':'inherit'}">${eurK(r.saldo)}</td></tr>`).join('')
+  }<tr class="total"><td>Total</td><td>${eurK(c.provTot)}</td><td>${eurK(c.custosTot)}</td><td>${eurK(c.saldo)}</td></tr></tbody></table></div></div>`;
+  const tmo=rows.reduce((a,r)=>a+r.mo,0), teq=rows.reduce((a,r)=>a+r.eq,0);
+  const carga = c.provTot>0 ? `<div class="co-an-tiles" style="grid-template-columns:1fr;margin-top:12px">${tile('Carga de mão de obra + equip.', pct((tmo+teq)/c.provTot), `MO ${pct(tmo/c.provTot)} · Equip. ${pct(teq/c.provTot)} do faturado`)}</div>` : '';
+  const tipo = `<div class="co-an-sec" style="margin:18px 0 8px">Custos por tipologia</div><div class="co-panel"><div class="co-panel-bd" style="padding:6px 14px">${tipoBodyHtml(c, tot)}</div></div>`;
+  return notas + tiles + grafico + tab + carga + tipo;
+}
+
+export function coBalancoHtml(obras, mensal, periodo, mobile){
+  if(mobile) return coBalancoHtmlMobile(obras, mensal, periodo);
   const c = coBalancoCalc(obras, mensal, periodo);
   const unica = obras.length === 1;
   const notas = obras.filter(o=>o.extra&&o.extra.nota).map(o=>`<div class="co-an-nota"><b>Nota${unica?'':' · '+esc(o.nome)}</b><span>${esc(o.extra.nota)}</span></div>`).join('');
@@ -196,14 +236,7 @@ export function coBalancoHtml(obras, mensal, periodo){
     </div>`;
 
   // Tipologias
-  const linhas = TIPOLOGIAS.filter(t=>Math.abs(tot[t.key])>0.005);
-  const maxAbs = Math.max(1,...linhas.map(t=>Math.abs(tot[t.key])));
-  const tipoBody = linhas.map(t=>`<div class="co-an-tip">
-      <div>${t.label}</div>
-      <div class="co-an-track"><div style="width:${Math.abs(tot[t.key])/maxAbs*100}%;height:100%;border-radius:4px;background:${t.cor||COR.custo}"></div></div>
-      <div class="co-an-n">${eur0(tot[t.key])}</div>
-      <div class="co-an-n" style="color:var(--gray-400)">${c.provTot>0?pct(tot[t.key]/c.provTot):'—'}</div>
-    </div>`).join('') + `<div class="co-an-tip" style="border-top:1px solid var(--gray-200);font-weight:600"><div>Total</div><div></div><div class="co-an-n">${eur0(c.custosTot)}</div><div class="co-an-n">${c.provTot>0?pct(c.custosTot/c.provTot):'—'}</div></div>`;
+  const tipoBody = tipoBodyHtml(c, tot);
   const tipo = `<div class="co-an-sec">Custos por tipologia</div>` + panel('Peso de cada rubrica face ao total faturado','As rubricas que não são custo direto de obra (sede, material transferido, existências) têm cor própria.', tipoBody);
 
   // Tabela mensal

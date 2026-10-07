@@ -2248,6 +2248,40 @@
         .co-an-sec{font-size:15px;font-weight:700;color:var(--gray-900);margin:26px 0 12px}
         .co-an-nota{background:var(--white);border:1px solid var(--gray-200);border-left:3px solid var(--blue-500);border-radius:8px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.55;color:var(--gray-600);display:flex;gap:12px}
         .co-an-nota b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-900);white-space:nowrap;padding-top:2px}
+        /* ── Controlo de Obras · telemóvel: vista resumida ── */
+        .co-mb{background:#17303f;color:#eef4f7;border-radius:14px;padding:14px 16px 16px;margin-bottom:12px}
+        .co-mb-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .co-mb-cod{font-size:11px;font-weight:700;letter-spacing:.09em;color:rgba(238,244,247,.6)}
+        .co-mb h2{font-size:19px;font-weight:800;line-height:1.2;margin:10px 0 4px;letter-spacing:-.01em}
+        .co-mb-meta{font-size:12px;color:rgba(238,244,247,.7)}
+        .co-mb-meta strong{color:#eef4f7}
+        .co-mb-act{display:flex;gap:8px;margin-top:12px}
+        .co-mb-act button{flex:1;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#eef4f7;border-radius:8px;padding:9px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+        .co-mb-act button:last-child{flex:0 0 72px}
+        .co-mb-sede{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15)}
+        .co-mb-sede .co-sede-val{margin-top:5px}
+        body.device-mobile .co-per{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 8px;align-items:center;margin-bottom:12px}
+        body.device-mobile .co-per select{width:100%;min-width:0}
+        body.device-mobile .co-per > span:last-of-type:has(button){grid-column:1/-1;margin:0;display:flex;gap:6px}
+        body.device-mobile .co-per > span:last-of-type:has(button) button{flex:1}
+        body.device-mobile .co-an-tiles{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+        body.device-mobile .co-an-tile{padding:10px 12px}
+        body.device-mobile .co-an-val{font-size:16px}
+        body.device-mobile .co-an-sub{font-size:10.5px}
+        body.device-mobile .co-panel-bd{padding:12px}
+        body.device-mobile .co-list{grid-template-columns:1fr;gap:10px}
+        body.device-mobile .co-ob{padding:12px 14px;gap:4px}
+        body.device-mobile .co-ob-nome{min-height:0;font-size:13.5px}
+        body.device-mobile .co-ob-saldo{font-size:19px}
+        body.device-mobile .co-pivot td,body.device-mobile .co-pivot th{padding:6px 5px}
+        body.device-mobile .co-pivot{min-width:0}
+        body.device-mobile .co-pivot.co-lanc{min-width:760px}
+        .co-det{margin-top:16px;background:var(--white);border:1px solid var(--gray-200);border-radius:12px;box-shadow:var(--shadow)}
+        .co-det > summary{padding:13px 16px;font-size:13.5px;font-weight:700;color:var(--gray-900);cursor:pointer;list-style:none}
+        .co-det > summary::after{content:'＋';float:right;color:var(--gray-400)}
+        .co-det[open] > summary::after{content:'−'}
+        .co-det .co-an-sec{display:none}
+        .co-det .co-panel{border:0;box-shadow:none;border-top:1px solid var(--gray-100);border-radius:0}
         .co-an-tip{display:grid;grid-template-columns:230px 1fr 100px 60px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
         .co-an-track{height:14px;background:var(--gray-100);border-radius:4px}
         .co-an-n{font-family:'DM Mono',monospace;font-size:12px;text-align:right}

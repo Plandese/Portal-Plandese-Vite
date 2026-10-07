@@ -11,6 +11,7 @@ import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } f
 
 const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'' };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
+const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
 const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros'],['exist','Existências']];
 
@@ -32,9 +33,9 @@ const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
 function coPeriodoBar(ids){
   const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
-  const per = ms.length<2 ? '' : `<span>Analisar de</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
-  const upd = `<span style="margin-left:auto;display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
-  return `<div class="co-per">${per}${upd}</div><div id="co-upd-log"></div>`;
+  const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
+  const upd = !pastasSuportado() ? '' : `<span style="margin-left:auto;display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
+  return (per||upd) ? `<div class="co-per">${per}${upd}</div><div id="co-upd-log"></div>` : '';
 }
 function coPeriodo(qual, val){
   if(qual==='reset'){ CO.de = CO.ate = ''; }
@@ -88,6 +89,24 @@ function coRenderDetail(manterScroll){
   const ids = new Set(obras.map(x=>x.id));
   const meses = CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes).sort();
   const ate = meses.length ? mesLong(meses[meses.length-1]) : '—';
+  const sedeVal = o ? (+(CO.extra[o.id]||{}).sede_pct||0) : 0;
+  const cabMobile = `<div class="co-mb">
+      <div class="co-mb-top"><button class="co-back" onclick="coVoltar()">← Empreitadas</button><span class="co-mb-cod">${todas?'TODAS':esc(sp.cod||'Obra')}</span></div>
+      <h2>${todas?'Balanço geral':esc(sp.nome)}</h2>
+      <div class="co-mb-meta">Dados até <strong>${ate}</strong>${todas?' · '+obras.length+' empreitadas':(o.local?' · '+esc(o.local):'')}</div>
+      <div class="co-mb-act">${o?`<button onclick="coImportar('${o.id}')">⬆ Importar custos</button>`:''}<button onclick="coRelatorio()">PDF</button></div>
+      ${o?`<div class="co-mb-sede"><label class="co-sede" style="justify-content:flex-start">Estrutura central <input type="text" inputmode="decimal" value="${sedeVal?String(sedeVal).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label><div class="co-sede-val" id="co-sede-val"></div></div>`:''}
+    </div>`;
+  if(isMobile()){
+    el.innerHTML = `${cabMobile}
+    ${coPeriodoBar(ids)}
+    <div id="co-an-box"></div>
+    ${o?'<details class="co-det"><summary>Lançamentos mensais (editar)</summary><div id="co-lanc-box"></div></details>':''}`;
+    coRenderAnalise();
+    if(o) coRenderLancamentos();
+    if(manterScroll!==true) window.scrollTo({top:0});
+    return;
+  }
   el.innerHTML = `
     <div class="co-banner">
       <div>
@@ -113,7 +132,7 @@ function coRenderDetail(manterScroll){
 function coRenderAnalise(){
   const box = document.getElementById('co-an-box'); if(!box) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
-  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal, periodo());
+  box.innerHTML = coBalancoHtml(obras.map(withExtra), CO.mensal, periodo(), isMobile());
   const sv = document.getElementById('co-sede-val');
   if(sv && CO.sel!=='ALL'){
     const c = coBalancoCalc(obras.map(withExtra), CO.mensal, periodo());
