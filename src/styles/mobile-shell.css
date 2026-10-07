@@ -13,7 +13,8 @@
   --m-line:#dde2ea;
   --m-bar:58px;               /* altura útil da barra de separadores */
   --m-safe-t:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));
-  --m-safe-b:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px));
+  --m-safe-b:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px),10px); /* mínimo de 10px: os cantos do ecrã são arredondados */
+  --m-safe-x:max(env(safe-area-inset-left,0px),14px);
 }
 
 /* Tudo escondido fora do modo telemóvel */
@@ -479,3 +480,8 @@ body.device-mobile #sec-analise .eo-rot{width:24px;font-size:11.5px;font-weight:
 body.device-mobile #sec-analise .eo-bar{height:6px;background:#e9edf3}
 body.device-mobile #sec-analise .eo-pct{width:40px;font-size:12.5px}
 body.device-mobile #sec-analise .eo-nota{font-size:12.5px;color:var(--m-mute);background:#f3f6fb;border-radius:12px;padding:10px 12px;margin-bottom:6px}
+
+/* Cantos arredondados do ecrã: a barra de separadores recua dos lados e as etiquetas não são cortadas */
+body.device-mobile #bottom-nav{padding-left:var(--m-safe-x);padding-right:var(--m-safe-x);overflow:visible}
+body.device-mobile #bottom-nav .bnav-btn{line-height:1.3;white-space:nowrap;overflow:visible;font-size:12px}
+.m-logo b{line-height:1.3;padding:1px 0;overflow:visible}
