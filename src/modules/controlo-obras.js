@@ -6,6 +6,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
 import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
+import { coRelatorioPdf } from './co-relatorio.js';
 
 const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'' };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
@@ -92,7 +93,7 @@ function coRenderDetail(manterScroll){
         <button class="co-back" onclick="coVoltar()">← Empreitadas</button>
         <p class="co-eyebrow">PLANDESE · ${todas?'Direção de Obra':esc(sp.cod||'Obra')}</p>
         <h2>${todas?'Balanço geral das empreitadas':esc(sp.nome)}</h2>
-        ${o?`<div class="co-banner-btns" style="margin-top:14px"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button></div>`:''}
+        <div class="co-banner-btns" style="margin-top:14px">${o?`<button onclick="coImportar('${o.id}')">Importar custos (Excel)</button>`:''}<button onclick="coRelatorio()">Relatório PDF</button></div>
       </div>
       <div class="co-banner-r">
         ${o?`<div class="co-sede-wrap" style="margin:0;text-align:right"><label class="co-sede" style="justify-content:flex-end" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
@@ -181,6 +182,15 @@ function coEditar(obra_id){
   document.getElementById('coo-nota').value = e.nota || '';
   document.getElementById('modal-co-obra').classList.add('open');
 }
+function coRelatorio(){
+  const todas = CO.sel==='ALL';
+  const obras = todas ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
+  if(!obras.length) return;
+  const sp = todas ? null : split(obras[0].nome);
+  const titulo = todas ? { cod:'', nome:'Balanço geral das empreitadas', sub:obras.length+' empreitadas' } : { cod:sp.cod, nome:sp.nome, sub:obras[0].local||'' };
+  try{ coRelatorioPdf(obras.map(withExtra), CO.mensal, periodo(), titulo); }
+  catch(err){ console.warn('coRelatorio', err); showToast(err.message||'Erro ao gerar o PDF'); }
+}
 async function coGuardarSede(obra_id, inp){
   const v = num(inp.value);
   const { error } = await sb.from('co_obra').upsert({ obra_id, sede_pct:v, atualizado:new Date().toISOString() }, { onConflict:'obra_id' });
@@ -255,6 +265,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };

@@ -12,7 +12,7 @@ const COR = {
   exist:   'oklch(0.55 0.14 145)',
 };
 
-const TIPOLOGIAS = [
+export const TIPOLOGIAS = [
   { key:'mo',     label:'Mão de Obra' },
   { key:'eq',     label:'Equipamentos' },
   { key:'mat',    label:'Materiais' },

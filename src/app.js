@@ -56,7 +56,7 @@ import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
-import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
+import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel
 import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
@@ -264,7 +264,7 @@ Object.assign(window, {
   puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
 
   // Controlo de Obras
-  coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede,
+  coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio,
   coGuardarCelula, coAdicionarMes, coApagarMes,
   exportSemanaExcel,
 
