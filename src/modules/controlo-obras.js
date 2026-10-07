@@ -7,12 +7,12 @@ import { S } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
 import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
 import { coRelatorioPdf } from './co-relatorio.js';
+import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } from './co-pastas.js';
 
 const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'' };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
 const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros'],['exist','Existências']];
-const GRUPO_KEY = { 'Mão de Obra':'mo', 'Equipamento':'eq', 'MateriaPrima':'mat', 'Geral':'geral', 'N/D':'sub' };
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur0 = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v||0);
@@ -31,9 +31,10 @@ const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
 // Seletor De/Até: só afeta a análise; os lançamentos mensais mostram sempre tudo.
 function coPeriodoBar(ids){
   const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
-  if(ms.length<2) return '';
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
-  return `<div class="co-per"><span>Analisar de</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?'<button onclick="coPeriodo(\'reset\')">Limpar</button>':''}</div>`;
+  const per = ms.length<2 ? '' : `<span>Analisar de</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${CO.de||CO.ate?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
+  const upd = `<span style="margin-left:auto;display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
+  return `<div class="co-per">${per}${upd}</div><div id="co-upd-log"></div>`;
 }
 function coPeriodo(qual, val){
   if(qual==='reset'){ CO.de = CO.ate = ''; }
@@ -211,6 +212,46 @@ async function coGuardarObra(){
   showToast('Dados da obra guardados');
 }
 
+// ── Atualizar a partir das pastas (Dropbox) ──────────────────────────
+async function coAtualizar(escolher){
+  if(!pastasSuportado()){ showToast('Este browser não permite ler pastas. Use o Chrome ou o Edge.'); return; }
+  const btn = document.getElementById('co-upd-btn'), log = () => document.getElementById('co-upd-log');
+  let raiz;
+  try{ raiz = await coPastaRaiz(escolher===true); }
+  catch(e){ if(e.name!=='AbortError') showToast('Sem acesso à pasta: '+e.message); return; }
+  if(btn){ btn.disabled = true; btn.textContent = 'A atualizar…'; }
+  const linhas = [];
+  try{
+    const now = new Date().toISOString();
+    for(const o of obrasAtivas()){
+      const sp = split(o.nome), dir = await coPastaObra(raiz, sp.cod);
+      if(!dir){ linhas.push(`<b>${esc(sp.cod||o.nome)}</b> — pasta não encontrada`); continue; }
+      const r = await coLerObra(dir);
+      const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.prov||{})]);
+      if(r.prov) CO.mensal.filter(x=>x.obra_id===o.id).forEach(x=>meses.add(x.mes));
+      const payload = [...meses].sort().map(mes => {
+        const cur = CO.mensal.find(x=>x.obra_id===o.id && x.mes===mes) || {};
+        const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, exist:+cur.exist||0, atualizado:now };
+        if(r.custos && r.custos.agg[mes]) Object.assign(row, { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }, r.custos.agg[mes]);
+        if(r.prov) row.proveitos = r.prov[mes] || 0;
+        return row;
+      });
+      const partes = [];
+      if(r.custos) partes.push(`custos de ${Object.keys(r.custos.agg).length} meses`);
+      if(r.prov) partes.push(`proveitos de ${Object.keys(r.prov).length} meses`);
+      if(!partes.length) partes.push('nenhum ficheiro reconhecido');
+      else if(payload.length){
+        if(!await coUpsert(payload)){ linhas.push(`<b>${esc(sp.cod)}</b> — erro ao guardar`); continue; }
+        payload.forEach(p => coAplicarLocal(o.id, p.mes, p));
+      }
+      linhas.push(`<b>${esc(sp.cod)}</b> — ${partes.join(', ')}${r.ficheiros.length?` <span style="color:var(--gray-400)">(${r.ficheiros.map(esc).join(' · ')})</span>`:''}${r.avisos.map(a=>`<br><span style="color:var(--red)">⚠ ${esc(a)}</span>`).join('')}`);
+    }
+  }catch(e){ console.error('coAtualizar', e); linhas.push(`<span style="color:var(--red)">Erro: ${esc(e.message)}</span>`); }
+  if(CO.sel) coRenderDetail(true); else coRenderList();
+  const l = log();
+  if(l) l.innerHTML = `<div class="co-upd-log"><div><b>Atualizado às ${new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}</b> <button onclick="this.closest('.co-upd-log').remove()">✕</button></div>${linhas.map(x=>`<div>${x}</div>`).join('')}</div>`;
+}
+
 // ── Importar Excel de custos ──────────────────────────────────────────
 function coImportar(obra_id){ CO.importObra = obra_id; document.getElementById('co-file-input').click(); }
 function coFicheiro(ev){
@@ -221,32 +262,8 @@ function coFicheiro(ev){
   reader.onload = async e => {
     try{
       const wb = XLSX.read(e.target.result, { type:'binary', cellDates:true });
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
-      const norm = h => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-      let hi = -1;
-      for(let i=0;i<Math.min(rows.length,5);i++){ const r=rows[i].map(norm); if(r.includes('data')||r.includes('grupoartigo')){ hi=i; break; } }
-      if(hi<0){ showToast('Cabeçalho não encontrado no ficheiro'); return; }
-      const h = rows[hi].map(norm);
-      const col = (nome, pref, dflt) => { let c=h.indexOf(nome); if(c<0) c=h.findIndex(x=>x.startsWith(pref)); return c<0?dflt:c; };
-      const cData=col('data','data',0), cGrupo=col('grupoartigo','grupo',1), cCusto=col('custos','custo',5);
-      const cMes=h.indexOf('mes')<0?8:h.indexOf('mes'), cAno=h.indexOf('ano')<0?9:h.indexOf('ano');
-
-      const agg = {}; let n = 0;
-      for(let i=hi+1;i<rows.length;i++){
-        const r = rows[i]; if(!r || r.every(c=>c===''||c==null)) continue;
-        const v = num(r[cCusto]); if(!v) continue;
-        const grupo = String(r[cGrupo]||'').trim(); if(grupo==='Servico') continue;
-        let d = r[cData], data = '';
-        if(d instanceof Date) data = d.toISOString().slice(0,10);
-        else if(typeof d==='number') data = new Date((d-25569)*86400000).toISOString().slice(0,10);
-        else data = String(d).slice(0,10).replace(/\//g,'-');
-        let mes = data.slice(0,7);
-        const mv=r[cMes], av=r[cAno];
-        if(mv!=='' && av!=='' && String(av).trim().length===4) mes = String(av).trim()+'-'+String(mv).trim().padStart(2,'0');
-        if(!/^\d{4}-\d{2}$/.test(mes)) continue;
-        const k = GRUPO_KEY[grupo] || 'outros';
-        (agg[mes] ||= { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 })[k] += Math.abs(v); n++;
-      }
+      let agg, n;
+      try{ ({ agg, n } = coParseCustos(wb)); }catch(err){ showToast(err.message+' no ficheiro'); return; }
       const ms = Object.keys(agg).sort();
       if(!ms.length){ showToast('Nenhuma linha reconhecida'); return; }
       if(!confirm(`Importar ${n} linhas de ${mesLabel(ms[0])} a ${mesLabel(ms[ms.length-1])} (${ms.length} meses)?\n\nOs custos destes meses são substituídos; os proveitos mantêm-se.`)) return;
@@ -265,6 +282,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coRelatorio, coAtualizar,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };
