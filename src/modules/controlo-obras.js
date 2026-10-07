@@ -13,7 +13,7 @@ const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:''
 const periodo = () => ({ de:CO.de, ate:CO.ate });
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
-const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros'],['exist','Existências']];
+const CAMPOS = [['proveitos','Proveitos'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur0 = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v||0);
@@ -82,31 +82,18 @@ function coRenderList(){
   el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
 }
 
-// Existências (stock em obra) no período: a análise usa o último mês do período com stock lançado.
-function existInfo(obra_id){
-  const rows = CO.mensal.filter(r=>r.obra_id===obra_id && noPeriodo(r)).sort((a,b)=>a.mes.localeCompare(b.mes));
-  if(!rows.length) return { mes:'', val:0 };
-  const com = rows.filter(r=>+r.exist).pop();
-  return com ? { mes:com.mes, val:+com.exist } : { mes:rows[rows.length-1].mes, val:0 };
-}
+// Existências em obra: um valor único por empreitada (co_obra.existencias), abate aos custos.
 function existHtml(o, estilo){
-  const e = existInfo(o.id);
-  return `<label class="co-sede" ${estilo||''} title="Valor do stock de material em obra (comprado e ainda não consumido). Abate aos custos no último mês do período em análise.">Existências em obra <input type="text" inputmode="decimal" value="${e.val?String(e.val).replace('.',','):''}" placeholder="0" style="width:96px" onchange="coGuardarExist('${o.id}',this)"> €</label>
-        <div class="co-sede-val">${e.mes?(e.val?'stock a '+mesLabel(e.mes):'sem stock lançado até '+mesLabel(e.mes)):'sem meses lançados'}</div>`;
+  const v = +(CO.extra[o.id]||{}).existencias||0;
+  return `<label class="co-sede" ${estilo||''} title="Valor do stock de material em obra (comprado e ainda não consumido). É um valor único da empreitada e abate aos custos.">Existências em obra <input type="text" inputmode="decimal" value="${v?String(v).replace('.',','):''}" placeholder="0" style="width:96px" onchange="coGuardarExist('${o.id}',this)"> €</label>`;
 }
 async function coGuardarExist(obra_id, inp){
-  const v = num(inp.value);
-  const rows = CO.mensal.filter(r=>r.obra_id===obra_id && noPeriodo(r)).sort((a,b)=>a.mes.localeCompare(b.mes));
-  if(!rows.length){ showToast('Sem meses lançados no período'); inp.value=''; return; }
-  const ultimo = rows[rows.length-1].mes, now = new Date().toISOString();
-  // stock é um saldo: fica só no último mês do período (os anteriores do período ficam a 0)
-  const payload = rows.filter(r => (+r.exist||0) !== (r.mes===ultimo ? v : 0))
-    .map(r => ({ obra_id, mes:r.mes, exist:(r.mes===ultimo ? v : 0), atualizado:now }));
-  if(payload.length){
-    if(!await coUpsert(payload)){ coRenderDetail(true); return; }
-    payload.forEach(p => coAplicarLocal(obra_id, p.mes, { exist:p.exist }));
-  }
-  coRenderDetail(true);
+  const v = Math.abs(num(inp.value));
+  const { error } = await sb.from('co_obra').upsert({ obra_id, existencias:v, atualizado:new Date().toISOString() }, { onConflict:'obra_id' });
+  if(error){ console.warn('co_obra', error); showToast('Sem permissão ou erro ao guardar'); inp.value = (+(CO.extra[obra_id]||{}).existencias||0) || ''; return; }
+  CO.extra[obra_id] = { ...(CO.extra[obra_id]||{ obra_id }), existencias:v };
+  inp.value = v ? String(v).replace('.',',') : '';
+  coRenderAnalise();
 }
 
 function coRenderDetail(manterScroll){
@@ -177,8 +164,8 @@ function coRenderLancamentos(){
   const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
   box.innerHTML = `<div class="co-an-sec">Lançamentos mensais</div>
     <div class="co-panel"><div class="co-panel-bd">
-      <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.<br><b>Existências</b>: valor do stock de material em obra no fim do mês (comprado mas ainda não consumido/faturado), em valor positivo. A análise usa o último mês do período com existências e abate-o aos custos.</div>
-      <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.</div>
+      <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="month" id="co-novo-mes" class="co-in" style="width:160px;text-align:left"><button class="btn btn-secondary btn-sm" onclick="coAdicionarMes('${id}')">+ Adicionar mês</button></div>
     </div></div>`;
 }
@@ -195,7 +182,7 @@ async function coUpsert(rows){
 }
 function coAplicarLocal(obra_id, mes, campos){
   let r = CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes);
-  if(!r){ r = { obra_id, mes, proveitos:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0, exist:0 }; CO.mensal.push(r); }
+  if(!r){ r = { obra_id, mes, proveitos:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }; CO.mensal.push(r); }
   Object.assign(r, campos);
 }
 async function coGuardarCelula(obra_id, mes, campo, inp){
@@ -279,7 +266,7 @@ async function coAtualizar(escolher){
       if(r.prov) CO.mensal.filter(x=>x.obra_id===o.id).forEach(x=>meses.add(x.mes));
       const payload = [...meses].sort().map(mes => {
         const cur = CO.mensal.find(x=>x.obra_id===o.id && x.mes===mes) || {};
-        const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, exist:+cur.exist||0, atualizado:now };
+        const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, atualizado:now };
         if(r.custos && r.custos.agg[mes]) Object.assign(row, { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }, r.custos.agg[mes]);
         if(r.prov) row.proveitos = r.prov[mes] || 0;
         return row;
