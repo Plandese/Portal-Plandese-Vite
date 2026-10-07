@@ -94,7 +94,8 @@ function coRenderDetail(manterScroll){
         <h2>${todas?'Balanço geral das empreitadas':esc(sp.nome)}</h2>
       </div>
       <div class="co-banner-r">
-        ${o?`<div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button><button onclick="coEditar('${o.id}')">Editar dados</button></div>`:''}
+        ${o?`<label class="co-sede" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" value="${(+(CO.extra[o.id]||{}).sede_pct||0)?String(+CO.extra[o.id].sede_pct).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label>
+        <div class="co-banner-btns"><button onclick="coImportar('${o.id}')">Importar custos (Excel)</button><button onclick="coEditar('${o.id}')">Editar dados</button></div>`:''}
         <div class="co-meta">Dados apurados até <strong>${ate}</strong><br>${todas?obras.length+' empreitadas em curso':(o.local?esc(o.local):'1 empreitada')}</div>
       </div>
     </div>
@@ -174,6 +175,14 @@ function coEditar(obra_id){
   document.getElementById('coo-nota').value = e.nota || '';
   document.getElementById('modal-co-obra').classList.add('open');
 }
+async function coGuardarSede(obra_id, inp){
+  const v = num(inp.value);
+  const { error } = await sb.from('co_obra').upsert({ obra_id, sede_pct:v, atualizado:new Date().toISOString() }, { onConflict:'obra_id' });
+  if(error){ console.warn('co_obra', error); showToast('Sem permissão ou erro ao guardar'); inp.value = (+(CO.extra[obra_id]||{}).sede_pct||0) || ''; return; }
+  CO.extra[obra_id] = { ...(CO.extra[obra_id]||{ obra_id }), sede_pct:v };
+  inp.value = v ? String(v).replace('.',',') : '';
+  coRenderAnalise();
+}
 async function coGuardarObra(){
   const obra_id = document.getElementById('coo-id').value;
   const row = { obra_id, sede_pct:num(document.getElementById('coo-sede').value), transferido:num(document.getElementById('coo-transf').value),
@@ -240,6 +249,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };

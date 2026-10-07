@@ -20,7 +20,7 @@ const TIPOLOGIAS = [
   { key:'sub',    label:'Subcontratos' },
   { key:'outros', label:'Outros' },
   { key:'transf', label:'Material transferido de outra obra', cor:COR.transf },
-  { key:'sede',   label:'Custos Sede', cor:COR.sede },
+  { key:'sede',   label:'Estrutura central', cor:COR.sede },
   { key:'exist',  label:'Existências Finais', cor:COR.exist },
 ];
 const GRUPO_KEY = { 'Mão de Obra':'mo', 'Equipamento':'eq', 'MateriaPrima':'mat', 'Geral':'geral', 'N/D':'sub' };
