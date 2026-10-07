@@ -65,9 +65,15 @@ export function coBalancoCalc(obras, mensal, periodo){
     // ajustes sem mês: ficam no último mês com movimentos da obra
     const ultimo = todas.map(r=>r.mes).sort().pop();
     if(ultimo && dentro(ultimo)){
-      const transf = parseFloat(ex.transferido)||0, exist = parseFloat(ex.existencias)||0;
+      const transf = parseFloat(ex.transferido)||0;
       if(transf){ mk(ultimo).transf += transf; tot.transf += transf; }
-      if(exist){ mk(ultimo).exist += exist; tot.exist += exist; }
+    }
+    // Existências em obra (stock comprado e ainda não consumido/faturado): é um saldo, não um fluxo.
+    // Conta o valor do último mês do período com existências lançadas, e abate aos custos.
+    const comStock = linhas.filter(r=>parseFloat(r.exist)).map(r=>r.mes).sort().pop();
+    if(comStock){
+      const s = -(parseFloat(linhas.find(r=>r.mes===comStock).exist)||0);
+      mk(comStock).exist += s; tot.exist += s;
     }
   });
 
