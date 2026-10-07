@@ -244,8 +244,8 @@ function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
     o.eq = o.equips.length ? Math.round(100 * (o.equips.length - o.eqNaoOp) / o.equips.length) : null;
   });
 
-  const fav = R.mFavObraIds?.() || [];
-  return [...porObra.values()].filter(o => _pObra ? o.obra.id === _pObra : (o.equipa.size || o.equips.length) && (!fav.length || fav.includes(o.obra.id)))
+  const fav = R.mFavObraIds?.(); // só no telemóvel (lista de ids); no computador não há filtro
+  return [...porObra.values()].filter(o => _pObra ? o.obra.id === _pObra : (o.equipa.size || o.equips.length) && (!fav || fav.includes(o.obra.id)))
     .sort((a, b) => a.obra.nome.localeCompare(b.obra.nome, 'pt'));
 }
 

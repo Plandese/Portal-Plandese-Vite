@@ -536,3 +536,17 @@ body.device-mobile #sec-combustivel button[onclick="abrirCombFormRegisto()"] svg
 
 /* Painel da página inicial (título, pesquisa, acesso rápido) fixo no topo ao deslizar */
 body.device-mobile #sec-analise .m-home-panel{position:sticky;top:0;z-index:20}
+
+/* Menu lateral compacto: tudo cabe sem deslizar (alturas acompanham a altura do ecrã) */
+.m-drawer-panel{padding-top:calc(var(--m-safe-t) + 6px);padding-bottom:calc(var(--m-safe-b) + 14px)}
+.m-drawer-x{width:42px;height:42px;margin:0 -8px 0 0}
+.m-drawer-top{margin:0 0 clamp(6px,1.6vh,14px)}
+.m-avatar{width:54px;height:54px;font-size:18px}
+.m-drawer-nav .m-row{min-height:clamp(40px,6.2vh,58px);padding:4px 0;gap:14px}
+.m-drawer-nav .m-row-tx b{font-size:17px}
+.m-drawer-nav .m-row-ic,.m-drawer-nav .m-row-ic svg{width:27px;height:27px}
+.m-drawer-links{margin-top:clamp(8px,2vh,18px)}
+.m-drawer-links .m-row{min-height:clamp(36px,5vh,48px);padding:2px 0}
+.m-drawer-links .m-row-tx b{font-size:16px}
+.m-drawer-foot{padding-top:clamp(8px,2vh,18px);font-size:12px;line-height:1.4}
+.m-drawer-foot b{font-size:13px}

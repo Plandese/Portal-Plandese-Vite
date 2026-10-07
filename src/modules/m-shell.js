@@ -78,8 +78,8 @@ function gravar() { try { localStorage.setItem(_pk || chave(), JSON.stringify(_p
 const isFav = (k, id) => prefs().favs[k].includes(id);
 const favMods = () => prefs().favs.mods.filter(id => catalogo()[id]?.ch && canAccessSection(id));
 const favObras = () => prefs().favs.obras.filter(id => obrasAtivas().some(o => o.id === id));
-// O Estado das obras da página inicial mostra só as obras favoritas (sem favoritas, mostra todas)
-R.mFavObraIds = () => (ativo() ? favObras() : []);
+// O Estado das obras da página inicial mostra só as obras favoritas (sem favoritas, a página fica vazia)
+R.mFavObraIds = () => (ativo() ? favObras() : null);
 
 function registarUso(id) {
   const m = catalogo()[id];

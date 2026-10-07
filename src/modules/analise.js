@@ -4,7 +4,7 @@
 //  Widgets configuráveis por utilizador (mostrar/esconder + ordem)
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
-import { S } from '../state.js';
+import { S, R } from '../state.js';
 import { fmt, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { ROLE_ACCESS } from '../config.js';
 import { htmlFeriasFaltasSemana, htmlEstadoObrasSemana, htmlFiltrosPainel } from './admin.js';
@@ -371,6 +371,8 @@ export async function renderAnalise(){
     const sub = document.getElementById('anl-sub');
     if(sub) sub.textContent = 'Estado das obras e férias/faltas desta semana';
     if(!canAccessSection('historico')){ body.innerHTML = '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; return; }
+    // Telemóvel sem obras favoritas: a página fica vazia
+    if((R.mFavObraIds?.() || [1]).length === 0){ body.innerHTML = ''; return; }
     _loading = true;
     body.innerHTML = '<div class="pl-load" style="padding:60px 20px"><span class="pl-logo"></span>A carregar dados…</div>';
     try { const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), htmlFeriasFaltasSemana()]); body.innerHTML = htmlFiltrosPainel() + estado + ferias; }
