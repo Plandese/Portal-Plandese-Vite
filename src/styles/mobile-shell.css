@@ -485,3 +485,51 @@ body.device-mobile #sec-analise .eo-nota{font-size:12.5px;color:var(--m-mute);ba
 body.device-mobile #bottom-nav{padding-left:var(--m-safe-x);padding-right:var(--m-safe-x);overflow:visible}
 body.device-mobile #bottom-nav .bnav-btn{line-height:1.3;white-space:nowrap;overflow:visible;font-size:12px}
 .m-logo b{line-height:1.3;padding:1px 0;overflow:visible}
+
+/* Equipamentos no telemóvel: só Lista, Por obra e Localização (a Manutenção fica no computador) */
+body.device-mobile #eq-tab-btn-manut{display:none}
+
+/* Separadores dos módulos: letra e espaços menores para caberem todos na mesma caixa */
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab{
+  flex:1 1 auto;min-width:0;padding:0 10px;gap:5px;font-size:13px;
+}
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab svg{width:14px;height:14px}
+body.device-mobile[data-m-variant="color"] #admin-app .fp-tab .nb{font-size:11px;padding:1px 6px;margin-left:0}
+
+/* Combustível no telemóvel: sem o botão de exportar para Excel */
+body.device-mobile #sec-combustivel button[onclick="exportCombustivelXLSX()"]{display:none}
+body.device-mobile #sec-combustivel .pg-hdr > div{width:100%;justify-content:center}
+body.device-mobile #sec-combustivel button[onclick="abrirCombFormRegisto()"]{width:100%;min-height:52px;font-size:16.5px}
+body.device-mobile #sec-combustivel button[onclick="abrirCombFormRegisto()"] svg{width:20px!important;height:20px!important}
+
+/* ───────── Resumos (obra / pessoa) na folha inferior ───────── */
+.m-sum-meta{font-size:14px;color:var(--m-mute);margin:-2px 0 4px;line-height:1.4}
+.m-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 4px}
+.m-kpi{border:1.5px solid var(--m-line);border-radius:14px;padding:12px 14px}
+.m-kpi b{display:block;font-size:24px;font-weight:700;letter-spacing:-.4px;color:var(--m-ink);line-height:1.1}
+.m-kpi small{display:block;font-size:12.5px;color:var(--m-mute);margin-top:3px}
+.m-sum-li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 2px;border-bottom:1px solid var(--m-line);font-size:15px;color:var(--m-ink)}
+.m-sum-li > span:first-child{min-width:0}
+.m-sum-li small{color:var(--m-mute);font-size:12px}
+.m-sum-li b{font-weight:600;text-align:right}
+.m-sum-cels{display:flex;gap:4px;flex:none}
+.m-sum-cels .eo-c,.m-sum-week .eo-c{min-width:26px;height:24px;font-size:11px;border-radius:7px}
+.m-sum-dias{display:flex;justify-content:flex-end;gap:4px;padding:6px 2px 0;font-size:10px;color:var(--m-mute)}
+.m-sum-dias span{min-width:26px;text-align:center}
+.m-sum-tag{flex:none;padding:3px 10px;border-radius:99px;background:#fdebd9;color:#a8470a;font-size:12.5px;font-weight:600}
+.m-sum-ok{padding:12px 2px;font-size:14.5px;color:#0e7a55}
+.m-sum-week{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:8px 0 2px}
+.m-sum-week > div{display:flex;flex-direction:column;align-items:center;gap:6px}
+.m-sum-week small{font-size:12px;color:var(--m-mute);font-weight:600}
+.m-sum-per{display:block;font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--m-mute);margin-top:2px}
+.m-sum-acts{margin-top:18px}
+.m-sum-acts .m-row:last-child{border-bottom:0}
+.m-kpi-go{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.m-kpi-go:active{background:#f4f6fa}
+.m-sum-sub{font-size:13.5px;color:var(--m-mute);padding:4px 2px 6px}
+.m-sum-p{cursor:pointer}
+.m-sum-p b,.m-sum-li > span > b{display:block;font-weight:500;font-size:15.5px;text-align:left}
+.m-sum-p small,.m-sum-li > span > small{display:block;margin-top:1px}
+.m-sum-tag.ok{background:#dff3ea;color:#0e7a55}
+.m-sum-back{min-height:48px;border-bottom:1px solid var(--m-line);color:var(--m-brand)}
+.m-sum-back .m-row-tx b{color:var(--m-brand);font-weight:600}

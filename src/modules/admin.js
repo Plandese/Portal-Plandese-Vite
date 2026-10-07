@@ -287,6 +287,22 @@ export async function htmlEstadoObrasSemana() {
   return _painelCardHtml('Estado das obras', `${_rotSemana()} · ${semanaTxt}<span class="eo-dica"> · toque numa obra para o detalhe</span>`, 'var(--blue-600)', 'var(--blue-50)', icon, corpo);
 }
 
+// Resumo de uma obra na semana atual (pesquisa da app de telemóvel); alimenta também o detalhe
+export async function resumoObraSemana(obraId) {
+  const podeMO = canAccessSection('historico'), podeEQ = canAccessSection('equipamentos');
+  if (!podeMO && !podeEQ) return null;
+  const dias = _painelSemana(0);
+  const semanaTxt = `${fmtPT(_ymd(dias[0]))} a ${fmtPT(_ymd(dias[6]))}`;
+  const dados = await _estadoObrasCarregar(dias, podeMO, podeEQ);
+  const antes = _pObra; _pObra = obraId;
+  let o;
+  try { o = _estadoObrasCalcular(dias, dados)[0]; } finally { _pObra = antes; }
+  if (!o) return { semanaTxt, podeMO, podeEQ, vazio: true };
+  const info = { ...o, semanaTxt, podeMO, podeEQ, eqAtivo: podeEQ };
+  _estadoObras.set(obraId, info);
+  return info;
+}
+
 // ── Filtro geral do Painel (semana + obra) ───────────────────────
 function _rotSemana() {
   return _pOffset === 0 ? 'Esta semana' : _pOffset === -1 ? 'Semana passada' : _pOffset === 1 ? 'Próxima semana'

@@ -12,6 +12,7 @@ import { canAccessSection } from './permissions.js';
 import { showToast } from './navigation.js';
 import { setDeviceMode } from './auth.js';
 import { I, emptyHtml } from './m-art.js';
+import { resumoObraHtml, resumoPessoaHtml, listaObraHtml } from './m-resumo.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -198,10 +199,36 @@ export function irParaInicio() {
   window.goTo(ativo() ? 'analise' : 'painel');
 }
 export function mAbrir(id) { window.goTo(id); }
-export function mAbrirObra(id) { window.goTo('producao'); if (_atual === 'producao') window.coAbrir?.(id); }
-export function mAbrirPessoa(n) {
+export function mAbrirObraModulo(id) { window.goTo('producao'); if (_atual === 'producao') window.coAbrir?.(id); }
+export function mResumoCompleto(n) {
   const d = new Date(); d.setHours(12, 0, 0, 0);
   window.abrirResumoPonto?.(n, fmt(d));
+}
+// Pesquisa: tocar numa obra ou pessoa abre um resumo informativo numa folha inferior
+let _resTok = 0, _resObra = null;
+export function mResumoLista(tipo) {
+  if (!_resObra?.r) return;
+  const tit = tipo === 'pessoas' ? 'Pessoas em obra' : 'Equipamentos';
+  $('m-sheet-h').textContent = tit + ' · ' + _resObra.titulo;
+  $('m-sheet-b').innerHTML = `<div class="m-row m-sum-back" onclick="mResumoVoltar()"><span class="m-row-tx"><b>‹ Voltar ao resumo</b></span></div>` + listaObraHtml(_resObra.r, tipo);
+  $('m-sheet-b').scrollTop = 0;
+}
+export function mResumoVoltar() {
+  if (!_resObra) return;
+  $('m-sheet-h').textContent = _resObra.titulo; $('m-sheet-b').innerHTML = _resObra.corpo;
+}
+export async function mAbrirObra(id) {
+  const o = (S.OBRAS || []).find(x => x.id === id); if (!o) return;
+  const s = splitObra(o.nome), tok = ++_resTok;
+  abrirSheet(s.nome, '', '<div class="m-res-empty">A carregar…</div>', 'Fechar');
+  const r = await resumoObraHtml(o, s.cod, s.nome);
+  if (tok === _resTok) { _resObra = r; $('m-sheet-h').textContent = r.titulo; $('m-sheet-b').innerHTML = r.corpo; }
+}
+export async function mAbrirPessoa(n) {
+  const c = (S.COLABORADORES || []).find(x => x.n === n), tok = ++_resTok;
+  abrirSheet(c?.nome || 'Pessoa', '', '<div class="m-res-empty">A carregar…</div>', 'Fechar');
+  const r = await resumoPessoaHtml(n);
+  if (tok === _resTok) { $('m-sheet-h').textContent = r.titulo; $('m-sheet-b').innerHTML = r.corpo; }
 }
 
 // ── Controlo segmentado ───────────────────────────────────────────────────────
@@ -453,7 +480,7 @@ window.addEventListener('resize', () => setTimeout(() => {
 }, 60));
 
 Object.assign(window, {
-  mTab, mBack, mLeft, mRight, mDrawer, mModo, mSeg, mAbrir, mAbrirObra, mAbrirPessoa, mAbrirNotificacoes,
+  mTab, mBack, mLeft, mRight, mDrawer, mModo, mSeg, mAbrir, mAbrirObra, mAbrirObraModulo, mResumoLista, mResumoVoltar, mAbrirPessoa, mResumoCompleto, mAbrirNotificacoes,
   mFavToggle, mFavAdd, mSheetClose, mAjuda, mPesquisa, mPesquisaLimpar, mNtfSeg, irParaInicio,
   mSyncBell, mSyncChat,
 });
