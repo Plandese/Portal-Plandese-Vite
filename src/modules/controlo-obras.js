@@ -91,10 +91,9 @@ function coRenderDetail(manterScroll){
   const ate = meses.length ? mesLong(meses[meses.length-1]) : '—';
   const sedeVal = o ? (+(CO.extra[o.id]||{}).sede_pct||0) : 0;
   const cabMobile = `<div class="co-mb">
-      <div class="co-mb-top"><button class="co-back" onclick="coVoltar()">← Empreitadas</button><span class="co-mb-cod">${todas?'TODAS':esc(sp.cod||'Obra')}</span></div>
+      <div class="co-mb-top"><span style="display:flex;gap:8px"><button class="co-back" onclick="coVoltar()">← Empreitadas</button><button class="co-back" onclick="coRelatorio()">PDF</button></span><span class="co-mb-cod">${todas?'TODAS':esc(sp.cod||'Obra')}</span></div>
       <h2>${todas?'Balanço geral':esc(sp.nome)}</h2>
       <div class="co-mb-meta">Dados até <strong>${ate}</strong>${todas?' · '+obras.length+' empreitadas':(o.local?' · '+esc(o.local):'')}</div>
-      <div class="co-mb-act">${o?`<button onclick="coImportar('${o.id}')">⬆ Importar custos</button>`:''}<button onclick="coRelatorio()">PDF</button></div>
       ${o?`<div class="co-mb-sede"><label class="co-sede" style="justify-content:flex-start">Estrutura central <input type="text" inputmode="decimal" value="${sedeVal?String(sedeVal).replace('.',','):''}" placeholder="0" onchange="coGuardarSede('${o.id}',this)"> %</label><div class="co-sede-val" id="co-sede-val"></div></div>`:''}
     </div>`;
   if(isMobile()){
