@@ -9,7 +9,7 @@ import { coBalancoHtml, coBalancoCalc } from './co-balanco.js';
 import { coRelatorioPdf } from './co-relatorio.js';
 import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } from './co-pastas.js';
 
-const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'', simOn:false, sim:{} };
+const CO = { loaded:false, extra:{}, mensal:[], sel:null, importObra:null, de:'', ate:'', simOn:false };
 const periodo = () => ({ de:CO.de, ate:CO.ate });
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
@@ -28,22 +28,30 @@ const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.tes
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
-// ── Simulação: valores alterados só em memória (a amarelo), nada vai para a base de dados ──
-const simKey = (o,m,k) => o+'|'+m+'|'+k;
-const simTem = (o,m,k) => Object.prototype.hasOwnProperty.call(CO.sim, simKey(o,m,k));
-const simN = () => Object.keys(CO.sim).length;
+// ── Simulação: valores simulados ficam guardados (co_mensal.sim), a amarelo, e entram na análise ──
+// Valor efetivo = simulado, se existir, senão o real. A simulação pode ser apagada quando se quiser.
+const hasOwn = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
+const simDe = r => (r && r.sim && typeof r.sim==='object') ? r.sim : {};
+const simTem = (o,m,k) => hasOwn(simDe(CO.mensal.find(r=>r.obra_id===o && r.mes===m)), k);
+const simN = ids => CO.mensal.reduce((n,r)=> (!ids || ids.has(r.obra_id)) ? n + CAMPOS.filter(([k])=>hasOwn(simDe(r),k)).length : n, 0);
+const simIds = obras => new Set(obras.map(x=>x.id));
 function mensalEf(){
   if(!simN()) return CO.mensal;
-  return CO.mensal.map(r => { let c = null;
-    CAMPOS.forEach(([k]) => { if(simTem(r.obra_id,r.mes,k)){ c = c || { ...r }; c[k] = CO.sim[simKey(r.obra_id,r.mes,k)]; } });
+  return CO.mensal.map(r => { const sm = simDe(r); let c = null;
+    CAMPOS.forEach(([k]) => { if(hasOwn(sm,k)){ c = c || { ...r }; c[k] = sm[k]; } });
     return c || r; });
 }
-function simReset(){ CO.sim = {}; CO.simOn = false; }
-function coSimToggle(){
-  CO.simOn = !CO.simOn; if(!CO.simOn) CO.sim = {};
-  coRenderLancamentos(); coRenderAnalise();
+function simReset(){ CO.simOn = false; }
+function coSimToggle(){ CO.simOn = !CO.simOn; coRenderLancamentos(); }
+async function coSimApagar(){
+  const rows = CO.mensal.filter(r=>r.obra_id===CO.sel && Object.keys(simDe(r)).length);
+  if(!rows.length) return;
+  if(!confirm('Apagar a simulação desta empreitada? Os '+simN(new Set([CO.sel]))+' valores simulados voltam aos valores reais.')) return;
+  const now = new Date().toISOString();
+  if(!await coUpsert(rows.map(r=>({ obra_id:r.obra_id, mes:r.mes, sim:{}, atualizado:now })))) return;
+  rows.forEach(r => { r.sim = {}; });
+  CO.simOn = false; coRenderLancamentos(); coRenderAnalise();
 }
-function coSimRepor(){ CO.sim = {}; coRenderLancamentos(); coRenderAnalise(); }
 
 
 // Seletor De/Até: só afeta a análise; os lançamentos mensais mostram sempre tudo.
@@ -85,8 +93,8 @@ function coRenderList(){
   const obras = obrasAtivas();
   if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
   const total = coBalancoCalc(obras.map(withExtra), mensalEf(), periodo());
-  const card = (id, cor, cod, nome, c, meses) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
-      <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span></div>
+  const card = (id, cor, cod, nome, c, meses, sim) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
+      <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span>${sim?'<span class="co-sim-tag" style="margin-left:auto">SIMULADO</span>':''}</div>
       <div class="co-ob-nome">${esc(nome)}</div>
       <div class="co-ob-saldo">${meses?eur0(c.saldo):'—'}</div>
       <div class="co-ob-sub">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span> margem · `:''}${meses} ${meses===1?'mês':'meses'}</div>
@@ -94,9 +102,9 @@ function coRenderList(){
     </button>`;
   const cards = obras.map((o,i) => {
     const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
-    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length);
+    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])));
   }).join('');
-  el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+  el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size, simN(simIds(obras))).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
 }
 
 // Existências em obra: um valor único por empreitada (co_obra.existencias), abate aos custos.
@@ -165,7 +173,7 @@ function coRenderDetail(manterScroll){
 function coRenderAnalise(){
   const box = document.getElementById('co-an-box'); if(!box) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
-  box.innerHTML = (simN() ? `<div class="co-sim-note">⚠ Valores simulados — a análise inclui ${simN()} ${simN()===1?'alteração':'alterações'} que não ${simN()===1?'está guardada':'estão guardadas'}.</div>` : '') + coBalancoHtml(obras.map(withExtra), mensalEf(), periodo(), isMobile());
+  box.innerHTML = (simN(simIds(obras)) ? `<div class="co-sim-note">⚠ Análise com ${simN(simIds(obras))} ${simN(simIds(obras))===1?'valor simulado':'valores simulados'} (a amarelo nos lançamentos). Pode apagá-los em "Apagar simulação".</div>` : '') + coBalancoHtml(obras.map(withExtra), mensalEf(), periodo(), isMobile());
   const sv = document.getElementById('co-sede-val');
   if(sv && CO.sel!=='ALL'){
     const c = coBalancoCalc(obras.map(withExtra), mensalEf(), periodo());
@@ -179,9 +187,10 @@ function coRenderLancamentos(){
   const rows = mensalEf().filter(r=>r.obra_id===id).sort((a,b)=>a.mes.localeCompare(b.mes));
   const cab = CAMPOS.map(([,l])=>`<th>${l}</th>`).join('');
   const lin = rows.map(r=>`<tr><td>${mesLabel(r.mes)}</td>${CAMPOS.map(([k])=>`<td><input class="co-in${simTem(id,r.mes,k)?' sim':''}" inputmode="decimal" value="${(+r[k]||0)?String(+r[k]).replace('.',','):''}" placeholder="0" onchange="coGuardarCelula('${id}','${r.mes}','${k}',this)"></td>`).join('')}<td><button class="co-x" title="Apagar mês" onclick="coApagarMes('${id}','${r.mes}')">✕</button></td></tr>`).join('');
+  const nSim = simN(new Set([id]));
   const simBar = CO.simOn
-    ? `<div class="co-sim-bar on"><span class="co-sim-tag">SIMULAÇÃO</span><span>Altere os valores para ver o efeito na análise. Nada é guardado.</span><span style="margin-left:auto;display:flex;gap:6px"><button onclick="coSimRepor()"${simN()?'':' disabled'}>↺ Repor valores</button><button onclick="coSimToggle()">Sair</button></span></div>`
-    : `<div class="co-sim-bar"><button onclick="coSimToggle()">Simular valores</button><span>Experimente valores (a amarelo) sem os guardar.</span></div>`;
+    ? `<div class="co-sim-bar on"><span class="co-sim-tag">SIMULAÇÃO</span><span>Os valores que alterar ficam guardados a amarelo e entram na análise.</span><span style="margin-left:auto;display:flex;gap:6px">${nSim?`<button onclick="coSimApagar()">Apagar simulação (${nSim})</button>`:''}<button onclick="coSimToggle()">Concluir</button></span></div>`
+    : `<div class="co-sim-bar"><button onclick="coSimToggle()">Simular valores</button>${nSim?`<button onclick="coSimApagar()">Apagar simulação (${nSim})</button><span class="co-sim-tag">${nSim} ${nSim===1?'valor simulado':'valores simulados'} na análise</span>`:'<span>Experimente valores (a amarelo): ficam guardados e entram na análise até os apagar.</span>'}</div>`;
   box.innerHTML = `<div class="co-an-sec">Lançamentos mensais</div>
     <div class="co-panel"><div class="co-panel-bd">
       ${simBar}
@@ -203,16 +212,20 @@ async function coUpsert(rows){
 }
 function coAplicarLocal(obra_id, mes, campos){
   let r = CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes);
-  if(!r){ r = { obra_id, mes, proveitos:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }; CO.mensal.push(r); }
+  if(!r){ r = { obra_id, mes, proveitos:0, mo:0, eq:0, mat:0, geral:0, sub:0, outros:0, sim:{} }; CO.mensal.push(r); }
   Object.assign(r, campos);
 }
 async function coGuardarCelula(obra_id, mes, campo, inp){
   const v = num(inp.value);
+  const row = CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes);
   if(CO.simOn){
-    const real = +((CO.mensal.find(x=>x.obra_id===obra_id && x.mes===mes)||{})[campo])||0;
-    if(v===real) delete CO.sim[simKey(obra_id,mes,campo)]; else CO.sim[simKey(obra_id,mes,campo)] = v;
+    const sm = { ...simDe(row) }, real = +(row||{})[campo]||0;
+    if(v===real) delete sm[campo]; else sm[campo] = v;
+    if(!await coUpsert([{ obra_id, mes, sim:sm, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
+    coAplicarLocal(obra_id, mes, { sim:sm });
     coRenderLancamentos(); coRenderAnalise(); return;
   }
+  if(simTem(obra_id, mes, campo)){ showToast('Valor simulado: use "Simular valores" para o alterar, ou apague a simulação'); coRenderLancamentos(); return; }
   if(!await coUpsert([{ obra_id, mes, [campo]:v, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
   coAplicarLocal(obra_id, mes, { [campo]:v });
   inp.value = v ? String(v).replace('.',',') : '';
@@ -252,7 +265,7 @@ function coRelatorio(){
   if(!obras.length) return;
   const sp = todas ? null : split(obras[0].nome);
   const titulo = todas ? { cod:'', nome:'Balanço geral das empreitadas', sub:obras.length+' empreitadas' } : { cod:sp.cod, nome:sp.nome, sub:obras[0].local||'' };
-  if(simN()) titulo.sub = (titulo.sub?titulo.sub+' · ':'')+'SIMULAÇÃO (valores não guardados)';
+  if(simN(simIds(obras))) titulo.sub = (titulo.sub?titulo.sub+' · ':'')+'COM VALORES SIMULADOS';
   try{ coRelatorioPdf(obras.map(withExtra), mensalEf(), periodo(), titulo); }
   catch(err){ console.warn('coRelatorio', err); showToast(err.message||'Erro ao gerar o PDF'); }
 }
@@ -346,6 +359,6 @@ function coFicheiro(ev){
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimRepor,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
   coGuardarCelula, coAdicionarMes, coApagarMes,
 };
