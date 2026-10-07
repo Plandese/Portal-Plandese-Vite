@@ -226,8 +226,9 @@ async function coGuardarCelula(obra_id, mes, campo, inp){
     coRenderLancamentos(); coRenderAnalise(); return;
   }
   if(simTem(obra_id, mes, campo)){ showToast('Valor simulado: use "Simular valores" para o alterar, ou apague a simulação'); coRenderLancamentos(); return; }
-  if(!await coUpsert([{ obra_id, mes, [campo]:v, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
-  coAplicarLocal(obra_id, mes, { [campo]:v });
+  const extra = campo==='proveitos' ? { prov_contr:null, prov_compl:null } : {};
+  if(!await coUpsert([{ obra_id, mes, [campo]:v, ...extra, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
+  coAplicarLocal(obra_id, mes, { [campo]:v, ...extra });
   inp.value = v ? String(v).replace('.',',') : '';
   coRenderAnalise();
 }
@@ -304,19 +305,32 @@ async function coAtualizar(escolher){
       const sp = split(o.nome), dir = await coPastaObra(raiz, sp.cod);
       if(!dir){ linhas.push(`<b>${esc(sp.cod||o.nome)}</b> — pasta não encontrada`); continue; }
       const r = await coLerObra(dir);
-      const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.prov||{})]);
-      if(r.prov) CO.mensal.filter(x=>x.obra_id===o.id).forEach(x=>meses.add(x.mes));
-      const payload = [...meses].sort().map(mes => {
+      // Só se mexe nos meses que aparecem nos ficheiros; nada do que já existe é apagado por falta de ficheiro.
+      const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.provContr||{}), ...Object.keys(r.provCompl||{})]);
+      let saltados = 0;
+      const payload = [];
+      [...meses].sort().forEach(mes => {
         const cur = CO.mensal.find(x=>x.obra_id===o.id && x.mes===mes) || {};
-        const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, atualizado:now };
-        if(r.custos && r.custos.agg[mes]) Object.assign(row, { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }, r.custos.agg[mes]);
-        if(r.prov) row.proveitos = r.prov[mes] || 0;
-        return row;
+        // linhas uniformes (o upsert em lote iguala as colunas de todas as linhas): parte-se do que já existe
+        const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, prov_contr:cur.prov_contr==null?null:+cur.prov_contr, prov_compl:cur.prov_compl==null?null:+cur.prov_compl, atualizado:now };
+        let mexeu = false;
+        if(r.custos && r.custos.agg[mes]) { Object.assign(row, { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }, r.custos.agg[mes]); mexeu = true; }
+        if(r.provContr || r.provCompl){
+          // componente com ficheiro → valor do ficheiro (0 se o mês não tem auto); sem ficheiro → o que estava guardado
+          const c = r.provContr ? (r.provContr[mes]||0) : (cur.prov_contr==null ? null : +cur.prov_contr);
+          const k = r.provCompl ? (r.provCompl[mes]||0) : (cur.prov_compl==null ? null : +cur.prov_compl);
+          const antes = +cur.proveitos||0;
+          if((c===null || k===null) && antes!==0) saltados++;          // não dá para separar o que já estava: mantém
+          else { row.prov_contr = c||0; row.prov_compl = k||0; row.proveitos = Math.round(((c||0)+(k||0))*100)/100; mexeu = true; }
+        }
+        if(mexeu) payload.push(row);
       });
       const partes = [];
       if(r.custos) partes.push(`custos de ${Object.keys(r.custos.agg).length} meses`);
-      if(r.prov) partes.push(`proveitos de ${Object.keys(r.prov).length} meses`);
-      if(!partes.length) partes.push('nenhum ficheiro reconhecido');
+      if(r.provContr) partes.push(`proveitos contratuais de ${Object.keys(r.provContr).length} meses`);
+      if(r.provCompl) partes.push(`proveitos complementares de ${Object.keys(r.provCompl).length} meses`);
+      if(saltados) partes.push(`<span style="color:var(--red)">${saltados} ${saltados===1?'mês':'meses'} sem atualizar proveitos (falta um dos ficheiros de autos)</span>`);
+      if(!partes.length) partes.push('nenhum ficheiro reconhecido — nada foi alterado');
       else if(payload.length){
         if(!await coUpsert(payload)){ linhas.push(`<b>${esc(sp.cod)}</b> — erro ao guardar`); continue; }
         payload.forEach(p => coAplicarLocal(o.id, p.mes, p));

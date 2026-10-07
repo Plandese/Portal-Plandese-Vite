@@ -109,7 +109,7 @@ export async function coLerObra(dir){
   const todos = await ficheiros(dir), avisos = [];
   const autos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)));
   const custosF = todos.filter(x => /custos/.test(sem(x.nome)) && !autos.includes(x));
-  const res = { custos:null, prov:null, ficheiros:[], avisos };
+  const res = { custos:null, provContr:null, provCompl:null, ficheiros:[], avisos };
 
   if(custosF.length){
     const x = maisRecente(custosF);
@@ -121,16 +121,19 @@ export async function coLerObra(dir){
     const contr = autos.filter(x => !/tec\s*\d+/i.test(x.nome));
     const tec = {};
     autos.filter(x => /tec\s*\d+/i.test(x.nome)).forEach(x => { const k = +x.nome.match(/tec\s*0*(\d+)/i)[1]; (tec[k] ||= []).push(x); });
-    const usar = [...(contr.length ? [maisRecente(contr)] : []), ...Object.values(tec).map(maisRecente)];
-    const prov = {}; let ok = 0;
-    for(const x of usar){
-      try{
-        const p = coParseAutos(await lerWb(x.f, { cellDates:false }));
-        Object.entries(p).forEach(([m,v]) => prov[m] = Math.round(((prov[m]||0)+v)*100)/100);
-        res.ficheiros.push(x.nome); ok++;
-      }catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
-    }
-    if(ok) res.prov = prov;
+        // contratual e complementares ficam separados: assim, se um dos ficheiros faltar, não se perde o outro
+    const somar = (dest, p) => Object.entries(p).forEach(([m,v]) => dest[m] = Math.round(((dest[m]||0)+v)*100)/100);
+    const lerGrupo = async lista => {
+      const out = {}; let ok = 0;
+      for(const x of lista){
+        try{ somar(out, coParseAutos(await lerWb(x.f, { cellDates:false }))); res.ficheiros.push(x.nome); ok++; }
+        catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
+      }
+      return ok ? out : null;
+    };
+    if(contr.length) res.provContr = await lerGrupo([maisRecente(contr)]);
+    const tecs = Object.values(tec).map(maisRecente);
+    if(tecs.length) res.provCompl = await lerGrupo(tecs);
   }
   return res;
 }
