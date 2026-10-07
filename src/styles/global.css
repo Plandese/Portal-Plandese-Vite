@@ -2453,3 +2453,7 @@ body.device-mobile #sec-chat .chat-back{display:block}
 body.device-mobile #sec-chat .chat-close{display:block}
 body.device-mobile #sec-chat .chat-side-title{display:flex;align-items:center;font-size:15px;text-transform:none;letter-spacing:0;color:var(--gray-900);padding:10px 12px}
 body.device-mobile #sec-chat .chat-compose{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+
+/* Painel "Mais": módulos sem atalho na barra inferior (só em telemóvel) */
+.mais-mods{display:none}
+body.device-mobile .mais-mods{display:block}
