@@ -533,3 +533,6 @@ body.device-mobile #sec-combustivel button[onclick="abrirCombFormRegisto()"] svg
 .m-sum-tag.ok{background:#dff3ea;color:#0e7a55}
 .m-sum-back{min-height:48px;border-bottom:1px solid var(--m-line);color:var(--m-brand)}
 .m-sum-back .m-row-tx b{color:var(--m-brand);font-weight:600}
+
+/* Painel da página inicial (título, pesquisa, acesso rápido) fixo no topo ao deslizar */
+body.device-mobile #sec-analise .m-home-panel{position:sticky;top:0;z-index:20}
