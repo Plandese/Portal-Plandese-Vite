@@ -57,7 +57,7 @@ export function coRelatorioPdf(obras, mensal, periodo, titulo){
   });
   y += 27;
 
-  if(c.provKTot){ txt(`Proveitos: trabalho contratual ${eur(c.provCTot)}  ·  trabalhos complementares ${eur(c.provKTot)}`, L, y, { size:8.5, color:C.mute }); y += 6; }
+  if(c.provKTot || c.provRTot){ txt(`Proveitos: trabalho contratual ${eur(c.provCTot)}` + (c.provKTot ? `  ·  trabalhos complementares ${eur(c.provKTot)}` : '') + (c.provRTot ? `  ·  revisão de preços ${eur(c.provRTot)}` : ''), L, y, { size:8.5, color:C.mute }); y += 6; }
   const sede = obras.map(o=>parseFloat((o.extra||{}).sede_pct)||0);
   if(obras.length===1 && sede[0] && c.tot.sede){
     txt(`Inclui estrutura central a ${String(sede[0]).replace('.',',')}% da faturação: ${eur(c.tot.sede)}.`, L, y, { size:8.5, color:C.mute }); y += 7;

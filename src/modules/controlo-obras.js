@@ -16,7 +16,7 @@ const fatorCustos = obra_id => { const f = +(CO.extra[obra_id]||{}).custos_fator
 function escalar(agg, f){ if(f===1) return agg; Object.values(agg).forEach(a => Object.keys(a).forEach(k => a[k] = Math.round(a[k]*f*100)/100)); return agg; }
 const isMobile = () => document.body.classList.contains('device-mobile');
 const CORES = ['oklch(0.58 0.15 255)','oklch(0.66 0.17 40)','oklch(0.68 0.13 165)','oklch(0.76 0.15 80)','oklch(0.52 0.16 295)','oklch(0.62 0.18 5)'];
-const CAMPOS = [['prov_contr','Prov. contratuais'],['prov_compl','Prov. complementares'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
+const CAMPOS = [['prov_contr','Prov. contratuais'],['prov_compl','Prov. complementares'],['prov_rev','Revisão de preços'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur0 = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v||0);
@@ -33,7 +33,8 @@ const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
 // ── Simulação: valores simulados ficam guardados (co_mensal.sim), a amarelo, e entram na análise ──
 // Valor efetivo = simulado, se existir, senão o real. A simulação pode ser apagada quando se quiser.
-const valorReal = (row,k) => (k==='prov_contr' || k==='prov_compl') ? splitProv(row||{})[k==='prov_contr'?'c':'k'] : (+(row||{})[k]||0);
+const PROV = { prov_contr:'c', prov_compl:'k', prov_rev:'r' };
+const valorReal = (row,k) => PROV[k] ? splitProv(row||{})[PROV[k]] : (+(row||{})[k]||0);
 const hasOwn = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
 const simDe = r => (r && r.sim && typeof r.sim==='object') ? r.sim : {};
 const simTem = (o,m,k) => hasOwn(simDe(CO.mensal.find(r=>r.obra_id===o && r.mes===m)), k);
@@ -43,9 +44,9 @@ function mensalEf(){
   if(!simN()) return CO.mensal;
   return CO.mensal.map(r => { const sm = simDe(r); let c = null;
     CAMPOS.forEach(([k]) => { if(hasOwn(sm,k)){ c = c || { ...r }; c[k] = sm[k]; } });
-    if(c && (hasOwn(sm,'prov_contr') || hasOwn(sm,'prov_compl'))){
-      const b = splitProv(r), cc = hasOwn(sm,'prov_contr') ? sm.prov_contr : b.c, kk = hasOwn(sm,'prov_compl') ? sm.prov_compl : b.k;
-      c.prov_contr = cc; c.prov_compl = kk; c.proveitos = cc + kk;
+    if(c && Object.keys(PROV).some(k=>hasOwn(sm,k))){
+      const b = splitProv(r), cc = hasOwn(sm,'prov_contr') ? sm.prov_contr : b.c, kk = hasOwn(sm,'prov_compl') ? sm.prov_compl : b.k, rr = hasOwn(sm,'prov_rev') ? sm.prov_rev : b.r;
+      c.prov_contr = cc; c.prov_compl = kk; c.prov_rev = rr; c.proveitos = cc + kk + rr;
     }
     return c || r; });
 }
@@ -203,7 +204,7 @@ function coRenderLancamentos(){
     <div class="co-panel"><div class="co-panel-bd">
       ${simBar}
       <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.</div>
-      <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
+      <div style="overflow:auto"><table class="co-pivot co-lanc"><thead><tr><th>Mês</th>${cab}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="month" id="co-novo-mes" class="co-in" style="width:160px;text-align:left"><button class="btn btn-secondary btn-sm" onclick="coAdicionarMes('${id}')">+ Adicionar mês</button></div>
     </div></div>`;
 }
@@ -235,9 +236,9 @@ async function coGuardarCelula(obra_id, mes, campo, inp){
   }
   if(simTem(obra_id, mes, campo)){ showToast('Valor simulado: use "Simular valores" para o alterar, ou apague a simulação'); coRenderLancamentos(); return; }
   let extra = {};
-  if(campo==='prov_contr' || campo==='prov_compl'){   // o total de proveitos acompanha a soma das duas partes
-    const b = splitProv(row||{}), c = campo==='prov_contr' ? v : b.c, k = campo==='prov_compl' ? v : b.k;
-    extra = { prov_contr:c, prov_compl:k, proveitos:Math.round((c+k)*100)/100 };
+  if(PROV[campo]){   // o total de proveitos acompanha a soma das partes
+    const b = splitProv(row||{}), c = campo==='prov_contr' ? v : b.c, k = campo==='prov_compl' ? v : b.k, r = campo==='prov_rev' ? v : b.r;
+    extra = { prov_contr:c, prov_compl:k, prov_rev:r, proveitos:Math.round((c+k+r)*100)/100 };
   }
   if(!await coUpsert([{ obra_id, mes, [campo]:v, ...extra, atualizado:new Date().toISOString() }])){ coRenderLancamentos(); return; }
   coAplicarLocal(obra_id, mes, { [campo]:v, ...extra });
@@ -332,9 +333,9 @@ async function coAtualizar(escolher){
           // componente com ficheiro → valor do ficheiro (0 se o mês não tem auto); sem ficheiro → o que estava guardado
           const c = r.provContr ? (r.provContr[mes]||0) : (cur.prov_contr==null ? null : +cur.prov_contr);
           const k = r.provCompl ? (r.provCompl[mes]||0) : (cur.prov_compl==null ? null : +cur.prov_compl);
-          const antes = +cur.proveitos||0;
+          const rev = +cur.prov_rev||0, antes = (+cur.proveitos||0) - rev;
           if((c===null || k===null) && antes!==0) saltados++;          // não dá para separar o que já estava: mantém
-          else { row.prov_contr = c||0; row.prov_compl = k||0; row.proveitos = Math.round(((c||0)+(k||0))*100)/100; mexeu = true; }
+          else { row.prov_contr = c||0; row.prov_compl = k||0; row.proveitos = Math.round(((c||0)+(k||0)+rev)*100)/100; mexeu = true; }
         }
         if(mexeu) payload.push(row);
       });
