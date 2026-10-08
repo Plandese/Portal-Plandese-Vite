@@ -29,7 +29,7 @@ export function feriadosPT(y) {
   const p = _pascoa(y), add = (n) => { const x = new Date(p); x.setDate(x.getDate() + n); return x; };
   const m = {};
   [['01-01', 'Ano Novo'], ['04-25', 'Dia da Liberdade'], ['05-01', 'Dia do Trabalhador'],
-   ['06-10', 'Dia de Portugal'], ['08-15', 'Assunção de Nossa Senhora'], ['10-05', 'Implantação da República'],
+   ['06-10', 'Dia de Portugal'], ['06-13', 'Santo António (Lisboa)'], ['08-15', 'Assunção de Nossa Senhora'], ['10-05', 'Implantação da República'],
    ['11-01', 'Todos os Santos'], ['12-01', 'Restauração da Independência'],
    ['12-08', 'Imaculada Conceição'], ['12-25', 'Natal']].forEach(([md, n]) => { m[`${y}-${md}`] = n; });
   m[k(add(-2))] = 'Sexta-feira Santa'; m[k(p)] = 'Páscoa'; m[k(add(60))] = 'Corpo de Deus';
