@@ -108,6 +108,8 @@ body.device-mobile #bottom-nav .bnav-btn.active::before{opacity:1}
 body.device-mobile #bottom-nav .bnav-btn.active svg{stroke-width:2}
 /* ecrãs sem separadores (como o das notificações na app da CP) */
 body.device-mobile[data-m-screen="notif"] #bottom-nav{display:none!important}
+/* sem sessão iniciada (página de início de sessão, escolha do modo de visualização) não há barra de separadores */
+body.device-mobile:not(.app-ativa) #bottom-nav{display:none!important}
 body.device-mobile[data-m-screen="notif"] #admin-app .admin-main{padding-bottom:36px}
 
 /* ───────── Controlo segmentado (Viagens | Comboios) ───────── */
