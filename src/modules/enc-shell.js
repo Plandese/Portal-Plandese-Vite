@@ -2,7 +2,7 @@
 //  ENC-SHELL — estrutura da app dos encarregados (mesma linguagem da app mobile do admin)
 //    · cabeçalho colorido com título do ecrã e folha branca por baixo
 //    · menu lateral (perfil, compras, histórico, meteorologia, sair)
-//    · barra de separadores em baixo, visível em todos os ecrãs, com o separador do ecrã atual ativo
+//    · barra de separadores em baixo, visível em todos os ecrãs (menos com o teclado aberto), com o separador do ecrã atual ativo
 //    · "voltar" inteligente: passo anterior do ecrã atual, senão início
 //  Só mexe em apresentação: os ecrãs e as funções de navegação continuam a ser as do enc-ponto.js.
 // ═══════════════════════════════════════
@@ -121,7 +121,36 @@ export function eDrawer(abrir) {
   d.setAttribute('aria-hidden', abrir ? 'false' : 'true');
 }
 
+// ── Teclado: a barra de separadores sai da frente enquanto o teclado está aberto ─────
+// Deteta-se pela altura visível do ecrã (encolhe quando o teclado abre e volta ao normal quando
+// fecha), exigindo um campo de texto com foco. Assim a barra reaparece mesmo que o teclado seja
+// fechado (botão "voltar" do telemóvel) sem tirar o foco do campo — nunca fica presa escondida.
+const vv = window.visualViewport;
+const alturaVisivel = () => Math.round(vv ? vv.height : window.innerHeight);
+const larguraVisivel = () => Math.round(vv ? vv.width : window.innerWidth);
+const TIPOS_TEXTO = ['text', 'search', 'number', 'tel', 'email', 'url', 'password'];
+const LIMIAR_TECLADO = 120; // px que o ecrã tem de encolher (os teclados têm 200+ px)
+function campoDeTexto(el) {
+  if (!el || el.disabled || el.readOnly) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName === 'INPUT') return TIPOS_TEXTO.includes((el.getAttribute('type') || 'text').toLowerCase()) && el.inputMode !== 'none';
+  return !!el.isContentEditable;
+}
+let _base = alturaVisivel(), _baseW = larguraVisivel(), _kb = false;
+function medirTeclado() {
+  const a = alturaVisivel(), w = larguraVisivel();
+  const foco = document.body.classList.contains('enc-mode') && campoDeTexto(document.activeElement);
+  // altura de referência = a do ecrã sem teclado (também ao rodar o telemóvel ou se o ecrã crescer)
+  if (!foco || w !== _baseW || a > _base) { _base = a; _baseW = w; }
+  const aberto = foco && a < _base - LIMIAR_TECLADO;
+  if (aberto !== _kb) { _kb = aberto; document.body.classList.toggle('e-kb', aberto); }
+}
+
 function iniciar() {
+  vv?.addEventListener('resize', medirTeclado);
+  window.addEventListener('resize', medirTeclado);
+  document.addEventListener('focusin', medirTeclado);
+  document.addEventListener('focusout', () => setTimeout(medirTeclado, 80)); // dá tempo ao foco de passar para outro campo
   const o = new MutationObserver(agendar);
   IDS.forEach(id => { const e = $(id); if (e) o.observe(e, { attributes: true, attributeFilter: ['style'] }); });
   const app = $('enc-app'); if (app) o.observe(app, { attributes: true, attributeFilter: ['style'] });
