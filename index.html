@@ -3820,28 +3820,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="/artigos-data.js"></script>
-    <!-- Barra de navegação do encarregado: mostra/esconde + item ativo conforme o ecrã visível -->
-    <script>
-    (function(){
-      var HIDE={'enc-screen2':1,'enc-screen-aluguer':1,'enc-screen-equip':1,'enc-screen-comb-viatura':1,'enc-screen-compras-chat':1};
-      var ACT={'enc-screen0':'home','enc-screen1':'ponto','enc-screen-combustivel':'comb','enc-screen-comb-deposito':'comb','enc-screen-historico-enc':'hist'};
-      var IDS=['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-compras-chat','enc-screen-historico-enc','enc-screen-aluguer'];
-      function cur(){for(var i=0;i<IDS.length;i++){var e=document.getElementById(IDS[i]);if(e&&e.style.display!=='none')return IDS[i];}return null;}
-      function upd(){
-        var nav=document.getElementById('enc-nav');if(!nav)return;
-        var c=cur();
-        nav.style.display=(!c||HIDE[c])?'none':'flex';
-        var a=c?ACT[c]:null;
-        var items=nav.querySelectorAll('.enc-nav-i');
-        for(var i=0;i<items.length;i++) items[i].classList.toggle('active',items[i].getAttribute('data-nav')===a);
-      }
-      function init(){
-        var o=new MutationObserver(upd);
-        for(var i=0;i<IDS.length;i++){var e=document.getElementById(IDS[i]);if(e)o.observe(e,{attributes:true,attributeFilter:['style']});}
-        upd();
-      }
-      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-    })();
-    </script>
     <script type="module" src="/src/main.js"></script>
 </body>

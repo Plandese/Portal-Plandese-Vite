@@ -2,6 +2,7 @@
 //  ENC-SHELL — estrutura da app dos encarregados (mesma linguagem da app mobile do admin)
 //    · cabeçalho colorido com título do ecrã e folha branca por baixo
 //    · menu lateral (perfil, compras, histórico, meteorologia, sair)
+//    · barra de separadores em baixo, visível em todos os ecrãs, com o separador do ecrã atual ativo
 //    · "voltar" inteligente: passo anterior do ecrã atual, senão início
 //  Só mexe em apresentação: os ecrãs e as funções de navegação continuam a ser as do enc-ponto.js.
 // ═══════════════════════════════════════
@@ -27,19 +28,19 @@ const IC = {
 
 // Ecrãs da app: título/subtítulo/ícone do cabeçalho e para onde volta o "voltar"
 const ECRAS = {
-  'enc-screen0':             { home: true },
-  'enc-screen1':             { t: 'Folha de ponto', s: 'MO Plandese · passo 1 de 2', i: IC.user, back: 'encVoltarHome' },
-  'enc-screen2':             { t: 'Folha de ponto', s: 'MO Plandese · passo 2 de 2', i: IC.user, back: 'encVoltarScreen1' },
-  'enc-screen-aluguer':      { t: 'MO Aluguer', s: 'Mão de obra cedida', i: IC.users, back: 'encVoltarHome' },
-  'enc-screen-equip':        { t: 'Equipamentos', s: 'Localização e manutenção', i: IC.qr, back: 'encVoltarHome', estados: {
+  'enc-screen0':             { home: true, nav: 'home' },
+  'enc-screen1':             { t: 'Folha de ponto', s: 'MO Plandese · passo 1 de 2', i: IC.user, back: 'encVoltarHome', nav: 'ponto' },
+  'enc-screen2':             { t: 'Folha de ponto', s: 'MO Plandese · passo 2 de 2', i: IC.user, back: 'encVoltarScreen1', nav: 'ponto' },
+  'enc-screen-aluguer':      { t: 'MO Aluguer', s: 'Mão de obra cedida', i: IC.users, back: 'encVoltarHome', nav: 'ponto' },
+  'enc-screen-equip':        { t: 'Equipamentos', s: 'Localização e manutenção', i: IC.qr, back: 'encVoltarHome', nav: 'equip', estados: {
     'enc-eq-state-scanner': 'encEqVoltarMetodo', 'enc-eq-state-lista': 'encEqVoltarMetodo', 'enc-eq-state-acao': 'encEqVoltarMetodo',
     'enc-eq-state-form-reg': 'encEqVoltarAcao', 'enc-eq-state-form-man': 'encEqVoltarAcao' } },
-  'enc-screen-combustivel':  { t: 'Combustível', s: 'Escolha o tipo de registo', i: IC.fuel, back: 'encVoltarHome' },
-  'enc-screen-comb-deposito':{ t: 'Depósito de obra', s: 'Entrada e saída de gasóleo', i: IC.drop, back: 'encGoCombustivel' },
-  'enc-screen-comb-viatura': { t: 'Abastecimento bombas', s: 'Viaturas e máquinas', i: IC.fuel, back: 'encGoCombustivel', estados: {
+  'enc-screen-combustivel':  { t: 'Combustível', s: 'Escolha o tipo de registo', i: IC.fuel, back: 'encVoltarHome', nav: 'comb' },
+  'enc-screen-comb-deposito':{ t: 'Depósito de obra', s: 'Entrada e saída de gasóleo', i: IC.drop, back: 'encGoCombustivel', nav: 'comb' },
+  'enc-screen-comb-viatura': { t: 'Abastecimento bombas', s: 'Viaturas e máquinas', i: IC.fuel, back: 'encGoCombustivel', nav: 'comb', estados: {
     'comb-viatura-state-form': 'combViaturaVoltarScanner' } },
-  'enc-screen-historico-enc':{ t: 'Histórico', s: 'Registos anteriores', i: IC.clock, back: 'encVoltarHome' },
-  'enc-screen-compras-chat': { t: 'Compras', s: 'Assistente de compras', i: IC.cart, back: 'encVoltarHome' },
+  'enc-screen-historico-enc':{ t: 'Histórico', s: 'Registos anteriores', i: IC.clock, back: 'encVoltarHome', nav: 'hist' },
+  'enc-screen-compras-chat': { t: 'Compras', s: 'Assistente de compras', i: IC.cart, back: 'encVoltarHome', nav: 'home' },
 };
 const IDS = Object.keys(ECRAS);
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -56,7 +57,8 @@ let _atual = null, _raf = 0;
 export function eSync() {
   const h = $('e-hdr'); if (!h) return;
   const id = ecraAtual();
-  if (!id) return;
+  const nav = $('enc-nav');
+  if (!id) { if (nav) nav.style.display = 'none'; return; }
   const cfg = ECRAS[id];
   const home = !!cfg.home;
   if (id !== _atual) eDrawer(false);
@@ -68,6 +70,11 @@ export function eSync() {
   $('e-hr').innerHTML = home ? IC.sun : IC.home;
   $('e-hr').setAttribute('aria-label', home ? 'Previsão do tempo' : 'Início');
   const av = $('e-av'); if (av) av.textContent = iniciais();
+  // barra de separadores: aparece em todos os ecrãs (o ecrã de Compras fica sob "Início")
+  if (nav) {
+    nav.style.display = 'flex';
+    nav.querySelectorAll('.enc-nav-i').forEach(b => b.classList.toggle('active', b.dataset.nav === cfg.nav));
+  }
   if (home) {
     const d = new Date(), hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     $('e-hdr-title').innerHTML = `<span>Olá, ${esc(primeiroNome())}</span>`;

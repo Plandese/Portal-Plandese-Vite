@@ -14,7 +14,7 @@
 body.enc-mode #bottom-nav,body.enc-mode .m-hdr,body.enc-mode .m-drawer,body.enc-mode .m-sheet,body.enc-mode .m-sheet-bg{display:none!important}
 body.enc-mode{background:#fff!important}
 
-#enc-app{position:relative;overflow:hidden;background:#fff;--e-line:#dde2ea;--e-tint:#eaf0fc}
+#enc-app{position:relative;overflow:hidden;background:#fff;--e-line:#dde2ea;--e-tint:#eaf0fc;--e-nav-h:calc(58px + var(--m-safe-b))}
 #enc-app > .app-bar{display:none}
 
 /* ───────── Cabeçalho ───────── */
@@ -118,7 +118,9 @@ body.enc-mode{background:#fff!important}
 .e-drawer-foot b{display:block;color:#4a5160;font-size:13.5px}
 
 /* ───────── Barra de separadores ───────── */
-#enc-app .enc-nav{flex:none;display:flex;align-items:stretch;background:#fafbfc;border-top:1px solid #e3e7ed;padding:0 0 var(--m-safe-b);box-shadow:none;position:relative;z-index:40}
+#enc-app .enc-nav{flex:none;display:flex;align-items:stretch;height:var(--e-nav-h);box-sizing:border-box;background:#fafbfc;border-top:1px solid #e3e7ed;padding:0 0 var(--m-safe-b);box-shadow:none;position:relative;z-index:700}
+/* a barra fica visível também nos ecrãs a ecrã inteiro (escolher viatura / equipamento, ler QR do depósito) */
+#enc-app #dep-equip-scanner,#enc-app .comb-picker{bottom:var(--e-nav-h)!important;overflow-y:auto}
 #enc-app .enc-nav-i{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px 6px;color:#454d5e;font-family:inherit;-webkit-tap-highlight-color:transparent}
 #enc-app .enc-nav-i svg{width:25px;height:25px;stroke-width:1.8}
 #enc-app .enc-nav-i span{font-size:11.5px;font-weight:500;line-height:1.1}
@@ -199,7 +201,7 @@ body.enc-mode{background:#fff!important}
 #enc-app .mob-add-btn{background:var(--m-brand);border-radius:99px;height:48px}
 #enc-app .mob-colab-card{border:1.5px solid var(--e-line);border-left-width:4px;border-radius:16px;box-shadow:none}
 #enc-app .mob-colab-av{border-radius:50%;background:var(--e-tint);color:var(--m-brand)}
-#enc-app .mob-save-bar{border-top:1px solid var(--e-line);padding:12px 16px calc(12px + var(--m-safe-b));background:#fff}
+#enc-app .mob-save-bar{border-top:1px solid var(--e-line);padding:12px 16px;background:#fff}
 #enc-app .mob-save-btn{height:52px;padding:0 20px;background:var(--m-brand);border-radius:99px;font-size:16.5px;font-weight:600;box-shadow:none}
 
 /* Histórico */
@@ -209,6 +211,7 @@ body.enc-mode{background:#fff!important}
 /* Compras (chat) */
 #enc-app #enc-screen-compras-chat{background:#fff!important}
 #enc-app .chat-msgs{background:#f4f6fa}
+#enc-app .chat-input-bar{padding:10px 12px}
 #enc-app .chat-bubble.user,#enc-app .chat-send-btn{background:var(--m-brand);box-shadow:none}
 #enc-app .chat-chip{border-radius:99px}
 #enc-app .chat-chip:hover,#enc-app .chat-chip:active,#enc-app .chat-chip.green{background:var(--e-tint);border-color:var(--m-brand);color:var(--m-brand)}
