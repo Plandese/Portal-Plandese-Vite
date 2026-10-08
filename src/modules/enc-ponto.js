@@ -31,18 +31,16 @@ function _encUpdatePrazoWidget(){
     valEl.textContent='—';
     valEl.style.color='';
     lblEl.textContent='sem obra atribuída';
-    iconEl.style.background='#f9fafb'; iconEl.style.color='#9ca3af';
+    delete iconEl.dataset.urg;
     return;
   }
   const today=new Date(); today.setHours(0,0,0,0);
   const prazoDate=new Date(obra.prazo+'T00:00:00');
   const days=Math.ceil((prazoDate-today)/(1000*60*60*24));
   valEl.textContent=`Faltam ${days>0?days:0} dias`;
-  valEl.style.color='var(--red)';
+  valEl.style.color='';
   lblEl.textContent=obra.nome;
-  if(days<=7){iconEl.style.background='#fef2f2';iconEl.style.color='#dc2626';}
-  else if(days<=21){iconEl.style.background='#fff7ed';iconEl.style.color='#ea580c';}
-  else{iconEl.style.background='#f0fdf4';iconEl.style.color='#16a34a';}
+  iconEl.dataset.urg = days<=7 ? 'alta' : (days<=21 ? 'media' : 'baixa');
 }
 
 const _PRAZO_MSGS_URGENTE=[
@@ -214,8 +212,9 @@ function encCloseWeatherModal(){
 function _applyEncModulePermissions(){
   const allowed = S.USERS[S.currentUser?.key]?.encModulos || null; // null = tudo visível
   ENC_MODULES.forEach(m=>{
-    const tile = document.querySelector('.eb-mod[data-mod="'+m.id+'"]');
-    if(tile) tile.style.display = (!allowed || allowed.includes(m.id)) ? '' : 'none';
+    document.querySelectorAll('[data-mod="'+m.id+'"]').forEach(tile=>{
+      tile.style.display = (!allowed || allowed.includes(m.id)) ? '' : 'none';
+    });
     if(m.nav){
       const navBtn = document.querySelector('.enc-nav-i[data-nav="'+m.nav+'"]');
       if(navBtn) navBtn.style.display = (!allowed || allowed.includes(m.id)) ? '' : 'none';

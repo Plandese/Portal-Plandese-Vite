@@ -57,6 +57,7 @@ import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, mo
 
 // Produção
 import { mOnGoTo, mShellReset, mSyncBell, mSyncChat } from './modules/m-shell.js';
+import './modules/enc-shell.js';
 import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel

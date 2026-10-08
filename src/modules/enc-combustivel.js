@@ -602,6 +602,11 @@ function _esc(t) {
   return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function _chatSetPlaceholder(texto) {
+  const inp = document.getElementById('chat-input');
+  if (inp) inp.placeholder = texto || 'Escreve aqui...';
+}
+
 // ── Sugestões / Chips ─────────────────────────────────────────
 function _chatClearSuggestions() {
   const s = document.getElementById('chat-suggestions');

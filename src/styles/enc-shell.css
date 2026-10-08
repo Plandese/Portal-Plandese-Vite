@@ -1,0 +1,229 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP DOS ENCARREGADOS — mesma linguagem da app mobile do admin (mobile-shell.css):
+   cabeçalho azul Plandese com título, folha branca arredondada, barra de separadores
+   em baixo, menu lateral, listas e botões em pílula. Escopado a #enc-app.
+   Mantém todos os ids/handlers dos ecrãs; só muda a apresentação.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* O cabeçalho/menu só existem na app dos encarregados */
+.e-hdr,.e-drawer{display:none}
+#enc-app .e-hdr{display:block}
+#enc-app .e-drawer{display:block}
+
+/* A barra de separadores do admin nunca aparece por cima da app dos encarregados */
+body.enc-mode #bottom-nav,body.enc-mode .m-hdr,body.enc-mode .m-drawer,body.enc-mode .m-sheet,body.enc-mode .m-sheet-bg{display:none!important}
+body.enc-mode{background:#fff!important}
+
+#enc-app{position:relative;overflow:hidden;background:#fff;--e-line:#dde2ea;--e-tint:#eaf0fc}
+#enc-app > .app-bar{display:none}
+
+/* ───────── Cabeçalho ───────── */
+#enc-app .e-hdr{position:relative;flex:none;overflow:hidden;color:#fff;background:var(--m-brand);padding-top:var(--m-safe-t);z-index:1}
+#enc-app .e-hdr::before{content:'';position:absolute;left:-36%;top:-92%;width:98%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+#enc-app .e-hdr::after{content:'';position:absolute;right:-34%;top:-8%;width:86%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.045);pointer-events:none}
+.e-hdr-row{position:relative;z-index:1;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;height:62px;padding:0 10px}
+.e-ic{position:relative;width:46px;height:46px;border:0;background:none;color:inherit;display:grid;place-items:center;border-radius:50%;cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit}
+.e-ic svg{width:25px;height:25px}
+.e-ic:active{background:rgba(255,255,255,.16)}
+.e-logo{justify-self:center;display:flex;align-items:center;gap:7px;border:0;background:none;color:inherit;font-family:inherit;cursor:pointer;padding:4px 8px}
+.e-logo i{display:block;width:28px;height:28px;background:currentColor;-webkit-mask:var(--m-logo-mask) center/contain no-repeat;mask:var(--m-logo-mask) center/contain no-repeat}
+.e-logo b{font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.e-hdr-title{position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:6px 22px 0;font-size:22px;font-weight:700;letter-spacing:-.2px;line-height:1.15}
+.e-hdr-title svg{width:26px;height:26px;flex:none}
+.e-hdr-title:empty{display:none}
+.e-hdr-sub{position:relative;z-index:1;padding:5px 22px 46px;font-size:14px;font-weight:500;color:rgba(255,255,255,.82);line-height:1.3;min-height:20px}
+.e-hdr[data-v="home"] .e-hdr-title{font-size:27px;font-weight:800;letter-spacing:-.5px}
+
+/* ───────── Folha branca ───────── */
+#enc-app > div[id^="enc-screen"]{
+  margin-top:-26px;position:relative;z-index:2;
+  background:#fff!important;border-radius:24px 24px 0 0;overflow:hidden;
+  padding-top:22px;min-height:0;
+}
+#enc-app > #enc-screen0{padding-top:0}
+/* cabeçalhos próprios de cada ecrã passam para o cabeçalho global */
+#enc-app #enc-screen1 > .enc-hdr,
+#enc-app #enc-screen-aluguer > .enc-hdr,
+#enc-app #enc-screen-historico-enc > .enc-hdr,
+#enc-app #enc-screen-combustivel > .enc-hdr,
+#enc-app #enc-screen-comb-deposito > .enc-hdr,
+#enc-app .enc-equip-body > .enc-hdr,
+#enc-app .chat-header{display:none}
+#enc-app .enc-equip-body{background:#fff}
+
+/* ───────── Início ───────── */
+#enc-app .e-home{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:30px 18px 28px;background:#fff}
+.e-obra{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border:0;border-radius:20px;background:linear-gradient(135deg,var(--m-brand) 0,#2a57c4 100%);color:#fff;text-align:left;cursor:pointer;font-family:inherit;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;box-shadow:0 10px 22px rgba(23,63,159,.22)}
+.e-obra::after{content:'';position:absolute;right:-30px;top:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.09);pointer-events:none}
+.e-obra:active{transform:scale(.99)}
+.e-obra-ic{flex:none;width:48px;height:48px;border-radius:15px;background:rgba(255,255,255,.18);color:#fff;display:grid;place-items:center;position:relative;z-index:1}
+.e-obra-ic svg{width:25px;height:25px}
+.e-obra-ic[data-urg="alta"]{background:#ffe1e0;color:#c62828}
+.e-obra-ic[data-urg="media"]{background:#fff0d9;color:#c2670a}
+.e-obra-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
+.e-obra-tx small{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.e-obra-tx b{font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.15}
+.e-obra-tx > span{font-size:13.5px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.e-obra .e-row-chev{color:rgba(255,255,255,.8);position:relative;z-index:1}
+
+.e-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.e-tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;padding:14px;border:1.5px solid var(--e-line);border-radius:18px;background:#fff;text-align:left;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.e-tile:active{background:#f4f6fa}
+.e-tile-ic{width:40px;height:40px;border-radius:50%;background:var(--e-tint);color:var(--m-brand);display:grid;place-items:center;margin-bottom:6px}
+.e-tile-ic svg{width:21px!important;height:21px!important}
+.e-tile-ic-fuel{background:#fdeedb;color:#c2670a}
+.e-tile-n{font-size:26px;font-weight:800;letter-spacing:-.6px;line-height:1.1;color:var(--m-ink);white-space:nowrap;max-width:100%}
+.e-tile-n.neg{color:#c62828}
+.e-tile-l{font-size:12.5px;color:var(--m-mute);line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.e-tile .enc-widget-rain-alert{margin-top:4px;font-size:11.5px;color:#1d4ed8;background:#e5eeff;padding:3px 9px;border-radius:99px}
+.e-tile .enc-widget-rain-alert.visible{display:inline-flex}
+
+.e-ponto{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:12px 14px;border:1.5px solid var(--e-line);border-radius:16px}
+.e-ponto-k{font-size:15px;font-weight:600;color:var(--m-ink)}
+#enc-app .enc-ctx-status{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:99px}
+
+.e-grp{font-size:12.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6a7284;margin:24px 2px 2px}
+
+/* Linhas (como as da lista de módulos da app do admin) */
+.e-row{display:flex;align-items:center;gap:15px;width:100%;min-height:62px;padding:8px 2px;border:0;border-bottom:1px solid var(--e-line);background:none;text-align:left;cursor:pointer;font-family:inherit;color:inherit;-webkit-tap-highlight-color:transparent;position:relative}
+.e-row:active{background:#f4f6fa}
+.e-row-ic{flex:none;width:30px;height:30px;color:var(--m-brand);display:grid;place-items:center}
+.e-row-ic svg{width:26px;height:26px}
+.e-row-tx{flex:1;min-width:0}
+.e-row-tx b{display:block;font-size:16.5px;font-weight:500;color:var(--m-ink);line-height:1.25}
+.e-row-tx small{display:block;font-size:13px;color:var(--m-mute);margin-top:2px;line-height:1.3}
+.e-row-chev{flex:none;width:20px;color:#454d5e;display:grid;place-items:center}
+.e-row-chev svg{width:18px;height:18px}
+.e-row.red .e-row-tx b,.e-row.red .e-row-ic{color:#b3261e}
+.e-done{display:none;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:99px;background:#dff5e7;color:#166534;flex:none}
+.e-done.visible{display:inline-flex}
+.e-done svg{width:11px;height:11px}
+
+/* ───────── Menu lateral ───────── */
+#enc-app .e-drawer{position:absolute;inset:0;z-index:1100;pointer-events:none;visibility:hidden}
+#enc-app .e-drawer.open{pointer-events:auto;visibility:visible}
+.e-drawer-scrim{position:absolute;inset:0;background:rgba(10,18,38,.55);opacity:0;transition:opacity .25s}
+.e-drawer.open .e-drawer-scrim{opacity:1}
+.e-drawer-panel{position:absolute;top:0;bottom:0;left:0;width:min(82%,340px);background:#fff;border-radius:0 30px 30px 0;transform:translateX(-102%);transition:transform .27s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;overflow-y:auto;padding:calc(var(--m-safe-t) + 12px) 24px calc(var(--m-safe-b) + 18px);box-shadow:8px 0 30px rgba(10,18,38,.18)}
+.e-drawer.open .e-drawer-panel{transform:none}
+.e-drawer-x{align-self:flex-end;width:46px;height:46px;margin:0 -10px 4px 0;border:0;background:none;color:var(--m-brand);display:grid;place-items:center;border-radius:50%;cursor:pointer}
+.e-drawer-x svg{width:28px;height:28px}
+.e-drawer-top{display:flex;align-items:center;gap:16px;margin:0 0 18px;padding-bottom:18px;border-bottom:1.5px solid var(--e-line)}
+.e-avatar{flex:none;width:60px;height:60px;border-radius:50%;background:var(--m-brand);color:#fff;font-size:20px;font-weight:700;display:grid;place-items:center}
+.e-dn{font-size:18px;font-weight:600;color:var(--m-ink);line-height:1.2}
+.e-dr{font-size:13.5px;color:var(--m-mute);margin-top:3px}
+.e-drawer-nav .e-row{min-height:58px}
+.e-drawer-nav .e-row-tx b{font-size:17px}
+.e-drawer-foot{margin-top:auto;padding-top:22px;font-size:12.5px;color:#7c8496;line-height:1.5}
+.e-drawer-foot b{display:block;color:#4a5160;font-size:13.5px}
+
+/* ───────── Barra de separadores ───────── */
+#enc-app .enc-nav{flex:none;display:flex;align-items:stretch;background:#fafbfc;border-top:1px solid #e3e7ed;padding:0 0 var(--m-safe-b);box-shadow:none;position:relative;z-index:40}
+#enc-app .enc-nav-i{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px 6px;color:#454d5e;font-family:inherit;-webkit-tap-highlight-color:transparent}
+#enc-app .enc-nav-i svg{width:25px;height:25px;stroke-width:1.8}
+#enc-app .enc-nav-i span{font-size:11.5px;font-weight:500;line-height:1.1}
+#enc-app .enc-nav-i::before{content:'';position:absolute;left:8px;right:8px;top:-1px;height:3px;background:var(--m-brand);opacity:0;border-radius:0 0 3px 3px}
+#enc-app .enc-nav-i.active{color:var(--m-brand)}
+#enc-app .enc-nav-i.active span{font-weight:700}
+#enc-app .enc-nav-i.active svg{stroke-width:2.1}
+#enc-app .enc-nav-i.active::before{opacity:1}
+#enc-app .enc-nav-i:active{transform:none;background:#f1f4fa}
+
+/* ───────── Ecrãs interiores: cartões, campos e botões ───────── */
+#enc-app .enc-card{flex:none;background:transparent;border:0;border-radius:0;box-shadow:none;margin:0;padding:6px 2px 20px;overflow:visible;max-width:none}
+#enc-app .enc-card-title{font-size:19px;font-weight:700;color:var(--m-ink);letter-spacing:-.2px}
+#enc-app .enc-card-sub{font-size:14.5px;color:var(--m-mute);margin-bottom:18px}
+#enc-hist-resultado .enc-card{background:#fff;border:1.5px solid var(--e-line)!important;border-radius:18px!important;padding:14px 16px;margin:0 0 12px;box-shadow:none!important;flex:none}
+#enc-app .enc-tip{background:var(--e-tint);border:0;border-radius:14px}
+#enc-app .enc-tip-t{color:var(--m-brand)}
+#enc-app .enc-tip-s{color:#3a4a73}
+#enc-app .enc-tip svg{stroke:var(--m-brand)}
+#enc-app .enc-field label{font-size:12px;font-weight:700;color:#5d6678;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+#enc-app .enc-input,#enc-app .enc-select,#enc-app .enc-time,#enc-app .mob-add-sel{border:1.5px solid #b9c1ce;border-radius:14px;background:#fff;min-height:50px;font-size:16px;color:var(--m-ink)}
+#enc-app textarea.enc-input{min-height:84px}
+#enc-app .enc-input:focus,#enc-app .enc-select:focus,#enc-app .enc-time:focus,#enc-app .mob-add-sel:focus{border-color:var(--m-brand);box-shadow:0 0 0 3px rgba(23,63,159,.13);background:#fff;outline:none}
+#enc-app .enc-hint{background:#f4f6fa;border-radius:12px;color:var(--m-mute)}
+#enc-app .enc-btn{min-height:52px;height:auto;padding:12px 20px;line-height:1.25;text-align:center;border:0;border-radius:99px;font-size:16.5px;font-weight:600;box-shadow:none;background:var(--m-brand)!important;color:#fff!important;letter-spacing:0}
+#enc-app .enc-btn:active{background:var(--m-brand-d)!important;transform:none}
+#enc-app .enc-btn[style*="var(--white)"]{background:#fff!important;border:1.5px solid var(--m-brand)!important;color:var(--m-brand)!important}
+#enc-app .enc-btn:disabled{opacity:.55}
+#enc-app button[onclick*="moaTrabAbrir"]{border-color:var(--m-brand)!important;color:var(--m-brand)!important;background:var(--e-tint)!important;border-radius:14px!important}
+
+/* Cartões de escolha (equipamentos / combustível) */
+#enc-app .enc-mode-card{border:1.5px solid var(--e-line);border-radius:18px;background:#fff;box-shadow:none;padding:14px 14px;min-height:76px}
+#enc-app .enc-mode-card:active{background:#f4f6fa}
+#enc-app .enc-mode-icon{width:48px;height:48px;border-radius:50%;background:var(--e-tint)!important;color:var(--m-brand)!important}
+#enc-app .enc-mode-title{font-size:16.5px;font-weight:600;color:var(--m-ink)}
+#enc-app .enc-mode-desc{font-size:13.5px;color:var(--m-mute);margin-top:3px}
+#enc-app .enc-mode-arrow{color:#454d5e}
+#enc-app .qr-equip-info{background:var(--e-tint);border:0;border-radius:16px}
+#enc-app .qr-equip-icon{background:var(--m-brand);border-radius:50%}
+#enc-app .qr-equip-name{font-size:16.5px}
+#enc-app .qr-loc-status{border-radius:14px}
+#enc-app .enc-equip-form-card{border-radius:0;box-shadow:none;border:0}
+#enc-app #enc-eq-state-metodo,#enc-app #enc-eq-state-acao > div[style*="overflow-y:auto"]{padding-top:6px}
+#enc-app .enc-qr-hint{color:var(--m-mute)}
+/* botões "Voltar" pequenos dentro dos passos */
+#enc-app #enc-eq-state-scanner > div:first-child button,
+#enc-app #enc-eq-state-lista > div:first-child button,
+#enc-app #enc-eq-state-acao > div:first-child button,
+#enc-app #enc-eq-state-form-reg > div:first-child button,
+#enc-app #enc-eq-state-form-man > div:first-child button,
+#enc-app #comb-viatura-state-form > div:first-child button{background:none!important;border:0!important;color:var(--m-brand)!important;font-weight:600!important;font-size:14px!important;padding:6px 0!important}
+
+/* Ecrãs de overlay (escolher viatura, ler QR do depósito): cabeçalho claro com voltar */
+#enc-app .enc-hdr{padding:12px 16px 10px;gap:12px}
+#enc-app .enc-hdr-back{width:44px;height:44px;border-radius:50%;background:none;border:1.5px solid var(--e-line)}
+#enc-app .enc-hdr-t{font-size:18px;font-weight:700;color:var(--m-ink)}
+#enc-app .enc-hdr-s{font-size:13px;color:var(--m-mute)}
+#enc-app .enc-hdr-chip{display:none}
+#enc-app .comb-picker{background:#fff}
+#enc-app .comb-picker-item{border-radius:16px;border:1.5px solid var(--e-line);box-shadow:none}
+#enc-app .comb-picker-item.sel{border-color:var(--m-brand);box-shadow:inset 0 0 0 1px var(--m-brand)}
+#enc-app .comb-picker-ic{border-radius:50%;background:var(--e-tint);color:var(--m-brand)}
+#enc-app .comb-picker-chip[aria-pressed=true]{background:var(--m-brand);border-color:var(--m-brand)}
+
+/* Folha de ponto — passo 2 */
+#enc-app .enc-ctx{margin:0 16px 4px;padding:12px 14px;border:0;border-radius:16px;background:var(--e-tint);gap:10px}
+#enc-app .enc-ctx > button:first-child{background:#fff!important;border:0!important;border-radius:99px!important;color:var(--m-brand)!important;font-weight:700!important;padding:7px 12px!important}
+#enc-app .enc-edit-btn{background:#fff;border:0;border-radius:99px;color:var(--m-brand);font-weight:700;padding:7px 12px}
+#enc-app .enc-ctx-lbl{color:#5d6678}
+#enc-app .enc-ctx-obra{font-weight:700;color:var(--m-ink);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#enc-app #enc-screen2 > div[style*="box-shadow"]{box-shadow:none!important;border-radius:0!important}
+#enc-app .enc-scroll{padding:14px 16px 90px}
+#enc-app .mob-stats{gap:8px}
+#enc-app .mob-stat{border:1.5px solid var(--e-line);border-radius:16px;box-shadow:none}
+#enc-app .mob-stat-num{font-weight:800;color:var(--m-brand)}
+#enc-app .mob-add-bar{border:1.5px dashed #9fb2e3;background:#f6f8fe;border-radius:18px;box-shadow:none}
+#enc-app .mob-add-title{color:var(--m-brand)}
+#enc-app .mob-add-btn{background:var(--m-brand);border-radius:99px;height:48px}
+#enc-app .mob-colab-card{border:1.5px solid var(--e-line);border-left-width:4px;border-radius:16px;box-shadow:none}
+#enc-app .mob-colab-av{border-radius:50%;background:var(--e-tint);color:var(--m-brand)}
+#enc-app .mob-save-bar{border-top:1px solid var(--e-line);padding:12px 16px calc(12px + var(--m-safe-b));background:#fff}
+#enc-app .mob-save-btn{height:52px;padding:0 20px;background:var(--m-brand);border-radius:99px;font-size:16.5px;font-weight:600;box-shadow:none}
+
+/* Histórico */
+#enc-app #enc-screen-historico-enc > div{background:#fff!important}
+#enc-app #enc-hist-tipo,#enc-app #enc-hist-data{border:1.5px solid #b9c1ce!important;border-radius:14px!important;min-height:48px;font-size:15.5px!important;color:var(--m-ink)}
+
+/* Compras (chat) */
+#enc-app #enc-screen-compras-chat{background:#fff!important}
+#enc-app .chat-msgs{background:#f4f6fa}
+#enc-app .chat-bubble.user,#enc-app .chat-send-btn{background:var(--m-brand);box-shadow:none}
+#enc-app .chat-chip{border-radius:99px}
+#enc-app .chat-chip:hover,#enc-app .chat-chip:active,#enc-app .chat-chip.green{background:var(--e-tint);border-color:var(--m-brand);color:var(--m-brand)}
+#enc-app .chat-input{border:1.5px solid #b9c1ce;border-radius:99px;min-height:48px}
+#enc-app .chat-input:focus{border-color:var(--m-brand)}
+#enc-app .chat-items-preview{background:var(--e-tint);border-color:#c8d6f5;color:var(--m-brand)}
+
+/* Folhas inferiores (meteorologia, depósito, prazo, editar registo) */
+#enc-app .enc-weather-sheet{border-radius:26px 26px 0 0}
+#enc-app .enc-weather-sheet-title{font-size:19px;font-weight:700;color:var(--m-ink)}
+#enc-app .enc-weather-sheet-close{background:var(--e-tint);color:var(--m-brand);border-radius:50%}
+#enc-app .enc-forecast-day.today{color:var(--m-brand)}
+#enc-app .enc-forecast-icon{border-radius:50%}
+#enc-app .enc-prazo-days{font-size:22px;font-weight:800;color:var(--m-brand)}
+#enc-app .enc-prazo-msg{font-weight:500;color:#454d5e}
+
+/* Sucesso */
+#enc-app .enc-equip-success{background:#fff}
