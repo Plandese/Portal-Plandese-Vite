@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
-import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend } from '../utils/helpers.js';
+import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend, isNonWorkday } from '../utils/helpers.js';
 import { podeAprovarObra, aprovCelulaHTML } from './ponto.js';
 import { showToast } from './navigation.js';
 import { abrirResumoMOA } from './resumo-colab.js';
@@ -788,7 +788,7 @@ function _moaDraw(){
       <th style="color:white;background:var(--blue-800);min-width:110px">Empresa</th>
       <th style="color:white;background:var(--blue-800);min-width:90px">Função</th>`;
     days.forEach((d,i)=>{
-      const bg=isWeekend(d)?'#C2410C':'var(--blue-600)';
+      const bg=isNonWorkday(d)?'#C2410C':'var(--blue-600)';
       thead+=`<th style="color:white;background:${bg};text-align:center;border-left:2px solid rgba(255,255,255,.2)">
         <div style="font-size:12px;font-weight:700">${dayNames[i]}</div>
         <div style="font-size:10px;font-weight:400;opacity:.8">${fmtPT(dStrs[i])}</div></th>`;

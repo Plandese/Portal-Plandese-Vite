@@ -4,7 +4,7 @@
 import { sb } from '../supabase.js';
 import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
-import { fmt, fmtPT, isWeekend, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
+import { fmt, fmtPT, isWeekend, isNonWorkday, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT, DIAS_PT_EXP, TIPOS } from '../config.js';
 import { showToast } from './navigation.js';
 
@@ -502,7 +502,7 @@ function _histDrawResultado(){
       <th style="color:white;background:var(--blue-800);min-width:160px">Nome</th>
       <th style="color:white;background:var(--blue-800);min-width:90px">Função</th>`;
     days.forEach((d,i)=>{
-      const we=isWeekend(d);
+      const we=isNonWorkday(d);
       const bg=we?'#C2410C':'var(--blue-600)';
       thead+=`<th style="color:white;background:${bg};text-align:center;border-left:2px solid rgba(255,255,255,.2)">
         <div style="font-size:12px;font-weight:700">${dayNames[i]}</div>
@@ -839,7 +839,7 @@ export async function exportMensal(){
     for(let i=0;i<datas.length;i++){
       const d=datas[i]; const row=9+i;
       ws.getRow(row).height=15.0;
-      const dStr=fmt(d); const isWE=d.getDay()===0||d.getDay()===6;
+      const dStr=fmt(d); const isWE=isNonWorkday(d);
       const diaNome=DIAS_PT_EXP[d.getDay()===0?6:d.getDay()-1];
 
       const bDate=isWE?exBorder('thin','thin','thin','dotted'):exBorder('dotted','thin','thin','dotted');

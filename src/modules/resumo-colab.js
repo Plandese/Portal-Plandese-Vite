@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
-import { fmtPT, isWeekend, calcH, fmtH } from '../utils/helpers.js';
+import { fmtPT, isWeekend, isNonWorkday, calcH, fmtH } from '../utils/helpers.js';
 import { MESES_PT } from '../config.js';
 
 let _res = null; // {kind, ref, colabN | trab, nome, sub}
@@ -133,7 +133,7 @@ async function _desenhar() {
   lista.forEach(d => {
     const k = tipoDia(d); if (cnt[k] != null) cnt[k]++;
     tn += d.n; te += d.e; tt += d.t;
-    if (d.t > 0 && isWeekend(new Date(d.data + 'T12:00:00'))) fds++;
+    if (d.t > 0 && isNonWorkday(new Date(d.data + 'T12:00:00'))) fds++;
     const oid = [...d.obras][0];
     if (d.t > 0) { const o = porObra[oid] || (porObra[oid] = { dias: 0, t: 0 }); o.dias++; o.t += d.t; }
   });
@@ -172,7 +172,7 @@ async function _desenhar() {
         fer: '<span class="badge b-blue" style="font-size:10px">Férias</span>', fol: '<span class="badge b-yellow" style="font-size:10px">Folga</span>',
         anul: '<span class="badge b-gray" style="font-size:10px;text-decoration:line-through">Anulado</span>', outro: '<span style="color:var(--gray-300)">—</span>' }[k];
       const obra = [...d.obras].map(id => S.OBRAS.find(o => o.id === id)?.nome || '').filter(Boolean).join(', ');
-      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;font-size:12px;${i ? 'border-top:1px solid var(--gray-100);' : ''}${isWeekend(dt) ? 'background:#fff7ed' : ''}">
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;font-size:12px;${i ? 'border-top:1px solid var(--gray-100);' : ''}${isNonWorkday(dt) ? 'background:#fff7ed' : ''}">
         <div style="min-width:0"><span style="font-weight:600">${_DIA[dt.getDay()]} ${fmtPT(d.data).slice(0, 5)}</span>
           <span style="color:var(--gray-500);margin-left:6px">${d.horas.join(' · ')}</span>
           ${obra ? `<div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${obra}</div>` : ''}</div>
