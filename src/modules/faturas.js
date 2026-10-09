@@ -1030,7 +1030,7 @@ async function mostrarDocumentoFatura(f){
   }
   box.style.display = 'block';
   if(!dropboxIsConnected()){
-    box.innerHTML = '<div class="mf-doc-msg">Ligue a Dropbox para ver o ficheiro da fatura.</div>';
+    box.innerHTML = '<div class="mf-doc-msg">A Dropbox não está ligada neste navegador — não é possível mostrar o ficheiro. <button type="button" class="btn btn-secondary btn-sm" onclick="dropboxLogin()" style="margin-left:8px">Ligar Dropbox</button></div>';
     return;
   }
   box.innerHTML = '<div class="mf-doc-msg">A carregar a fatura…</div>';

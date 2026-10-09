@@ -3353,7 +3353,6 @@
     <div class="modal-title" id="mf-title">Editar fatura</div>
     <div class="modal-sub" id="mf-sub">Verifique e corrija os campos extraídos pelo OCR/IA</div>
     <input type="hidden" id="mf-id"/>
-    <div id="mf-doc" class="mf-doc" style="display:none"></div>
     <div class="field"><label>Fornecedor</label><input type="text" id="mf-forn" placeholder="Nome do fornecedor"/></div>
     <div class="fat-field-row">
       <div class="field"><label>NIF <span id="mf-nif-warn"></span></label><input type="text" id="mf-nif" placeholder="9 dígitos" maxlength="9"/></div>
@@ -3402,6 +3401,7 @@
       </button>
     </div>
 
+    <div id="mf-doc" class="mf-doc" style="display:none"></div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-secondary" style="color:var(--red);border-color:var(--red-bg)" onclick="apagarFatura()">Apagar</button>
       <div style="display:flex;gap:8px">

@@ -1242,7 +1242,9 @@ body.device-desktop:not(.enc-mode) #modal-fat{align-items:stretch;justify-conten
 body.device-desktop:not(.enc-mode) #modal-fat > .modal{width:min(720px,100%)!important;max-width:100%!important;height:100vh;max-height:100vh;padding:24px 28px;border-radius:30px 0 0 30px;box-shadow:-24px 0 70px rgba(10,28,90,.28);overflow-y:auto;animation:dSlideIn .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
 body.device-desktop:not(.enc-mode) #modal-fat .modal-title{margin:-24px -28px 0;padding:28px 28px 6px;background:var(--d-brand);color:#fff;font-size:23px;font-weight:800;letter-spacing:-.4px;border-radius:30px 0 0 0}
 body.device-desktop:not(.enc-mode) #modal-fat .modal-sub{margin:0 -28px 22px;padding:0 28px 32px;background:var(--d-brand);color:rgba(255,255,255,.84);font-size:14px}
-body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto;padding-top:16px}
+body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin:16px -28px -24px;padding:14px 28px;position:sticky;bottom:0;background:#fff;border-top:1px solid var(--d-line,#dde2ea);z-index:2}
+body.device-desktop:not(.enc-mode) #modal-fat .mf-doc{margin:18px 0 0}
+body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto}
 .mf-doc{margin:0 0 18px}
 .mf-doc-view{display:block;width:100%;height:460px;border:1.5px solid var(--d-line,#dde2ea);border-radius:18px;background:#f6f8fc}
 .mf-doc-open{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:var(--d-brand,#173f9f);text-decoration:none}
