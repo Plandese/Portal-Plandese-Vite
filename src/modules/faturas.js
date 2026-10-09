@@ -102,9 +102,20 @@ async function processQueueItem(item){
   item.status='processing'; item.progress=2; renderQueue();
   try{
     const fat = await lerFaturaDoFicheiro(item);
+    if(faturaDuplicada(fat)){
+      item.status='error'; item.error='Fatura já existe no portal (mesmo NIF e número)'; renderQueue();
+      showToast(`${item.name}: já existe uma fatura ${fat.numero} de ${fat.fornecedor}`);
+      return;
+    }
+    // Guarda o ficheiro na pasta "Por aprovar" da Dropbox (para poder ser carimbado ao aprovar)
+    let dbxPath = '';
+    if(dropboxIsConnected()){
+      try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${item.name}`); }
+      catch(e){ console.warn('Upload Dropbox falhou:', e); showToast('Fatura lida, mas não foi possível guardar o ficheiro na Dropbox: ' + e.message); }
+    } else showToast('Dropbox desligada — a fatura fica sem ficheiro e não poderá ser carimbada ao aprovar');
+    await registarFaturaLida(fat, dbxPath);
     item.status='done'; item.progress=100; renderQueue();
-    // Abrir anotador visual em vez de adicionar diretamente
-    openFatSel(fat, item);
+    showToast(`Fatura ${fat.numero||''} de ${fat.fornecedor||'fornecedor'} lida e pendente de aprovação`);
   } catch(e){
     console.error('Erro processamento fatura:', e);
     item.status='error'; item.error = e.message || 'Erro ao processar';
@@ -113,7 +124,25 @@ async function processQueueItem(item){
   }
 }
 
-// Lê um ficheiro (PDF/imagem) e devolve os campos da fatura; lança erro se não conseguir extrair texto
+const _normNum = v => String(v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+function faturaDuplicada(fat){
+  return !!fat.nif && !!fat.numero && FATURAS.some(f => f.nif === fat.nif && _normNum(f.numero) === _normNum(fat.numero));
+}
+
+// Guarda uma fatura já lida pelo Claude como "pendente de aprovação" e mostra-a na lista
+async function registarFaturaLida(fat, dropboxPath){
+  fat.status = 'pendente_aprovacao';
+  fat._fonte = 'dropbox';
+  if(dropboxPath){
+    fat.dropboxPath = dropboxPath;
+    fat.ficheiroUrl = await dropboxLinkTeam(dropboxPath) || '';
+  }
+  FATURAS.push(fat);
+  await sbSaveFatura(fat);
+  renderFaturas(); atualizaKPIs();
+  R.emitEvent?.({ acao:'Fatura inserida: '+(fat.fornecedor||'')+(fat.total?' · '+fat.total+'€':''), seccao:'faturas' });
+}
+
 // Leitura com o Claude (Edge Function ler-fatura). Lança erro se não conseguir ler.
 async function lerFaturaComClaude(item){
   const f = item._file;
@@ -1066,7 +1095,7 @@ async function importarFaturasDropbox(){
     const conhecidos = new Set(FATURAS.map(f => (f.dropboxPath||'').toLowerCase()));
     const novos = ficheiros.filter(e => !conhecidos.has((e.path_display||'').toLowerCase()));
     if(!novos.length){ showToast('Sem faturas novas na Dropbox'); return; }
-    let ok = 0, falhas = 0, ultimoErro = '';
+    let ok = 0, falhas = 0, duplicadas = 0, ultimoErro = '';
     for(let i=0; i<novos.length; i++){
       const e = novos[i];
       if(btn) btn.textContent = `A importar ${i+1}/${novos.length}…`;
@@ -1075,21 +1104,15 @@ async function importarFaturasDropbox(){
         const file = new File([blob], e.name, { type: blob.type || (/\.pdf$/i.test(e.name) ? 'application/pdf' : '') });
         const item = { id: ++_fatSeq, name: e.name, size: file.size, status:'processing', progress:0, _file:file };
         const fat = await lerFaturaDoFicheiro(item);
-        fat.status = 'pendente_aprovacao';
-        fat._fonte = 'dropbox';
-        fat.dropboxPath = e.path_display;
-        fat.ficheiroUrl = await dropboxLinkTeam(e.path_display) || '';
-        FATURAS.push(fat);
-        await sbSaveFatura(fat);
+        if(faturaDuplicada(fat)){ duplicadas++; continue; }
+        await registarFaturaLida(fat, e.path_display);
         ok++;
       } catch(err){
         console.warn('Importação Dropbox falhou:', e.name, err); falhas++; ultimoErro = err.message;
         if(/ANTHROPIC_API_KEY/.test(err.message)) break; // sem chave, não vale a pena continuar
       }
     }
-    renderFaturas(); atualizaKPIs();
-    showToast(`${ok} fatura(s) importada(s) da Dropbox${falhas?` · ${falhas} com erro: ${ultimoErro}`:''}`);
-    if(ok) R.emitEvent?.({ acao:`Importadas ${ok} faturas da Dropbox`, seccao:'faturas' });
+    showToast(`${ok} fatura(s) importada(s) da Dropbox${duplicadas?` · ${duplicadas} já existiam`:''}${falhas?` · ${falhas} com erro: ${ultimoErro}`:''}`);
   } catch(err){
     console.error('Importar Dropbox:', err);
     showToast('Dropbox: ' + (String(err.message).includes('not_found') ? 'pasta não encontrada — use "Pastas…" para corrigir o caminho' : err.message));
