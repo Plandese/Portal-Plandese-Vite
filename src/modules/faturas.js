@@ -155,7 +155,7 @@ async function lerFaturaComClaude(item){
     r.readAsDataURL(f);
   });
   item.progress = 15; renderQueue();
-  const { data, error } = await sb.functions.invoke('ler-fatura', { body: { base64, mediaType } });
+  const { data, error } = await sb.functions.invoke('ler-fatura', { body: { base64, mediaType, obras: (S.OBRAS||[]).map(o => ({ nome:o.nome, local:o.local||'' })) } });
   if(error || !data?.fatura){
     let msg = data?.error || error?.message || 'sem resposta';
     try{ const j = await error?.context?.json?.(); if(j?.error) msg = j.error; }catch(_){}
@@ -180,8 +180,10 @@ async function lerFaturaComClaude(item){
     base, iva, total, data: c.data || '', dataPag: c.data_vencimento || '',
     status: confianca < 0.80 ? 'rever' : 'extraida',
     confianca, ficheiro: item.name, paginas: 1,
-    notas: `Lida pelo Claude. ${tipoTxt}${c.descricao || ''}${c.local_obra ? ' · Obra/local: ' + c.local_obra + (c.numero_obra ? ' (' + c.numero_obra + ')' : '') : ''}${avisos.length ? ' ⚠ ' + avisos.join('; ') : ''}`.trim(),
+    notas: `Lida pelo Claude. ${tipoTxt}${c.descricao || ''}${c.local_obra ? ' · Obra/local: ' + c.local_obra + (c.numero_obra ? ' (' + c.numero_obra + ')' : '') : ''}${c.centro_custo && c.centro_custo_motivo ? ' · CC sugerido: ' + c.centro_custo + ' (' + c.centro_custo_motivo + ')' : ''}${avisos.length ? ' ⚠ ' + avisos.join('; ') : ''}`.trim(),
     criadoEm: new Date().toISOString(),
+    centroCusto: (S.OBRAS||[]).some(o => o.nome === c.centro_custo) ? c.centro_custo : '',
+    _ccMotivo: c.centro_custo_motivo || '',
     _flags, _fonte: 'claude', _exemplos: 0, _rawText: '',
   };
 }

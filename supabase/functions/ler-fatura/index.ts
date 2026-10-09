@@ -26,6 +26,8 @@ const TOOL = {
       local_obra: { type: "string", description: "Obra/local de entrega ou descarga indicado no documento (ex.: 'Queluz de Baixo', 'Póvoa de Santa Iria'). Vazio se não indicado." },
       numero_obra: { type: "string", description: "Código/nº de obra se aparecer no documento (ex.: 9300065). Vazio se não existir." },
       taxa_iva: { type: "string", description: "Taxa(s) de IVA tal como aplicadas: '23%', '6%', '23%/13% (misto)', '0% (autoliq.)'." },
+      centro_custo: { type: "string", description: "Se foi dada uma lista de obras: o nome EXATO (copiado da lista) da obra/centro de custo mais provável para esta fatura. Vazio se não houver indícios suficientes." },
+      centro_custo_motivo: { type: "string", description: "Em poucas palavras, o indício usado (ex.: 'descarga em Queluz de Baixo', 'código 9300065 = O065')." },
       moeda: { type: "string", description: "Código ISO, normalmente EUR." },
       descricao: { type: "string", description: "Resumo curto (máx. 120 caracteres) do que foi comprado." },
       confianca: { type: "number", description: "0 a 1: confiança global na extração." },
@@ -48,6 +50,7 @@ Regras:
 - Faturas de portagens/aluguer com várias taxas (23% e 6%): soma tudo e usa taxa_iva "23%/6% (misto)".
 - "descricao": resume o que foi fornecido/prestado e o período (ex.: 'Aluguer de 3 contentores LC20 (01 a 31/08)').
 - Se o total impresso não bater com base + iva, devolve os valores impressos e regista o desvio em "avisos"; nunca ajustes valores para os fazer bater.
+- Centro de custo: quando receberes uma lista de obras, escolhe a mais provável. Indícios, por ordem de força: (1) código de obra no documento — os códigos 93000NN correspondem à obra ONN (ex.: 9300065 = O065, 9300064 = O064, 9300062 = O062); (2) local de entrega/descarga/obra indicado (ex.: 'Queluz de Baixo', 'Estrada Consiglieri Pedroso 90' = Queluz de Baixo; 'Faro/Montenegro' = Faro; 'Póvoa de Santa Iria' = Praceta dos Caniços; 'Algés/Miraflores' = SIMAS Algés; 'Alfragide' = Mercadona Alfragide); (3) notas/descrição do documento. A morada da sede da Plandese (Estrada da Portela, Carnaxide) NÃO é uma obra. Se a fatura abranger várias obras ou não houver indícios, deixa centro_custo vazio e explica em centro_custo_motivo. Nunca inventes nomes fora da lista.
 - Usa sempre a ferramenta registar_fatura.`;
 
 function json(body: unknown, status = 200) {
@@ -60,12 +63,18 @@ Deno.serve(async (req: Request) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY não configurada no Supabase" }, 500);
 
-    const { base64, mediaType } = await req.json();
+    const { base64, mediaType, obras } = await req.json();
     if (!base64 || !mediaType) return json({ error: "base64 e mediaType são obrigatórios" }, 400);
 
     const bloco = mediaType === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
       : { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } };
+
+    let textoPedido = "Extrai os dados desta fatura e regista-os chamando a ferramenta registar_fatura.";
+    if (Array.isArray(obras) && obras.length) {
+      const linhas = obras.map((o: { nome: string; local?: string }) => `${o.nome} | ${o.local ?? ""}`);
+      textoPedido += "\n\nLista de obras/centros de custo (nome | local):\n" + linhas.join("\n");
+    }
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -75,7 +84,7 @@ Deno.serve(async (req: Request) => {
         max_tokens: 1500,
         system: SYSTEM,
         tools: [TOOL],
-        messages: [{ role: "user", content: [bloco, { type: "text", text: "Extrai os dados desta fatura e regista-os chamando a ferramenta registar_fatura." }] }],
+        messages: [{ role: "user", content: [bloco, { type: "text", text: textoPedido }] }],
       }),
     });
     if (!resp.ok) return json({ error: `Anthropic ${resp.status}: ${await resp.text()}` }, 502);
