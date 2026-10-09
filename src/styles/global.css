@@ -2049,7 +2049,7 @@ body:not(.app-ativa) .bottom-nav{display:none!important}
 .painel-layout:has(> .painel-semana:empty){grid-template-columns:320px;justify-content:end}
 @media(max-width:900px){
   .painel-layout,.painel-layout:has(> .painel-semana:empty){grid-template-columns:1fr}
-  .painel-layout .cal-widget{order:-1}
+  .painel-layout .cal-widget,.painel-layout .painel-side{order:-1}
 }
 .cal-widget{padding:16px}
 .cal-w-hdr,.cal-pg-hdr{display:flex;align-items:center;gap:4px;margin-bottom:10px}

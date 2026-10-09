@@ -27,7 +27,8 @@ const BASE = [
   {id:'49-17',o:'49',r:'Travessa dos Fumeiros de Trás',t:'Repor as condições iniciais no remate da calçada grossa com o betuminoso da Rua dos Fumeiros, que partiu na vala da nova conduta e da ligação à rede pública no nó 252 (fim da Tv. Fumeiros de Trás e Rua Fumeiros de Trás).'},
   {id:'49-18',o:'49',r:'Travessa dos Fumeiros de Trás',rec:1,t:'Tratar do buraco existente e executar o rejuntamento em torno da caixa de visita pluvial.'},
 ];
-const OBRAS = {'49':'Margem Direita','53':'Margem Esquerda Norte'};
+const OBRAS_BASE = {'49':'Margem Direita','53':'Margem Esquerda Norte'};
+let OBRAS = {...OBRAS_BASE};   // + listas criadas no portal (linhas 'obra:<código>' em tavira_estado)
 
 let obra = '49', filtro = 'pend', custom = [], estado = {}, fotos = [], editId = null;
 let iniciado = false, eventosLigados = false;
@@ -55,7 +56,9 @@ async function carregarEstado(){
   const {data,error} = await sb.from('tavira_estado').select('*');
   if(error) throw error;
   estado = {};
-  (data||[]).forEach(x => estado[x.topico_id] = {done:x.done, ts:new Date(x.updated_at).getTime(), obra:x.obra, rua:x.rua, descricao:x.descricao, reclamacao:x.reclamacao});
+  OBRAS = {...OBRAS_BASE};
+  (data||[]).filter(x => String(x.topico_id).startsWith('obra:')).forEach(x => { if(x.obra) OBRAS[x.obra] = x.descricao || ('Obra '+x.obra); });
+  (data||[]).filter(x => !String(x.topico_id).startsWith('obra:')).forEach(x => estado[x.topico_id] = {done:x.done, ts:new Date(x.updated_at).getTime(), obra:x.obra, rua:x.rua, descricao:x.descricao, reclamacao:x.reclamacao});
 }
 async function carregarFotos(){
   const {data,error} = await sb.from('tavira_fotos').select('*').order('created_at');
@@ -96,10 +99,11 @@ function render(){
   const items = todos();
   $('pt-tabs').innerHTML = Object.keys(OBRAS).map(k=>{
     const l = items.filter(i=>i.o===k), d = l.filter(i=>estado[i.id]?.done).length;
-    return `<button class="pt-tab" type="button" data-o="${k}" aria-selected="${k===obra}"><b>Obra ${k}</b><small>${OBRAS[k]} · ${l.length?`${l.length-d} por fazer`:'sem tópicos'}</small></button>`;
+    return `<button class="pt-tab" type="button" data-o="${k}" aria-selected="${k===obra}"><b>Obra ${k}</b><small>${OBRAS[k]} · ${l.length?`${l.length-d} por fazer`:'sem tópicos'}</small><span class="pt-tab-p"><i style="width:${l.length?100*d/l.length:0}%"></i></span><span class="pt-tab-n">${d}/${l.length}</span></button>`;
   }).join('');
   const mine = items.filter(i=>i.o===obra), done = mine.filter(i=>estado[i.id]?.done).length;
   $('pt-prog').style.width = mine.length ? (100*done/mine.length)+'%' : '0';
+  if($('pt-det-t')){ $('pt-det-t').textContent = `Obra ${obra} · ${OBRAS[obra]}`; $('pt-det-s').textContent = mine.length ? `${mine.length-done} por fazer · ${done} resolvidos` : 'Sem tópicos'; }
   $('pt-prog-lbl').textContent = mine.length ? `${done} de ${mine.length} resolvidos` : '';
   sec.querySelectorAll('.pt-chip[data-f]').forEach(c=>c.setAttribute('aria-pressed', c.dataset.f===filtro));
   // Um tópico em edição fica sempre visível (mesmo que o filtro o esconda)
@@ -186,11 +190,15 @@ function ligarEventos(){
   });
 
   sec.addEventListener('click', async e=>{
-    const t = e.target.closest('[data-o],[data-f],[data-tog],[data-del],[data-ph],[data-edit],[data-save],[data-cancel]'); if(!t) return;
-    if(t.dataset.edit){ editId = t.dataset.edit; render(); $('pt-e-txt')?.focus(); }
+    if(e.target===sec){ sec.classList.remove('pt-open'); return; }
+    const t = e.target.closest('[data-ptnova],[data-ptsalvar],[data-ptclose],[data-o],[data-f],[data-tog],[data-del],[data-ph],[data-edit],[data-save],[data-cancel]'); if(!t) return;
+    if(t.dataset.ptnova!==undefined){ abrirNovaLista(); }
+    else if(t.dataset.ptsalvar!==undefined){ await criarLista(t); }
+    else if(t.dataset.ptclose!==undefined){ sec.classList.remove('pt-open'); editId = null; render(); }
+    else if(t.dataset.edit){ editId = t.dataset.edit; render(); $('pt-e-txt')?.focus(); }
     else if(t.dataset.cancel){ editId = null; render(); }
     else if(t.dataset.save){ await guardarEdicao(t.dataset.save, t); }
-    else if(t.dataset.o){ obra = t.dataset.o; editId = null; render(); }
+    else if(t.dataset.o){ obra = t.dataset.o; editId = null; render(); if(document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')) sec.classList.add('pt-open'); }
     else if(t.dataset.f){ filtro = t.dataset.f; render(); }
     else if(t.dataset.tog){
       const id = t.dataset.tog, d = !estado[id]?.done;
@@ -216,6 +224,28 @@ function ligarEventos(){
   });
 
   $('pt-lb').addEventListener('click', e=>{ if(e.target.id==='pt-lb') $('pt-lb').hidden = true; });
+}
+
+function abrirNovaLista(){
+  const m = $('modal-pt-nova'); if(!m) return;
+  $('ptn-cod').value = ''; $('ptn-nome').value = '';
+  m.classList.add('open'); $('ptn-cod').focus();
+}
+async function criarLista(btn){
+  const cod = $('ptn-cod').value.trim().replace(/\s+/g,''), nome = $('ptn-nome').value.trim();
+  if(!cod || !nome){ showToast('Preencha o código e o nome da obra.'); return; }
+  if(OBRAS[cod]){ showToast(`Já existe uma lista para a obra ${cod}.`); return; }
+  btn.disabled = true;
+  try {
+    const {error} = await sb.from('tavira_estado').upsert({topico_id:'obra:'+cod, obra:cod, descricao:nome, done:false, updated_at:new Date().toISOString()});
+    if(error) throw error;
+    await carregarEstado();
+    $('modal-pt-nova').classList.remove('open');
+    obra = cod; editId = null; render();
+    $('sec-pendentes-tavira').classList.add('pt-open');
+    showToast(`Lista da obra ${cod} criada`);
+  } catch(_){ showToast('Não foi possível criar a lista. Verifique a ligação.'); }
+  btn.disabled = false;
 }
 
 async function guardarEdicao(id, btn){

@@ -247,6 +247,65 @@ function _cmpBuscaRowHtml(c) {
   </div>`;
 }
 
+const _cmpDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+const _CMP_ESTADOS = [['pendente','Pendente','#8693a8'],['aprovado','Aprovado','#2b5dd1'],['encomendado','Encomendado','#d9780a'],['entregue','Entregue','#12a150']];
+
+// Indicadores no topo (portal de computador)
+function _cmpRenderKpisDesk() {
+  const box = document.getElementById('cmp-kpis-d');
+  if (!box) return;
+  if (!_cmpDesk()) { box.innerHTML = ''; return; }
+  const abertos = COMPRAS.filter(c => c.estado !== 'entregue');
+  const urg = abertos.filter(c => c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente');
+  const kpi = (cls, l, v, sub) => `<div class="cmp-kpi ${cls}"><div class="cmp-kpi-label">${l}</div><div class="cmp-kpi-value">${v}</div><div class="cmp-kpi-sub">${sub}</div></div>`;
+  box.innerHTML =
+    kpi('blue', 'Em aberto', abertos.length, 'ainda não entregues') +
+    kpi('yellow', 'Por aprovar', COMPRAS.filter(c => c.estado === 'pendente').length, 'estado pendente') +
+    kpi('orange', 'Urgentes', urg.length, 'em aberto') +
+    kpi('green', 'Encomendados', COMPRAS.filter(c => c.estado === 'encomendado').length, 'a aguardar entrega');
+}
+
+// Tabela de pedidos (portal de computador)
+function _cmpTabelaDesk(list) {
+  if (!list.length) return '<div class="d-empty">Sem pedidos de compra para mostrar.</div>';
+  const rows = list.map(c => {
+    const notas = _cmpNotasResumo(c, 90);
+    return `<tr class="clk" onclick="editarCompra('${c.id}')">
+      <td class="cmp-t-main"><b>${cmpEsc(c.titulo)}</b>${notas ? `<small>${cmpEsc(notas)}</small>` : ''}${cmpWorkflowBadges(c)}</td>
+      <td>${cmpEsc(_cmpObraNome(c))}</td>
+      <td>${cmpFornDisplay(c)}</td>
+      <td>${urgBadge(c.urgencia)}</td>
+      <td>${c.dataLimite && c.estado !== 'entregue' ? dataLimiteBadge(c.dataLimite, c.estado) : '<span class="dl-none">—</span>'}</td>
+      <td class="mut">${cmpEsc(c.criadoNome || '—')}<small>${c.criadoEm ? fmtPT(c.criadoEm) : ''}</small></td>
+      <td>${cmpEstadoBadge(c.estado)}</td>
+      <td class="cmp-t-act" onclick="event.stopPropagation()">${c.estado === 'aprovado' ? `<button class="btn btn-secondary btn-sm" onclick="cmpAbrirMapaComp('${c.id}')" title="Criar mapa comparativo">${_CMP_ICO_MAPA} Mapa</button>` : ''}<button class="btn btn-secondary btn-sm" onclick="editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button></td>
+    </tr>`;
+  }).join('');
+  return `<div class="card cmp-tcard"><div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Pedido</th><th>Obra</th><th>Fornecedor</th><th>Urgência</th><th>Data limite</th><th>Criado por</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+// Quadro de encomendas com os 4 estados (portal de computador)
+function _cmpRenderBoardDesk() {
+  const box = document.getElementById('cmp-board-d');
+  const old = document.getElementById('cmp-board-old');
+  if (!box) return;
+  if (!_cmpDesk()) { box.innerHTML = ''; box.style.display = 'none'; if (old) old.style.display = 'grid'; return; }
+  if (old) old.style.display = 'none';
+  box.style.display = '';
+  const items = _cmpOrdenar(filtraCompras());
+  box.innerHTML = _CMP_ESTADOS.map(([est, lbl, cor]) => {
+    const col = items.filter(c => (c.estado || 'pendente') === est);
+    return `<div class="cmp-col"><div class="cmp-col-h"><span class="dot" style="background:${cor}"></span>${lbl}<em>${col.length}</em></div>
+      ${col.length ? col.map(c => {
+        const forn = cmpFornDisplay(c);
+        const rodape = [_cmpObraNome(c), c.dataLimite && est !== 'entregue' ? fmtPT(c.dataLimite) : '', c.criadoNome].filter(Boolean).join(' · ');
+        return `<div class="cmp-bc" onclick="editarCompra('${c.id}')"><div class="cmp-bc-t">${cmpEsc(c.titulo)}</div>
+          <div class="cmp-bc-m">${urgBadge(c.urgencia)}${forn !== '—' ? `<span class="cmp-bc-f">${forn}</span>` : ''}</div>
+          ${cmpWorkflowBadges(c)}<div class="cmp-bc-r">${cmpEsc(rodape)}</div></div>`;
+      }).join('') : '<div class="cmp-col-e">Sem pedidos</div>'}</div>`;
+  }).join('');
+}
+
 function _cmpOrdenar(lista) {
   return [...lista].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || '') || a.titulo.localeCompare(b.titulo, 'pt'));
 }
@@ -256,6 +315,13 @@ function _cmpRenderBusca() {
   const hint = document.getElementById('cmp-busca-hint');
   if (!box) return;
   const term = (document.getElementById('cmp-busca-input')?.value || '').toLowerCase().trim();
+  if (_cmpDesk()) {
+    // no computador a lista mostra sempre todos os pedidos (filtrados pela pesquisa, se houver)
+    if (hint) hint.style.display = 'none';
+    const todos = _cmpOrdenar(COMPRAS.filter(c => !term || [c.titulo, c.fornecedor, (c.fornecedores || []).join(' '), c.notas, c.criadoNome, _cmpObraNome(c)].join(' ').toLowerCase().includes(term)));
+    box.innerHTML = _cmpTabelaDesk(todos);
+    return;
+  }
   if (!term) { box.innerHTML = ''; if (hint) hint.style.display = ''; return; }
   if (hint) hint.style.display = 'none';
   const list = _cmpOrdenar(COMPRAS.filter(c =>
@@ -349,6 +415,8 @@ function filtraCompras() {
 }
 
 function _cmpRenderBoard() {
+  _cmpRenderBoardDesk();
+  if (_cmpDesk()) return;
   const items = filtraCompras();
   const pend = _cmpOrdenar(items.filter(c => c.estado !== 'entregue'));
   const done = _cmpOrdenar(items.filter(c => c.estado === 'entregue'));
@@ -490,6 +558,7 @@ function renderCompras() {
     if (area) _renderMobileCompras(area);
     return;
   }
+  _cmpRenderKpisDesk();
   if (_cmpView === 'obra')        _cmpRenderPorObra();
   else if (_cmpView === 'estado') _cmpRenderBoard();
   else                            _cmpRenderBusca();

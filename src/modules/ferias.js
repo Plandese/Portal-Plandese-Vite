@@ -14,6 +14,9 @@ let _filtroFuncs = new Set(); // vazio = todas as funções
 let _funcDropdownOpen = false;
 let _feriasUtilizadas = new Set(); // 'colab_numero|YYYY-MM-DD' — vêm das folhas de ponto
 let _feriasPrevistas  = new Set(); // 'colab_numero|YYYY-MM-DD' — planeadas, editáveis
+let _vista = 'mes';                // portal em computador: 'mes' (mapa do mês) | 'ano' (mapa anual editável)
+let _mes = new Date().getMonth();
+let _faltas = new Set();           // 'colab_numero|YYYY-MM-DD' — faltas registadas no ponto
 let _mobSelColab = null;  // colaborador escolhido no resumo mobile (nº)
 let _mobSugAberta = false; // dropdown de sugestões do campo de pesquisa (mobile) aberta?
 
@@ -89,7 +92,7 @@ function _renderFuncDropdown(funcs) {
 const NAME_W = 160;
 const TOT_W  = 52;
 // Fundo dos fins de semana — listras diagonais subtis para realçar
-const WKND_BG = "repeating-linear-gradient(135deg,#E9EDF2 0px,#E9EDF2 3px,#D4DAE3 3px,#D4DAE3 6px)";
+const WKND_BG = "var(--fe-wknd,repeating-linear-gradient(135deg,#E9EDF2 0px,#E9EDF2 3px,#D4DAE3 3px,#D4DAE3 6px))";
 
 // ── Navegação de ano — precisa de novo fetch ──────────────────
 export function feriasNavAno(delta) {
@@ -178,20 +181,20 @@ function _updateColabRow(colabN) {
   const elMarc = document.getElementById(`ft-marc-${colabN}`);
   if (elMarc) elMarc.innerHTML = _totalBadge(totalMarcadas, 'var(--gray-600)', 'var(--gray-100)');
   const elUtil = document.getElementById(`ft-util-${colabN}`);
-  if (elUtil) elUtil.innerHTML = _totalBadge(totalUtil, '#065F46', '#D1FAE5');
+  if (elUtil) elUtil.innerHTML = _totalBadge(totalUtil, 'var(--fe-util-t,#065F46)', 'var(--fe-util-bg,#D1FAE5)');
   const elPrev = document.getElementById(`ft-prev-${colabN}`);
-  if (elPrev) elPrev.innerHTML = _totalBadge(totalPrev, '#92400E', '#FEF3C7');
+  if (elPrev) elPrev.innerHTML = _totalBadge(totalPrev, 'var(--fe-prev-t,#92400E)', 'var(--fe-prev-bg,#FEF3C7)');
 }
 
 // ── Aplica estilo + handlers a uma célula de dia ──────────────
 function _styleCell(cell, { isUtil, isPrev, isWknd, d, m, colabN, dateStr }) {
   cell.onclick = null;
   if (isUtil) {
-    cell.style.background = '#10B981';
+    cell.style.background = 'var(--fe-util,#10B981)';
     cell.style.cursor = 'default';
     cell.title = `Férias utilizadas — ${d} ${MESES_FULL[m]}`;
   } else if (isPrev) {
-    cell.style.background = '#F59E0B';
+    cell.style.background = 'var(--fe-prev,#F59E0B)';
     if (_locked) {
       cell.style.cursor = 'default';
       cell.title = `Férias previstas — ${d} ${MESES_FULL[m]}`;
@@ -277,6 +280,14 @@ export async function renderMapaFerias() {
       .lte('data', dFim);
     if (errPrev) throw errPrev;
     _feriasPrevistas = new Set((dataPrev || []).map(r => `${r.colab_numero}|${r.data}`));
+
+    const { data: dataFalt } = await sb
+      .from('registos_ponto')
+      .select('colab_numero, data')
+      .in('tipo', ['Falta Just.', 'Falta Injust.'])
+      .gte('data', dIni)
+      .lte('data', dFim);
+    _faltas = new Set((dataFalt || []).map(r => `${r.colab_numero}|${r.data}`));
 
   } catch (e) {
     cont.innerHTML = `<div class="card" style="text-align:center;color:var(--red);padding:32px;font-size:13px">⚠️ Erro ao carregar dados: ${e.message}</div>`;
@@ -364,17 +375,17 @@ function _mobRenderResumo() {
         </div>
       </div>
     </div>
-    <div class="card" style="padding:14px 16px;margin-bottom:12px;border-left:3px solid #10B981">
+    <div class="card" style="padding:14px 16px;margin-bottom:12px;border-left:3px solid var(--fe-util,#10B981)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Já tirou em ${_ano}</span>
-        ${_totalBadge(totalUtil, '#065F46', '#D1FAE5')}
+        ${_totalBadge(totalUtil, 'var(--fe-util-t,#065F46)', 'var(--fe-util-bg,#D1FAE5)')}
       </div>
       ${lista(rangesUtil, `Sem férias utilizadas em ${_ano}.`)}
     </div>
-    <div class="card" style="padding:14px 16px;border-left:3px solid #F59E0B">
+    <div class="card" style="padding:14px 16px;border-left:3px solid var(--fe-prev,#F59E0B)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:13px;font-weight:600;color:var(--gray-800)">Ainda por tirar em ${_ano}</span>
-        ${_totalBadge(totalPrev, '#92400E', '#FEF3C7')}
+        ${_totalBadge(totalPrev, 'var(--fe-prev-t,#92400E)', 'var(--fe-prev-bg,#FEF3C7)')}
       </div>
       ${lista(rangesPrev, `Sem férias previstas marcadas em ${_ano}.`)}
     </div>
@@ -437,6 +448,92 @@ function _renderMobileResumo(cont, allColabsPorNome) {
   _mobRenderResumo();
 }
 
+
+// ── Portal em computador: mapa do mês (barras por pessoa) ─────────────────
+const _MES_L = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const _esc2 = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const _dmy = d => `${String(d).padStart(2, '0')}/${String(_mes + 1).padStart(2, '0')}`;
+
+// Intervalos [início, fim, tipo, diasÚteis] de ausência de um colaborador no mês (fins de semana não quebram a barra)
+function _feSegmentos(n, nd) {
+  const segs = []; let cur = null;
+  for (let d = 1; d <= nd; d++) {
+    const dt = new Date(_ano, _mes, d), we = dt.getDay() === 0 || dt.getDay() === 6;
+    const key = `${n}|${fmt(new Date(_ano, _mes, d, 12))}`;
+    const t = _feriasUtilizadas.has(key) ? 'fe' : _faltas.has(key) ? 'fa' : _feriasPrevistas.has(key) ? 'pd' : null;
+    if (t) {
+      if (cur && cur.t === t) { cur.e = d; if (!we) cur.u++; }
+      else { cur = { s: d, e: d, t, u: we ? 0 : 1 }; segs.push(cur); }
+    } else if (!we) cur = null;
+  }
+  return segs;
+}
+
+function _renderMes(cont, colabs) {
+  const nd = new Date(_ano, _mes + 1, 0).getDate();
+  const hoje = new Date(), hojeD = hoje.getFullYear() === _ano && hoje.getMonth() === _mes ? hoje.getDate() : 0;
+  const d0 = (_ano * 12 + _mes) - (hoje.getFullYear() * 12 + hoje.getMonth());
+  const sub = d0 === 0 ? 'Mês atual' : d0 < 0 ? 'Histórico' : 'Próximo';
+  const rows = colabs.map(c => ({ c, segs: _feSegmentos(c.n, nd) })).filter(r => r.segs.length).sort((a, b) => a.segs[0].s - b.segs[0].s || a.c.nome.localeCompare(b.c.nome, 'pt'));
+  const cor = { fe: ['#2b5dd1', '#fff'], fa: ['#a35a08', '#fff'], pd: ['#dbe5fb', '#2b5dd1'] };
+  const lbl = { fe: 'Férias', fa: 'Falta', pd: 'Férias previstas' };
+  let grid = '<div class="fe-gt" style="--nd:' + nd + '"><div class="fe-h0"></div>';
+  for (let d = 1; d <= nd; d++) { const w = new Date(_ano, _mes, d).getDay(); grid += `<div class="fe-d${w === 0 || w === 6 ? ' we' : ''}${d === hojeD ? ' td' : ''}">${d}</div>`; }
+  rows.forEach((r, i) => {
+    const row = i + 2, ini = r.c.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    grid += `<div class="fe-gl" style="grid-row:${row}"></div><div class="fe-n" style="grid-row:${row}"><div class="d-pp"><span class="d-rav">${_esc2(ini)}</span><div><b>${_esc2(r.c.nome)}</b><small>${_esc2(r.c.func || '—')}</small></div></div></div>`;
+    r.segs.forEach(g => {
+      const txt = g.t === 'fa' ? (g.u === 1 ? 'Falta' : g.u + ' dias') : g.u + (g.u === 1 ? ' dia' : ' dias');
+      grid += `<div class="fe-b" title="${lbl[g.t]} · ${_dmy(g.s)}${g.e > g.s ? ' a ' + _dmy(g.e) : ''}" style="grid-row:${row};grid-column:${g.s + 1} / ${g.e + 2};background:${cor[g.t][0]};color:${cor[g.t][1]}">${txt}</div>`;
+    });
+  });
+  grid += '</div>';
+
+  // próximas ausências (14 dias) e férias previstas do mês
+  const ini14 = hoje.getFullYear() * 10000 + (hoje.getMonth() + 1) * 100 + hoje.getDate();
+  const lim = new Date(hoje); lim.setDate(lim.getDate() + 14);
+  const fim14 = lim.getFullYear() * 10000 + (lim.getMonth() + 1) * 100 + lim.getDate();
+  const prox = [], prev = [];
+  colabs.forEach(c => {
+    // percorre o ano atual do mapa em intervalos por tipo
+    for (let m = 0; m < 12; m++) {
+      const dm = new Date(_ano, m + 1, 0).getDate(); let cur = null;
+      for (let d = 1; d <= dm; d++) {
+        const dt = new Date(_ano, m, d), we = dt.getDay() === 0 || dt.getDay() === 6;
+        const key = `${c.n}|${fmt(new Date(_ano, m, d, 12))}`;
+        const t = _feriasUtilizadas.has(key) ? 'fe' : _faltas.has(key) ? 'fa' : _feriasPrevistas.has(key) ? 'pd' : null;
+        if (t) { if (cur && cur.t === t) { cur.e = d; if (!we) cur.u++; } else { cur = { c, m, s: d, e: d, t, u: we ? 0 : 1 }; (t === 'pd' && m === _mes ? prev : []).push(cur); const num = _ano * 10000 + (m + 1) * 100; cur.ns = num + d; if (num + d >= ini14 && num + d <= fim14) prox.push(cur); } }
+        else if (!we) cur = null;
+      }
+    }
+  });
+  const dd = x => `${String(x.s).padStart(2, '0')}/${String(x.m + 1).padStart(2, '0')}${x.e > x.s ? ' a ' + String(x.e).padStart(2, '0') + '/' + String(x.m + 1).padStart(2, '0') : ''}`;
+  const pill = t => t === 'fa' ? '<span class="dd-pill warn">Falta</span>' : t === 'pd' ? '<span class="dd-pill mute">Prevista</span>' : '<span class="dd-pill info">Férias</span>';
+  const li = x => `<div class="dd-row"><span class="d-rav">${_esc2(x.c.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase())}</span><div class="dd-tx"><b>${_esc2(x.c.nome)}</b><small>${_esc2(x.c.func || '—')} · ${dd(x)}${x.u ? ' · ' + x.u + (x.u === 1 ? ' dia' : ' dias') : ''}</small></div>${pill(x.t)}</div>`;
+  prox.sort((a, b) => a.ns - b.ns); prev.sort((a, b) => a.s - b.s);
+
+  cont.innerHTML = `<div class="fe-bar"><div class="fe-mes"><button type="button" data-fmes="-1" aria-label="Mês anterior">&#8249;</button><div><b>${_MES_L[_mes]} de ${_ano}</b><small>${sub}</small></div><button type="button" data-fmes="1" aria-label="Mês seguinte">&#8250;</button></div>
+      <div class="fe-leg"><span><i style="background:#2b5dd1"></i>Férias aprovadas</span><span><i style="background:#a35a08"></i>Falta</span><span><i style="background:#dbe5fb"></i>Previstas</span></div></div>
+    <div class="card fe-card">${rows.length ? `<div class="tbl-wrap fe-wrap">${grid}</div>` : '<div class="d-empty" style="border:0">Sem ausências registadas neste mês.</div>'}</div>
+    <div class="fe-2">
+      <div class="card fe-card"><div class="fe-ch"><b>Próximas ausências</b><small>Nos próximos 14 dias</small></div>${prox.length ? prox.slice(0, 6).map(li).join('') : '<div class="dd-vazio">Sem ausências nos próximos 14 dias.</div>'}</div>
+      <div class="card fe-card"><div class="fe-ch"><b>Férias previstas</b><small>${prev.length} ${prev.length === 1 ? 'marcação' : 'marcações'} em ${_MES_L[_mes]}</small></div>${prev.length ? prev.slice(0, 6).map(li).join('') : '<div class="dd-vazio">Sem férias previstas neste mês.</div>'}</div>
+    </div>`;
+}
+
+document.addEventListener('click', e => {
+  const v = e.target.closest('[data-fv]');
+  if (v) { _vista = v.dataset.fv; _renderTabela(); return; }
+  const m = e.target.closest('[data-fmes]');
+  if (m) {
+    _mes += +m.dataset.fmes;
+    if (_mes < 0) { _mes = 11; _ano--; renderMapaFerias(); return; }
+    if (_mes > 11) { _mes = 0; _ano++; renderMapaFerias(); return; }
+    _renderTabela(); return;
+  }
+  if (e.target.closest('[data-fmarcar]')) { _vista = 'ano'; if (_locked) feriasToggleLock(); else _renderTabela(); }
+});
+
 // ── Render da tabela a partir dos dados em memória ────────────
 // Chamado por lock/filtro — nunca faz fetch ao Supabase.
 function _renderTabela() {
@@ -454,6 +551,13 @@ function _renderTabela() {
     _renderMobileResumo(cont, porNome);
     return;
   }
+
+  const desk = document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+  const sec = document.getElementById('sec-mapa-ferias');
+  if (sec) sec.dataset.vista = desk ? _vista : 'ano';
+  const sb2 = document.querySelector('#sec-mapa-ferias .pg-sub'); if (sb2 && desk) sb2.textContent = _vista === 'mes' ? 'Quem está ausente e quando' : 'Visão anual das férias por colaborador';
+  document.querySelectorAll('#fe-seg button').forEach(b => b.classList.toggle('on', b.dataset.fv === _vista));
+  if (desk && _vista === 'mes') { _renderMes(cont, allColabs); return; }
 
   const funcs = [...new Set(allColabs.map(c => c.func))].sort((a, b) => a.localeCompare(b, 'pt'));
   const colabs = _filtroFuncs.size ? allColabs.filter(c => _filtroFuncs.has(c.func)) : allColabs;
@@ -502,8 +606,8 @@ function _renderTabela() {
   thead += '<tr style="background:var(--gray-50)">';
   thead += `<th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:600;color:var(--gray-500);white-space:nowrap;border-bottom:2px solid var(--gray-200);width:${NAME_W}px;min-width:${NAME_W}px;${stickyTh(0)}">Colaborador</th>`;
   thead += `<th style="padding:6px 2px;text-align:center;font-size:10px;font-weight:600;color:var(--gray-500);border-bottom:2px solid var(--gray-200);border-left:1px solid var(--gray-200);width:${TOT_W}px;min-width:${TOT_W}px;${stickyTh(NAME_W)}">Marc.</th>`;
-  thead += `<th style="padding:6px 2px;text-align:center;font-size:10px;font-weight:600;color:#065F46;border-bottom:2px solid var(--gray-200);border-left:1px solid var(--gray-200);width:${TOT_W}px;min-width:${TOT_W}px;${stickyTh(NAME_W + TOT_W)}">Usadas</th>`;
-  thead += `<th style="padding:6px 2px;text-align:center;font-size:10px;font-weight:600;color:#92400E;border-bottom:2px solid var(--gray-200);border-left:1px solid var(--gray-200);border-right:2px solid var(--gray-300);width:${TOT_W}px;min-width:${TOT_W}px;${stickyTh(NAME_W + TOT_W * 2)}">P/ Usar</th>`;
+  thead += `<th style="padding:6px 2px;text-align:center;font-size:10px;font-weight:600;color:var(--fe-util-t,#065F46);border-bottom:2px solid var(--gray-200);border-left:1px solid var(--gray-200);width:${TOT_W}px;min-width:${TOT_W}px;${stickyTh(NAME_W + TOT_W)}">Usadas</th>`;
+  thead += `<th style="padding:6px 2px;text-align:center;font-size:10px;font-weight:600;color:var(--fe-prev-t,#92400E);border-bottom:2px solid var(--gray-200);border-left:1px solid var(--gray-200);border-right:2px solid var(--gray-300);width:${TOT_W}px;min-width:${TOT_W}px;${stickyTh(NAME_W + TOT_W * 2)}">P/ Usar</th>`;
 
   for (let m = 0; m < 12; m++) {
     const diasNoMes = new Date(_ano, m + 1, 0).getDate();
@@ -556,11 +660,11 @@ function _renderTabela() {
 
         let bg = '', titleAttr = '', cursorStyle = '', onclickAttr = '';
         if (isUtil) {
-          bg = 'background:#10B981;';
+          bg = 'background:var(--fe-util,#10B981);';
           titleAttr = ` title="Férias utilizadas — ${d} ${MESES_FULL[m]}"`;
           cursorStyle = 'cursor:default;';
         } else if (isPrev) {
-          bg = 'background:#F59E0B;';
+          bg = 'background:var(--fe-prev,#F59E0B);';
           if (_locked) {
             titleAttr = ` title="Férias previstas — ${d} ${MESES_FULL[m]}"`;
             cursorStyle = 'cursor:default;';
@@ -589,13 +693,16 @@ function _renderTabela() {
     const totalMarcadas = totalUtil + totalPrev;
 
     tbody += `<tr style="border-bottom:1px solid var(--gray-100)">`;
-    tbody += `<td style="padding:6px 14px;white-space:nowrap;font-weight:500;font-size:12px;color:var(--gray-700);border-right:1px solid var(--gray-200);${stickyTd(0)}">
+    const iniC = (colab.nome || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    tbody += document.body.classList.contains('device-desktop')
+      ? `<td class="fe-an" style="padding:6px 14px;white-space:nowrap;border-right:1px solid var(--gray-200);${stickyTd(0)}"><div class="d-pp"><span class="d-rav">${_esc2(iniC)}</span><div><b>${_esc2(colab.nome)}</b><small>${_esc2(colab.func || '—')} · Nº ${colab.n}</small></div></div></td>`
+      : `<td style="padding:6px 14px;white-space:nowrap;font-weight:500;font-size:12px;color:var(--gray-700);border-right:1px solid var(--gray-200);${stickyTd(0)}">
       <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gray-400);margin-right:6px">${colab.n}</span>${colab.nome}
       <div style="font-size:10px;color:var(--gray-400);margin-top:1px;font-weight:400">${colab.func}</div>
     </td>`;
     tbody += `<td id="ft-marc-${colab.n}" style="padding:4px;text-align:center;border-left:1px solid var(--gray-200);${stickyTd(NAME_W)}">${_totalBadge(totalMarcadas, 'var(--gray-600)', 'var(--gray-100)')}</td>`;
-    tbody += `<td id="ft-util-${colab.n}" style="padding:4px;text-align:center;border-left:1px solid var(--gray-200);${stickyTd(NAME_W + TOT_W)}">${_totalBadge(totalUtil, '#065F46', '#D1FAE5')}</td>`;
-    tbody += `<td id="ft-prev-${colab.n}" style="padding:4px;text-align:center;border-left:1px solid var(--gray-200);border-right:2px solid var(--gray-300);${stickyTd(NAME_W + TOT_W * 2)}">${_totalBadge(totalPrev, '#92400E', '#FEF3C7')}</td>`;
+    tbody += `<td id="ft-util-${colab.n}" style="padding:4px;text-align:center;border-left:1px solid var(--gray-200);${stickyTd(NAME_W + TOT_W)}">${_totalBadge(totalUtil, 'var(--fe-util-t,#065F46)', 'var(--fe-util-bg,#D1FAE5)')}</td>`;
+    tbody += `<td id="ft-prev-${colab.n}" style="padding:4px;text-align:center;border-left:1px solid var(--gray-200);border-right:2px solid var(--gray-300);${stickyTd(NAME_W + TOT_W * 2)}">${_totalBadge(totalPrev, 'var(--fe-prev-t,#92400E)', 'var(--fe-prev-bg,#FEF3C7)')}</td>`;
     tbody += cells;
     tbody += `</tr>`;
   }
@@ -616,10 +723,10 @@ function _renderTabela() {
   leg.innerHTML = `
     ${lockInfo}
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-500)">
-      <span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:#10B981"></span> Férias utilizadas
+      <span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:var(--fe-util,#10B981)"></span> Férias utilizadas
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-500)">
-      <span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:#F59E0B"></span> Férias previstas
+      <span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:var(--fe-prev,#F59E0B)"></span> Férias previstas
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-500)">
       <span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:${WKND_BG};border:1px solid var(--gray-200)"></span> Fim de semana

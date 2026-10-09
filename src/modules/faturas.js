@@ -756,12 +756,14 @@ function renderFaturas(){
   if(!tb) return;
   const lista = filtraFaturas();
   if(lista.length===0){
+    _fatRenderDesk(lista);
     tb.innerHTML = `<tr><td colspan="10"><div class="fat-empty">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>
       <div>Sem faturas. Faça upload do primeiro documento acima.</div>
     </div></td></tr>`;
     atualizaKPIs(); return;
   }
+  _fatRenderDesk(lista);
   tb.innerHTML = lista.map(f=>{
     const warn = f._flags && f._flags.length>0;
     const rowCls = warn ? 'fat-row-warn' : '';
@@ -784,6 +786,66 @@ function renderFaturas(){
   }).join('');
   atualizaKPIs();
 }
+
+
+// ═══════════════════════════════════════
+//  PORTAL EM COMPUTADOR — dados da fatura ao lado do documento + tabela em chips
+// ═══════════════════════════════════════
+const _fatDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+let _fatSel = null, _fatChip = 'todas', _fatNPrev = 0;
+const _FAT_PD = ['extraida','rever','pendente_aprovacao'], _FAT_LAN = ['validada','paga','aprovada'];
+const _fEsc = t => String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function _fatPill(s){
+  const m = {extraida:['Por validar','warn'],rever:['A rever','warn'],pendente_aprovacao:['Pendente','warn'],validada:['Lançada','ok'],aprovada:['Aprovada','ok'],paga:['Paga','mute'],rejeitada:['Rejeitada','bad']}[s] || ['—','mute'];
+  return `<span class="dd-pill ${m[1]}">${m[0]}</span>`;
+}
+function _fatRenderDesk(lista){
+  const box = document.getElementById('fat-tbl-d'), chips = document.getElementById('fat-chips-d'), form = document.getElementById('fat-form-card');
+  if(!box || !_fatDesk()){ if(box) box.innerHTML=''; return; }
+  const n = g => g==='todas' ? lista.length : lista.filter(f=>(g==='pd'?_FAT_PD:_FAT_LAN).includes(f.status)).length;
+  if(chips) chips.innerHTML = [['todas','Todas'],['pd','Por validar'],['lan','Lançadas']].map(([k,l])=>`<button type="button" class="d-chip-f${_fatChip===k?' on':''}" data-fchip="${k}">${l}<b>${n(k)}</b></button>`).join('');
+  const vis = lista.filter(f=> _fatChip==='todas' || (_fatChip==='pd'?_FAT_PD:_FAT_LAN).includes(f.status));
+  // seleciona a fatura mais recente quando entra uma nova (ou se a selecionada desapareceu)
+  if(FATURAS.length > _fatNPrev){ const novo = [...FATURAS].sort((a,b)=>b.id-a.id)[0]; if(novo) _fatSel = novo.id; }
+  _fatNPrev = FATURAS.length;
+  if(!FATURAS.some(f=>f.id===_fatSel)) _fatSel = (lista[0]||FATURAS[0]||{}).id ?? null;
+  box.innerHTML = vis.length ? `<div class="tbl-wrap"><table class="cmp-t fat-t"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Obra</th><th>Data</th><th class="r">Valor</th><th>Estado</th><th></th></tr></thead><tbody>${vis.map(f=>{
+      const m = String(f.centroCusto||'').match(/^(O\d+)/);
+      return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status)}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;
+    }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar. Carregue o primeiro documento acima.</div>';
+  if(!form) return;
+  const f = FATURAS.find(x=>x.id===_fatSel);
+  if(!f){ form.innerHTML = `<div class="fat-ch"><span class="fat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><div><b>Dados da fatura</b><small>Carregue um documento para ver os dados lidos</small></div></div><div class="d-empty" style="border:0;margin:0 20px 20px">Ainda sem faturas.</div>`; return; }
+  const auto = (f.confianca||0) >= 0.75;
+  const campo = (id,l,v,t='text',extra='') => `<div class="field${extra}"><label>${l}</label><input type="${t}" id="fd-${id}" value="${_fEsc(v==null?'':v)}"${t==='number'?' step="0.01"':''}/></div>`;
+  form.innerHTML = `<div class="fat-ch"><span class="fat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><div><b>Dados da fatura</b><small>Lidos automaticamente · confirme antes de lançar</small></div><span class="dd-pill ${auto?'ok':'warn'} fat-auto">${auto?'Leitura automática':'A rever'}</span></div>
+    <div class="fat-fg">${campo('forn','Fornecedor',f.fornecedor)}${campo('num','Nº do documento',f.numero)}${campo('data','Data',f.data,'date')}${campo('nif','NIF',f.nif)}${campo('base','Valor s/ IVA',f.base,'number')}${campo('iva','IVA',f.iva,'number')}${campo('total','Total',f.total,'number')}
+      <div class="field"><label>Obra / centro de custo</label><input type="text" value="${_fEsc(f.centroCusto||'—')}" readonly/></div></div>
+    <div class="fat-fb"><button type="button" class="btn btn-secondary" data-fsave="draft">Guardar rascunho</button><button type="button" class="btn btn-primary" data-fsave="launch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><path d="m5 12 5 5L20 7"/></svg>Lançar fatura</button></div>`;
+}
+function _fatGuardarDesk(lancar){
+  const f = FATURAS.find(x=>x.id===_fatSel); if(!f) return;
+  const v = id => document.getElementById('fd-'+id)?.value ?? '';
+  f.fornecedor = v('forn').trim(); f.numero = v('num').trim(); f.data = v('data'); f.nif = v('nif').trim();
+  f.base = parseFloat(v('base')||0); f.iva = parseFloat(v('iva')||0); f.total = parseFloat(v('total')||0);
+  if(lancar) f.status = 'validada';
+  f._flags = [];
+  if(!validaNIF(f.nif)) f._flags.push('invalid_nif');
+  if(!coerenciaTotais(f.base,f.iva,f.total)) f._flags.push('totals_mismatch');
+  if(f.confianca<0.99) f.confianca = Math.min(0.99,(f.confianca||0.7)+0.15);
+  aprenderTemplate(f);
+  sbSaveFatura(f);
+  renderFaturas();
+  showToast(lancar ? 'Fatura lançada ✓' : 'Rascunho guardado');
+  R.emitEvent?.({ acao:(lancar?'Fatura lançada: ':'Fatura atualizada: ')+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
+}
+document.addEventListener('click', e => {
+  if(!_fatDesk()) return;
+  const c = e.target.closest('[data-fchip]'); if(c){ _fatChip = c.dataset.fchip; renderFaturas(); return; }
+  const d = e.target.closest('[data-fdet]'); if(d){ editarFatura(+d.dataset.fdet); return; }
+  const sv = e.target.closest('[data-fsave]'); if(sv){ _fatGuardarDesk(sv.dataset.fsave==='launch'); return; }
+  const r = e.target.closest('tr[data-fsel]'); if(r){ _fatSel = +r.dataset.fsel; renderFaturas(); }
+});
 
 function atualizaKPIs(){
   const hoje = new Date();

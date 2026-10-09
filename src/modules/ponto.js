@@ -477,6 +477,12 @@ function _histDrawResultado(){
     return;
   }
 
+  // Portal em computador: tabela na linguagem da shell (pastilhas por dia, pessoa com avatar, totais)
+  if(document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')){
+    _histDrawDesktop(cont);
+    return;
+  }
+
   Object.keys(obraMap).sort().forEach(obraId=>{
     const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
     const obraData=obraMap[obraId];
@@ -599,6 +605,107 @@ function _histDrawResultado(){
   const curM=new Date().getMonth()+1;
   const mesSel=document.getElementById('mes-mensal-sel');
   if(mesSel) mesSel.value=String(curM);
+}
+
+
+// Vista de computador (shell): uma cartão por obra, uma linha por pessoa, uma pastilha por dia.
+const _hpEsc = t => String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function _hpPastilha(cellRegs, dateObj){
+  if(!cellRegs.length) return {html:'<span class="hpc no">—</span>', h:{n:0,e:0,t:0}};
+  const h={n:0,e:0,t:0};
+  cellRegs.forEach(r=>{const hh=calcH(r.entrada?.slice(0,5),r.saida?.slice(0,5),dateObj);h.n+=hh.n;h.e+=hh.e;h.t+=hh.t;});
+  if(h.t>0){
+    if(h.e>0) return {h, html:`<span class="hpc ex">${h.n>0?fmtH(h.n):''}<em>${h.n>0?'+':''}${fmtH(h.e)}${h.n>0?'':' extra'}</em></span>`};
+    return {h, html:`<span class="hpc ok">${fmtH(h.t)}</span>`};
+  }
+  const special=cellRegs.find(r=>r.tipo&&r.tipo!=='Presença'&&r.tipo!=='Normal'&&r.tipo!=='Hora Extra')||cellRegs[0];
+  const tp=special?.tipo||'';
+  let html;
+  if(tp==='Anulado') html='<span class="hpc no" style="text-decoration:line-through">Anulado</span>';
+  else if(tp==='Falta Just.') html='<span class="hpc fj" title="Falta justificada">FJ</span>';
+  else if(tp.includes('Falta')) html='<span class="hpc fi" title="Falta injustificada">FI</span>';
+  else if(tp==='Férias') html='<span class="hpc fe" title="Férias">Fér</span>';
+  else if(tp==='Folga') html='<span class="hpc fo" title="Folga">Folga</span>';
+  else html='<span class="hpc no">—</span>';
+  return {html, h};
+}
+
+function _histDrawDesktop(cont){
+  const {obraMap, dupByDay, days, dStrs, semLabel} = _histCache;
+  const aprov=_histCache.aprov;
+  const curtos=['Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const todayStr=fmt(new Date());
+  let grandN=0,grandE=0,grandT=0;
+  const pessoas=new Set();
+
+  cont.insertAdjacentHTML('beforeend',`<div class="hp-legend">
+    <span><i class="hpc ok">8h</i> Presença</span><span><i class="hpc ex"><em>+2h</em></i> Horas extra</span>
+    <span><i class="hpc fe">Fér</i> Férias</span><span><i class="hpc fj">FJ</i> Falta justificada</span><span><i class="hpc fi">FI</i> Falta injustificada</span>
+    <span><i class="hpc fo">Folga</i> Folga</span><span class="hp-leg-n">Clique numa célula para editar · clique no nome para o resumo do mês</span></div>`);
+
+  Object.keys(obraMap).sort().forEach(obraId=>{
+    const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
+    const m=obraNome.match(/^(O\d+)\s*[-–]\s*(.+)$/);
+    const cod=m?m[1]:'', nome=m?m[2]:obraNome;
+    const obraData=obraMap[obraId];
+    const nums=Object.keys(obraData).filter(nStr=>S.COLABORADORES.some(x=>x.n===parseInt(nStr))).sort((a,b)=>{
+      const ca=S.COLABORADORES.find(x=>x.n===parseInt(a)), cb=S.COLABORADORES.find(x=>x.n===parseInt(b));
+      return (ca?.nome||'').localeCompare(cb?.nome||'','pt');
+    });
+
+    let thead=`<thead><tr><th class="hp-who">Colaborador</th>`;
+    days.forEach((d,i)=>{
+      const we=isNonWorkday(d), hoje=dStrs[i]===todayStr;
+      thead+=`<th class="hp-d${we?' we':''}${hoje?' today':''}" title="${we?'Fim de semana ou feriado: tudo conta como hora extra':''}">${curtos[i]}<small>${fmtPT(dStrs[i]).slice(0,5)}</small></th>`;
+    });
+    thead+=`<th class="hp-tt">Normais</th><th class="hp-tt">Extra</th><th class="hp-tt">Total</th></tr>`;
+    if(obraId!=='_sem'){
+      thead+=`<tr class="hp-ap"><th class="hp-who">Aprovação diária</th>`;
+      dStrs.forEach((ds,i)=>{
+        const temReg=Object.values(obraData).some(cells=>cells[i].length);
+        thead+=`<th class="hp-d">${_aprovDiaHTML(obraId,ds,temReg)}</th>`;
+      });
+      thead+=`<th colspan="3"></th></tr>`;
+    }
+    thead+='</thead>';
+
+    let totN=0,totE=0,totT=0;
+    const totDia=days.map(()=>0);
+    let tbody='<tbody>';
+    nums.forEach(nStr=>{
+      const n=parseInt(nStr), c=S.COLABORADORES.find(x=>x.n===n);
+      pessoas.add(n);
+      let rN=0,rE=0,rT=0, tds='';
+      obraData[nStr].forEach((cellRegs,i)=>{
+        const cellKey=`${obraId}__${n}__${i}`;
+        _histCellIndex[cellKey]={obraId,colabN:n,dateStr:dStrs[i],dateObj:days[i],regs:cellRegs,reg:cellRegs[0]||null,colab:c};
+        const isDup=(dupByDay[dStrs[i]]?.[n]||0)>=2;
+        const p=_hpPastilha(cellRegs,days[i]);
+        rN+=p.h.n; rE+=p.h.e; rT+=p.h.t; totDia[i]+=p.h.t;
+        tds+=`<td class="hp-cell${dStrs[i]===todayStr?' today':''}" onclick="hpEditCell(event,'${cellKey}')" title="Clique para editar">${p.html}${isDup?'<span class="hp-warn" title="Colaborador com vários registos neste dia — verificar">⚠</span>':''}</td>`;
+      });
+      totN+=rN; totE+=rE; totT+=rT;
+      const ini=(c.nome||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      tbody+=`<tr><td class="hp-who"><div class="d-pp"><span class="d-rav">${_hpEsc(ini)}</span><div><b onclick="abrirResumoPonto(${n},'${dStrs[0]}')" title="Ver resumo mensal">${_hpEsc(c.nome)}</b><small>${_hpEsc(c.func||'')} · Nº ${n}</small></div></div></td>${tds}
+        <td class="hp-tt n">${rN?fmtH(rN):'—'}</td><td class="hp-tt e${rE?'':' z'}">${rE?'+'+fmtH(rE):'—'}</td><td class="hp-tt t">${rT?fmtH(rT):'—'}</td></tr>`;
+    });
+    grandN+=totN; grandE+=totE; grandT+=totT;
+    tbody+=`<tr class="hp-tot"><td class="hp-who">Total da obra</td>${totDia.map(v=>`<td>${v?fmtH(v):'—'}</td>`).join('')}<td class="hp-tt n">${fmtH(totN)}</td><td class="hp-tt e">${totE?'+'+fmtH(totE):'—'}</td><td class="hp-tt t">${fmtH(totT)}</td></tr></tbody>`;
+
+    cont.insertAdjacentHTML('beforeend',`<section class="hp-obra">
+      <div class="hp-obra-h"><div class="hp-obra-t">${cod?`<span class="cod">${_hpEsc(cod)}</span>`:''}<b>${_hpEsc(nome)}</b><small>${nums.length} ${nums.length===1?'pessoa':'pessoas'}</small></div>${_aprovResumoHTML(obraId)}</div>
+      <div class="tbl-wrap hp-wrap"><table class="hp-t">${thead}${tbody}</table></div></section>`);
+  });
+
+  cont.insertAdjacentHTML('beforeend',`<div class="hp-sum">
+    <div><small>Colaboradores</small><b>${pessoas.size}</b></div><div><small>Horas normais</small><b>${fmtH(grandN)}</b></div>
+    <div><small>Horas extra</small><b class="e">${grandE?fmtH(grandE):'—'}</b></div><div><small>Total da semana</small><b class="t">${fmtH(grandT)}</b></div>
+    <div class="hp-sum-n">Semana ${semLabel}</div></div>`);
+
+  window._histExportData={obraMap,days,dStrs,dayNames:_histCache.dayNames,semLabel,grandN,grandE,grandT};
+  _elStyle('export-btns-plandese').display='flex';
+  const mesSel=document.getElementById('mes-mensal-sel');
+  if(mesSel) mesSel.value=String(new Date().getMonth()+1);
 }
 
 // Vista mobile: seletor de dia (2ª a Sábado) + lista de colaboradores só com

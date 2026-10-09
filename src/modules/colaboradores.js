@@ -30,6 +30,18 @@ export async function renderColabs(){
     const txt=(c.n+' '+c.nome).toLowerCase();
     return (!search||txt.includes(search))&&(!func||c.func===func)&&(!_colabHideInativos||c.ativo);
   });
+  const cards=document.getElementById('colab-cards');
+  if(cards){
+    const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const ordenados=[...list].sort((a,b)=>a.n-b.n);
+    cards.innerHTML=ordenados.length?ordenados.map(c=>{
+      const ini=(c.nome||'').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      return `<div class="d-card${c.ativo?'':' off'}">
+        <div class="d-card-top"><span class="d-rav lg">${esc(ini)}</span><div class="d-card-tt"><b>${esc(c.nome)}</b><small>Nº ${c.n}${c.func?' · '+esc(c.func):''}</small></div><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></div>
+        <div class="d-card-act"><button class="btn btn-secondary btn-sm" onclick="editColab(${c.n})">Editar</button><button class="btn btn-sm d-b-warn" onclick="openAdvertencias(${c.n})" title="Advertências">Advertências</button><button class="btn btn-sm ${c.ativo?'d-b-off':'d-b-on'}" onclick="toggleColab(${c.n})">${c.ativo?'Desativar':'Ativar'}</button></div>
+      </div>`;
+    }).join(''):'<div class="d-empty">Sem colaboradores para os filtros escolhidos.</div>';
+  }
   [...list].sort((a,b)=>a.n-b.n).forEach(c=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400);font-weight:600">${c.n}</td><td style="font-weight:500">${c.nome}</td><td><span class="badge b-gray">${c.func}</span></td><td><span class="badge ${c.ativo?'b-green':'b-gray'}">${c.ativo?'Ativo':'Inativo'}</span></td><td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editColab(${c.n})">Editar</button><button class="btn btn-sm" style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A" onclick="openAdvertencias(${c.n})" title="Advertências"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Advert.</button><button class="btn btn-sm" style="background:${c.ativo?'var(--yellow-bg)':'var(--green-bg)'};color:${c.ativo?'var(--yellow)':'var(--green)'};border:1px solid ${c.ativo?'#FDE68A':'var(--green-light)'}" onclick="toggleColab(${c.n})">${c.ativo?'Desativar':'Ativar'}</button></div></td>`;
