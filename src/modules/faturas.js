@@ -1018,6 +1018,12 @@ function editarFatura(id){
     if(el && !el._wired){ el.addEventListener('input', validaCamposModal); el._wired=true; }
   });
 }
+function abrirDocumentoNovaJanela(url){
+  const w = Math.min(1000, screen.availWidth - 80), h = Math.min(900, screen.availHeight - 80);
+  const win = window.open(url, '_blank', `popup=yes,width=${w},height=${h},left=60,top=40`);
+  if(!win) showToast('O navegador bloqueou a janela nova — permita pop-ups para este site');
+}
+
 // Pré-visualização do documento original (PDF/imagem) no detalhe da fatura
 const _docCache = new Map();
 async function mostrarDocumentoFatura(f){
@@ -1035,19 +1041,42 @@ async function mostrarDocumentoFatura(f){
   }
   box.innerHTML = '<div class="mf-doc-msg">A carregar a fatura…</div>';
   try{
-    let url = _docCache.get(f.dropboxPath);
-    if(!url){
-      const blob = await dropboxDownload(f.dropboxPath);
-      const tipo = /\.pdf$/i.test(f.dropboxPath) ? 'application/pdf' : (blob.type || 'image/jpeg');
-      url = URL.createObjectURL(new Blob([blob], { type: tipo }));
-      _docCache.set(f.dropboxPath, url);
+    let doc = _docCache.get(f.dropboxPath);
+    if(!doc){
+      const blob0 = await dropboxDownload(f.dropboxPath);
+      const isPdf0 = /\.pdf$/i.test(f.dropboxPath);
+      const blob = new Blob([blob0], { type: isPdf0 ? 'application/pdf' : (blob0.type || 'image/jpeg') });
+      doc = { blob, url: URL.createObjectURL(blob), isPdf: isPdf0 };
+      _docCache.set(f.dropboxPath, doc);
     }
     if(box.dataset.for !== String(f.id)) return; // o utilizador já abriu outra fatura
-    const isPdf = /\.pdf$/i.test(f.dropboxPath);
-    box.innerHTML = (isPdf
-        ? `<iframe src="${url}#toolbar=0&navpanes=0" title="Fatura" class="mf-doc-view"></iframe>`
-        : `<img src="${url}" alt="Fatura" class="mf-doc-view" style="object-fit:contain"/>`)
-      + `<a class="mf-doc-open" href="${url}" target="_blank" rel="noopener">Abrir noutro separador ↗</a>`;
+    // Páginas desenhadas no portal (em vez de um visualizador embebido), para o duplo clique funcionar
+    const view = document.createElement('div');
+    view.className = 'mf-doc-view';
+    view.title = 'Duplo clique para abrir numa janela nova';
+    if(doc.isPdf){
+      const pdfjsLib = await getPdfjs();
+      const pdf = await pdfjsLib.getDocument({ data: await doc.blob.arrayBuffer() }).promise;
+      for(let p=1; p<=pdf.numPages; p++){
+        const page = await pdf.getPage(p);
+        const vp = page.getViewport({ scale: 1.6 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        view.appendChild(canvas);
+        if(box.dataset.for !== String(f.id)) return;
+      }
+    } else {
+      const img = document.createElement('img'); img.src = doc.url; img.alt = 'Fatura'; view.appendChild(img);
+    }
+    view.addEventListener('dblclick', () => abrirDocumentoNovaJanela(doc.url));
+    box.innerHTML = '';
+    box.appendChild(view);
+    const lnk = document.createElement('a');
+    lnk.className = 'mf-doc-open'; lnk.href = '#';
+    lnk.innerHTML = 'Abrir numa janela nova ↗ <span style="font-weight:500;opacity:.7">(ou duplo clique na fatura)</span>';
+    lnk.addEventListener('click', ev => { ev.preventDefault(); abrirDocumentoNovaJanela(doc.url); });
+    box.appendChild(lnk);
   } catch(e){
     console.warn('Pré-visualização falhou:', e);
     box.innerHTML = '<div class="mf-doc-msg">Não foi possível carregar o ficheiro da Dropbox.</div>'
@@ -1600,5 +1629,5 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
-  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas,
+  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela,
 };
