@@ -114,7 +114,50 @@ async function processQueueItem(item){
 }
 
 // Lê um ficheiro (PDF/imagem) e devolve os campos da fatura; lança erro se não conseguir extrair texto
+// Leitura com o Claude (Edge Function ler-fatura). Devolve null se indisponível → recorre ao OCR local.
+async function lerFaturaComClaude(item){
+  const f = item._file;
+  const mediaType = /\.pdf$/i.test(item.name) ? 'application/pdf'
+    : /\.png$/i.test(item.name) ? 'image/png' : 'image/jpeg';
+  const base64 = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(f);
+  });
+  item.progress = 15; renderQueue();
+  const { data, error } = await sb.functions.invoke('ler-fatura', { body: { base64, mediaType } });
+  if(error || !data?.fatura){ console.warn('Leitura com Claude falhou:', error || data?.error); return null; }
+  const c = data.fatura;
+  const num = v => (v == null || v === '' || isNaN(Number(v))) ? null : Math.round(Number(v) * 100) / 100;
+  const nif = String(c.nif || '').replace(/\D/g, '').slice(-9);
+  const base = num(c.base), iva = num(c.iva), total = num(c.total);
+  const _flags = [];
+  if(nif && !validaNIF(nif)) _flags.push('invalid_nif');
+  if(!nif) _flags.push('invalid_nif');
+  if(!coerenciaTotais(base, iva, total)) _flags.push('totals_mismatch');
+  if(!c.fornecedor || total == null) _flags.push('low_extraction');
+  let confianca = Math.max(0, Math.min(1, Number(c.confianca) || 0.5));
+  if(_flags.length) confianca = Math.min(confianca, 0.75);
+  const avisos = Array.isArray(c.avisos) ? c.avisos.filter(Boolean) : [];
+  const tipoTxt = c.tipo && c.tipo !== 'fatura' ? `[${String(c.tipo).replace('_',' ')}] ` : '';
+  return {
+    id: ++_fatSeq,
+    fornecedor: c.fornecedor || '', nif, numero: c.numero || '',
+    base, iva, total, data: c.data || '', dataPag: c.data_vencimento || '',
+    status: confianca < 0.80 ? 'rever' : 'extraida',
+    confianca, ficheiro: item.name, paginas: 1,
+    notas: `Lida pelo Claude. ${tipoTxt}${c.descricao || ''}${avisos.length ? ' ⚠ ' + avisos.join('; ') : ''}`.trim(),
+    criadoEm: new Date().toISOString(),
+    _flags, _fonte: 'claude', _exemplos: 0, _rawText: '',
+  };
+}
+
 async function lerFaturaDoFicheiro(item){
+    try{
+      const viaClaude = await lerFaturaComClaude(item);
+      if(viaClaude) return viaClaude;
+    } catch(e){ console.warn('Claude indisponível, a usar OCR local:', e); }
     const isPDF = /\.pdf$/i.test(item.name) || item._file.type==='application/pdf';
     const isImg = /\.(jpe?g|png)$/i.test(item.name);
     let texto = '';
