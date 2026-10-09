@@ -114,6 +114,7 @@ export async function refreshPortal(){
         'colaboradores':   ()=>R.renderColabs?.(),
         'utilizadores':    ()=>R.renderUsers?.(),
         'faturas':         ()=>R.renderFaturas?.(),
+        'faturas-aprovar': ()=>R.renderFaturasAprovar?.(),
         'tesouraria':      ()=>R.renderTesouraria?.(),
         'compras':         ()=>R.renderCompras?.(),
         'equipamentos':    ()=>R.renderEquipamentos?.(),

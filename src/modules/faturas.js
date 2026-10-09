@@ -109,6 +109,7 @@ async function processQueueItem(item){
     }
     // Guarda o ficheiro na pasta "Por aprovar" da Dropbox (para poder ser carimbado ao aprovar)
     let dbxPath = '';
+    await carregarPastasFaturas();
     if(dropboxIsConnected()){
       try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${item.name}`); }
       catch(e){ console.warn('Upload Dropbox falhou:', e); showToast('Fatura lida, mas não foi possível guardar o ficheiro na Dropbox: ' + e.message); }
@@ -712,7 +713,10 @@ async function abrirFaturaPorDbId(dbId){
   if(!f){ showToast('Fatura não encontrada'); return; }
   editarFatura(f.id);
 }
-const _refrescarTesouraria = () => { if(document.getElementById('sec-tesouraria')?.classList.contains('active')) R.renderTesouraria?.(); };
+const _refrescarTesouraria = () => {
+  if(document.getElementById('sec-tesouraria')?.classList.contains('active')) R.renderTesouraria?.();
+  if(document.getElementById('sec-faturas-aprovar')?.classList.contains('active')) R.renderFaturasAprovar?.();
+};
 
 async function sbSaveFatura(f){
   try{
@@ -886,10 +890,10 @@ function renderFaturas(){
 // ═══════════════════════════════════════
 const _fatDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
 let _fatSel = null, _fatChip = 'todas', _fatNPrev = 0;
-const _FAT_PD = ['extraida','rever','pendente_aprovacao'], _FAT_LAN = ['validada','paga','aprovada'];
+const _FAT_PD = ['extraida','rever','pendente_aprovacao'], _FAT_LAN = ['validada','paga','aprovada','aguarda_diretor'];
 const _fEsc = t => String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function _fatPill(s){
-  const m = {extraida:['Por validar','warn'],rever:['A rever','warn'],pendente_aprovacao:['Pendente','warn'],validada:['Lançada','ok'],aprovada:['Aprovada','ok'],paga:['Paga','mute'],rejeitada:['Rejeitada','bad']}[s] || ['—','mute'];
+  const m = {extraida:['Por validar','warn'],rever:['A rever','warn'],pendente_aprovacao:['Pendente','warn'],aguarda_diretor:['Aguarda diretor','info'],validada:['Lançada','ok'],aprovada:['Aprovada','ok'],paga:['Paga','mute'],rejeitada:['Rejeitada','bad']}[s] || ['—','mute'];
   return `<span class="dd-pill ${m[1]}">${m[0]}</span>`;
 }
 function _fatRenderDesk(lista){
@@ -1002,23 +1006,28 @@ function editarFatura(id){
 
   mostrarDocumentoFatura(f);
 
-  // Botões de aprovação — visíveis só para pendente_aprovacao
+  // Barra de aprovação — 2 etapas:
+  //  1) Inserção (financeiro/admin): confirma o centro de custo (sem carimbo) → "Aguarda diretor"
+  //  2) Faturas Por Aprovar (diretor da obra/admin): aprova e carimba → Tesouraria
   const aproBar = document.getElementById('mf-aprovacao-bar');
   if(aproBar){
-    const isPending = f.status === 'pendente_aprovacao';
+    const etapa1 = ['pendente_aprovacao','extraida','rever'].includes(f.status);
+    const etapa2 = f.status === 'aguarda_diretor';
+    const role = S.currentUser?.role, uKey = S.currentUser?.key;
     const obraFatura = S.OBRAS.find(o=>o.nome===f.centroCusto);
-    const uKey = S.currentUser?.key;
-    const canApprove = S.currentUser?.role === 'admin' ||
-      obraFatura?.encarregado_id === uKey || obraFatura?.diretor_id === uKey ||
-      (obraFatura?.encarregados_extra||[]).includes(uKey) ||
-      (obraFatura?.diretores_extra||[]).includes(uKey);
+    const eDiretor = !!obraFatura && (obraFatura.diretor_id === uKey || (obraFatura.diretores_extra||[]).includes(uKey));
+    const pode1 = etapa1 && (role === 'admin' || role === 'financeiro');
+    const pode2 = etapa2 && (role === 'admin' || eDiretor);
     const selCC = document.getElementById('mf-cc-sel');
     if(selCC){
       selCC.innerHTML = '<option value="">— Centro de custo —</option>' + S.OBRAS.filter(o=>o.ativa || o.nome===f.centroCusto)
         .map(o=>`<option value="${_fEsc(o.nome)}"${o.nome===f.centroCusto?' selected':''}>${_fEsc(o.nome)}</option>`).join('');
-      selCC.disabled = !!f.centroCusto && S.currentUser?.role !== 'admin';
+      selCC.disabled = etapa2 && role !== 'admin';   // o diretor não muda o centro de custo escolhido pelo financeiro
     }
-    aproBar.style.display = (isPending && (canApprove || (!f.centroCusto && S.currentUser?.role === 'admin'))) ? 'flex' : 'none';
+    const txt = document.getElementById('mf-apro-txt'), btn = document.getElementById('mf-apro-btn');
+    if(txt) txt.textContent = etapa2 ? 'Aguarda a aprovação do diretor de obra' : 'Confirme o centro de custo desta fatura';
+    if(btn) btn.lastChild.textContent = etapa2 ? ' Aprovar e carimbar' : ' Confirmar centro de custo';
+    aproBar.style.display = (pode1 || pode2) ? 'flex' : 'none';
   }
 
   validaCamposModal();
@@ -1148,19 +1157,34 @@ function apagarFatura(){
 // ═══════════════════════════════════════
 //  WORKFLOW DE APROVAÇÃO
 // ═══════════════════════════════════════
-// Pastas da Dropbox (caminhos do espaço de equipa). A pasta de aprovadas é a irmã "2-Aprovadas".
+// Pastas da Dropbox (caminhos do espaço de equipa), partilhadas por todos os utilizadores (tabela app_config)
 const FAT_PASTA_PENDENTES = '/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/02 - David Mósca/1-Por aprovar';
-const _pastaPendentes = () => (localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES).replace(/\/+$/,'');
-const _pastaAprovadas = () => localStorage.getItem('fat_dbx_aprovadas') || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
+const FAT_PASTAS_KEY = 'fatura_pastas';
+let _pastas = null;   // { pendentes, aprovadas } vindo do servidor
+const _lim = v => String(v||'').trim().replace(/\/+$/,'');
+const _pastaPendentes = () => _lim(_pastas?.pendentes || localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES);
+const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
 
-function configurarPastasFaturas(){
-  const p = prompt('Pasta da Dropbox com as faturas POR APROVAR:', _pastaPendentes());
+async function carregarPastasFaturas(){
+  try{
+    const { data } = await sb.from('app_config').select('value').eq('key', FAT_PASTAS_KEY).maybeSingle();
+    if(data?.value && typeof data.value === 'object') _pastas = data.value;
+  } catch(e){ console.warn('Pastas das faturas:', e); }
+}
+
+async function configurarPastasFaturas(){
+  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores podem alterar as pastas'); return; }
+  await carregarPastasFaturas();
+  const p = prompt('Pasta da Dropbox das faturas A INSERIR / POR APROVAR (origem):', _pastaPendentes());
   if(p == null) return;
-  const a = prompt('Pasta da Dropbox para as faturas APROVADAS (carimbadas):', p.trim().replace(/\/+$/,'').replace(/\/[^/]+$/,'') + '/2-Aprovadas');
+  const a = prompt('PASTA GERAL DE FATURAS APROVADAS (destino das faturas carimbadas):', _pastaAprovadas());
   if(a == null) return;
-  localStorage.setItem('fat_dbx_pendentes', p.trim());
-  localStorage.setItem('fat_dbx_aprovadas', a.trim());
-  showToast('Pastas da Dropbox guardadas');
+  _pastas = { pendentes: _lim(p), aprovadas: _lim(a) };
+  try{
+    const { error } = await sb.from('app_config').upsert({ key: FAT_PASTAS_KEY, value: _pastas, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if(error) throw error;
+    showToast('Pastas da Dropbox guardadas para todos os utilizadores');
+  } catch(e){ showToast('Não foi possível guardar as pastas: ' + (e.message||e)); }
 }
 
 // Importa para o portal as faturas novas da pasta "Por aprovar", já lidas e identificadas
@@ -1168,6 +1192,7 @@ let _fatImportando = false;
 async function importarFaturasDropbox(){
   if(_fatImportando) return;
   if(!dropboxIsConnected()){ showToast('Ligue primeiro a Dropbox'); return; }
+  await carregarPastasFaturas();
   const btn = document.getElementById('fat-dbx-import');
   const rotulo = btn?.innerHTML;
   _fatImportando = true;
@@ -1343,6 +1368,7 @@ async function abrirColocarCarimbo(f, cc){
 
 // Conclui a aprovação: carimba (se possível), grava em "Aprovadas" e atualiza a fatura
 async function concluirAprovacao(f, cc, pos){
+  await carregarPastasFaturas();
   const antes = { status:f.status, centroCusto:f.centroCusto, aprovadoPor:f.aprovadoPor, aprovadoEm:f.aprovadoEm, dropboxPath:f.dropboxPath, ficheiroUrl:f.ficheiroUrl };
   f.centroCusto = cc;
   f.status      = 'aprovada';
@@ -1385,6 +1411,7 @@ async function concluirAprovacao(f, cc, pos){
   await sbSaveFatura(f);
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
+  _refrescarTesouraria();
   showToast(`Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
   return true;
@@ -1394,17 +1421,53 @@ async function aprovarFatura(){
   const id = parseInt(document.getElementById('mf-id').value, 10);
   const f = FATURAS.find(x=>x.id===id); if(!f) return;
 
-  // Centro de custo obrigatório para aprovar
+  // Centro de custo obrigatório
   const selCC = document.getElementById('mf-cc-sel');
   const cc = (selCC && !selCC.disabled ? selCC.value : '') || f.centroCusto || '';
-  if(!cc){ showToast('Escolha o centro de custo antes de aprovar'); selCC?.focus(); return; }
+  if(!cc){ showToast('Escolha o centro de custo'); selCC?.focus(); return; }
 
-  // PDF importado da Dropbox: escolher onde fica o carimbo; "Guardar" conclui a aprovação
+  // Etapa 1 — financeiro confirma o centro de custo (sem carimbo) e envia ao diretor da obra
+  if(f.status !== 'aguarda_diretor'){
+    return confirmarCentroCusto(f, cc);
+  }
+
+  // Etapa 2 — diretor aprova e carimba. PDF da Dropbox: escolher onde fica o carimbo; "Guardar" conclui
   if(dropboxIsConnected() && f.dropboxPath && f._fonte === 'dropbox' && /\.pdf$/i.test(f.dropboxPath)){
     return abrirColocarCarimbo(f, cc);
   }
   if(!confirm(`Aprovar fatura de ${f.fornecedor||'fornecedor'}${f.total?' · '+f.total+'€':''} para ${cc}?`)) return;
   await concluirAprovacao(f, cc, null);
+}
+
+// Etapa 1: a fatura passa para "Faturas Por Aprovar" e o(s) diretor(es) da obra são avisados
+async function confirmarCentroCusto(f, cc){
+  const antes = { status:f.status, centroCusto:f.centroCusto };
+  f.centroCusto = cc;
+  f.status = 'aguarda_diretor';
+  try{
+    const { error } = await sb.from('faturas').update({ status: f.status, centro_custo: f.centroCusto }).eq('id', f._dbId);
+    if(error) throw error;
+  } catch(e){
+    Object.assign(f, antes);
+    showToast('Não foi possível enviar para aprovação: ' + (e.message||e));
+    return;
+  }
+  renderFaturas(); atualizaKPIs();
+  closeModal('modal-fat');
+  showToast(`Fatura enviada para aprovação do diretor — ${cc}`);
+
+  const msg = `Fatura por aprovar: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${cc})`;
+  R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar' });
+  const obra = S.OBRAS.find(o=>o.nome===cc);
+  const destinatarios = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra||[])].filter(u => u && u !== S.currentUser?.key))];
+  if(destinatarios.length){
+    try{
+      await sb.from('notificacoes').insert(destinatarios.map(destinatario => ({
+        actor: S.currentUser?.key||null, actor_nome: S.currentUser?.nome||'Sistema',
+        acao: msg, seccao:'faturas-aprovar', destinatario
+      })));
+    } catch(e){ console.warn('Notif diretor:', e); }
+  }
 }
 
 // Apaga TODOS os registos de faturas do portal (não toca nos ficheiros da Dropbox)
@@ -1765,5 +1828,5 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
-  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId,
+  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas,
 };

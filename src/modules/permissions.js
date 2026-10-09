@@ -174,8 +174,16 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','chat','m-
 // ── Verificação central de acesso ──────────────────────────────────
 // Fonte única de verdade: sidebar, goTo, painel, análise e notificações usam estas funções.
 // Falha "fechada": secção desconhecida ou perfil sem configuração → sem acesso (excepto admin).
+// Dentro do capítulo Financeiro, cada página é só para certos perfis (fluxo das faturas)
+const SECTION_ROLES = {
+  'faturas':         ['admin','financeiro'],
+  'tesouraria':      ['admin','financeiro'],
+  'faturas-aprovar': ['admin','financeiro','diretor_obra'],
+};
+
 export function roleCanAccessSection(role, sec){
   if(role === 'admin') return true;
+  if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   if(sec === 'chat') return !!role && role !== 'encarregado';
   if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
@@ -192,6 +200,7 @@ export function canAccessSection(sec){
 export function applyRolePermissions(role){
   // repor tudo visível antes de reaplicar (necessário ao trocar de utilizador sem recarregar a página)
   document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(el=>{ el.style.display=''; });
+  Object.keys(SECTION_ROLES).forEach(sec=>{ document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display=''; }); });
   if(role === 'admin') return; // admin vê tudo
   const access = ROLE_ACCESS[role];
   if(!access) return;
@@ -200,6 +209,11 @@ export function applyRolePermissions(role){
   NAV_CHAPTERS.forEach(ch=>{
     if(allowed.includes(ch.id)) return;
     document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
+  });
+  // Esconder páginas do Financeiro que não são deste perfil
+  Object.entries(SECTION_ROLES).forEach(([sec, roles])=>{
+    if(roles.includes(role)) return;
+    document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display='none'; });
   });
   // Esconder atalhos da barra de navegação inferior (mobile) cujo capítulo não é permitido
   document.querySelectorAll('.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(btn=>{

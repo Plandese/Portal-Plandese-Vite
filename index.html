@@ -1271,6 +1271,10 @@
           <span class="nav-label">Inserção de Faturas</span>
           <span class="nb" id="nb-fat" hidden></span>
         </button>
+        <button class="nav-btn" onclick="goTo('faturas-aprovar',this)" id="nav-far">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span class="nav-label">Faturas Por Aprovar</span>
+        </button>
         <button class="nav-btn" onclick="goTo('tesouraria',this)" id="nav-tes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
           <span class="nav-label">Tesouraria</span>
@@ -1615,6 +1619,21 @@
         </div>
         <div class="alert alert-ok" id="empresamoa-alert">Empresa guardada.</div>
         <div id="empresas-moa-list"></div>
+      </section>
+
+      <!-- FATURAS POR APROVAR (diretores de obra) -->
+      <section id="sec-faturas-aprovar" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Faturas Por Aprovar</div>
+            <div class="pg-sub" id="far-sub">Faturas com centro de custo confirmado, a aguardar a aprovação do diretor de obra</div>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <input type="text" id="far-q" placeholder="Pesquisar fornecedor ou fatura…" style="flex:1;min-width:220px"/>
+          <select id="far-cc" style="min-width:240px"><option value="">Todas as obras</option></select>
+        </div>
+        <div class="card" id="far-mapa" style="padding:0;overflow:hidden"></div>
       </section>
 
       <!-- TESOURARIA -->
@@ -3391,6 +3410,7 @@
       <select id="mf-status">
         <option value="extraida">Extraída</option>
         <option value="pendente_aprovacao">Pendente aprovação</option>
+        <option value="aguarda_diretor">Aguarda diretor</option>
         <option value="aprovada">Aprovada</option>
         <option value="rejeitada">Rejeitada</option>
         <option value="rever">A rever</option>
@@ -3409,9 +3429,9 @@
     <!-- Barra de aprovação (só visível para faturas pendentes) -->
     <div id="mf-aprovacao-bar" style="display:none;margin-top:14px;padding:14px 16px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;gap:10px;align-items:center;flex-wrap:wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      <span style="font-size:13px;font-weight:600;color:#15803d;flex:1">Fatura pendente de aprovação</span>
+      <span id="mf-apro-txt" style="font-size:13px;font-weight:600;color:#15803d;flex:1">Fatura pendente de aprovação</span>
       <select id="mf-cc-sel" style="padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:8px;font-size:13px;max-width:220px"></select>
-      <button class="btn btn-sm" style="background:#16a34a;color:#fff;border:none" onclick="aprovarFatura()">
+      <button id="mf-apro-btn" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none" onclick="aprovarFatura()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
         Aprovar
       </button>

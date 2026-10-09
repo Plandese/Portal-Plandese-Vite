@@ -75,6 +75,7 @@ export const NOTIF_SECTIONS = {
   'historico':    'Folha de Ponto',
   'compras':      'Compras',
   'faturas':      'Faturas',
+  'faturas-aprovar': 'Faturas Por Aprovar',
   'tesouraria':   'Tesouraria',
   'equipamentos': 'Equipamentos',
   'combustivel':  'Combustível',
@@ -91,7 +92,7 @@ export const NOTIF_SECTIONS = {
 export const NAV_CHAPTERS = [
   {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','colaboradores']},
   {id:'cmp',  label:'Compras',                   sections:['compras','mapas-comparativos']},
-  {id:'fin',  label:'Financeiro',                sections:['faturas','tesouraria']},
+  {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','tesouraria']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
   {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios','pendentes-tavira']},
   {id:'def',  label:'Definições',                sections:['obras','utilizadores','empresas-moa','fornecedores']},
