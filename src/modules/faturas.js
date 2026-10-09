@@ -1203,6 +1203,32 @@ async function aprovarFatura(){
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
 }
 
+// Apaga TODOS os registos de faturas do portal (não toca nos ficheiros da Dropbox)
+async function apagarTodasFaturas(){
+  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores podem apagar todas as faturas'); return; }
+  const n = FATURAS.length;
+  if(!n){ showToast('Não há faturas para apagar'); return; }
+  const aprov = FATURAS.filter(f=>['aprovada','validada','paga'].includes(f.status)).length;
+  const resp = prompt(`Vai apagar TODAS as ${n} faturas do portal${aprov?` (incluindo ${aprov} já aprovadas/lançadas)`:''}.
+` +
+    `Os ficheiros na Dropbox NÃO são apagados.
+
+Escreva APAGAR para confirmar:`);
+  if(resp == null) return;
+  if(resp.trim().toUpperCase() !== 'APAGAR'){ showToast('Cancelado — não foi escrito APAGAR'); return; }
+  try{
+    const { error } = await sb.from('faturas').delete().not('id','is',null);
+    if(error) throw error;
+    FATURAS.length = 0;
+    renderFaturas(); atualizaKPIs();
+    showToast(`${n} faturas apagadas`);
+    R.emitEvent?.({ acao:`Apagadas todas as faturas (${n})`, seccao:'faturas' });
+  } catch(e){
+    console.error('Apagar todas:', e);
+    showToast('Não foi possível apagar: ' + (e.message||e));
+  }
+}
+
 async function rejeitarFatura(){
   const id = parseInt(document.getElementById('mf-id').value, 10);
   const f = FATURAS.find(x=>x.id===id); if(!f) return;
@@ -1535,5 +1561,5 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
-  importarFaturasDropbox, configurarPastasFaturas,
+  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas,
 };
