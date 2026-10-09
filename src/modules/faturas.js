@@ -705,6 +705,15 @@ async function carregarFaturas(){
   } catch(e){ console.warn('Erro ao carregar faturas:', e); }
 }
 
+// Abre o detalhe de uma fatura a partir do id da base de dados (usado pela Tesouraria)
+async function abrirFaturaPorDbId(dbId){
+  let f = FATURAS.find(x => x._dbId === dbId);
+  if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
+  if(!f){ showToast('Fatura não encontrada'); return; }
+  editarFatura(f.id);
+}
+const _refrescarTesouraria = () => { if(document.getElementById('sec-tesouraria')?.classList.contains('active')) R.renderTesouraria?.(); };
+
 async function sbSaveFatura(f){
   try{
     const row = _fatToRow(f);
@@ -1119,6 +1128,7 @@ function saveFatura(){
   sbSaveFatura(f);
   closeModal('modal-fat');
   renderFaturas();
+  setTimeout(_refrescarTesouraria, 600);
   flashAlert('fat-alert');
   showToast(validaNIF(f.nif) ? 'Fatura atualizada — memória do fornecedor atualizada' : 'Fatura atualizada');
   R.emitEvent?.({ acao:'Fatura atualizada: '+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
@@ -1131,6 +1141,7 @@ function apagarFatura(){
   FATURAS = FATURAS.filter(f=>f.id!==id);
   closeModal('modal-fat');
   renderFaturas();
+  setTimeout(_refrescarTesouraria, 400);
   showToast('Fatura apagada');
 }
 
@@ -1754,5 +1765,5 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
-  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela,
+  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId,
 };

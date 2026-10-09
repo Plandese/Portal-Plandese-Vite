@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
+import { abrirFaturaPorDbId } from './faturas.js';
 
 let _rows = [];
 let _estado = 'todas';   // todas | por_pagar | pagas
@@ -80,7 +81,7 @@ function desenhar() {
     total += sub;
     const linhas = rs.map(r => {
       const vencida = r.data_pag && r.data_pag < h && !['paga'].includes(r.status);
-      return `<tr>
+      return `<tr class="tes-row" data-tes-id="${r.id}" title="Clique para ver os detalhes da fatura">
         <td class="tes-cc">${k ? esc(k) : '<span class="mut">Sem centro de custo</span>'}</td>
         <td>${esc(r.fornecedor || '—')}</td>
         <td><b>${esc(r.numero || '—')}</b></td>
@@ -112,7 +113,9 @@ export async function renderTesouraria() {
 
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-tes-chip]');
-  if (c) { _estado = c.dataset.tesChip; desenhar(); }
+  if (c) { _estado = c.dataset.tesChip; desenhar(); return; }
+  const r = e.target.closest('tr[data-tes-id]');
+  if (r) abrirFaturaPorDbId(Number(r.dataset.tesId));
 });
 document.addEventListener('input', e => { if (e.target.id === 'tes-q') desenhar(); });
 document.addEventListener('change', e => { if (e.target.id === 'tes-cc') desenhar(); });

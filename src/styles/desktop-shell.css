@@ -1271,4 +1271,6 @@ body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto}
 .tes-t .tes-venc{color:#b3261e;font-weight:600}
 .tes-t .tes-venc small{font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em}
 .tes-t tfoot td{background:#f6f8fc;border-top:2px solid var(--d-line,#dde2ea);font-size:14.5px}
+.tes-t .tes-row{cursor:pointer}
+.tes-t .tes-row:hover td{background:#f6f8fc}
 
