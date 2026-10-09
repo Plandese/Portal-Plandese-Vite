@@ -1192,45 +1192,133 @@ async function importarFaturasDropbox(){
   }
 }
 
-// Carimba "APROVADO" + centro de custo na 1.ª página do PDF
-async function carimbarPDF(blob, f){
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
-  const doc = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
-  const page = doc.getPages()[0];
-  const { width, height } = page.getSize();
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const reg  = await doc.embedFont(StandardFonts.Helvetica);
-  const verde = rgb(0.086, 0.5, 0.24);
-  const data = new Date(f.aprovadoEm).toLocaleDateString('pt-PT');
+// ── Carimbo "APROVADO" + centro de custo ────────────────────────────────────────
+// Medidas e texto do carimbo (em pontos PDF); usado na pré-visualização e na gravação final
+async function carimboLayout(f, cc){
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const tmp = await PDFDocument.create();
+  const bold = await tmp.embedFont(StandardFonts.HelveticaBold);
+  const reg  = await tmp.embedFont(StandardFonts.Helvetica);
+  const data = new Date(f.aprovadoEm || Date.now()).toLocaleDateString('pt-PT');
+  const quem = f.aprovadoPor || S.currentUser?.nome || S.currentUser?.key || '';
   const linhas = [
-    { t:'APROVADO', font:bold, size:18 },
-    { t:f.centroCusto || '', font:bold, size:10 },
-    { t:`${f.aprovadoPor || ''} · ${data}`, font:reg, size:8 },
+    { t:'APROVADO', font:bold, size:18, bold:true },
+    { t:`Centro de custo ${cc}`, font:bold, size:10, bold:true },
+    { t:`${quem} · ${data}`, font:reg, size:8, bold:false },
   ];
-  const w = Math.min(width - 24, Math.max(150, ...linhas.map(l => l.font.widthOfTextAtSize(l.t, l.size))) + 20);
-  const h = 56, x = width - w - 12, y = height - h - 12;
-  // fundo branco semi-opaco para ficar legível sobre o conteúdo
-  page.drawRectangle({ x, y, width:w, height:h, color:rgb(1,1,1), opacity:0.88, borderColor:verde, borderWidth:2 });
-  let ty = y + h - 6;
-  linhas.forEach(l => {
-    ty -= l.size + 2;
-    let size = l.size;
-    while(size > 5 && l.font.widthOfTextAtSize(l.t, size) > w - 12) size -= 0.5;
-    page.drawText(l.t, { x: x + (w - l.font.widthOfTextAtSize(l.t, size))/2, y: ty, size, font:l.font, color:verde });
-  });
-  return new Blob([await doc.save()], { type:'application/pdf' });
+  const w = Math.max(170, ...linhas.map(l => l.font.widthOfTextAtSize(l.t, l.size))) + 20;
+  const maxW = Math.min(w, 330);
+  linhas.forEach(l => { while(l.size > 5 && l.font.widthOfTextAtSize(l.t, l.size) > maxW - 14) l.size -= 0.5; });
+  return { w: maxW, h: 58, linhas };
 }
 
-async function aprovarFatura(){
-  const id = parseInt(document.getElementById('mf-id').value, 10);
-  const f = FATURAS.find(x=>x.id===id); if(!f) return;
+// Grava o carimbo no PDF. pos = { page (1..n), cx, cy } — centro do carimbo em fração da página (origem: canto superior esquerdo)
+async function carimbarPDF(blob, f, cc, pos){
+  const { PDFDocument, rgb } = await import('pdf-lib');
+  const lay = await carimboLayout(f, cc);
+  const doc = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
+  const pages = doc.getPages();
+  const page = pages[Math.min(Math.max((pos?.page || 1) - 1, 0), pages.length - 1)];
+  const { width, height } = page.getSize();
+  const verde = rgb(0.086, 0.5, 0.24);
+  const cx = pos?.cx ?? 0.8, cy = pos?.cy ?? 0.07;
+  const x = Math.min(Math.max(cx * width - lay.w / 2, 4), width - lay.w - 4);
+  const yTop = Math.min(Math.max(cy * height - lay.h / 2, 4), height - lay.h - 4);
+  const y = height - yTop - lay.h;
+  page.drawRectangle({ x, y, width: lay.w, height: lay.h, color: rgb(1,1,1), opacity: 0.9, borderColor: verde, borderWidth: 2 });
+  let ty = y + lay.h - 6;
+  lay.linhas.forEach(l => {
+    ty -= l.size + 2;
+    page.drawText(l.t, { x: x + (lay.w - l.font.widthOfTextAtSize(l.t, l.size)) / 2, y: ty, size: l.size, font: l.font, color: verde });
+  });
+  return new Blob([await doc.save()], { type: 'application/pdf' });
+}
 
-  // Centro de custo obrigatório para aprovar
-  const selCC = document.getElementById('mf-cc-sel');
-  const cc = (selCC && !selCC.disabled ? selCC.value : '') || f.centroCusto || '';
-  if(!cc){ showToast('Escolha o centro de custo antes de aprovar'); selCC?.focus(); return; }
-  if(!confirm(`Aprovar fatura de ${f.fornecedor||'fornecedor'}${f.total?' · '+f.total+'€':''} para ${cc}?`)) return;
+// Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
+async function abrirColocarCarimbo(f, cc){
+  document.getElementById('fat-stamp-ov')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'fat-stamp-ov'; ov.className = 'fst-ov';
+  ov.innerHTML = `<div class="fst-box">
+    <div class="fst-h"><div><b>Onde colocar o carimbo?</b><small>Clique na fatura ou arraste o carimbo para a posição pretendida</small></div></div>
+    <div class="fst-pages" id="fst-pages"><div class="mf-doc-msg">A carregar a fatura…</div></div>
+    <div class="fst-f"><button type="button" class="btn btn-secondary" id="fst-cancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="fst-ok" disabled>Guardar fatura aprovada</button></div></div>`;
+  document.body.appendChild(ov);
+  const fechar = () => ov.remove();
+  ov.querySelector('#fst-cancel').onclick = fechar;
 
+  const box = ov.querySelector('#fst-pages');
+  try{
+    let doc = _docCache.get(f.dropboxPath);
+    if(!doc){
+      const blob0 = await dropboxDownload(f.dropboxPath);
+      const blob = new Blob([blob0], { type: 'application/pdf' });
+      doc = { blob, url: URL.createObjectURL(blob), isPdf: true };
+      _docCache.set(f.dropboxPath, doc);
+    }
+    const lay = await carimboLayout({ ...f, aprovadoEm: new Date().toISOString() }, cc);
+    const pdfjsLib = await getPdfjs();
+    const pdf = await pdfjsLib.getDocument({ data: await doc.blob.arrayBuffer() }).promise;
+    box.innerHTML = '';
+    const pos = { page: 1, cx: 0.8, cy: 0.07 };
+    const stamp = document.createElement('div');
+    stamp.className = 'fst-stamp';
+    stamp.innerHTML = lay.linhas.map(l => `<div data-s="${l.size}" style="font-weight:${l.bold ? 800 : 500}">${_fEsc(l.t)}</div>`).join('');
+    const wraps = [];
+    const ptsW = [], ptsH = [];
+    const estilo = () => {
+      const wrap = wraps[pos.page - 1]; if(!wrap) return;
+      if(stamp.parentElement !== wrap) wrap.appendChild(stamp);
+      const k = wrap.clientWidth / ptsW[pos.page - 1];
+      stamp.style.width = (lay.w * k) + 'px'; stamp.style.height = (lay.h * k) + 'px';
+      stamp.style.left = (pos.cx * 100) + '%'; stamp.style.top = (pos.cy * 100) + '%';
+      stamp.querySelectorAll('div').forEach(d => { d.style.fontSize = (parseFloat(d.dataset.s) * k) + 'px'; });
+    };
+    const mover = (ev, wrap) => {
+      const r = wrap.getBoundingClientRect(), i = wraps.indexOf(wrap);
+      pos.page = i + 1;
+      const mw = (lay.w / ptsW[i]) / 2, mh = (lay.h / ptsH[i]) / 2;
+      pos.cx = Math.min(Math.max((ev.clientX - r.left) / r.width, mw), 1 - mw);
+      pos.cy = Math.min(Math.max((ev.clientY - r.top) / r.height, mh), 1 - mh);
+      estilo();
+    };
+    for(let p = 1; p <= pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 1.6 });
+      ptsW.push(vp1.width); ptsH.push(vp1.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      const wrap = document.createElement('div');
+      wrap.className = 'fst-page'; wrap.appendChild(canvas);
+      wrap.addEventListener('click', ev => { if(ev.target === stamp || stamp.contains(ev.target)) return; mover(ev, wrap); });
+      box.appendChild(wrap); wraps.push(wrap);
+    }
+    estilo();
+    stamp.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      const wrap = stamp.parentElement;
+      const mv = e2 => mover(e2, wrap);
+      const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); };
+      document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+    });
+    window.addEventListener('resize', estilo, { once: true });
+    const ok = ov.querySelector('#fst-ok');
+    ok.disabled = false;
+    ok.onclick = async () => {
+      ok.disabled = true; ok.textContent = 'A guardar…';
+      const feito = await concluirAprovacao(f, cc, { ...pos });
+      if(feito) fechar(); else { ok.disabled = false; ok.textContent = 'Guardar fatura aprovada'; }
+    };
+  } catch(e){
+    console.error('Colocar carimbo:', e);
+    box.innerHTML = '<div class="mf-doc-msg">Não foi possível carregar a fatura da Dropbox: ' + _fEsc(e.message || e) + '</div>';
+  }
+}
+
+// Conclui a aprovação: carimba (se possível), grava em "Aprovadas" e atualiza a fatura
+async function concluirAprovacao(f, cc, pos){
   const antes = { status:f.status, centroCusto:f.centroCusto, aprovadoPor:f.aprovadoPor, aprovadoEm:f.aprovadoEm, dropboxPath:f.dropboxPath, ficheiroUrl:f.ficheiroUrl };
   f.centroCusto = cc;
   f.status      = 'aprovada';
@@ -1243,9 +1331,10 @@ async function aprovarFatura(){
         // Ficheiro importado: carimbar, gravar na pasta de aprovadas e retirar da de pendentes
         const nome = f.dropboxPath.split('/').pop();
         let blob = await dropboxDownload(f.dropboxPath);
-        if(/\.pdf$/i.test(nome)) blob = await carimbarPDF(blob, f);
+        if(/\.pdf$/i.test(nome)) blob = await carimbarPDF(blob, f, cc, pos);
         const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${nome}`);
         await dropboxDeleteTeam(f.dropboxPath);
+        _docCache.delete(f.dropboxPath);
         f.dropboxPath = destino;
         f.ficheiroUrl = await dropboxLinkTeam(destino) || '';
       } else {
@@ -1260,15 +1349,33 @@ async function aprovarFatura(){
       console.error('Dropbox aprovação erro:', e);
       Object.assign(f, antes);
       showToast('Não foi possível carimbar/mover o ficheiro na Dropbox — fatura NÃO aprovada. ' + (e.message||''));
-      return;
+      return false;
     }
   }
 
   await sbSaveFatura(f);
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
-  showToast(`Fatura aprovada — ${f.centroCusto}`);
+  showToast(`Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
+  return true;
+}
+
+async function aprovarFatura(){
+  const id = parseInt(document.getElementById('mf-id').value, 10);
+  const f = FATURAS.find(x=>x.id===id); if(!f) return;
+
+  // Centro de custo obrigatório para aprovar
+  const selCC = document.getElementById('mf-cc-sel');
+  const cc = (selCC && !selCC.disabled ? selCC.value : '') || f.centroCusto || '';
+  if(!cc){ showToast('Escolha o centro de custo antes de aprovar'); selCC?.focus(); return; }
+
+  // PDF importado da Dropbox: escolher onde fica o carimbo; "Guardar" conclui a aprovação
+  if(dropboxIsConnected() && f.dropboxPath && f._fonte === 'dropbox' && /\.pdf$/i.test(f.dropboxPath)){
+    return abrirColocarCarimbo(f, cc);
+  }
+  if(!confirm(`Aprovar fatura de ${f.fornecedor||'fornecedor'}${f.total?' · '+f.total+'€':''} para ${cc}?`)) return;
+  await concluirAprovacao(f, cc, null);
 }
 
 // Apaga TODOS os registos de faturas do portal (não toca nos ficheiros da Dropbox)

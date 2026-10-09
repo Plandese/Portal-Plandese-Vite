@@ -1250,3 +1250,16 @@ body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto}
 .mf-doc-view canvas,.mf-doc-view img{display:block;width:100%;height:auto;margin:0 0 10px;background:#fff;box-shadow:0 2px 10px rgba(10,28,90,.12)}
 .mf-doc-open{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:var(--d-brand,#173f9f);text-decoration:none}
 .mf-doc-msg{padding:14px 16px;border:1.5px dashed var(--d-line,#dde2ea);border-radius:14px;color:var(--d-mute,#6a7284);font-size:13.5px}
+/* Escolher onde colocar o carimbo de aprovação */
+.fst-ov{position:fixed;inset:0;z-index:10050;background:rgba(10,18,38,.62);display:flex;align-items:center;justify-content:center;padding:20px}
+.fst-box{width:min(860px,100%);max-height:100%;display:flex;flex-direction:column;background:#fff;border-radius:26px;overflow:hidden;box-shadow:0 30px 90px rgba(10,28,90,.4)}
+.fst-h{flex:none;padding:20px 26px;background:var(--d-brand,#173f9f);color:#fff}
+.fst-h b{display:block;font-size:20px;font-weight:800;letter-spacing:-.3px}
+.fst-h small{display:block;opacity:.85;font-size:13.5px;margin-top:3px}
+.fst-pages{flex:1;min-height:0;overflow:auto;background:#eef1f6;padding:16px 18px}
+.fst-page{position:relative;margin:0 auto 14px;max-width:720px;cursor:crosshair;box-shadow:0 2px 12px rgba(10,28,90,.18);background:#fff}
+.fst-page canvas{display:block;width:100%;height:auto}
+.fst-stamp{position:absolute;transform:translate(-50%,-50%);box-sizing:border-box;border:2px solid #167f3d;background:rgba(255,255,255,.9);color:#167f3d;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:1px;cursor:grab;touch-action:none;user-select:none;font-family:Helvetica,Arial,sans-serif;line-height:1.15;outline:2px dashed rgba(22,127,61,.45);outline-offset:3px}
+.fst-stamp:active{cursor:grabbing}
+.fst-f{flex:none;display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid #dde2ea;background:#fff}
+
