@@ -1214,37 +1214,36 @@ async function carimboLayout(f, cc){
 
 // Grava o carimbo no PDF. pos = { page (1..n), cx, cy } — centro do carimbo em fração da página (origem: canto superior esquerdo)
 async function carimbarPDF(blob, f, cc, pos){
-  const { PDFDocument, PDFName, rgb } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const lay = await carimboLayout(f, cc);
-  const doc = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
-  // Muitas faturas vêm assinadas/certificadas digitalmente: ao reescrever o ficheiro a assinatura parte-se e o Acrobat
-  // recusa abri-lo. A cópia carimbada deixa por isso de ser um documento assinado (o original fica guardado à parte).
-  doc.catalog.delete(PDFName.of('Perms'));
-  doc.catalog.delete(PDFName.of('AcroForm'));
-  doc.catalog.delete(PDFName.of('NeedsRendering'));
-  doc.getPages().forEach(pg => {
-    const annots = pg.node.Annots();
-    if(!annots) return;
-    for(let i = annots.size() - 1; i >= 0; i--){
-      const a = annots.lookup(i);
-      if(a && typeof a.get === 'function' && a.get(PDFName.of('Subtype')) === PDFName.of('Widget')) annots.remove(i);
-    }
-  });
-  const pages = doc.getPages();
-  const page = pages[Math.min(Math.max((pos?.page || 1) - 1, 0), pages.length - 1)];
-  const { width, height } = page.getSize();
+  // Constrói um PDF novo com as páginas do original embutidas. Reescrever o original no sítio deixa o Acrobat
+  // sem abrir muitos PDFs (assinados digitalmente, formulários, estruturas especiais); assim o resultado é sempre limpo.
+  // O original (com a eventual assinatura) é guardado à parte.
+  const src = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
+  const out = await PDFDocument.create();
+  const embeds = await out.embedPdf(src, src.getPageIndices());
+  const bold = await out.embedFont(StandardFonts.HelveticaBold);
+  const reg  = await out.embedFont(StandardFonts.Helvetica);
+  const alvo = Math.min(Math.max((pos?.page || 1) - 1, 0), embeds.length - 1);
   const verde = rgb(0.086, 0.5, 0.24);
-  const cx = pos?.cx ?? 0.8, cy = pos?.cy ?? 0.07;
-  const x = Math.min(Math.max(cx * width - lay.w / 2, 4), width - lay.w - 4);
-  const yTop = Math.min(Math.max(cy * height - lay.h / 2, 4), height - lay.h - 4);
-  const y = height - yTop - lay.h;
-  page.drawRectangle({ x, y, width: lay.w, height: lay.h, color: rgb(1,1,1), opacity: 0.9, borderColor: verde, borderWidth: 2 });
-  let ty = y + lay.h - 6;
-  lay.linhas.forEach(l => {
-    ty -= l.size + 2;
-    page.drawText(l.t, { x: x + (lay.w - l.font.widthOfTextAtSize(l.t, l.size)) / 2, y: ty, size: l.size, font: l.font, color: verde });
+  embeds.forEach((e, i) => {
+    const { width, height } = e;
+    const page = out.addPage([width, height]);
+    page.drawPage(e);
+    if(i !== alvo) return;
+    const cx = pos?.cx ?? 0.8, cy = pos?.cy ?? 0.07;
+    const x = Math.min(Math.max(cx * width - lay.w / 2, 4), width - lay.w - 4);
+    const yTop = Math.min(Math.max(cy * height - lay.h / 2, 4), height - lay.h - 4);
+    const y = height - yTop - lay.h;
+    page.drawRectangle({ x, y, width: lay.w, height: lay.h, color: rgb(1,1,1), opacity: 0.9, borderColor: verde, borderWidth: 2 });
+    let ty = y + lay.h - 6;
+    lay.linhas.forEach(l => {
+      ty -= l.size + 2;
+      const font = l.bold ? bold : reg;
+      page.drawText(l.t, { x: x + (lay.w - font.widthOfTextAtSize(l.t, l.size)) / 2, y: ty, size: l.size, font, color: verde });
+    });
   });
-  return new Blob([await doc.save({ useObjectStreams: false })], { type: 'application/pdf' });
+  return new Blob([await out.save({ useObjectStreams: false })], { type: 'application/pdf' });
 }
 
 // Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
