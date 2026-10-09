@@ -23,6 +23,9 @@ const TOOL = {
       base: { type: "number", description: "Total sem IVA (soma de todas as taxas), em euros." },
       iva: { type: "number", description: "Total do IVA (soma de todas as taxas), em euros." },
       total: { type: "number", description: "Total a pagar com IVA, em euros." },
+      local_obra: { type: "string", description: "Obra/local de entrega ou descarga indicado no documento (ex.: 'Queluz de Baixo', 'Póvoa de Santa Iria'). Vazio se não indicado." },
+      numero_obra: { type: "string", description: "Código/nº de obra se aparecer no documento (ex.: 9300065). Vazio se não existir." },
+      taxa_iva: { type: "string", description: "Taxa(s) de IVA tal como aplicadas: '23%', '6%', '23%/13% (misto)', '0% (autoliq.)'." },
       moeda: { type: "string", description: "Código ISO, normalmente EUR." },
       descricao: { type: "string", description: "Resumo curto (máx. 120 caracteres) do que foi comprado." },
       confianca: { type: "number", description: "0 a 1: confiança global na extração." },
@@ -38,7 +41,12 @@ Regras:
 - Valida mentalmente que base + iva = total (tolerância 0,02 €). Se não bater, relê o documento; se persistir, diz-o em "avisos".
 - Se houver várias taxas de IVA, soma as bases e os IVAs. Valores em euros, ponto decimal, sem separador de milhares.
 - Datas em YYYY-MM-DD. Não inventes: se um campo não existir ou estiver ilegível, deixa-o vazio (texto) ou usa 0 e acrescenta um aviso.
-- Em notas de crédito devolve os valores em módulo e tipo "nota_credito".
+- Em notas de crédito usa tipo "nota_credito" e devolve base, iva e total NEGATIVOS.
+- Documentos digitalizados/imagem: lê-os visualmente com o mesmo rigor.
+- IVA em autoliquidação ou isento: iva = 0 e taxa_iva "0% (autoliq.)". Valores "não sujeitos" entram no total mas não na base com IVA; explica em "avisos".
+- Faturas de portagens/aluguer com várias taxas (23% e 6%): soma tudo e usa taxa_iva "23%/6% (misto)".
+- "descricao": resume o que foi fornecido/prestado e o período (ex.: 'Aluguer de 3 contentores LC20 (01 a 31/08)').
+- Se o total impresso não bater com base + iva, devolve os valores impressos e regista o desvio em "avisos"; nunca ajustes valores para os fazer bater.
 - Usa sempre a ferramenta registar_fatura.`;
 
 function json(body: unknown, status = 200) {

@@ -114,7 +114,7 @@ async function processQueueItem(item){
 }
 
 // Lê um ficheiro (PDF/imagem) e devolve os campos da fatura; lança erro se não conseguir extrair texto
-// Leitura com o Claude (Edge Function ler-fatura). Devolve null se indisponível → recorre ao OCR local.
+// Leitura com o Claude (Edge Function ler-fatura). Lança erro se não conseguir ler.
 async function lerFaturaComClaude(item){
   const f = item._file;
   const mediaType = /\.pdf$/i.test(item.name) ? 'application/pdf'
@@ -127,7 +127,11 @@ async function lerFaturaComClaude(item){
   });
   item.progress = 15; renderQueue();
   const { data, error } = await sb.functions.invoke('ler-fatura', { body: { base64, mediaType } });
-  if(error || !data?.fatura){ console.warn('Leitura com Claude falhou:', error || data?.error); return null; }
+  if(error || !data?.fatura){
+    let msg = data?.error || error?.message || 'sem resposta';
+    try{ const j = await error?.context?.json?.(); if(j?.error) msg = j.error; }catch(_){}
+    throw new Error(/ANTHROPIC_API_KEY/.test(msg) ? 'Falta configurar a chave ANTHROPIC_API_KEY no Supabase' : 'Leitura com Claude falhou: ' + msg);
+  }
   const c = data.fatura;
   const num = v => (v == null || v === '' || isNaN(Number(v))) ? null : Math.round(Number(v) * 100) / 100;
   const nif = String(c.nif || '').replace(/\D/g, '').slice(-9);
@@ -147,17 +151,18 @@ async function lerFaturaComClaude(item){
     base, iva, total, data: c.data || '', dataPag: c.data_vencimento || '',
     status: confianca < 0.80 ? 'rever' : 'extraida',
     confianca, ficheiro: item.name, paginas: 1,
-    notas: `Lida pelo Claude. ${tipoTxt}${c.descricao || ''}${avisos.length ? ' ⚠ ' + avisos.join('; ') : ''}`.trim(),
+    notas: `Lida pelo Claude. ${tipoTxt}${c.descricao || ''}${c.local_obra ? ' · Obra/local: ' + c.local_obra + (c.numero_obra ? ' (' + c.numero_obra + ')' : '') : ''}${avisos.length ? ' ⚠ ' + avisos.join('; ') : ''}`.trim(),
     criadoEm: new Date().toISOString(),
     _flags, _fonte: 'claude', _exemplos: 0, _rawText: '',
   };
 }
 
 async function lerFaturaDoFicheiro(item){
-    try{
-      const viaClaude = await lerFaturaComClaude(item);
-      if(viaClaude) return viaClaude;
-    } catch(e){ console.warn('Claude indisponível, a usar OCR local:', e); }
+    return lerFaturaComClaude(item);
+}
+
+// OCR local antigo (já não é usado pela leitura principal; mantido como referência)
+async function lerFaturaOCRLocal(item){
     const isPDF = /\.pdf$/i.test(item.name) || item._file.type==='application/pdf';
     const isImg = /\.(jpe?g|png)$/i.test(item.name);
     let texto = '';
@@ -1061,7 +1066,7 @@ async function importarFaturasDropbox(){
     const conhecidos = new Set(FATURAS.map(f => (f.dropboxPath||'').toLowerCase()));
     const novos = ficheiros.filter(e => !conhecidos.has((e.path_display||'').toLowerCase()));
     if(!novos.length){ showToast('Sem faturas novas na Dropbox'); return; }
-    let ok = 0, falhas = 0;
+    let ok = 0, falhas = 0, ultimoErro = '';
     for(let i=0; i<novos.length; i++){
       const e = novos[i];
       if(btn) btn.textContent = `A importar ${i+1}/${novos.length}…`;
@@ -1069,13 +1074,7 @@ async function importarFaturasDropbox(){
         const blob = await dropboxDownload(e.path_lower || e.path_display);
         const file = new File([blob], e.name, { type: blob.type || (/\.pdf$/i.test(e.name) ? 'application/pdf' : '') });
         const item = { id: ++_fatSeq, name: e.name, size: file.size, status:'processing', progress:0, _file:file };
-        let fat;
-        try{ fat = await lerFaturaDoFicheiro(item); }
-        catch(err){
-          fat = { id: ++_fatSeq, fornecedor:'', nif:'', numero:'', base:null, iva:null, total:null, data:'', dataPag:'',
-            confianca:0, ficheiro:e.name, notas:'Não foi possível ler automaticamente — preencher manualmente.',
-            criadoEm:new Date().toISOString(), _flags:['low_extraction'], _fonte:'ocr', _rawText:'' };
-        }
+        const fat = await lerFaturaDoFicheiro(item);
         fat.status = 'pendente_aprovacao';
         fat._fonte = 'dropbox';
         fat.dropboxPath = e.path_display;
@@ -1083,10 +1082,13 @@ async function importarFaturasDropbox(){
         FATURAS.push(fat);
         await sbSaveFatura(fat);
         ok++;
-      } catch(err){ console.warn('Importação Dropbox falhou:', e.name, err); falhas++; }
+      } catch(err){
+        console.warn('Importação Dropbox falhou:', e.name, err); falhas++; ultimoErro = err.message;
+        if(/ANTHROPIC_API_KEY/.test(err.message)) break; // sem chave, não vale a pena continuar
+      }
     }
     renderFaturas(); atualizaKPIs();
-    showToast(`${ok} fatura(s) importada(s) da Dropbox${falhas?` · ${falhas} com erro`:''}`);
+    showToast(`${ok} fatura(s) importada(s) da Dropbox${falhas?` · ${falhas} com erro: ${ultimoErro}`:''}`);
     if(ok) R.emitEvent?.({ acao:`Importadas ${ok} faturas da Dropbox`, seccao:'faturas' });
   } catch(err){
     console.error('Importar Dropbox:', err);
