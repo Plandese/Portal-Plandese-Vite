@@ -990,6 +990,8 @@ function editarFatura(id){
     }
   }
 
+  mostrarDocumentoFatura(f);
+
   // Botões de aprovação — visíveis só para pendente_aprovacao
   const aproBar = document.getElementById('mf-aprovacao-bar');
   if(aproBar){
@@ -1016,6 +1018,43 @@ function editarFatura(id){
     if(el && !el._wired){ el.addEventListener('input', validaCamposModal); el._wired=true; }
   });
 }
+// Pré-visualização do documento original (PDF/imagem) no detalhe da fatura
+const _docCache = new Map();
+async function mostrarDocumentoFatura(f){
+  const box = document.getElementById('mf-doc'); if(!box) return;
+  box.dataset.for = String(f.id);
+  if(!f.dropboxPath){
+    box.style.display = f.ficheiroUrl ? 'block' : 'none';
+    box.innerHTML = f.ficheiroUrl ? `<a class="btn btn-secondary btn-sm" href="${_fEsc(f.ficheiroUrl)}" target="_blank" rel="noopener">Abrir fatura</a>` : '';
+    return;
+  }
+  box.style.display = 'block';
+  if(!dropboxIsConnected()){
+    box.innerHTML = '<div class="mf-doc-msg">Ligue a Dropbox para ver o ficheiro da fatura.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="mf-doc-msg">A carregar a fatura…</div>';
+  try{
+    let url = _docCache.get(f.dropboxPath);
+    if(!url){
+      const blob = await dropboxDownload(f.dropboxPath);
+      const tipo = /\.pdf$/i.test(f.dropboxPath) ? 'application/pdf' : (blob.type || 'image/jpeg');
+      url = URL.createObjectURL(new Blob([blob], { type: tipo }));
+      _docCache.set(f.dropboxPath, url);
+    }
+    if(box.dataset.for !== String(f.id)) return; // o utilizador já abriu outra fatura
+    const isPdf = /\.pdf$/i.test(f.dropboxPath);
+    box.innerHTML = (isPdf
+        ? `<iframe src="${url}#toolbar=0&navpanes=0" title="Fatura" class="mf-doc-view"></iframe>`
+        : `<img src="${url}" alt="Fatura" class="mf-doc-view" style="object-fit:contain"/>`)
+      + `<a class="mf-doc-open" href="${url}" target="_blank" rel="noopener">Abrir noutro separador ↗</a>`;
+  } catch(e){
+    console.warn('Pré-visualização falhou:', e);
+    box.innerHTML = '<div class="mf-doc-msg">Não foi possível carregar o ficheiro da Dropbox.</div>'
+      + (f.ficheiroUrl ? `<a class="mf-doc-open" href="${_fEsc(f.ficheiroUrl)}" target="_blank" rel="noopener">Abrir pelo link ↗</a>` : '');
+  }
+}
+
 function validaCamposModal(){
   const nif = document.getElementById('mf-nif').value;
   const base = parseFloat(document.getElementById('mf-base').value||0);
