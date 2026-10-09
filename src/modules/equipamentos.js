@@ -128,6 +128,58 @@ function showEqAlert(msg){
 }
 
 // ── Badges (contagem na sidebar + pendentes na tab de manutenção) ──
+// ── Portal em computador: indicadores, filtros por estado e cartões ──
+const _eqDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+let _eqEstFiltro = 'todos';
+const _EQ_IC = {
+  maquina:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  veiculo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h13v13H1zM14 8h4l4 4v4h-8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/></svg>',
+  ferramenta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>',
+  outro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>'
+};
+function _eqGrupoEstado(e){ return e==='operacional'?'operacional':(e==='manutencao'||e==='oficina')?'manutencao':e==='parada'?'parada':'operacional'; }
+function _eqRenderKpisDesk(){
+  const box = document.getElementById('eq-kpis-d');
+  if(!box) return;
+  if(!_eqDesk()){ box.innerHTML=''; return; }
+  const n = g => EQUIPAMENTOS.filter(e=>_eqGrupoEstado(e.estado)===g).length;
+  const hoje = new Date().setHours(0,0,0,0);
+  const expira = EQUIPAMENTOS.filter(e=>[e.seguroValidade,e.ipoValidade,e.garantiaAte].some(d=>d && Math.ceil((new Date(d+'T00:00:00')-hoje)/86400000)<=30)).length;
+  const k = (cls,l,v,sub)=>`<div class="cmp-kpi ${cls}"><div class="cmp-kpi-label">${l}</div><div class="cmp-kpi-value">${v}</div><div class="cmp-kpi-sub">${sub}</div></div>`;
+  box.innerHTML = k('blue','Equipamentos',EQUIPAMENTOS.length,'na base de dados')+k('green','Operacionais',n('operacional'),'prontos a trabalhar')
+    + k('yellow','Em manutenção',n('manutencao'),'manutenção ou oficina')+k('red','Parados',n('parada'),'sem poder trabalhar')
+    + k('orange','Validades',expira,'seguro, IPO ou garantia a ≤ 30 dias');
+}
+function _eqRenderChipsDesk(){
+  const box = document.getElementById('eq-chips-d');
+  if(!box) return;
+  if(!_eqDesk()){ box.innerHTML=''; return; }
+  const c = g => g==='todos'?EQUIPAMENTOS.length:EQUIPAMENTOS.filter(e=>_eqGrupoEstado(e.estado)===g).length;
+  box.innerHTML = [['todos','Todos'],['operacional','Operacional'],['manutencao','Em manutenção'],['parada','Parado']]
+    .map(([k,l])=>`<button type="button" class="d-chip-f${_eqEstFiltro===k?' on':''}" data-eqf="${k}">${l}<b>${c(k)}</b></button>`).join('');
+}
+function _eqCardDesk(eq){
+  const ult = eq.ultimoLocal || 'Sem localização registada';
+  const sub = [eq.codigo, eq.matricula].filter(Boolean).map(eqEsc).join(' · ');
+  const quando = eq.ultimoRegisto ? eqTimeAgo(new Date(eq.ultimoRegisto)) : '';
+  const fd = iso => iso ? iso.slice(0,10).split('-').reverse().join('/') : '—';
+  const ms = EQ_MANUT.filter(m=>m.equipId===eq.id && m.data);
+  const feitas = ms.filter(m=>m.estado!=='pendente').map(m=>m.data).sort();
+  const pend = ms.filter(m=>m.estado==='pendente').map(m=>m.data).sort();
+  return `<div class="d-card eq-d-card" onclick="abrirEqDetalhe('${eq.id}')">
+    <div class="d-card-top eq-d-top"><span class="d-ic">${_EQ_IC[eq.categoria]||_EQ_IC.outro}</span>
+      <div class="d-card-tt"><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b><small>${sub||eqEsc(EQ_CATS[eq.categoria]?.label||'Equipamento')}</small></div>${eqEstadoBadge(eq.estado)}</div>
+    <div class="eq-d-loc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${eqEsc(ult)}</span>${quando?`<small>${quando}</small>`:''}</div>
+    <div class="d-card-kv"><div>Última manutenção<b>${fd(feitas[feitas.length-1])}</b></div><div>Próxima<b>${fd(pend[0])}</b></div></div>
+  </div>`;
+}
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-eqf]');
+  if(!b) return;
+  _eqEstFiltro = b.dataset.eqf;
+  renderEqBusca();
+});
+
 function updateEqKPIs(){
   const total = EQUIPAMENTOS.length;
   const nb = document.getElementById('nb-eq');
@@ -328,6 +380,7 @@ function eqManutPickFiltra(v){ _renderEqManutPickList(v); }
 // ── KPIs (sem tabela — a vista "Lista" usa apenas mapa + pesquisa) ──
 function renderEquipamentos(){
   updateEqKPIs();
+  if(_eqDesk()) renderEqBusca();
 }
 
 // ── Pesquisa de equipamento (vista "Lista") ──
@@ -363,9 +416,9 @@ function abrirEqDetalhe(id){
       <span style="font-size:15px;font-weight:700">${titulo}</span>
       <span style="font-size:12px;color:var(--gray-500)">${desc}</span></button>`;
   const box = document.getElementById('meqd-body'); if(!box) return;
-  box.innerHTML = `<div style="margin-bottom:16px">
+  box.innerHTML = `<div class="dr-h" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:18px;font-weight:700;color:var(--gray-900)">${eqEsc(eq.nome)}</span>
+        <span class="dr-t" style="font-size:18px;font-weight:700;color:var(--gray-900)">${eqEsc(eq.nome)}</span>
         ${eqCatBadge(eq.categoria)}${eqEstadoBadge(eq.estado)}
       </div>
       ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${sub}</div>`:''}
@@ -439,6 +492,17 @@ function renderEqBusca(){
   const hint = document.getElementById('eq-busca-hint');
   if(!box) return;
   const term = (document.getElementById('eq-busca-input')?.value||'').toLowerCase().trim();
+  if(_eqDesk()){
+    // no computador a lista mostra sempre todos os equipamentos (filtrados por pesquisa e estado)
+    if(hint) hint.style.display='none';
+    _eqRenderChipsDesk();
+    const lista = EQUIPAMENTOS.filter(eq =>
+      (_eqEstFiltro==='todos' || _eqGrupoEstado(eq.estado)===_eqEstFiltro) &&
+      (!term || [eq.nome,eq.serie,eq.matricula,eq.codigo,eq.marcaModelo,eq.condutor,eq.fornecedor,eq.ultimoLocal].join(' ').toLowerCase().includes(term))
+    ).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+    box.innerHTML = lista.length ? `<div class="d-cards">${lista.map(_eqCardDesk).join('')}</div>` : '<div class="d-empty">Sem equipamentos para o filtro escolhido.</div>';
+    return;
+  }
   if(!term){ box.innerHTML=''; if(hint) hint.style.display=''; return; }
   if(hint) hint.style.display='none';
   const list = EQUIPAMENTOS.filter(eq=>

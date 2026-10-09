@@ -74,14 +74,14 @@ function _painelPessoa(n) {
 }
 
 function _painelCardHtml(titulo, subtitulo, corIcon, bgIcon, iconPath, corpo) {
-  return `<div class="card" style="padding:20px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-      <div style="width:36px;height:36px;border-radius:9px;background:${bgIcon};color:${corIcon};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+  return `<div class="card pc-card" style="padding:20px">
+    <div class="pc-head" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="pc-ic" style="width:36px;height:36px;border-radius:9px;background:${bgIcon};color:${corIcon};display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px">${iconPath}</svg>
       </div>
       <div>
-        <div style="font-size:14px;font-weight:600;color:var(--gray-800)">${titulo}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${subtitulo}</div>
+        <div class="pc-t" style="font-size:14px;font-weight:600;color:var(--gray-800)">${titulo}</div>
+        <div class="pc-s" style="font-size:11px;color:var(--gray-400)">${subtitulo}</div>
       </div>
     </div>
     ${corpo}
@@ -153,10 +153,69 @@ async function renderPainel() {
 
   const seq = ++_painelSeq;
   grid.innerHTML = '<div class="pl-load" style="grid-column:1/-1;padding:60px 20px"><span class="pl-logo"></span>A carregar folhas de ponto…</div>';
+  const kp = document.getElementById('painel-kpis');
+  if (kp) kp.innerHTML = '';
 
-  const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), podeFolhas ? htmlFeriasFaltasSemana() : '']);
+  const [estado, ferias, kpis] = await Promise.all([htmlEstadoObrasSemana(), podeFolhas ? htmlFeriasFaltasSemana() : '', htmlKpisPainel()]);
   if (seq !== _painelSeq) return;
   grid.innerHTML = estado + ferias;
+  if (kp) kp.innerHTML = kpis;
+}
+
+// ── Painel Principal — indicadores (presentes hoje, obras com ponto, horas extra, pedidos por aprovar) ──
+// Só são desenhados no portal de computador (a app de telemóvel não mostra a faixa de indicadores).
+const _TIPOS_PRESENTE = ['Presença', 'Normal', 'Hora Extra'];
+const _KPI_IC = {
+  pessoas: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  obra: '<path d="M3 21h18M5 21V8l7-4.5L19 8v13"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M9 14h.01M15 14h.01"/>',
+  relogio: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  carrinho: '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>',
+};
+const _kpi = (ic, rot, n, foot) => `<div class="kpi"><span class="kpi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${_KPI_IC[ic]}</svg></span><div class="kpi-b"><div class="kpi-l">${rot}</div><div class="kpi-n">${n}</div>${foot ? `<div class="kpi-f">${foot}</div>` : ''}</div></div>`;
+const _kchip = (txt, cls) => `<span class="kpi-chip ${cls}">${txt}</span>`;
+
+export async function htmlKpisPainel() {
+  return ''; // a faixa de indicadores foi retirada do Painel Principal
+  // eslint-disable-next-line no-unreachable
+  if (!document.body.classList.contains('device-desktop')) return '';
+  const podeFolhas = canAccessSection('historico'), podeCompras = canAccessSection('compras');
+  if (!podeFolhas && !podeCompras) return '';
+  const hoje = _ymd(new Date());
+  const dias = _painelSemana(_pOffset);
+  const ant = _painelSemana(_pOffset - 1);
+  const q = async (fn, fb) => { try { const { data, error } = await fn(); if (error) throw error; return data || fb; } catch (e) { console.warn('painel (kpis):', e); return fb; } };
+  const [dHoje, dSem, compras] = await Promise.all([
+    podeFolhas ? q(() => sb.from('registos_ponto').select('colab_numero,obra_id,tipo').eq('data', hoje), []) : [],
+    podeFolhas ? q(() => sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo,entrada,saida').gte('data', _ymd(ant[0])).lte('data', _ymd(dias[6])), []) : [],
+    podeCompras ? q(() => sb.from('pedidos_compra').select('estado,urgencia'), []) : [],
+  ]);
+  const out = [];
+  if (podeFolhas) {
+    const filtra = r => !_pObra || r.obra_id === _pObra;
+    const presentes = new Set(dHoje.filter(r => filtra(r) && _TIPOS_PRESENTE.includes(r.tipo || 'Presença')).map(r => r.colab_numero));
+    const ativos = S.COLABORADORES.filter(c => c.ativo).length;
+    const obrasAtivas = S.OBRAS.filter(o => o.ativa);
+    const obrasHoje = new Set(dHoje.filter(r => r.obra_id && _TIPOS_PRESENTE.includes(r.tipo || 'Presença')).map(r => r.obra_id));
+    const comPonto = obrasAtivas.filter(o => obrasHoje.has(o.id)).length;
+    const falta = obrasAtivas.length - comPonto;
+    out.push(_kpi('pessoas', 'Presentes hoje', _pObra ? `${presentes.size}` : `${presentes.size}<small> / ${ativos}</small>`, ''));
+    if (!_pObra) out.push(_kpi('obra', 'Obras com ponto registado', `${comPonto}<small> / ${obrasAtivas.length}</small>`, falta > 0 ? _kchip(`${falta} em falta`, 'k-warn') : _kchip('Todas registadas', 'k-ok')));
+    const extraDe = (ds) => {
+      const set = new Set(ds.map(_ymd));
+      return dSem.filter(r => set.has(r.data) && filtra(r) && r.entrada && r.saida && _TIPOS_PRESENTE.includes(r.tipo || 'Presença'))
+        .reduce((s, r) => s + calcH(r.entrada, r.saida, new Date(r.data + 'T12:00:00')).e, 0);
+    };
+    const eAtual = extraDe(dias), eAnt = extraDe(ant);
+    const dif = eAnt > 0 ? Math.round(100 * (eAtual - eAnt) / eAnt) : null;
+    out.push(_kpi('relogio', `Horas extra · ${_rotSemana().toLowerCase()}`, `${Math.round(eAtual)}<small> h</small>`,
+      dif === null ? '' : dif > 0 ? _kchip(`▲ ${dif}% face à anterior`, 'k-warn') : dif < 0 ? _kchip(`▼ ${-dif}% face à anterior`, 'k-ok') : _kchip('Igual à anterior', 'k-info')));
+  }
+  if (podeCompras) {
+    const pend = compras.filter(c => (c.estado || 'pendente') === 'pendente');
+    const urg = pend.filter(c => c.urgencia === 'Urgente' || c.urgencia === 'Muito Urgente').length;
+    out.push(_kpi('carrinho', 'Pedidos de compra por aprovar', `${pend.length}`, urg ? _kchip(`${urg} ${urg === 1 ? 'urgente' : 'urgentes'}`, 'k-bad') : ''));
+  }
+  return out.length ? `<div class="kpis">${out.join('')}</div>` : '';
 }
 
 // Cartão "Férias e faltas" da semana corrente — usado no Painel Principal e na
@@ -191,9 +250,9 @@ async function _estadoObrasCarregar(dias, podeMO, podeEQ) {
   const ini = _ymd(dias[0]), fim = _ymd(dias[6]);
   const q = async (fn, fallback) => { try { const { data, error } = await fn(); if (error) throw error; return data || fallback; } catch (e) { console.warn('estado das obras:', e); return fallback; } };
   const [regs, prev, equips, manut] = await Promise.all([
-    podeMO ? q(() => sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo').gte('data', _ymd(monAnt)).lte('data', fim), []) : [],
+    podeMO ? q(() => sb.from('registos_ponto').select('data,colab_numero,obra_id,tipo,entrada,saida').gte('data', _ymd(monAnt)).lte('data', fim), []) : [],
     podeMO ? q(() => sb.from('ferias_previstas').select('colab_numero,data').gte('data', ini).lte('data', fim), []) : [],
-    podeEQ ? q(() => sb.from('equipamentos').select('id,nome,codigo,matricula,estado,ultimo_local,propriedade'), []) : [],
+    podeEQ ? q(() => sb.from('equipamentos').select('id,nome,codigo,matricula,estado,ultimo_local,propriedade,categoria'), []) : [],
     podeEQ ? q(() => sb.from('eq_manutencoes').select('equip_id,descricao,data').eq('estado', 'pendente'), []) : [],
   ]);
   return { regs, prev, equips, manut };
@@ -211,7 +270,16 @@ function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
   regs.forEach(r => dia.set(r.colab_numero + '|' + r.data, r.tipo || 'Presença'));
   const previstas = new Set(prev.map(p => p.colab_numero + '|' + p.data));
 
+  // horas da semana por colaborador (para a gaveta de detalhe da obra)
+  const semana = new Set(dias.map(_ymd));
+  const horasDe = new Map();
+  regs.forEach(r => {
+    if (!semana.has(r.data) || !r.entrada || !r.saida || !_TIPOS_PRESENTE.includes(r.tipo || 'Presença')) return;
+    horasDe.set(r.colab_numero, (horasDe.get(r.colab_numero) || 0) + calcH(r.entrada.slice(0, 5), r.saida.slice(0, 5), new Date(r.data + 'T12:00:00')).t);
+  });
+
   porObra.forEach(o => {
+    o.horas = new Map([...o.equipa.keys()].map(n => [n, horasDe.get(n) || 0]));
     o.equipa.forEach((_, n) => {
       const cel = uteis.map(d => {
         const t = dia.get(n + '|' + d);
@@ -339,9 +407,74 @@ const _MO_CEL = {
   I: ['FI', 'eo-c-fi', 'Falta injustificada'], V: ['P', 'eo-c-prev', 'Férias previstas'], '-': ['·', 'eo-c-nd', 'Sem registo'],
 };
 
+const _DD_IC = {
+  maquina: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  veiculo: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M3 12h18"/>',
+  ferramenta: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  outro: '<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',
+};
+const _ddFechar = () => {
+  document.getElementById('d-drawer')?.classList.remove('open');
+  document.getElementById('d-scrim')?.classList.remove('open');
+};
+export function fecharGavetaObra() { _ddFechar(); }
+// Abre a obra diretamente no Controlo de Obras (balanço de custos e proveitos)
+export function abrirObraNoControlo(id) {
+  window.goTo('producao');
+  Promise.resolve(R.renderControloObras?.(true)).then(() => window.coAbrir?.(id));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') _ddFechar(); });
+
+// Portal em computador: detalhe da obra numa gaveta à direita (em vez da janela)
+function _abrirEstadoObraGaveta(o) {
+  let dr = document.getElementById('d-drawer');
+  if (!dr) {
+    document.body.insertAdjacentHTML('beforeend', '<div class="d-scrim" id="d-scrim"></div><aside class="d-drawer" id="d-drawer" aria-hidden="true"></aside>');
+    dr = document.getElementById('d-drawer');
+    document.getElementById('d-scrim').addEventListener('click', _ddFechar);
+  }
+  const m = String(o.obra.nome || '').match(/^(O\d+)\s*[-–]\s*(.+)$/);
+  const cod = m ? m[1] : '', nome = m ? m[2] : o.obra.nome;
+  const enc = [o.obra.encarregado_id, ...(o.obra.encarregados_extra || [])].filter(Boolean).map(i => S.USERS?.[i]?.nome || i);
+  const dim = (cel, k) => cel.filter(c => c === k).length;
+  const pessoas = [...o.equipa.entries()].map(([n, cel]) => ({ ...(_painelPessoa(n)), n, cel, h: o.horas?.get(n) || 0 }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  const tile = (l, v, cor) => `<div class="dd-tile"><small>${l}</small><b${cor ? ` style="color:${cor}"` : ''}>${v}</b></div>`;
+  const pill = (t, c) => `<span class="dd-pill ${c}">${t}</span>`;
+  const linhaPessoa = p => {
+    const dp = dim(p.cel, 'P'), df = dim(p.cel, 'F'), dj = dim(p.cel, 'J'), di = dim(p.cel, 'I'), dv = dim(p.cel, 'V');
+    const ini = (p.nome || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const pills = [dp ? pill(`${dp} ${dp === 1 ? 'dia' : 'dias'}${p.h ? ' · ' + fmtH(p.h) : ''}`, 'ok') : '', df ? pill(df === 5 ? 'Férias' : `Férias ${df}d`, 'info') : '',
+      dv && !dp && !df ? pill('Férias previstas', 'info') : '', dj ? pill(`Falta just. ${dj}d`, 'warn') : '', di ? pill(`Falta injust. ${di}d`, 'bad') : ''].filter(Boolean).join('');
+    return `<div class="dd-row"><span class="d-rav">${_esc(ini)}</span><div class="dd-tx"><b>${_esc(p.nome)}</b><small>${_esc(p.func || '—')}</small></div><div class="dd-pills">${pills || pill('Sem registo', 'mute')}</div></div>`;
+  };
+  const eqs = [...o.equips].sort((a, b) => (_EQ_NAO_OP.includes(b.estado) - _EQ_NAO_OP.includes(a.estado)) || a.nome.localeCompare(b.nome, 'pt'));
+  const linhaEq = e => {
+    const nao = _EQ_NAO_OP.includes(e.estado);
+    const sub = [e.codigo, e.matricula, e.propriedade === 'aluguer' ? 'Aluguer' : ''].filter(Boolean).join(' · ');
+    return `<div class="dd-row"><span class="d-ic sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${_DD_IC[e.categoria] || _DD_IC.outro}</svg></span>
+      <div class="dd-tx"><b>${_esc(e.nome)}</b><small>${_esc(sub || '—')}</small>${nao ? e.pend.slice(0, 2).map(x => `<small class="dd-warn">⚠ ${_esc(x.descricao)}${x.data ? ' · ' + fmtPT(x.data) : ''}</small>`).join('') : ''}</div>
+      <div class="dd-pills">${pill(_EQ_ESTADO_TXT[e.estado] || _esc(e.estado), nao ? 'warn' : 'ok')}</div></div>`;
+  };
+  const tiles = (o.podeMO ? tile('Mão de obra · semana', o.mo == null ? '—' : o.mo + '%', o.mo == null ? '' : _corPct(o.mo)) : '')
+    + (o.podeEQ ? tile('Equipamentos operacionais', o.eqAtivo && o.eq != null ? o.eq + '%' : '—', o.eqAtivo && o.eq != null ? _corPct(o.eq) : '') : '')
+    + (o.podeMO ? tile('Pessoas em obra', o.equipa.size) + tile('Dias de ausência', o.aus) : '');
+  dr.innerHTML = `<div class="dd-h"><button type="button" class="dd-x" onclick="fecharGavetaObra()" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <small>${_esc(cod)}${o.obra.local ? (cod ? ' · ' : '') + _esc(o.obra.local) : ''}</small><h2>${_esc(nome)}</h2><p>${enc.length ? 'Encarregado: ' + _esc(enc[0]) + (enc.length > 1 ? ` +${enc.length - 1}` : '') + ' · ' : ''}${_esc(o.semanaTxt)}</p></div>
+    <div class="dd-b"><div class="dd-tiles">${tiles}</div>
+      ${o.podeMO ? `<h4>Equipa esta semana</h4>${pessoas.length ? pessoas.map(linhaPessoa).join('') : '<div class="dd-vazio">Sem equipa registada nesta obra.</div>'}` : ''}
+      ${o.podeEQ ? `<h4>Equipamentos</h4>${o.eqAtivo ? (eqs.length ? eqs.map(linhaEq).join('') : '<div class="dd-vazio">Sem equipamentos atribuídos a esta obra.</div>') : '<div class="dd-vazio">Os equipamentos só são mostrados na semana atual (não há histórico do estado).</div>'}` : ''}
+    </div>
+    <div class="dd-f"><button type="button" class="btn btn-secondary" onclick="fecharGavetaObra();goTo('historico')">Folha de ponto</button>
+      <button type="button" class="btn btn-primary" onclick="fecharGavetaObra();abrirObraNoControlo('${_esc(o.obra.id)}')">Controlo de obras</button></div>`;
+  dr.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => { dr.classList.add('open'); document.getElementById('d-scrim').classList.add('open'); });
+}
+
 export function abrirEstadoObra(id) {
   const o = _estadoObras.get(id);
   if (!o) return;
+  if (document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')) { _abrirEstadoObraGaveta(o); return; }
   document.getElementById('meo-title').textContent = o.obra.nome;
   document.getElementById('meo-sub').textContent = `Semana de ${o.semanaTxt}`;
 
@@ -430,8 +563,14 @@ async function renderFechoMes(){
   const infoEl = document.getElementById('fecho-periodo-info');
   if(infoEl) infoEl.textContent = 'Período: ' + dIniStr.split('-').reverse().join('/') + ' a ' + dFimStr.split('-').reverse().join('/');
 
+  // seletor de mês em pílula (o <select> escondido continua a ser a fonte)
+  const MES_L = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const lbl = document.getElementById('fecho-mes-lbl'), lsub = document.getElementById('fecho-mes-sub');
+  if(lbl) lbl.textContent = MES_L[mesVal-1] + ' de ' + ano;
+  if(lsub){ const h = new Date(); const d = (ano*12 + mesVal) - (h.getFullYear()*12 + h.getMonth()+1); lsub.textContent = d === 0 ? 'Mês atual' : d < 0 ? 'Histórico' : 'Próximo mês'; }
+
   const tbody = document.getElementById('fecho-tbody');
-  if(tbody) tbody.innerHTML = '<tr><td colspan="10"><div class="pl-load"><span class="pl-logo"></span>A carregar dados…</div></td></tr>';
+  if(tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="pl-load"><span class="pl-logo"></span>A carregar dados…</div></td></tr>';
 
   try {
     window._fechoMesData = null; // nunca exportar dados de outro período/estado
@@ -490,59 +629,127 @@ async function renderFechoMes(){
     if(!tbody) return;
 
     if(rows.length === 0){
-      tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--gray-400)">Sem registos aprovados para este período (' + dIniStr + ' a ' + dFimStr + ').' + (pendentes.length ? ' Aguardam aprovação do diretor de obra.' : '') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="fm-vazio">Sem registos aprovados para este período (' + dIniStr + ' a ' + dFimStr + ').' + (pendentes.length ? ' Aguardam aprovação do diretor de obra.' : '') + '</td></tr>';
       const totaisEl = document.getElementById('fecho-totais');
       if(totaisEl) totaisEl.style.display = 'none';
+      const oc = document.getElementById('fecho-obras-card'); if(oc) oc.hidden = true;
+      _fechoPassos(pendentes.length, 0);
+      const dh = document.getElementById('fecho-det-h'); if(dh) dh.hidden = true;
+      const ch = document.getElementById('fecho-chips'); if(ch) ch.innerHTML = '';
       return;
     }
 
-    let globalN = 0, globalE = 0, globalT = 0;
-    const htmlRows = rows.map((row, i) => {
+    let globalN = 0, globalE = 0, globalT = 0, gFer = 0, gInj = 0, gJust = 0;
+    const porObra = {};
+    const htmlRows = rows.map((row) => {
       globalN += row.totN;
       globalE += row.totE;
       globalT += row.totT;
+      gFer += row.dFer; gInj += row.dFaltInj; gJust += row.dFaltJust;
+      Object.entries(row.obraHoras).forEach(([oId, h]) => { porObra[oId] = (porObra[oId] || 0) + h; });
 
       const obraEntries = Object.entries(row.obraHoras).sort((a,b) => b[1]-a[1]);
       const obraBadges = obraEntries.map(([oId, horas]) => {
         const pct = row.totT > 0 ? Math.round((horas / row.totT) * 100) : 0;
         const obra = S.OBRAS.find(o => String(o.id) === String(oId));
         const oNome = obra ? (obra.nome || obra.numero || oId) : (oId === '_sem_obra' ? 'Sem obra' : oId);
-        return '<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;color:#1d4ed8;white-space:nowrap;margin:2px 2px 2px 0">' + oNome + ' <span style="color:#6b7280">' + pct + '%</span></span>';
+        return '<span class="fm-chip" title="' + _esc(oNome) + '">' + _esc(String(oNome).split(/\s[-–]\s/)[0]) + ' <em>' + pct + '%</em></span>';
       }).join('');
-
-      const bg = i % 2 === 0 ? '' : 'background:var(--gray-50)';
-      return '<tr style="' + bg + '">'
-        + '<td style="padding:10px 14px;color:var(--gray-500);font-family:monospace;font-size:12px">' + row.n + '</td>'
-        + '<td style="padding:10px 14px;font-weight:600;color:var(--gray-900)">' + row.nome + '</td>'
-        + '<td style="padding:10px 14px;color:var(--gray-600);font-size:12px">' + (row.func||'—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:monospace;color:var(--gray-700)">' + fmtH(row.totN) + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:monospace;color:#3b82f6">' + fmtH(row.totE) + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:monospace;font-weight:700;color:var(--green)">' + fmtH(row.totT) + '</td>'
-        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#16a34a;font-weight:600">' + (row.dFer > 0 ? row.dFer + 'd' : '—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#dc2626;font-weight:600">' + (row.dFaltInj > 0 ? row.dFaltInj + 'd' : '—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:center;font-family:monospace;color:#dc2626;font-weight:600">' + (row.dFaltJust > 0 ? row.dFaltJust + 'd' : '—') + '</td>'
-        + '<td style="padding:10px 14px">' + (obraBadges || '<span style="color:var(--gray-300);font-size:12px">—</span>') + '</td>'
+      const ini = (row.nome || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      const pill = (v, cls) => v > 0 ? '<span class="hpc ' + cls + '">' + v + 'd</span>' : '<span class="fm-nil">—</span>';
+      return '<tr>'
+        + '<td class="fm-who"><div class="d-pp"><span class="d-rav">' + _esc(ini) + '</span><div><b>' + _esc(row.nome) + '</b><small>' + _esc(row.func || '—') + ' · Nº ' + row.n + '</small></div></div></td>'
+        + '<td class="r n">' + fmtH(row.totN) + '</td>'
+        + '<td class="r e' + (row.totE ? '' : ' z') + '">' + (row.totE ? '+' + fmtH(row.totE) : '—') + '</td>'
+        + '<td class="r t">' + fmtH(row.totT) + '</td>'
+        + '<td class="c">' + pill(row.dFer, 'fe') + '</td>'
+        + '<td class="c">' + pill(row.dFaltInj, 'fi') + '</td>'
+        + '<td class="c">' + pill(row.dFaltJust, 'fj') + '</td>'
+        + '<td class="fm-obras">' + (obraBadges || '<span class="fm-nil">—</span>') + '</td>'
         + '</tr>';
     });
     tbody.innerHTML = htmlRows.join('');
 
-    // Totais rodapé
+    // Totais, estado por obra e passos do fecho
+    const st = _fechoPorObra(regs || [], pendentes || []);
+    const nVal = st.filter(o => o.ok).length;
     const totaisEl = document.getElementById('fecho-totais');
     if(totaisEl){
       totaisEl.style.display = '';
-      document.getElementById('fecho-tot-n').textContent = fmtH(globalN);
-      document.getElementById('fecho-tot-e').textContent = fmtH(globalE);
-      document.getElementById('fecho-tot-t').textContent = fmtH(globalT);
-      document.getElementById('fecho-tot-w').textContent = rows.length;
+      const set = (id, t) => { const el = document.getElementById(id); if(el) el.textContent = t; };
+      set('fecho-tot-n', fmtH(globalN)); set('fecho-tot-e', fmtH(globalE));
+      set('fecho-tot-f', (gFer + gInj + gJust) + ' dias');
+      set('fecho-tot-f-s', gInj + ' injust. · ' + gJust + ' just. · ' + gFer + ' férias');
+      const v = document.getElementById('fecho-tot-v'); if(v) v.innerHTML = nVal + '<small> de ' + st.length + '</small>';
+      const vs = document.getElementById('fecho-tot-v-s'); if(vs){ vs.textContent = (st.length - nVal) ? (st.length - nVal) + ' por validar' : 'Todas validadas'; vs.className = 'fm-chip-s ' + ((st.length - nVal) ? 'k-info' : 'k-ok'); }
     }
+    window._fechoObras = st;
+    _fechoRenderObras();
+    _fechoPassos(pendentes.length, st.length);
+    const dh = document.getElementById('fecho-det-h'); if(dh) dh.hidden = false;
 
     window._fechoMesData = {rows, mesVal, ano, dIniStr, dFimStr};
 
   } catch(err) {
     console.error('renderFechoMes error:', err);
-    if(tbody) tbody.innerHTML = '<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--red)">Erro: ' + err.message + '</td></tr>';
+    if(tbody) tbody.innerHTML = '<tr><td colspan="8" class="fm-vazio" style="color:var(--red)">Erro: ' + err.message + '</td></tr>';
   }
 }
+
+// ── Folha de Fecho: estado por obra, passos e filtro (portal em computador) ──
+let _fechoFiltro = 'todas';
+function _fechoPorObra(regs, pendentes){
+  const m = new Map();
+  const get = id => { if(!m.has(id)) m.set(id, { id, n: 0, e: 0, faltas: 0, dias: new Set(), pend: new Set() }); return m.get(id); };
+  regs.forEach(r => {
+    const o = get(r.obra_id || '_sem');
+    o.dias.add(r.data);
+    if(r.tipo && r.tipo.includes('Falta')) { o.faltas++; return; }
+    if(r.tipo === 'Férias' || r.tipo === 'Folga') return;
+    const h = calcH(r.entrada ? r.entrada.slice(0, 5) : '', r.saida ? r.saida.slice(0, 5) : '', new Date(r.data + 'T12:00:00'));
+    o.n += h.n; o.e += h.e;
+  });
+  pendentes.forEach(p => get(p.obraId || '_sem').pend.add(p.data));
+  return [...m.values()].map(o => {
+    const ob = S.OBRAS.find(x => String(x.id) === String(o.id));
+    const tot = o.dias.size + o.pend.size;
+    const enc = ob ? [ob.encarregado_id, ...(ob.encarregados_extra || [])].filter(Boolean).map(i => S.USERS?.[i]?.nome || i) : [];
+    return { ...o, nome: ob ? ob.nome : (o.id === '_sem' ? 'Sem obra' : o.id), enc: enc[0] || '—', prog: tot ? Math.round(100 * o.dias.size / tot) : 0, ok: o.pend.size === 0 && o.dias.size > 0 };
+  }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+}
+function _fechoRenderObras(){
+  const st = window._fechoObras || [];
+  const card = document.getElementById('fecho-obras-card'), tb = document.getElementById('fecho-obras'), ch = document.getElementById('fecho-chips');
+  if(!card || !tb) return;
+  const nVal = st.filter(o => o.ok).length;
+  if(ch) ch.innerHTML = [['todas', 'Todas', st.length], ['ok', 'Validadas', nVal], ['pd', 'Por validar', st.length - nVal]]
+    .map(([k, l, c]) => '<button type="button" class="d-chip-f' + (_fechoFiltro === k ? ' on' : '') + '" data-fmf="' + k + '">' + l + '<b>' + c + '</b></button>').join('');
+  const lista = st.filter(o => _fechoFiltro === 'todas' || (_fechoFiltro === 'ok') === o.ok);
+  card.hidden = !st.length;
+  tb.innerHTML = lista.map(o => {
+    const m = String(o.nome).match(/^(O\d+)\s*[-–]\s*(.+)$/);
+    return '<tr><td class="fm-who">' + (m ? '<span class="d-cod">' + _esc(m[1]) + '</span> <b>' + _esc(m[2]) + '</b>' : '<b>' + _esc(o.nome) + '</b>') + '</td>'
+      + '<td>' + _esc(o.enc) + '</td><td class="r n">' + fmtH(o.n + o.e) + '</td><td class="r e' + (o.e ? '' : ' z') + '">' + (o.e ? fmtH(o.e) : '—') + '</td><td class="r">' + (o.faltas || '—') + '</td>'
+      + '<td><div class="fm-bar2"><i style="width:' + o.prog + '%;background:' + (o.ok ? 'var(--green)' : 'var(--orange)') + '"></i></div></td>'
+      + '<td>' + (o.ok ? '<span class="dd-pill ok">Validada</span>' : '<span class="dd-pill warn">Por validar</span>') + '</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="fm-vazio">Sem obras para este filtro.</td></tr>';
+}
+function _fechoPassos(nPend, nObras){
+  const box = document.getElementById('fecho-passos'); if(!box) return;
+  const passo = (n, t, cls) => '<div class="' + cls + '"><em>' + (cls === 'dn' ? '✓' : n) + '</em>' + t + '</div>';
+  const validacaoOk = nObras > 0 && nPend === 0;
+  box.innerHTML = '<div class="fm-step">' + passo(1, 'Recolha de ponto', 'dn') + passo(2, 'Validação', validacaoOk ? 'dn' : 'cur') + passo(3, 'Aprovação', validacaoOk ? 'cur' : '') + passo(4, 'Processamento', '') + '</div>';
+}
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-fmf]');
+  if(f){ _fechoFiltro = f.dataset.fmf; _fechoRenderObras(); return; }
+  const n = e.target.closest('[data-fnav]');
+  if(n){
+    const sel = document.getElementById('fecho-mes-sel'); if(!sel) return;
+    const i = sel.selectedIndex + (+n.dataset.fnav);
+    if(i >= 0 && i < sel.options.length){ sel.selectedIndex = i; renderFechoMes(); }
+  }
+});
 
 async function exportFechoMes(){
   if(!window._fechoMesData || !window._fechoMesData.rows || !window._fechoMesData.rows.length){

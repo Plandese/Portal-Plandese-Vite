@@ -35,7 +35,7 @@ svg{display:block}
 .wrap{width:100%;max-width:1720px;margin:0 auto;padding:0 24px}
 
 /* ───────── Cabeçalho ───────── */
-.hdr{position:relative;flex:none;color:#fff;background:var(--brand);padding-bottom:54px}
+.hdr{position:relative;flex:none;color:#fff;background:var(--brand);padding-bottom:40px}
 .hdr-deco{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .hdr-deco::before{content:'';position:absolute;left:-10%;top:-150%;width:46%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.06)}
 .hdr-deco::after{content:'';position:absolute;right:-8%;top:-70%;width:40%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.045)}
@@ -108,32 +108,32 @@ svg{display:block}
 .umenu .rrow{min-height:48px}
 .umenu .rrow.red .rtx b,.umenu .rrow.red .ric{color:var(--bad)}
 
-.ttl-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:6px}
-.ttl{display:flex;align-items:center;gap:16px;min-width:0}
-.ttl-ic{flex:none;width:50px;height:50px;border-radius:16px;background:rgba(255,255,255,.16);display:grid;place-items:center}
-.ttl-ic svg{width:27px;height:27px}
-.ttl h1{font-size:29px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
-.ttl p{font-size:14.5px;opacity:.84;margin-top:5px;font-weight:500}
+.ttl-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:20px}
+.ttl{display:flex;align-items:center;gap:12px;min-width:0}
+.ttl-ic{flex:none;width:38px;height:38px;border-radius:12px;background:#eaf0ff;color:var(--brand);display:grid;place-items:center}
+.ttl-ic svg{width:21px;height:21px}
+.ttl h1{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.1;color:var(--ink)}
+.ttl p{font-size:13px;color:var(--mute);margin-top:3px;font-weight:500}
 .acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-.btn-w{display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 20px;border-radius:99px;background:#fff;color:var(--brand);font-weight:700;font-size:14.5px;box-shadow:0 6px 16px rgba(6,18,66,.18)}
-.btn-w svg{width:19px;height:19px}
-.btn-w:hover{background:#f1f5ff}
-.glass{display:inline-flex;align-items:center;gap:6px;height:44px;border-radius:99px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+.btn-w{display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 18px;border-radius:99px;background:var(--brand);color:#fff;font-weight:700;font-size:14px}
+.btn-w svg{width:18px;height:18px}
+.btn-w:hover{filter:brightness(1.12)}
+.glass{display:inline-flex;align-items:center;gap:6px;height:40px;border-radius:99px;background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+.wk button:hover{background:#f1f4fa}
 .wk{padding:0 4px}
 .wk button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1}
-.wk button:hover{background:rgba(255,255,255,.18)}
 .wk div{padding:0 8px;text-align:center;line-height:1.15;min-width:150px}
 .wk b{display:block;font-size:13.5px;font-weight:700}
 .wk small{font-size:11.5px;opacity:.82}
 .sel{position:relative;padding:0 14px 0 16px}
-.sel select{appearance:none;-webkit-appearance:none;background:none;border:0;outline:0;color:#fff;font-size:14px;font-weight:600;padding-right:22px;cursor:pointer;max-width:230px}
+.sel select{appearance:none;-webkit-appearance:none;background:none;border:0;outline:0;color:var(--ink);font-size:14px;font-weight:600;padding-right:22px;cursor:pointer;max-width:230px}
 .sel select option{color:#111;background:#fff}
-.sel::after{content:'';position:absolute;right:16px;top:50%;width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.sel::after{content:'';position:absolute;right:16px;top:50%;width:7px;height:7px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);pointer-events:none}
 
 /* ───────── Folha branca ───────── */
 .sheet-wrap{flex:1;min-height:0;display:flex;margin-top:-32px;position:relative;z-index:20}
 .sheet{flex:1;min-width:0;display:grid;grid-template-columns:var(--nav-w) minmax(0,1fr);grid-template-rows:minmax(0,1fr);background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -8px 34px rgba(10,28,90,.16);overflow:hidden}
-.main{min-height:0;overflow:auto;padding:30px 34px 56px;scroll-behavior:smooth}
+.main{min-height:0;overflow:auto;padding:22px 34px 56px;scroll-behavior:smooth}
 
 /* ───────── Menu (módulos + favoritos) ───────── */
 .nav{display:flex;flex-direction:column;min-height:0;background:#fff;border-right:1px solid var(--line)}
@@ -348,6 +348,149 @@ tr:last-child td{border-bottom:0}
 .sw a.on{background:#fff;color:var(--brand)}
 
 /* ───────── Adaptação a ecrãs mais estreitos (mesma estrutura das apps) ───────── */
+/* ───────── Restantes módulos (páginas simuladas) ───────── */
+table.dt{min-width:0;width:100%}
+.dt th{position:static;text-align:left;padding:13px 14px}
+.dt td{text-align:left;padding:13px 14px;vertical-align:middle}
+.dt th:first-child,.dt td:first-child{position:static;z-index:auto;min-width:0;padding-left:20px}
+.dt th.r,.dt td.r{text-align:right}
+.dt tbody tr{cursor:default}
+.dt tbody tr.clk{cursor:pointer}
+.dt tbody tr.clk:hover td{background:#f6f8fc}
+.dt b{font-weight:600}
+.dt .sub{display:block;font-size:12.5px;color:var(--mute);margin-top:2px}
+.tw2{border:1.5px solid var(--line);border-radius:22px;overflow:auto;background:#fff}
+.sec{margin-top:20px}
+.g2c{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.g21c{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+.cards3{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.mini-card{display:flex;flex-direction:column;gap:14px;padding:18px;border:1.5px solid var(--line);border-radius:22px;background:#fff;text-align:left;width:100%;transition:border-color .15s,box-shadow .15s}
+button.mini-card:hover,.mini-card.clk:hover{border-color:#c0cde9;box-shadow:0 10px 26px rgba(23,63,159,.09);cursor:pointer}
+.mc-top{display:flex;align-items:center;gap:13px}
+.mc-top .rtx{flex:1;min-width:0}
+.mc-top b{display:block;font-size:15.5px;font-weight:700;line-height:1.25}
+.mc-top small{color:var(--mute);font-size:12.5px}
+.mc-kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:14px;border-top:1px solid var(--line-2)}
+.mc-kv div{font-size:12px;color:var(--mute);line-height:1.35}
+.mc-kv b{display:block;font-size:13.5px;color:var(--ink);font-weight:600}
+.lblm{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;color:var(--mute);margin-bottom:6px}
+.lblm b{color:var(--ink)}
+.formg{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 20px 20px}
+.formg .full{grid-column:1/-1}
+.form-f{display:flex;gap:10px;justify-content:flex-end;padding:0 20px 20px}
+.drop{margin:0 20px 20px;border:2px dashed #b9c6e6;border-radius:20px;background:#f6f9ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px 20px;min-height:260px;text-align:center;color:var(--mute)}
+.drop .doc{width:190px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:16px;text-align:left;box-shadow:0 14px 30px rgba(10,28,90,.12)}
+.drop .doc b{display:block;font-size:12.5px;color:var(--ink)}
+.drop .doc small{display:block;font-size:11px;color:var(--mute);margin-bottom:10px}
+.drop .doc i{display:block;height:6px;border-radius:4px;background:#e6ebf5;margin:7px 0}
+.drop .doc em{display:block;text-align:right;font-style:normal;font-weight:800;font-size:13px;margin-top:10px;color:var(--ink)}
+.chart{display:flex;align-items:flex-end;gap:14px;height:200px;padding:6px 20px 0}
+.chart div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;font-size:12px;font-weight:700;color:var(--mute)}
+.chart i{display:block;width:100%;max-width:64px;border-radius:12px 12px 4px 4px;background:linear-gradient(to top,var(--brand),#6f95ff)}
+.chart div.off i{background:#dfe5f2}
+.chart span{font-weight:600}
+.tabs-s{display:flex;gap:6px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:0;padding:6px 20px 22px}
+.step div{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;color:var(--mute);flex:1}
+.step div:not(:last-child)::after{content:'';flex:1;height:2px;background:var(--line);margin:0 14px}
+.step em{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e9edf4;font-style:normal;font-weight:700;font-size:13px}
+.step .dn em{background:var(--ok-c);color:#fff}
+.step .cur em{background:var(--brand);color:#fff}
+.step .cur{color:var(--ink)}
+.gantt{display:grid;grid-template-columns:240px repeat(31,minmax(24px,1fr));align-items:center;min-width:1000px}
+.gantt .gd{font-size:11px;font-weight:700;text-align:center;color:var(--mute);padding:10px 0;border-left:1px solid var(--line-2)}
+.gantt .gd.we{background:#f5f7fb}
+.gantt .gd.td{background:var(--brand);color:#fff;border-radius:8px}
+.gantt .gn{padding:9px 6px 9px 20px}
+.gantt .gb{height:28px;margin:6px 1px;border-radius:9px;display:flex;align-items:center;padding:0 10px;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden}
+.gantt .gl{grid-column:1/-1;height:1px;background:var(--line-2)}
+.best{background:var(--ok-bg);color:var(--ok);font-weight:700}
+.stars{color:#f5a623;letter-spacing:2px;font-size:14px}
+.tog{flex:none;width:44px;height:26px;border-radius:99px;background:#c8cfdb;position:relative;transition:background .15s}
+.tog::after{content:'';position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.tog.on{background:var(--ok-c)}
+.tog.on::after{left:21px}
+.ring-t{position:relative;width:78px;height:78px;flex:none}
+.tl{display:flex;flex-direction:column;gap:14px;padding:4px 2px}
+.tl .row{display:flex;gap:12px;align-items:flex-start}
+.tl .row i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--brand-2);margin-top:6px}
+.tl .row b{display:block;font-size:14px;font-weight:600}
+.tl .row small{color:var(--mute);font-size:12.5px}
+@media (max-width:1100px){.g2c,.g21c{grid-template-columns:minmax(0,1fr)}.formg{grid-template-columns:minmax(0,1fr)}}
+.step em svg{width:16px;height:16px}
+/* ───────── Controlo de Obras (balanço de custos e proveitos) ───────── */
+.cx-per{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;font-size:14px;color:var(--mute);font-weight:500}
+.cx-banner + .cx-per{margin-top:26px}
+.cx-per .inp{height:42px;font-size:14px;min-width:170px}
+.cx-per .sp{flex:1}
+.cx-updlog{margin-top:12px;padding:12px 16px;border:1.5px solid var(--line);border-radius:16px;background:#f6f9ff;font-size:13px;line-height:1.7}
+.cx-updlog button{margin-left:8px;color:var(--mute)}
+.cx-ob .cx-ob-top{display:flex;align-items:center;gap:9px}
+.cx-ob .dot{width:11px;height:11px;border-radius:50%;background:var(--dot)}
+.cx-ob-nome{font-size:15.5px;font-weight:700;line-height:1.25;min-height:38px}
+.cx-ob-saldo{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1}
+.cx-ob-sub{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cx-simtag,.cx-simbar .cx-simtag{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:99px;background:#fff1b8;color:#7a5b00;font-size:11px;font-weight:800;letter-spacing:.05em}
+.cx-banner{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:24px 26px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#0f2f86,var(--brand) 60%,#3a68d8);position:relative;overflow:hidden}
+.cx-banner::after{content:'';position:absolute;right:-70px;top:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.cx-banner > *{position:relative;z-index:1}
+.cx-back{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff;font-size:13.5px;font-weight:600}
+.cx-back:hover{background:rgba(255,255,255,.26)}
+.cx-eb{margin-top:16px;font-size:12px;font-weight:700;letter-spacing:.09em;opacity:.8}
+.cx-banner h2{font-size:27px;font-weight:800;letter-spacing:-.6px;margin-top:6px}
+.cx-bb{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.cx-bb button{height:40px;padding:0 18px;border-radius:99px;background:#fff;color:var(--brand);font-weight:700;font-size:14px}
+.cx-bb button:hover{background:#f1f5ff}
+.cx-br{display:flex;flex-direction:column;align-items:flex-end;gap:10px;text-align:right}
+.cx-sede{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;justify-content:flex-end}
+.cx-sede input{width:96px;height:36px;border-radius:10px;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);color:#fff;text-align:right;padding:0 10px;font-size:14px;font-weight:700;outline:0}
+.cx-sede input:focus{background:#fff;color:var(--ink)}
+.cx-sedeval{font-size:12.5px;opacity:.85}
+.cx-meta{margin-top:auto;font-size:13px;opacity:.88;line-height:1.5}
+.cx-sec{margin:30px 2px 12px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6a7284}
+.cx-hint{font-size:13px;color:var(--mute);margin:-6px 2px 14px}
+.cx-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:20px}
+.cx-tiles.t3{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:0;margin-bottom:16px}
+.cx-tile{padding:18px 20px;border:1.5px solid var(--line);border-radius:22px;background:#fff}
+.cx-tile .l{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6a7284}
+.cx-tile .v{font-size:29px;font-weight:800;letter-spacing:-.9px;margin:8px 0 4px;line-height:1.1}
+.cx-tile .s{font-size:12.5px;color:var(--mute)}
+.cx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.cx-tiles + .cx-grid{margin-top:16px}
+.cx-panel{padding:18px 20px}
+.cx-ph{margin-bottom:12px}
+.cx-ph b{display:block;font-size:15.5px;font-weight:700}
+.cx-ph small{display:block;color:var(--mute);font-size:12.5px;margin-top:3px}
+.cx-leg{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--mute)}
+.cx-leg span{display:inline-flex;align-items:center;gap:6px}
+.cx-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.cx-leg i.dash{width:16px;height:0;border-top:2px dashed #9aa3b3;border-radius:0}
+.cx-nota{margin-top:20px;padding:13px 18px;border-radius:16px;background:#fff7e2;border:1.5px solid #f4dfa6;font-size:13.5px;display:flex;gap:12px;flex-wrap:wrap}
+.cx-nota b{color:#7a5b00}
+.cx-tips{display:flex;flex-direction:column}
+.cx-tip{display:grid;grid-template-columns:minmax(150px,1.4fr) minmax(120px,3fr) 110px 70px;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--line-2);font-size:14px}
+.cx-tip:first-child{border-top:0}
+.cx-tip .tr{height:10px;border-radius:99px;background:#eef1f6;overflow:hidden}
+.cx-tip .tr i{display:block;height:100%;border-radius:99px}
+.cx-tip .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.cx-tip .n.mt{color:var(--mute);font-weight:500}
+.cx-tip.tt{border-top:1.5px solid var(--line);font-weight:700}
+.cx-simnote{margin-top:20px;padding:12px 16px;border-radius:14px;background:#fff7d6;color:#7a5b00;font-size:13.5px;font-weight:600}
+.cx-simbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--mute)}
+.cx-simbar .sp{flex:1}
+.cx-simbar button{height:36px;padding:0 14px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-weight:700;font-size:13px;color:var(--brand)}
+.cx-simbar button:hover{background:var(--tint)}
+.cx-simbar.on{padding:10px 14px;border-radius:14px;background:#fff7d6;color:#7a5b00}
+.cx-lanc{min-width:1000px}
+.cx-lanc td{padding:8px 6px}
+.cx-lanc th{padding:12px 8px}
+.cx-in{width:100%;min-width:84px;height:38px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;text-align:right;font-size:13.5px;font-variant-numeric:tabular-nums;background:#fff;outline:0}
+.cx-in:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(23,63,159,.13)}
+.cx-in.sim{background:#fff1b8;border-color:#e6c84d}
+.cx-del{width:30px;height:30px;border-radius:50%;color:#9aa3b3}
+.cx-del:hover{background:var(--bad-bg);color:var(--bad)}
+.row-add{display:flex;gap:10px;align-items:center;margin-top:14px}
+@media (max-width:1100px){.cx-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-grid{grid-template-columns:minmax(0,1fr)}.cx-tip{grid-template-columns:1fr 100px 60px}.cx-tip .tr{display:none}.cx-br{align-items:flex-start;text-align:left}}
 @media (max-width:1400px){
   :root{--nav-w:284px}
   .main{padding:28px 28px 56px}
@@ -366,7 +509,7 @@ tr:last-child td{border-bottom:0}
 }
 @media (max-width:900px){
   .wrap{padding:0 14px}
-  .hdr{padding-bottom:50px}
+  .hdr{padding-bottom:40px}
   .hdr-row{flex-wrap:wrap;height:auto;padding:10px 0 4px;gap:8px 8px}
   .logo{margin:0 auto 0 4px}
   .hdr-right{margin-left:0}
@@ -374,7 +517,7 @@ tr:last-child td{border-bottom:0}
   .u-tx,.user > svg{display:none}
   .user{padding:0 4px;margin-left:0}
   .ttl-row{flex-direction:column;align-items:flex-start;gap:14px}
-  .ttl h1{font-size:24px}
+  .ttl h1{font-size:19px}
   .acts{justify-content:flex-start}
   .main{padding:22px 16px 56px}
   .p2 > .stack:last-child{grid-template-columns:minmax(0,1fr)}
@@ -436,10 +579,6 @@ tr:last-child td{border-bottom:0}
         </div>
       </div>
 
-      <div class="ttl-row">
-        <div class="ttl"><span class="ttl-ic" id="ttlIc"></span><div><h1 id="ttl"></h1><p id="sub"></p></div></div>
-        <div class="acts" id="acts"></div>
-      </div>
     </div>
   </header>
 
@@ -455,6 +594,10 @@ tr:last-child td{border-bottom:0}
       </aside>
 
       <main class="main" id="main">
+        <div class="ttl-row tbar">
+          <div class="ttl"><span class="ttl-ic" id="ttlIc"></span><div><h1 id="ttl"></h1><p id="sub"></p></div></div>
+          <div class="acts" id="acts"></div>
+        </div>
         <!-- ═════════ PAINEL PRINCIPAL ═════════ -->
         <section class="view" id="v-painel" hidden>
           <div class="kpis">
@@ -526,6 +669,8 @@ tr:last-child td{border-bottom:0}
           </div>
           <div class="grid" id="eqGrid"></div>
         </section>
+
+        <section class="view" id="v-mod" hidden></section>
 
         <!-- ═════════ OUTROS MÓDULOS ═════════ -->
         <section class="view" id="v-generic" hidden>
@@ -693,12 +838,14 @@ function headFor(id){
     `<button type="button" class="btn-w" onclick="toast('Exportação para Excel')">${I.download}Exportar Excel</button>`};
   if(id==='equipamentos') return {t:'Equipamentos', s:'Localização, estado e manutenção da frota', ic:MODS.equipamentos.icon, acts:
     `<button type="button" class="btn-w" onclick="toast('Abre o formulário de novo equipamento')">${I.plus}Novo equipamento</button>`};
+  if(HEAD_X[id]) return {t:HEAD_X[id][0], s:HEAD_X[id][1], ic:MODS[id].icon, acts:HEAD_X[id][2]};
   const m = MODS[id];
   return {t:m.label, s:m.grp, ic:m.icon, acts:''};
 }
 
 function go(id){
   if(!MODS[id]) return;
+  if(id==='producao' && state.view==='producao') CO.sel = null;
   state.view = id;
   const h = headFor(id);
   $('ttl').textContent = h.t; $('sub').textContent = h.s; $('ttlIc').innerHTML = h.ic; $('acts').innerHTML = h.acts;
@@ -708,6 +855,7 @@ function go(id){
   if(id==='painel'){ renderPainel(); }
   else if(id==='historico'){ renderFolha(); }
   else if(id==='equipamentos'){ renderEq(); }
+  else if(R[id]){ renderMod(id); }
   else {
     const m = MODS[id];
     $('genBox').innerHTML = `${ART}<h3>${esc(m.label)}</h3><p>Este módulo mantém o conteúdo atual. Na proposta só muda o enquadramento: cabeçalho azul com o título, folha branca arredondada, menu com favoritos e pesquisa global — igual ao das apps.</p>`;
@@ -825,6 +973,421 @@ function closeNav(){ $('nav').classList.remove('open'); if(!$('slide').classList
 $('scrim').addEventListener('click', closeSlide);
 $('btnMenu').addEventListener('click', () => $('nav').classList.contains('open') ? closeNav() : openNav());
 
+/* ═════════ Restantes módulos (páginas simuladas · dados de exemplo) ═════════ */
+const XM = ['fecho-mes','mapa-ferias','colaboradores','compras','mapas-comparativos','faturas','combustivel','producao','precos-unitarios','obras','utilizadores','empresas-moa','fornecedores'];
+XM.forEach(id => VIEWS[id] = 'v-mod');
+const xs = {mes:0, fq:'', fcat:'todos', cq:'', cf:'todos', pf:'todos', pedSel:null, mapa:0, ff:'todas', pq:'', pg:'todos', fnq:'', fnc:'todos', cbObra:0};
+const MESES = ['setembro de 2026','outubro de 2026','novembro de 2026'];
+const pc = (t,c) => `<span class="pillchip ${c}">${t}</span>`;
+const eur = (v,d=0) => v.toLocaleString('pt-PT',{minimumFractionDigits:d,maximumFractionDigits:d}) + ' €';
+const mst = (rot,p) => `<div class="lblm">${rot}<b>${p}%</b></div><div class="bar"><i style="width:${p}%;background:${corPct(p)}"></i></div>`;
+const kpi = (ic,l,n,foot) => `<div class="kpi"><span class="card-ic">${ic}</span><div><div class="l">${l}</div><div class="n">${n}</div>${foot||''}</div></div>`;
+const cardH = (ic,t,s,extra='') => `<div class="card-h"><span class="card-ic">${ic}</span><div><h3>${t}</h3>${s?`<small>${s}</small>`:''}</div>${extra}</div>`;
+const srchBox = (id,ph,v) => `<label class="srch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg><input id="${id}" data-x="${id}" placeholder="${ph}" value="${esc(v||'')}" autocomplete="off"/></label>`;
+const fchips = (key,opts,cur) => `<div class="filters">${opts.map(o => `<button type="button" class="fchip${cur===o[0]?' on':''}" data-xf="${key}:${o[0]}">${o[1]}${o[2]!=null?`<b>${o[2]}</b>`:''}</button>`).join('')}</div>`;
+const mesNav = () => `<div class="wknav"><button type="button" data-xmes="-1" aria-label="Mês anterior">‹</button><div><b>${MESES[xs.mes+1]}</b><small>${xs.mes===0?'Mês atual':xs.mes<0?'Histórico':'Previsão'}</small></div><button type="button" data-xmes="1" aria-label="Mês seguinte">›</button></div>`;
+
+function openDetail(sm, title, sub, body, foot){
+  $('slide').innerHTML = `<div class="slide-h"><button type="button" class="x" onclick="closeSlide()" aria-label="Fechar">${I.close}</button><small>${sm}</small><h2>${title}</h2><p>${sub}</p></div><div class="slide-b">${body}</div>${foot?`<div class="slide-f">${foot}</div>`:''}`;
+  $('slide').classList.add('open'); $('slide').setAttribute('aria-hidden','false'); $('scrim').classList.add('open');
+}
+
+/* ── dados ── */
+const FECHO = OBRAS.map((o,i) => ({o, h:o.pess*168, x:o.pess*7+i*4, f:[1,0,3,2,0,1,2][i], ok:[1,1,0,1,0,1,0][i]}));
+const FERIAS = [['Sofia Gomes','O103',5,9,'fe'],['Vera Lima','O106',8,16,'fe'],['Hugo Barros','O101',12,16,'fe'],['Rui Matos','O101',14,15,'fj'],['Marta Sousa','O101',19,23,'fe'],['Inês Duarte','O101',19,30,'fe'],['Helena Rocha','O104',21,27,'pd'],['Nuno Pinto','O103',26,30,'pd'],['Diogo Teixeira','O106',28,31,'pd']];
+const COLAB = PESSOAS.map((p,i) => ({n:p[0], f:p[1], obra:OBRAS[[1,0,0,0,0,2,2,2,5,3,4,6,4,5,4,1][i]].cod, tipo:i%5===4?'aluguer':'plandese', est:['Ativo','Ativo','Falta','Ativo','Ativo','Ativo','Férias','Falta','Ativo','Ativo','Ativo','Ativo','Ativo','Férias','Falta','Ativo'][i], tel:'91'+(2000000+i*173441).toString().slice(0,7), adm:`${String(3+i).padStart(2,'0')}/0${1+i%9}/20${17+i%8}`, hm:150+i%4*6, he:[14,6,0,22,4,0,0,0,18,8,15,2,6,0,0,3][i], fer:[12,8,22,5,18,9,0,15,11,20,3,14,7,2,19,10][i]}));
+const PEDS = [
+ {id:'PC-0412',t:'Tubagem PEAD DN200 · 600 m',o:'O105',q:'Ricardo Antunes',v:12900,e:1,d:'07/10',u:0,forn:'TubosPT'},
+ {id:'PC-0411',t:'Betão C25/30 · 80 m³',o:'O105',q:'Ricardo Antunes',v:6480,e:0,d:'08/10',u:0,forn:'—'},
+ {id:'PC-0410',t:'Varão A500 Ø12 · 4 t',o:'O103',q:'Nuno Pinto',v:3120,e:0,d:'08/10',u:0,forn:'—'},
+ {id:'PC-0409',t:'Tout-venant · 300 t',o:'O106',q:'Diogo Teixeira',v:4350,e:2,d:'05/10',u:1,forn:'Inertes do Barlavento'},
+ {id:'PC-0408',t:'Cofragem metálica · 420 m²',o:'O102',q:'Tiago Lopes',v:9800,e:2,d:'05/10',u:0,forn:'MetalAlgarve, Lda.'},
+ {id:'PC-0407',t:'Aluguer de grua 40 t · 5 dias',o:'O103',q:'Nuno Pinto',v:5600,e:1,d:'06/10',u:0,forn:'Aluga+ Equipamentos'},
+ {id:'PC-0406',t:'EPI · capacetes e luvas',o:'O101',q:'Inês Duarte',v:420,e:0,d:'07/10',u:0,forn:'—'},
+ {id:'PC-0405',t:'Cimento CEM II · 20 t',o:'O101',q:'Marta Sousa',v:2900,e:3,d:'01/10',u:0,forn:'Cimentos do Sul, SA'},
+ {id:'PC-0404',t:'Gasóleo a granel · 5 000 L',o:'O107',q:'Cláudia Neves',v:7450,e:3,d:'30/09',u:0,forn:'PetroSul'},
+ {id:'PC-0403',t:'Sinalização temporária',o:'O106',q:'Diogo Teixeira',v:1180,e:2,d:'04/10',u:1,forn:'SinalPT'},
+];
+const PEST = [['Novo','c-mute'],['Em cotação','c-info'],['Por aprovar','c-warn'],['Encomendado','c-ok']];
+const MAPAS = [
+ {t:'PC-0412 · Tubagem PEAD DN200',o:'O105 · Rede de Águas',s:['TubosPT','Hidro Algarve','Plásticos do Sul'],r:[['Tubo PEAD DN200 PN10','m',600,[18.9,19.4,20.1]],['Curva 90º DN200','un',24,[42,39.5,44]],['Junta electrossoldável','un',48,[18.5,21,17.8]],['Transporte e descarga','vg',2,[320,280,350]]],prazo:['3 dias','5 dias','2 dias']},
+ {t:'PC-0408 · Cofragem metálica',o:'O102 · Quinta do Lago',s:['MetalAlgarve','CofraPro','Ferro & Aço'],r:[['Painel de cofragem 2,4×1,2','m²',420,[18.5,19.2,17.9]],['Escora telescópica','un',160,[12.4,11.9,13.2]],['Desmoldante','L',60,[3.1,2.9,3.4]]],prazo:['4 dias','3 dias','6 dias']},
+];
+const FATS = [['FT 2026/1184','Cimentos do Sul, SA','O105',6480,'05/10','lan'],['FT 884','MetalAlgarve, Lda.','O103',3120,'06/10','val'],['FA 2026/77','Aluga+ Equipamentos','O101',1850,'06/10','lan'],['FT 5521','TubosPT','O105',12900,'07/10','val'],['FT 3307','EPI Seguro, Lda.','O101',420,'07/10','val'],['FT 118','Inertes do Barlavento','O106',4350,'08/10','lan']];
+const CB = [['08/10','Escavadora CAT 320','EQ-014','O101',180,'Marta Sousa'],['08/10','Camião MAN TGS','EQ-021','O103',95,'Nuno Pinto'],['07/10','Autobetoneira Arocs','EQ-027','O105',120,'Ricardo Antunes'],['07/10','Carrinha Master','EQ-052','O107',48,'Cláudia Neves'],['06/10','Giratória Volvo EC220','EQ-018','O101',210,'Marta Sousa'],['06/10','Retroescavadora JCB 3CX','EQ-009','O104',88,'Helena Rocha'],['05/10','Gerador Atlas Copco','EQ-033','O105',64,'Ricardo Antunes']];
+const PRECOS = [['01.01.001','Escavação em vala em terreno rochoso','Terraplenagens','m³',14.8,2.1],['01.02.004','Aterro com material seleccionado','Terraplenagens','m³',9.6,-1.2],['02.03.010','Betão C25/30 em fundações','Betão','m³',112,3.4],['02.03.015','Betão C30/37 em pilares','Betão','m³',128.5,0],['03.01.002','Aço A500 NR em armaduras','Aço','kg',1.32,5.1],['04.02.007','Tubo PEAD DN200 PN10','Hidráulica','m',27.4,-0.8],['04.02.011','Caixa de visita pré-fabricada','Hidráulica','un',384,1.5],['05.01.003','Pavimento betuminoso AC14','Pavimentos','m²',8.9,2.7],['05.03.001','Lancil de betão 25×15','Pavimentos','m',11.2,0],['06.01.008','Pintura de sinalização horizontal','Sinalização','m',1.85,-2]];
+const USERS = [['Administrador','admin@plandese.pt','Administração','Todas','Agora',1],['Marta Sousa','marta@plandese.pt','Encarregado','O101',  'há 2 h',1],['Tiago Lopes','tiago@plandese.pt','Encarregado','O102','há 1 dia',1],['Carla Maia','carla@plandese.pt','Qualidade','Todas','há 3 h',1],['Cláudia Neves','claudia@plandese.pt','Administrativo','O107','há 5 h',1],['João Faria','joao@plandese.pt','Compras','Todas','há 12 dias',0]];
+const MOAS = [['Câmara Municipal de Loulé','Entidade pública','501 234 567','Eng.ª Paula Brito','O101'],['Estradas do Algarve, SA','Empresa pública','502 345 678','Eng. Rui Valente','O106'],['Grupo Vale Verde','Privado','509 456 789','Dr. Nuno Aires','O102, O103'],['Junta de Freguesia de Olhão','Entidade pública','506 567 890','Sr. Fernando Reis','O107'],['Câmara Municipal de Tavira','Entidade pública','501 678 901','Arq. Sofia Lobo','O104'],['Águas do Algarve, SA','Empresa pública','503 789 012','Eng. Pedro Matos','O105']];
+const FORNS = [['Cimentos do Sul, SA','Betão e cimento',4.8,'Loulé','289 123 456',38,'182 400'],['MetalAlgarve, Lda.','Aço e ferragens',4.5,'Faro','289 234 567',24,'96 300'],['TubosPT','Hidráulica',4.2,'Lisboa','210 345 678',17,'141 800'],['Aluga+ Equipamentos','Aluguer de máquinas',4.6,'Olhão','289 456 789',29,'118 900'],['Inertes do Barlavento','Inertes',3.9,'Lagos','282 567 890',21,'54 700'],['EPI Seguro, Lda.','Segurança e EPI',4.7,'Portimão','282 678 901',33,'18 200'],['PetroSul','Combustíveis',4.1,'Faro','289 789 012',12,'89 500'],['SinalPT','Sinalização',4.4,'Albufeira','289 890 123',9,'12 600']];
+
+/* ── vistas ── */
+const R = {}, PR = {};
+R['fecho-mes'] = () => {
+  const t = FECHO.reduce((a,f) => [a[0]+f.h,a[1]+f.x,a[2]+f.f,a[3]+f.ok],[0,0,0,0]);
+  return `<div class="toolbar">${mesNav()}<div class="grow"></div>${fchips('fcat',[['todos','Todas',7],['ok','Validadas',t[3]],['pd','Por validar',7-t[3]]],xs.fcat)}</div>
+  <div class="card sec"><div class="step"><div class="dn"><em>${I.check}</em>Recolha de ponto</div><div class="cur"><em>2</em>Validação</div><div><em>3</em>Aprovação</div><div><em>4</em>Processamento</div></div></div>
+  <div class="kpis sec">${kpi(I.clock,'Horas normais',eur(t[0]).replace(' €','')+'<small> h</small>')}${kpi(I.trend,'Horas extra',t[1]+'<small> h</small>',pc('▲ 8% face ao mês anterior','c-warn'))}${kpi(I.warn,'Faltas',t[2]+'<small> dias</small>')}${kpi(I.building,'Obras validadas',t[3]+'<small> de 7</small>',pc(7-t[3]+' por validar','c-info'))}</div>
+  <div class="tw2 sec"><table class="dt"><thead><tr><th>Obra</th><th>Encarregado</th><th class="r">Horas</th><th class="r">Extra</th><th class="r">Faltas</th><th style="width:170px">Progresso</th><th>Estado</th></tr></thead><tbody>${FECHO.filter(f => xs.fcat==='todos'||(xs.fcat==='ok')===!!f.ok).map(f => `<tr class="clk" data-xobra="${OBRAS.indexOf(f.o)}"><td><span class="cod">${f.o.cod}</span><b>${esc(f.o.nome)}</b></td><td>${esc(f.o.enc)}</td><td class="r">${f.h}</td><td class="r">${f.x}</td><td class="r">${f.f}</td><td><div class="bar"><i style="width:${f.ok?100:55+f.f*8}%;background:${f.ok?'var(--ok-c)':'var(--warn-c)'}"></i></div></td><td>${f.ok?pc('Validada','c-ok'):pc('Por validar','c-warn')}</td></tr>`).join('')}</tbody></table></div>`;
+};
+R['mapa-ferias'] = () => {
+  const dias = Array.from({length:31},(_,i)=>i+1);
+  const cor = {fe:'#2b5dd1',fj:'#a35a08',pd:'#8aa4e6'};
+  return `<div class="toolbar">${mesNav()}<div class="grow"></div><div class="legend" style="margin:0"><span><i class="cell" style="min-width:34px;height:22px;background:#2b5dd1"></i> Férias aprovadas</span><span><i class="cell" style="min-width:34px;height:22px;background:#a35a08"></i> Falta</span><span><i class="cell" style="min-width:34px;height:22px;background:#dbe5fb"></i> Por aprovar</span></div></div>
+  <div class="tw2 sec"><div class="gantt"><div></div>${dias.map(d => { const w = new Date(2026,9,d).getDay(); return `<div class="gd${w%6===0?' we':''}${d===8?' td':''}">${d}</div>`; }).join('')}
+  ${FERIAS.map(f => `<div class="gn"><div class="pp"><span class="rav">${ini(f[0])}</span><div><b>${f[0]}</b><small>${f[1]}</small></div></div></div><div class="gb" style="grid-column:${f[2]+1}/${f[3]+2};background:${f[4]==='pd'?'#dbe5fb':cor[f[4]]};color:${f[4]==='pd'?'#2b5dd1':'#fff'}">${f[3]-f[2]+1} ${f[3]===f[2]?'dia':'dias'}</div><div class="gl"></div>`).join('')}</div></div>
+  <div class="g2c sec"><div class="card">${cardH(I.calendar,'Próximas ausências','Nos próximos 14 dias')}${FERIAS.slice(2,6).map(f => `<div class="prow"><span class="rav">${ini(f[0])}</span><div class="rtx"><b>${f[0]}</b><small>${f[1]} · ${f[2]}/10 a ${f[3]}/10</small></div>${pc(f[4]==='fe'?'Férias':'Falta','c-info')}</div>`).join('')}</div>
+  <div class="card">${cardH(I.users,'Pedidos por aprovar','3 pedidos')}${FERIAS.filter(f=>f[4]==='pd').map(f => `<div class="prow"><span class="rav">${ini(f[0])}</span><div class="rtx"><b>${f[0]}</b><small>${f[2]}/10 a ${f[3]}/10 · ${f[3]-f[2]+1} dias</small></div><button type="button" class="btn btn-o" style="height:36px;padding:0 14px;font-size:13.5px" data-xtoast="Férias aprovadas">Aprovar</button></div>`).join('')}</div></div>`;
+};
+R.colaboradores = () => `<div class="toolbar">${srchBox('cq','Pesquisar nome, função ou obra…',xs.cq)}<div class="grow"></div>${fchips('cf',[['todos','Todos',COLAB.length],['plandese','Plandese',COLAB.filter(c=>c.tipo==='plandese').length],['aluguer','Alugados',COLAB.filter(c=>c.tipo==='aluguer').length],['aus','Ausentes hoje',COLAB.filter(c=>c.est!=='Ativo').length]],xs.cf)}</div><div class="cards3 sec" id="xList"></div>`;
+PR.colaboradores = () => {
+  const q = norm(xs.cq);
+  const l = COLAB.filter(c => (xs.cf==='todos'||c.tipo===xs.cf||(xs.cf==='aus'&&c.est!=='Ativo')) && (!q||norm(c.n+' '+c.f+' '+c.obra).includes(q)));
+  $('xList').innerHTML = l.map(c => `<button type="button" class="mini-card" data-xcol="${esc(c.n)}"><div class="mc-top"><span class="rav" style="width:46px;height:46px;font-size:15px">${ini(c.n)}</span><div class="rtx"><b>${esc(c.n)}</b><small>${esc(c.f)}</small></div>${pc(c.est,c.est==='Ativo'?'c-ok':c.est==='Férias'?'c-info':'c-warn')}</div><div class="mc-kv"><div>Obra<b>${c.obra}</b></div><div>Vínculo<b>${c.tipo==='plandese'?'Plandese':'Alugado'}</b></div></div></button>`).join('') || '<div class="res-empty" style="grid-column:1/-1">Sem colaboradores para a pesquisa.</div>';
+};
+R.compras = () => {
+  const n = k => PEDS.filter(p => p.e===k).length;
+  return `<div class="kpis">${kpi(I.cart,'Pedidos abertos',PEDS.filter(p=>p.e<3).length)}${kpi(I.warn,'Por aprovar',n(2),pc(PEDS.filter(p=>p.e===2&&p.u).length+' urgentes','c-bad'))}${kpi(I.euro,'Valor em curso',eur(PEDS.filter(p=>p.e<3).reduce((a,p)=>a+p.v,0)))}${kpi(I.check,'Encomendados este mês',n(3)+14)}</div>
+  <div class="toolbar sec">${fchips('pf',[['todos','Todos',PEDS.length],...PEST.map((s,i)=>[String(i),s[0],n(i)])],xs.pf)}<div class="grow"></div>${srchBox('pq2','Pesquisar pedido…','')}</div>
+  <div class="tw2 sec" id="xList"></div>`;
+};
+PR.compras = () => {
+  const q = norm($('pq2')?$('pq2').value:'');
+  const l = PEDS.filter(p => (xs.pf==='todos'||p.e===+xs.pf) && (!q||norm(p.id+' '+p.t+' '+p.o+' '+p.q).includes(q)));
+  $('xList').innerHTML = `<table class="dt"><thead><tr><th>Pedido</th><th>Obra</th><th>Solicitante</th><th>Data</th><th class="r">Valor</th><th>Estado</th></tr></thead><tbody>${l.map(p => `<tr class="clk" data-xped="${p.id}"><td><b>${p.id}</b>${p.u?' '+pc('Urgente','c-bad'):''}<span class="sub">${esc(p.t)}</span></td><td><span class="cod">${p.o}</span></td><td>${p.q}</td><td>${p.d}</td><td class="r"><b>${eur(p.v)}</b></td><td>${pc(PEST[p.e][0],PEST[p.e][1])}</td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sem pedidos.</td></tr>'}</tbody></table>`;
+};
+R['mapas-comparativos'] = () => {
+  const m = MAPAS[xs.mapa];
+  const tot = m.s.map((_,j) => m.r.reduce((a,r) => a + r[2]*r[3][j],0)), best = tot.indexOf(Math.min(...tot));
+  return `<div class="toolbar"><div class="field" style="width:380px"><label>Mapa comparativo</label><select class="inp" data-xmapa>${MAPAS.map((x,i) => `<option value="${i}"${i===xs.mapa?' selected':''}>${esc(x.t)}</option>`).join('')}</select></div><div class="grow"></div>${pc(m.o,'c-info')}</div>
+  <div class="cards3 sec" style="grid-template-columns:repeat(3,minmax(0,1fr))">${m.s.map((s,j) => `<div class="mini-card" style="${j===best?'border-color:var(--ok-c);box-shadow:0 10px 26px rgba(14,159,110,.12)':''}"><div class="mc-top"><span class="card-ic">${I.building}</span><div class="rtx"><b>${s}</b><small>Prazo de entrega: ${m.prazo[j]}</small></div>${j===best?pc('Melhor preço','c-ok'):''}</div><div style="font-size:28px;font-weight:800;letter-spacing:-.8px">${eur(tot[j],2)}</div>${j===best?'':`<small class="mut">+${eur(tot[j]-tot[best],2)} face ao melhor</small>`}<button type="button" class="btn ${j===best?'':'btn-o'}" data-xtoast="Fornecedor ${s} adjudicado">Adjudicar</button></div>`).join('')}</div>
+  <div class="tw2 sec"><table class="dt"><thead><tr><th>Artigo</th><th>Un.</th><th class="r">Qtd.</th>${m.s.map(s => `<th class="r">${s}</th>`).join('')}</tr></thead><tbody>${m.r.map(r => { const mn = Math.min(...r[3]); return `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="r">${r[2]}</td>${r[3].map(v => `<td class="r${v===mn?' best':''}">${eur(v,2)}</td>`).join('')}</tr>`; }).join('')}<tr><td colspan="3"><b>Total</b></td>${tot.map((v,j) => `<td class="r"><b>${eur(v,2)}</b></td>`).join('')}</tr></tbody></table></div>`;
+};
+R.faturas = () => `<div class="g2c">
+  <div class="card">${cardH(I.upload,'Documento','Arraste o PDF ou fotografia da fatura')}<div class="drop"><div class="doc"><b>Cimentos do Sul, SA</b><small>FT 2026/1184 · 05/10/2026</small><i></i><i style="width:80%"></i><i style="width:92%"></i><i style="width:55%"></i><em>6 480,00 €</em></div><button type="button" class="btn btn-o" data-xtoast="Escolher ficheiro">${I.upload}Substituir ficheiro</button></div></div>
+  <div class="card">${cardH(I.file,'Dados da fatura','Lidos automaticamente · confirme antes de lançar','<span class="pillchip c-ok" style="margin-left:auto">Leitura automática</span>')}
+   <div class="formg"><div class="field"><label>Fornecedor</label><select class="inp"><option>Cimentos do Sul, SA</option></select></div><div class="field"><label>Nº do documento</label><input class="inp" value="FT 2026/1184"/></div><div class="field"><label>Data</label><input class="inp" value="05/10/2026"/></div><div class="field"><label>Obra</label><select class="inp"><option>O105 · Rede de Águas · Quarteira</option></select></div><div class="field"><label>Valor s/ IVA</label><input class="inp" value="5 268,29 €"/></div><div class="field"><label>IVA (23%)</label><input class="inp" value="1 211,71 €"/></div><div class="field full"><label>Pedido de compra associado</label><select class="inp"><option>PC-0411 · Betão C25/30 · 80 m³</option></select></div></div>
+   <div class="form-f"><button type="button" class="btn btn-o" data-xtoast="Rascunho guardado">Guardar rascunho</button><button type="button" class="btn" data-xtoast="Fatura lançada">${I.check}Lançar fatura</button></div></div></div>
+  <div class="toolbar sec">${fchips('ff',[['todas','Todas',FATS.length],['val','Por validar',FATS.filter(f=>f[5]==='val').length],['lan','Lançadas',FATS.filter(f=>f[5]==='lan').length]],xs.ff)}</div>
+  <div class="tw2 sec"><table class="dt"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Obra</th><th>Data</th><th class="r">Valor</th><th>Estado</th></tr></thead><tbody>${FATS.filter(f => xs.ff==='todas'||f[5]===xs.ff).map(f => `<tr><td><b>${f[0]}</b></td><td>${f[1]}</td><td><span class="cod">${f[2]}</span></td><td>${f[4]}</td><td class="r"><b>${eur(f[3],2)}</b></td><td>${f[5]==='lan'?pc('Lançada','c-ok'):pc('Por validar','c-warn')}</td></tr>`).join('')}</tbody></table></div>`;
+R.combustivel = () => {
+  const dias = [['Seg',310],['Ter',420],['Qua',380],['Qui',343],['Sex',0],['Sáb',0],['Dom',0]];
+  return `<div class="toolbar"><div class="field" style="width:290px"><label>Obra</label><select class="inp"><option>Todas</option>${OBRAS.map(o => `<option>${o.cod} · ${esc(o.nome)}</option>`).join('')}</select></div><div class="grow"></div><div class="wknav"><button type="button" data-xtoast="Semana anterior">‹</button><div><b>Esta semana</b><small>05/10/2026 a 11/10/2026</small></div><button type="button" data-xtoast="Semana seguinte">›</button></div></div>
+  <div class="kpis sec">${kpi(I.fuel,'Litros na semana','1 453<small> L</small>',pc('▲ 6% face à anterior','c-warn'))}${kpi(I.euro,'Custo estimado','2 180<small> €</small>')}${kpi(I.equip,'Maior consumo','Giratória',`<span class="mut" style="font-size:13px">210 L · EQ-018</span>`)}${kpi(I.file,'Registos',CB.length+17)}</div>
+  <div class="g21c sec"><div class="card">${cardH(I.trend,'Litros por dia','Semana atual')}<div class="chart">${dias.map(d => `<div class="${d[1]?'':'off'}">${d[1]||''}<i style="height:${d[1]?d[1]/450*100:6}%"></i><span>${d[0]}</span></div>`).join('')}</div><div style="height:18px"></div></div>
+  <div class="card">${cardH(I.pin,'Por obra','Litros esta semana')}${OBRAS.slice(0,5).map((o,i) => `<div style="padding:8px 20px 12px"><div class="lblm"><span><span class="cod">${o.cod}</span>${esc(o.nome.split(' ').slice(0,2).join(' '))}</span><b>${[390,330,242,270,221][i]} L</b></div><div class="bar"><i style="width:${[100,85,62,70,57][i]}%;background:var(--brand-2)"></i></div></div>`).join('')}</div></div>
+  <div class="tw2 sec"><table class="dt"><thead><tr><th>Data</th><th>Equipamento</th><th>Obra</th><th class="r">Litros</th><th>Registado por</th></tr></thead><tbody>${CB.map(c => `<tr><td>${c[0]}</td><td><b>${c[1]}</b><span class="sub">${c[2]}</span></td><td><span class="cod">${c[3]}</span></td><td class="r"><b>${c[4]} L</b></td><td>${c[5]}</td></tr>`).join('')}</tbody></table></div>`;
+};
+R['precos-unitarios'] = () => { const gs = ['todos',...new Set(PRECOS.map(p => p[2]))]; return `<div class="toolbar">${srchBox('pq','Pesquisar código ou descrição…',xs.pq)}<div class="grow"></div>${fchips('pg',gs.map(g => [g,g==='todos'?'Todos':g,null]),xs.pg)}</div><div class="tw2 sec" id="xList"></div>`; };
+PR['precos-unitarios'] = () => {
+  const q = norm(xs.pq), l = PRECOS.filter(p => (xs.pg==='todos'||p[2]===xs.pg) && (!q||norm(p[0]+' '+p[1]).includes(q)));
+  $('xList').innerHTML = `<table class="dt"><thead><tr><th>Código</th><th>Descrição</th><th>Grupo</th><th>Un.</th><th class="r">Preço unitário</th><th class="r">Var. 12 meses</th></tr></thead><tbody>${l.map(p => `<tr><td><span class="cod" style="margin:0">${p[0]}</span></td><td><b>${p[1]}</b></td><td>${p[2]}</td><td>${p[3]}</td><td class="r"><b>${eur(p[4],2)}</b></td><td class="r">${pc((p[5]>0?'▲ ':p[5]<0?'▼ ':'')+String(Math.abs(p[5])).replace('.',',')+'%',p[5]>0?'c-warn':p[5]<0?'c-ok':'c-mute')}</td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sem resultados.</td></tr>'}</tbody></table>`;
+};
+R.obras = () => `<div class="g21c"><div class="card">${cardH(I.plus,'Nova obra','Preencha os dados de identificação')}
+  <div class="formg"><div class="field"><label>Código</label><input class="inp" value="O108"/></div><div class="field"><label>Estado</label><select class="inp"><option>Em preparação</option><option>Em curso</option></select></div><div class="field full"><label>Nome da obra</label><input class="inp" value="Reabilitação do Cais de Tavira"/></div><div class="field"><label>Localidade</label><input class="inp" value="Tavira"/></div><div class="field"><label>Encarregado</label><select class="inp">${PESSOAS.map(p => `<option>${p[0]}</option>`).join('')}</select></div><div class="field"><label>Dono de obra (MOA)</label><select class="inp">${MOAS.map(m => `<option>${m[0]}</option>`).join('')}</select></div><div class="field"><label>Orçamento</label><input class="inp" value="1 850 000 €"/></div><div class="field"><label>Início previsto</label><input class="inp" value="01/11/2026"/></div><div class="field"><label>Prazo</label><input class="inp" value="14 meses"/></div></div>
+  <div class="form-f"><button type="button" class="btn btn-o" data-xtoast="Cancelado">Cancelar</button><button type="button" class="btn" data-xtoast="Obra O108 criada">${I.check}Criar obra</button></div></div>
+  <div class="card">${cardH(I.building,'Obras existentes',OBRAS.length+' obras')}${OBRAS.map(o => `<div class="prow"><span class="cod" style="margin:0">${o.cod}</span><div class="rtx"><b>${esc(o.nome)}</b><small>${esc(o.local)} · ${o.pess} pessoas</small></div>${pc('Em curso','c-ok')}</div>`).join('')}</div></div>`;
+R.utilizadores = () => `<div class="tw2"><table class="dt"><thead><tr><th>Utilizador</th><th>Perfil</th><th>Obras com acesso</th><th>Último acesso</th><th>Ativo</th></tr></thead><tbody>${USERS.map(u => `<tr><td><div class="pp"><span class="rav">${ini(u[0])}</span><div><b>${u[0]}</b><small>${u[1]}</small></div></div></td><td><select class="inp" style="height:38px;font-size:14px;border-radius:12px">${['Administração','Encarregado','Qualidade','Administrativo','Compras'].map(r => `<option${r===u[2]?' selected':''}>${r}</option>`).join('')}</select></td><td>${u[3]==='Todas'?pc('Todas','c-info'):`<span class="cod" style="margin:0">${u[3]}</span>`}</td><td class="mut">${u[4]}</td><td><button type="button" class="tog${u[5]?' on':''}" data-xtog aria-label="Ativo"></button></td></tr>`).join('')}</tbody></table></div>
+  <div class="eo-nota" style="margin:16px 0 0">Convites enviados por e-mail ficam pendentes até o utilizador definir a password.</div>`;
+R['empresas-moa'] = () => `<div class="cards3">${MOAS.map(m => `<div class="mini-card"><div class="mc-top"><span class="card-ic">${I.building}</span><div class="rtx"><b>${m[0]}</b><small>${m[1]}</small></div></div><div class="mc-kv"><div>NIF<b>${m[2]}</b></div><div>Contacto<b>${m[3]}</b></div><div>Obras<b>${m[4]}</b></div></div><button type="button" class="btn btn-o" style="height:40px" data-xtoast="Abre a ficha da empresa">Abrir ficha</button></div>`).join('')}</div>`;
+R.fornecedores = () => { const cs = ['todos',...new Set(FORNS.map(f => f[1]))]; return `<div class="toolbar">${srchBox('fnq','Pesquisar fornecedor…',xs.fnq)}<div class="grow"></div>${fchips('fnc',cs.map(c => [c,c==='todos'?'Todos':c,null]),xs.fnc)}</div><div class="tw2 sec" id="xList"></div>`; };
+PR.fornecedores = () => {
+  const q = norm(xs.fnq), l = FORNS.filter(f => (xs.fnc==='todos'||f[1]===xs.fnc) && (!q||norm(f[0]+' '+f[1]+' '+f[3]).includes(q)));
+  $('xList').innerHTML = `<table class="dt"><thead><tr><th>Fornecedor</th><th>Categoria</th><th>Localidade</th><th>Telefone</th><th>Avaliação</th><th class="r">Pedidos</th><th class="r">Volume</th></tr></thead><tbody>${l.map(f => `<tr><td><div class="pp"><span class="card-ic" style="width:38px;height:38px">${I.building}</span><b>${f[0]}</b></div></td><td>${f[1]}</td><td>${f[3]}</td><td>${f[4]}</td><td><span class="stars">${'★'.repeat(Math.round(f[2]))}${'☆'.repeat(5-Math.round(f[2]))}</span> <b>${f[2]}</b></td><td class="r">${f[5]}</td><td class="r"><b>${f[6]} €</b></td></tr>`).join('')||'<tr><td colspan="7" class="mut">Sem resultados.</td></tr>'}</tbody></table>`;
+};
+
+/* ═════════ Controlo de Obras — réplica do módulo do portal (balanço de custos e proveitos) ═════════
+   Mesma lógica de cálculo do portal: proveitos (contratuais + complementares + revisão de preços) contra custos
+   (mão de obra, equipamentos, materiais, geral, subcontratos, outros + estrutura central, material transferido e existências).
+   Dados de exemplo gerados no próprio ficheiro. */
+const CO = { sel:null, de:'', ate:'', simOn:false, log:'' };
+const CAMPOS = [['prov_contr','Prov. contratuais'],['prov_compl','Prov. complementares'],['prov_rev','Revisão de preços'],['mo','Mão de obra'],['eq','Equipamentos'],['mat','Materiais'],['sub','Subcontratos'],['geral','Geral'],['outros','Outros']];
+const CC = {custo:'#e5604d', prov:'#2fa579', equip:'#2b5dd1', sede:'#7c5cf0', transf:'#e06aa6', exist:'#3f9f5e'};
+const TIPOL = [
+  {key:'mo',label:'Mão de Obra'},{key:'eq',label:'Equipamentos'},{key:'mat',label:'Materiais'},{key:'geral',label:'Geral'},{key:'sub',label:'Subcontratos'},{key:'outros',label:'Outros'},
+  {key:'transf',label:'Material transferido de outra obra',cor:CC.transf},{key:'sede',label:'Estrutura central',cor:CC.sede},{key:'exist',label:'Existências Finais',cor:CC.exist},
+];
+const e0 = v => { const n = Math.round(v||0); return (n<0?'-':'')+String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0')+'\u00a0€'; };
+const eK = v => Math.abs(v)>=1000 ? (v/1000).toFixed(Math.abs(v)>=100000?0:1).replace('.',',')+'k €' : Math.round(v)+' €';
+const pr = (v,d=1) => (v*100).toFixed(d).replace('.',',')+'%';
+const MN3 = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MNL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const mL = ym => { const [y,m] = ym.split('-'); return MN3[+m-1]+'/'+y.slice(2); };
+const mLong = ym => { const [y,m] = ym.split('-'); return MNL[+m-1]+' '+y; };
+const numPT = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
+const cfmt = v => v ? String(v).replace('.',',') : '';
+const niceCeil = v => { if(v<=0) return 1; const mag = Math.pow(10,Math.floor(Math.log10(v))), n = v/mag; return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*mag; };
+
+/* ── dados de exemplo ── */
+function mulberry(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const CO_INI = {O101:'2026-01',O102:'2026-04',O103:'2025-10',O104:'2026-03',O105:'2025-11',O106:'2026-06',O107:'2026-05'};
+const CO_ESC = {O101:190,O102:120,O103:260,O104:95,O105:170,O106:80,O107:140};
+const CO_FAT = {O101:1.0,O102:1.02,O103:0.96,O104:1.07,O105:0.93,O106:1.13,O107:1.0};
+const COOB = OBRAS.map((o,k) => ({id:o.cod, o, k, extra:{
+  sede_pct:[2.5,3,2,2,2.5,3,2][k], existencias:[18400,0,12500,0,9200,0,6800][k], transferido:[0,0,6500,0,0,0,0][k],
+  nota:o.cod==='O103'?'Inclui revisão de preços do 2.º semestre e trabalhos a mais aprovados em agosto.':o.cod==='O106'?'Obra em arranque: custos de estaleiro ainda não diluídos na faturação.':''}}));
+const COM = [];
+(function(){
+  const meses = (a,b) => { const r = []; let [y,m] = a.split('-').map(Number); const [y2,m2] = b.split('-').map(Number); while(y<y2||(y===y2&&m<=m2)){ r.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){ m=1; y++; } } return r; };
+  COOB.forEach(ob => {
+    const rnd = mulberry(ob.k*97+13), ms = meses(CO_INI[ob.id],'2026-09'), n = ms.length;
+    ms.forEach((ym,i) => {
+      const shape = n>1 ? 0.55 + 0.75*Math.sin(Math.PI*(i+0.6)/(n+0.4)) : 1;
+      const F = Math.round(CO_ESC[ob.id]*1000*(i===0?0.5:shape)*(0.92+rnd()*0.16)/100)*100;
+      const compl = rnd()<0.28 && i>1 ? Math.round(F*(0.04+rnd()*0.06)/100)*100 : 0;
+      const rev = (ob.id==='O103'||ob.id==='O105') && i%3===2 ? Math.round(F*0.015/100)*100 : 0;
+      const k = CO_FAT[ob.id], j = () => 0.88+rnd()*0.24;
+      const row = { obra_id:ob.id, mes:ym, prov_contr:F, prov_compl:compl, prov_rev:rev, proveitos:F+compl+rev, sim:{} };
+      const base = {mo:.26,eq:.13,mat:.27,sub:.12,geral:.05,outros:.02};
+      Object.keys(base).forEach(c => { row[c] = Math.round(F*base[c]*k*j()/10)*10 * (i===0 && ob.id==='O106' ? 1.6 : 1); });
+      COM.push(row);
+    });
+  });
+})();
+
+/* ── cálculo (igual ao do portal) ── */
+const hasOwn = (o,k) => Object.prototype.hasOwnProperty.call(o,k);
+const PROVK = {prov_contr:1, prov_compl:1, prov_rev:1};
+const simN = ids => COM.reduce((n,r) => (!ids || ids.has(r.obra_id)) ? n + CAMPOS.filter(([k]) => hasOwn(r.sim||{},k)).length : n, 0);
+function mensalEf(){
+  if(!simN()) return COM;
+  return COM.map(r => { const sm = r.sim||{}; let c = null;
+    CAMPOS.forEach(([k]) => { if(hasOwn(sm,k)){ c = c || {...r}; c[k] = sm[k]; } });
+    if(c && Object.keys(PROVK).some(k => hasOwn(sm,k))) c.proveitos = (+c.prov_contr||0)+(+c.prov_compl||0)+(+c.prov_rev||0);
+    return c || r; });
+}
+const per = () => ({de:CO.de, ate:CO.ate});
+const noPer = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
+function coCalc(obras, mensal, periodo){
+  const de = periodo.de||'', ate = periodo.ate||'', dentro = ym => (!de||ym>=de) && (!ate||ym<=ate);
+  const meses = {}, mk = ym => meses[ym] || (meses[ym] = {ym,prov:0,provC:0,provK:0,provR:0,mo:0,eq:0,mat:0,geral:0,sub:0,outros:0,transf:0,sede:0,exist:0});
+  const tot = Object.fromEntries(TIPOL.map(t => [t.key,0]));
+  let provTot=0, provCTot=0, provKTot=0, provRTot=0;
+  obras.forEach(o => {
+    const ex = o.extra||{}, sedePct = (+ex.sede_pct||0)/100;
+    const todas = mensal.filter(r => r.obra_id===o.id), linhas = todas.filter(r => dentro(r.mes));
+    linhas.forEach(r => {
+      const m = mk(r.mes), v = +r.proveitos||0;
+      m.prov += v; provTot += v; m.provC += +r.prov_contr||0; m.provK += +r.prov_compl||0; m.provR += +r.prov_rev||0;
+      provCTot += +r.prov_contr||0; provKTot += +r.prov_compl||0; provRTot += +r.prov_rev||0;
+      ['mo','eq','mat','geral','sub','outros'].forEach(k => { const x = +r[k]||0; m[k] += x; tot[k] += x; });
+      if(sedePct){ const sd = v*sedePct; m.sede += sd; tot.sede += sd; }
+    });
+    const ultimo = todas.map(r => r.mes).sort().pop();
+    if(ultimo && dentro(ultimo)){ const t = +ex.transferido||0; if(t){ mk(ultimo).transf += t; tot.transf += t; } }
+    const exist = Math.abs(+ex.existencias||0);
+    if(exist && linhas.length){ const me = linhas.map(r => r.mes).sort().pop(); mk(me).exist -= exist; tot.exist -= exist; }
+  });
+  const rows = Object.values(meses).sort((a,b) => a.ym.localeCompare(b.ym));
+  let acc = 0;
+  rows.forEach(r => { r.custos = TIPOL.reduce((s,t) => s+r[t.key],0); r.saldo = r.prov-r.custos; acc += r.saldo; r.acum = acc; r.margem = r.prov>0 ? r.saldo/r.prov : null; });
+  const custosTot = TIPOL.reduce((s,t) => s+tot[t.key],0);
+  return {rows, tot, provTot, provCTot, provKTot, provRTot, custosTot, saldo:provTot-custosTot, margem:provTot>0?(provTot-custosTot)/provTot:null};
+}
+
+/* ── gráficos SVG ── */
+const GW = 600, GH = 240, GPL = 54, GPR = 10, GPT = 14, GPB = 26;
+const svgO = l => `<svg viewBox="0 0 ${GW} ${GH}" width="100%" role="img" aria-label="${l}" style="display:block;overflow:visible">`;
+const axisY = (ymax,yf,fmt) => Array.from({length:5},(_,i) => { const v = ymax*i/4, y = yf(v); return `<line x1="${GPL}" x2="${GW-GPR}" y1="${y}" y2="${y}" stroke="#eef1f6"/><text x="${GPL-6}" y="${y+3}" font-size="10" text-anchor="end" fill="#8a93a5">${fmt(v)}</text>`; }).join('');
+function gBarras(rows,kA,kB,la,lb,extra){
+  const n = rows.length, pw = GW-GPL-GPR, ph = GH-GPT-GPB, gw = pw/n, bw = Math.min(20,gw*.32);
+  const ymax = niceCeil(Math.max(1,...rows.flatMap(r => [kA(r),kB(r)]))), y = v => GPT+ph-(v/ymax)*ph;
+  let s = svgO('Custos e proveitos por mês')+axisY(ymax,y,eK);
+  rows.forEach((r,i) => { const cx = GPL+i*gw+gw/2, a = kA(r), b = kB(r);
+    s += `<g><title>${mL(r.ym)}\n${la}: ${e0(a)}\n${lb}: ${e0(b)}${extra?'\n'+extra(r):''}</title><rect x="${cx-bw-1}" y="${y(a)}" width="${bw}" height="${Math.max(0,GPT+ph-y(a))}" rx="2" fill="${CC.custo}"/><rect x="${cx+1}" y="${y(b)}" width="${bw}" height="${Math.max(0,GPT+ph-y(b))}" rx="2" fill="${CC.prov}"/></g><text x="${cx}" y="${GH-8}" font-size="10" text-anchor="middle" fill="#8a93a5">${mL(r.ym)}</text>`; });
+  return s+`<line x1="${GPL}" x2="${GW-GPR}" y1="${y(0)}" y2="${y(0)}" stroke="#c9cfdb"/></svg>`;
+}
+function gSaldo(rows){
+  const n = rows.length, pw = GW-GPL-GPR, ph = GH-GPT-GPB, vals = rows.flatMap(r => [r.saldo,r.acum]);
+  let lo = Math.min(0,...vals), hi = Math.max(0,...vals); if(lo===hi){ lo -= 1; hi += 1; } const pad = (hi-lo)*.15; lo -= pad; hi += pad;
+  const y = v => GPT+ph-((v-lo)/(hi-lo))*ph, x = i => GPL+(n===1?pw/2:(i/(n-1))*pw);
+  let s = svgO('Saldo mensal e acumulado');
+  for(let i=0;i<=4;i++){ const v = lo+(hi-lo)*i/4; s += `<line x1="${GPL}" x2="${GW-GPR}" y1="${y(v)}" y2="${y(v)}" stroke="#eef1f6"/><text x="${GPL-6}" y="${y(v)+3}" font-size="10" text-anchor="end" fill="#8a93a5">${eK(v)}</text>`; }
+  s += `<line x1="${GPL}" x2="${GW-GPR}" y1="${y(0)}" y2="${y(0)}" stroke="#8a93a5" stroke-opacity=".6"/>`;
+  const path = k => rows.map((r,i) => (i?'L':'M')+x(i).toFixed(1)+','+y(r[k]).toFixed(1)).join(' ');
+  s += `<path d="${path('saldo')}" fill="none" stroke="#9aa3b3" stroke-width="1.5" stroke-linejoin="round"/><path d="${path('acum')}" fill="none" stroke="#1b2130" stroke-width="2.5" stroke-linejoin="round"/>`;
+  rows.forEach((r,i) => { s += `<g><title>${mL(r.ym)}\nSaldo do mês: ${e0(r.saldo)}${r.margem!==null?' ('+pr(r.margem)+')':''}\nAcumulado: ${e0(r.acum)}</title><circle cx="${x(i)}" cy="${y(r.saldo)}" r="4" fill="${r.saldo>=0?'#12a150':'#e02424'}" stroke="#fff" stroke-width="1.5"/><circle cx="${x(i)}" cy="${y(r.acum)}" r="3" fill="#1b2130"/></g><text x="${x(i)}" y="${GH-8}" font-size="10" text-anchor="middle" fill="#8a93a5">${mL(r.ym)}</text>`; });
+  const u = rows[n-1];
+  return s+`<text x="${x(n-1)-7}" y="${u.acum>=u.saldo?y(u.acum)-11:y(u.acum)+19}" font-size="11" font-weight="600" text-anchor="end" fill="#1b2130">${e0(u.acum)}</text></svg>`;
+}
+function gCarga(rows){
+  const n = rows.length, pw = GW-GPL-GPR, ph = GH-GPT-GPB, gw = pw/n, bw = Math.min(26,gw*.5);
+  const val = rows.map(r => r.prov>0 ? {...r,rmo:r.mo/r.prov,req:r.eq/r.prov,tot:(r.mo+r.eq)/r.prov} : {...r,tot:null});
+  const ymax = Math.max(.1,Math.ceil(Math.max(.1,...val.map(v => v.tot||0))*10)/10), y = v => GPT+ph-(v/ymax)*ph;
+  const ok = val.filter(v => v.tot!==null), sp = ok.reduce((a,v) => a+v.prov,0), media = sp ? ok.reduce((a,v) => a+v.mo+v.eq,0)/sp : 0;
+  let s = svgO('Carga sobre o faturado')+axisY(ymax,y,v => pr(v,0));
+  val.forEach((v,i) => { const cx = GPL+i*gw+gw/2-bw/2;
+    if(v.tot!==null){ const yEq = y(v.tot), hEq = Math.max(y(v.rmo)-yEq-2,0);
+      s += `<g><title>${mL(v.ym)}\nMão de obra: ${pr(v.rmo)}\nEquipamentos: ${pr(v.req)}\nCarga total: ${pr(v.tot)}\nsobre ${e0(v.prov)} faturados</title><rect x="${cx}" y="${y(v.rmo)}" width="${bw}" height="${Math.max(GPT+ph-y(v.rmo),0)}" fill="${CC.custo}"/><rect x="${cx}" y="${yEq}" width="${bw}" height="${hEq}" rx="2" fill="${CC.equip}"/></g>`;
+    } else s += `<text x="${cx+bw/2}" y="${y(0)-6}" font-size="10" text-anchor="middle" fill="#8a93a5">—</text>`;
+    s += `<text x="${GPL+i*gw+gw/2}" y="${GH-8}" font-size="10" text-anchor="middle" fill="#8a93a5">${mL(v.ym)}</text>`; });
+  if(media>0 && media<=ymax) s += `<line x1="${GPL}" x2="${GW-GPR}" y1="${y(media)}" y2="${y(media)}" stroke="#9aa3b3" stroke-width="2" stroke-dasharray="5 4"/>`;
+  return s+`<line x1="${GPL}" x2="${GW-GPR}" y1="${y(0)}" y2="${y(0)}" stroke="#c9cfdb"/></svg>`;
+}
+
+/* ── blocos HTML ── */
+const leg = (cor,t,dash) => `<span>${dash?'<i class="dash"></i>':`<i style="background:${cor}"></i>`}${t}</span>`;
+const legend = a => `<div class="cx-leg">${a.join('')}</div>`;
+const panel = (t,d,b) => `<div class="card cx-panel"><div class="cx-ph"><b>${t}</b>${d?`<small>${d}</small>`:''}</div>${b}</div>`;
+const tile = (l,v,s,cor) => `<div class="cx-tile"><div class="l">${l}</div><div class="v" style="${cor?'color:'+cor:''}">${v}</div><div class="s">${s||'&nbsp;'}</div></div>`;
+const provSub = c => (c.provKTot||c.provRTot) ? [`contrat. ${eK(c.provCTot)}`, c.provKTot?`compl. ${eK(c.provKTot)}`:'', c.provRTot?`rev. preços ${eK(c.provRTot)}`:''].filter(Boolean).join(' · ') : c.rows.length+(c.rows.length===1?' mês':' meses');
+function tipoBody(c,tot){
+  const ls = TIPOL.filter(t => Math.abs(tot[t.key])>0.005), mx = Math.max(1,...ls.map(t => Math.abs(tot[t.key])));
+  return ls.map(t => `<div class="cx-tip"><div>${t.label}</div><div class="tr"><i style="width:${Math.abs(tot[t.key])/mx*100}%;background:${t.cor||CC.custo}"></i></div><div class="n">${e0(tot[t.key])}</div><div class="n mt">${c.provTot>0?pr(tot[t.key]/c.provTot):'—'}</div></div>`).join('')
+   + `<div class="cx-tip tt"><div>Total</div><div></div><div class="n">${e0(c.custosTot)}</div><div class="n">${c.provTot>0?pr(c.custosTot/c.provTot):'—'}</div></div>`;
+}
+function coBalanco(obras, mensal, periodo){
+  const c = coCalc(obras,mensal,periodo), unica = obras.length===1;
+  const notas = obras.filter(o => o.extra&&o.extra.nota).map(o => `<div class="cx-nota"><b>Nota${unica?'':' · '+esc(o.id)}</b><span>${esc(o.extra.nota)}</span></div>`).join('');
+  if(!c.rows.length) return notas+`<div class="res-empty">${periodo.de||periodo.ate?'Sem lançamentos no período escolhido.':'Sem lançamentos. Importe o Excel de custos e registe os proveitos mensais.'}</div>`;
+  const {rows,tot} = c, comSede = obras.some(o => +(o.extra||{}).sede_pct);
+  const tiles = `<div class="cx-tiles">${tile('Proveitos',e0(c.provTot),provSub(c),CC.prov)}${tile('Custos totais',e0(c.custosTot),comSede?'diretos + sede + ajustes':'diretos + ajustes',CC.custo)}${tile('Saldo',(c.saldo>=0?'+':'')+e0(c.saldo),'proveitos − custos',c.saldo>=0?'var(--ok-c)':'var(--bad-c)')}${tile('Margem',c.margem===null?'—':pr(c.margem),'sobre proveitos')}</div>`;
+  const evo = `<div class="cx-grid">${panel('Custos e proveitos por mês','Custos incluem imputação de sede e ajustes.',gBarras(rows,r=>r.custos,r=>r.prov,'Custos','Proveitos',r=>'Saldo: '+e0(r.saldo))+legend([leg(CC.custo,'Custos'),leg(CC.prov,'Proveitos')]))}${panel('Saldo mensal e acumulado','A linha escura é onde a obra está de facto.',gSaldo(rows)+legend([leg('#1b2130','Saldo acumulado'),leg('#9aa3b3','Saldo do mês')]))}</div>`;
+  const com = rows.filter(r => r.prov>0), tmo = rows.reduce((a,r) => a+r.mo,0), teq = rows.reduce((a,r) => a+r.eq,0), tp = rows.reduce((a,r) => a+r.prov,0), p = v => tp>0?pr(v/tp):'—';
+  const pico = com.length ? com.reduce((a,r) => (r.mo+r.eq)/r.prov>(a.mo+a.eq)/a.prov?r:a) : null;
+  const carga = `<div class="cx-sec">Carga de mão de obra e equipamentos</div><div class="cx-hint">Quanto de cada euro faturado é absorvido por pessoal próprio e equipamento. Meses sem faturação não têm percentagem.</div>
+    <div class="cx-tiles t3">${tile('Mão de obra',p(tmo),e0(tmo))}${tile('Equipamentos',p(teq),e0(teq))}${tile('Carga total sobre o faturado',p(tmo+teq),pico?`pico em ${mL(pico.ym)}, com ${pr((pico.mo+pico.eq)/pico.prov)}`:'—')}</div>
+    <div class="cx-grid">${panel('Mão de obra + equipamentos vs faturação (€)','',gBarras(rows,r=>r.mo+r.eq,r=>r.prov,'Mão de obra + equipamentos','Faturação',r=>'Carga: '+(r.prov>0?pr((r.mo+r.eq)/r.prov):'—'))+legend([leg(CC.custo,'Mão de obra + equipamentos'),leg(CC.prov,'Faturação')]))}${panel('Carga sobre o faturado (%)','',gCarga(rows)+legend([leg(CC.custo,'Mão de obra'),leg(CC.equip,'Equipamentos'),leg('','Média do período',true)]))}</div>`;
+  const tipo = `<div class="cx-sec">Custos por tipologia</div>`+panel('Peso de cada rubrica face ao total faturado','As rubricas que não são custo direto de obra (sede, material transferido, existências) têm cor própria.',`<div class="cx-tips">${tipoBody(c,tot)}</div>`);
+  const tabela = `<div class="cx-sec">Detalhe mensal</div><div class="tw2"><table class="dt"><thead><tr><th>Mês</th><th class="r">Custos</th><th class="r">Prov. contratuais</th><th class="r">Prov. complementares</th>${c.provRTot?'<th class="r">Revisão de preços</th>':''}<th class="r">Proveitos</th><th class="r">Saldo</th><th class="r">Margem</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${mL(r.ym)}</b></td><td class="r">${e0(r.custos)}</td><td class="r">${e0(r.provC)}</td><td class="r">${e0(r.provK)}</td>${c.provRTot?`<td class="r">${e0(r.provR)}</td>`:''}<td class="r">${e0(r.prov)}</td><td class="r" style="color:${r.saldo<0?'var(--bad-c)':'inherit'}">${e0(r.saldo)}</td><td class="r">${r.margem===null?'—':pr(r.margem)}</td></tr>`).join('')}<tr style="background:#f6f8fc"><td><b>TOTAL</b></td><td class="r"><b>${e0(c.custosTot)}</b></td><td class="r"><b>${e0(c.provCTot)}</b></td><td class="r"><b>${e0(c.provKTot)}</b></td>${c.provRTot?`<td class="r"><b>${e0(c.provRTot)}</b></td>`:''}<td class="r"><b>${e0(c.provTot)}</b></td><td class="r" style="color:${c.saldo<0?'var(--bad-c)':'inherit'}"><b>${e0(c.saldo)}</b></td><td class="r"><b>${c.margem===null?'—':pr(c.margem)}</b></td></tr></tbody></table></div>`;
+  return notas+tiles+evo+carga+tipo+tabela;
+}
+
+/* ── páginas ── */
+const coSel = () => CO.sel==='ALL' ? COOB : COOB.filter(o => o.id===CO.sel);
+function coPerBar(ids){
+  const ms = [...new Set(COM.filter(r => ids.has(r.obra_id)).map(r => r.mes))].sort();
+  const opt = (s,v) => `<option value="">${v}</option>`+ms.map(m => `<option value="${m}"${m===s?' selected':''}>${mLong(m)}</option>`).join('');
+  return `<div class="cx-per"><span>Analisar de</span><select class="inp" data-coper="de">${opt(CO.de,'início')}</select><span>até</span><select class="inp" data-coper="ate">${opt(CO.ate,'fim')}</select>${CO.de||CO.ate?'<button type="button" class="fchip" data-coper-reset>Limpar período</button>':''}<span class="sp"></span><button type="button" class="btn btn-o" style="height:40px;padding:0 16px;font-size:14px" data-coupd title="Lê os ficheiros das pastas das obras (custos e autos de medição)">${I.refresh}Atualizar das pastas</button></div><div id="co-upd-log">${CO.log}</div>`;
+}
+function coList(){
+  const ids = new Set(COOB.map(o => o.id)), total = coCalc(COOB,mensalEf(),per());
+  const card = (id,cor,cod,nome,c,meses,sim) => `<button type="button" class="mini-card cx-ob" data-coabrir="${id}" style="--dot:${cor}"><div class="cx-ob-top"><i class="dot"></i><span class="cod" style="margin:0">${esc(cod)}</span>${sim?'<span class="cx-simtag" style="margin-left:auto">SIMULADO</span>':''}</div><div class="cx-ob-nome">${esc(nome)}</div><div class="cx-ob-saldo" style="color:${meses?(c.saldo>=0?'var(--ok)':'var(--bad)'):'var(--mute)'}">${meses?e0(c.saldo):'—'}</div><div class="cx-ob-sub">${meses&&c.margem!==null?pc((c.saldo>=0?'▲ ':'▼ ')+pr(c.margem),c.saldo>=0?'c-ok':'c-bad')+' margem · ':''}${meses} ${meses===1?'mês':'meses'}</div><div class="mc-kv"><div>Proveitos<b>${e0(c.provTot)}</b></div><div>Custos<b>${e0(c.custosTot)}</b></div></div></button>`;
+  const cards = COOB.map(ob => { const c = coCalc([ob],mensalEf(),per()); return card(ob.id,['#2b5dd1','#e8803a','#2fa579','#e0b020','#7c5cf0','#e0476b','#2593c9'][ob.k],ob.id,ob.o.nome,c,COM.filter(r => r.obra_id===ob.id&&noPer(r)).length,simN(new Set([ob.id]))); }).join('');
+  const nM = new Set(COM.filter(r => noPer(r)).map(r => r.mes)).size;
+  return `${coPerBar(ids)}<div class="cards3 sec">${card('ALL','#1b2130','TODAS AS EMPREITADAS',COOB.length+' obras em curso',total,nM,simN())}${cards}</div>`;
+}
+function coBanner(){
+  const todas = CO.sel==='ALL', obras = coSel(), ob = todas ? null : obras[0];
+  const meses = COM.filter(r => obras.some(o => o.id===r.obra_id) && noPer(r)).map(r => r.mes).sort(), ate = meses.length ? mLong(meses[meses.length-1]) : '—';
+  return `<div class="cx-banner"><div><button type="button" class="cx-back" data-covoltar>← Empreitadas</button><p class="cx-eb">PLANDESE · ${todas?'Direção de Obra':esc(ob.id)}</p><h2>${todas?'Balanço geral das empreitadas':esc(ob.o.nome)}</h2><div class="cx-bb">${ob?`<button type="button" data-xtoast="Escolha o ficheiro Excel de custos">Importar custos (Excel)</button>`:''}<button type="button" data-xtoast="Relatório PDF gerado">Relatório PDF</button></div></div>
+   <div class="cx-br">${ob?`<label class="cx-sede" title="Valor do stock de material em obra (comprado e ainda não consumido). Abate aos custos.">Existências em obra <input type="text" inputmode="decimal" data-coexist="${ob.id}" value="${cfmt(ob.extra.existencias)}" placeholder="0"/> €</label><label class="cx-sede" title="Percentagem da faturação imputada como custo de estrutura central">Estrutura central <input type="text" inputmode="decimal" data-cosede="${ob.id}" value="${cfmt(ob.extra.sede_pct)}" placeholder="0"/> %</label><div class="cx-sedeval" id="co-sede-val"></div>`:''}<div class="cx-meta">Dados apurados até <b>${ate}</b><br>${todas?obras.length+' empreitadas em curso':esc(ob.o.local)}</div></div></div>`;
+}
+function coAnalise(){
+  const obras = coSel(), ids = new Set(obras.map(o => o.id)), n = simN(ids);
+  return (n ? `<div class="cx-simnote">⚠ Análise com ${n} ${n===1?'valor simulado':'valores simulados'} (a amarelo nos lançamentos). Pode apagá-los em "Apagar simulação".</div>` : '')+coBalanco(obras,mensalEf(),per());
+}
+function coRefresh(){
+  const b = $('co-an-box'); if(b) b.innerHTML = coAnalise();
+  const sv = $('co-sede-val'); if(sv && CO.sel!=='ALL'){ const c = coCalc(coSel(),mensalEf(),per()); sv.innerHTML = c.tot.sede ? `<b>${e0(c.tot.sede)}</b> nos meses em análise` : 'sem valor nos meses em análise'; }
+}
+function coLanc(){
+  const id = CO.sel, rows = mensalEf().filter(r => r.obra_id===id).sort((a,b) => a.mes.localeCompare(b.mes)), nS = simN(new Set([id]));
+  const sbar = CO.simOn
+    ? `<div class="cx-simbar on"><span class="cx-simtag">SIMULAÇÃO</span><span>Os valores que alterar ficam guardados a amarelo e entram na análise.</span><span class="sp"></span>${nS?`<button type="button" data-cosim="apagar">Apagar simulação (${nS})</button>`:''}<button type="button" data-cosim="toggle">Concluir</button></div>`
+    : `<div class="cx-simbar"><button type="button" data-cosim="toggle">Simular valores</button>${nS?`<button type="button" data-cosim="apagar">Apagar simulação (${nS})</button><span class="cx-simtag">${nS} ${nS===1?'valor simulado':'valores simulados'} na análise</span>`:'<span>Experimente valores (a amarelo): ficam guardados e entram na análise até os apagar.</span>'}</div>`;
+  const lin = rows.map(r => `<tr><td><b>${mL(r.mes)}</b></td>${CAMPOS.map(([k]) => `<td><input class="cx-in${hasOwn(COM.find(x => x.obra_id===id&&x.mes===r.mes).sim||{},k)?' sim':''}" inputmode="decimal" data-cocel="${k}" data-com="${r.mes}" value="${cfmt(+r[k]||0)}" placeholder="0"/></td>`).join('')}<td><button type="button" class="cx-del" data-codel="${r.mes}" aria-label="Apagar mês" title="Apagar mês">✕</button></td></tr>`).join('');
+  return `<div class="cx-sec">Lançamentos mensais</div><div class="card" style="padding:16px 18px">${sbar}<div class="cx-hint" style="margin:12px 0">Os custos vêm do Excel importado; os proveitos (faturação do mês) lançam-se aqui. Todos os valores podem ser corrigidos à mão.</div><div style="overflow:auto"><table class="dt cx-lanc"><thead><tr><th>Mês</th>${CAMPOS.map(c => `<th class="r">${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${lin||'<tr><td colspan="11" class="mut" style="text-align:center;padding:18px">Sem lançamentos.</td></tr>'}</tbody></table></div><div class="row-add"><input type="month" id="co-novo-mes" class="inp" style="height:40px"/><button type="button" class="btn btn-o" style="height:40px;padding:0 16px;font-size:14px" data-coadd>${I.plus}Adicionar mês</button></div></div>`;
+}
+R.producao = () => CO.sel ? `${coBanner()}${coPerBar(new Set(coSel().map(o => o.id)))}<div id="co-an-box">${coAnalise()}</div>${CO.sel!=='ALL'?`<div id="co-lanc-box">${coLanc()}</div>`:''}` : coList();
+PR.producao = () => { if(CO.sel) coRefresh(); };
+
+/* ── eventos ── */
+$('v-mod').addEventListener('click', e => {
+  if(state.view!=='producao') return;
+  const a = e.target.closest('[data-coabrir]'); if(a){ CO.sel = a.dataset.coabrir; CO.simOn = false; renderMod('producao'); $('main').scrollTo(0,0); return; }
+  if(e.target.closest('[data-covoltar]')){ CO.sel = null; CO.simOn = false; renderMod('producao'); $('main').scrollTo(0,0); return; }
+  if(e.target.closest('[data-coper-reset]')){ CO.de = CO.ate = ''; renderMod('producao'); return; }
+  const s = e.target.closest('[data-cosim]');
+  if(s){
+    if(s.dataset.cosim==='toggle') CO.simOn = !CO.simOn;
+    else { COM.filter(r => r.obra_id===CO.sel).forEach(r => { r.sim = {}; }); CO.simOn = false; toast('Simulação apagada'); }
+    $('co-lanc-box').innerHTML = coLanc(); coRefresh(); return;
+  }
+  const d = e.target.closest('[data-codel]');
+  if(d){ const i = COM.findIndex(r => r.obra_id===CO.sel&&r.mes===d.dataset.codel); if(i>=0) COM.splice(i,1); $('co-lanc-box').innerHTML = coLanc(); coRefresh(); toast('Mês apagado'); return; }
+  if(e.target.closest('[data-coadd]')){
+    const v = $('co-novo-mes').value; if(!v){ toast('Escolha o mês a adicionar'); return; }
+    if(COM.some(r => r.obra_id===CO.sel&&r.mes===v)){ toast('Esse mês já existe'); return; }
+    COM.push({obra_id:CO.sel,mes:v,prov_contr:0,prov_compl:0,prov_rev:0,proveitos:0,mo:0,eq:0,mat:0,geral:0,sub:0,outros:0,sim:{}});
+    $('co-lanc-box').innerHTML = coLanc(); coRefresh(); toast('Mês adicionado'); return;
+  }
+  if(e.target.closest('[data-coupd]')){
+    const hh = new Date(); const hm = String(hh.getHours()).padStart(2,'0')+':'+String(hh.getMinutes()).padStart(2,'0');
+    CO.log = `<div class="cx-updlog"><div><b>Atualizado às ${hm}</b> <button type="button" onclick="this.closest('.cx-updlog').remove();CO.log=''">✕</button></div>${COOB.slice(0,4).map(o => `<div><b>${o.id}</b> — custos de ${COM.filter(r => r.obra_id===o.id).length} meses, proveitos contratuais de ${COM.filter(r => r.obra_id===o.id).length-1} meses <span class="mut">(Custos_${o.id}.xlsx · Auto_${o.id}.xlsx)</span></div>`).join('')}</div>`;
+    $('co-upd-log').innerHTML = CO.log;
+  }
+});
+$('v-mod').addEventListener('change', e => {
+  if(state.view!=='producao') return;
+  const t = e.target;
+  if(t.dataset.coper){ CO[t.dataset.coper] = t.value||''; if(CO.de&&CO.ate&&CO.de>CO.ate){ if(t.dataset.coper==='de') CO.ate = CO.de; else CO.de = CO.ate; } renderMod('producao'); return; }
+  if(t.dataset.cocel){
+    const row = COM.find(r => r.obra_id===CO.sel&&r.mes===t.dataset.com), k = t.dataset.cocel, v = Math.abs(numPT(t.value));
+    if(CO.simOn){ row.sim = row.sim||{}; row.sim[k] = v; t.classList.add('sim'); }
+    else { row[k] = v; if(PROVK[k]) row.proveitos = (+row.prov_contr||0)+(+row.prov_compl||0)+(+row.prov_rev||0); }
+    t.value = cfmt(v); if(CO.simOn){ $('co-lanc-box').innerHTML = coLanc(); } coRefresh(); return;
+  }
+  if(t.dataset.coexist){ const ob = COOB.find(o => o.id===t.dataset.coexist); ob.extra.existencias = Math.abs(numPT(t.value)); t.value = cfmt(ob.extra.existencias); coRefresh(); return; }
+  if(t.dataset.cosede){ const ob = COOB.find(o => o.id===t.dataset.cosede); ob.extra.sede_pct = Math.abs(numPT(t.value)); t.value = cfmt(ob.extra.sede_pct); coRefresh(); }
+});
+
+/* ── ações de cabeçalho por módulo ── */
+const HEAD_X = {
+  'fecho-mes':['Folha de Fecho','Fecho mensal do ponto, por obra',`<button type="button" class="btn-w" data-xtoast="Mês enviado para processamento">${I.check}Fechar o mês</button>`],
+  'mapa-ferias':['Mapa de Férias','Quem está ausente e quando',`<button type="button" class="btn-w" data-xtoast="Abre o pedido de férias">${I.plus}Marcar férias</button>`],
+  'colaboradores':['Colaboradores','Fichas, vínculo e estado de cada pessoa',`<button type="button" class="btn-w" data-xtoast="Abre a ficha de novo colaborador">${I.plus}Novo colaborador</button>`],
+  'compras':['Pedidos de compra','Do pedido à encomenda',`<button type="button" class="btn-w" data-xtoast="Abre o novo pedido">${I.plus}Novo pedido</button>`],
+  'mapas-comparativos':['Mapas Comparativos','Comparação de propostas de fornecedores',`<button type="button" class="btn-w" data-xtoast="Exportado em PDF">${I.download}Exportar PDF</button>`],
+  'faturas':['Inserção de Faturas','Carregue o documento e confirme os dados',''],
+  'combustivel':['Registos de Combustível','Consumos por equipamento e por obra',`<button type="button" class="btn-w" data-xtoast="Abre o registo de abastecimento">${I.plus}Registar abastecimento</button>`],
+  'producao':['Controlo de Obras','Balanço de custos e proveitos por empreitada',''],
+  'precos-unitarios':['Lista de Preços','Preços unitários de referência',`<button type="button" class="btn-w" data-xtoast="Importar de Excel">${I.upload}Importar Excel</button>`],
+  'obras':['Adicionar obra','Criar uma nova obra no portal',''],
+  'utilizadores':['Gerir utilizadores','Quem tem acesso e com que perfil',`<button type="button" class="btn-w" data-xtoast="Convite enviado">${I.plus}Convidar utilizador</button>`],
+  'empresas-moa':['Empresas MOA','Donos de obra e entidades adjudicantes',`<button type="button" class="btn-w" data-xtoast="Abre o formulário de empresa">${I.plus}Nova empresa</button>`],
+  'fornecedores':['Lista de Fornecedores','Contactos, categorias e avaliação',`<button type="button" class="btn-w" data-xtoast="Abre o formulário de fornecedor">${I.plus}Novo fornecedor</button>`],
+};
+function renderMod(id){
+  $('v-mod').innerHTML = R[id](); if(PR[id]) PR[id]();
+}
+
+/* ── detalhes em gaveta ── */
+function openColab(n){
+  const c = COLAB.find(x => x.n===n);
+  openDetail(`${c.obra} · ${c.tipo==='plandese'?'Plandese':'Alugado'}`, esc(c.n), esc(c.f),
+   `<div class="tiles"><div class="tile"><small>Horas no mês</small><b>${c.hm} h</b></div><div class="tile"><small>Horas extra</small><b>${c.he} h</b></div><div class="tile"><small>Férias disponíveis</small><b>${c.fer} dias</b></div><div class="tile"><small>Advertências</small><b>0</b></div></div>
+    <h4>Contactos e contrato</h4><div class="prow"><div class="rtx"><small>Telemóvel</small><b>${c.tel.replace(/(\d{3})(\d{3})(\d{3})/,'$1 $2 $3')}</b></div></div><div class="prow"><div class="rtx"><small>Admissão</small><b>${c.adm}</b></div></div><div class="prow"><div class="rtx"><small>Estado hoje</small><b>${c.est}</b></div></div>
+    <h4>Últimos registos</h4>${['Qui 08/10 · 8 h','Qua 07/10 · 8 h + 2 h extra','Ter 06/10 · 8 h','Seg 05/10 · 8 h'].map(r => `<div class="prow"><div class="rtx"><b>${r}</b><small>${c.obra}</small></div>${pc('Registado','c-ok')}</div>`).join('')}`,
+   `<button type="button" class="btn btn-o" onclick="closeSlide();go('historico')">Ver ponto</button><button type="button" class="btn" onclick="toast('Abre a edição da ficha')">Editar ficha</button>`);
+}
+function openPedido(id){
+  const p = PEDS.find(x => x.id===id), tl = [['Pedido criado por '+p.q,p.d+' · 09:12'],['Enviado para cotação','Compras'],['Propostas recebidas','3 fornecedores'],['Aguarda aprovação','Administração']].slice(0,p.e+1);
+  openDetail(`${p.id} · Obra ${p.o}`, esc(p.t), `${PEST[p.e][0]} · ${p.d}/2026`,
+   `<div class="tiles"><div class="tile"><small>Valor</small><b>${eur(p.v)}</b></div><div class="tile"><small>Fornecedor</small><b style="font-size:17px">${esc(p.forn)}</b></div></div>
+    <h4>Histórico</h4><div class="tl">${tl.map(t => `<div class="row"><i></i><div><b>${t[0]}</b><small>${t[1]}</small></div></div>`).join('')}</div>`,
+   p.e===2 ? `<button type="button" class="btn btn-o" onclick="closeSlide();toast('Pedido rejeitado')">Rejeitar</button><button type="button" class="btn" onclick="approvePed('${p.id}')">Aprovar</button>` : `<button type="button" class="btn btn-o" onclick="closeSlide();go('mapas-comparativos')">Ver mapa comparativo</button>`);
+}
+function approvePed(id){ PEDS.find(x => x.id===id).e = 3; closeSlide(); toast('Pedido aprovado e encomendado'); if(state.view==='compras') renderMod('compras'); }
+
+/* ── eventos ── */
+$('v-mod').addEventListener('click', e => {
+  const t = e.target.closest('[data-xf]');
+  if(t){ const [k,v] = t.dataset.xf.split(':'); xs[k] = v; renderMod(state.view); return; }
+  const m = e.target.closest('[data-xmes]'); if(m){ xs.mes = Math.max(-1,Math.min(1, xs.mes + (+m.dataset.xmes))); renderMod(state.view); return; }
+  const o = e.target.closest('[data-xobra]'); if(o){ openObra(+o.dataset.xobra); return; }
+  const c = e.target.closest('[data-xcol]'); if(c){ openColab(c.dataset.xcol); return; }
+  const p = e.target.closest('[data-xped]'); if(p){ openPedido(p.dataset.xped); return; }
+  const g = e.target.closest('[data-xtog]'); if(g){ g.classList.toggle('on'); toast(g.classList.contains('on')?'Acesso ativado':'Acesso desativado'); return; }
+  const x = e.target.closest('[data-xtoast]'); if(x){ toast(x.dataset.xtoast); }
+});
+$('v-mod').addEventListener('input', e => {
+  const k = e.target.dataset.x; if(!k) return;
+  if(k==='cq') xs.cq = e.target.value; else if(k==='pq') xs.pq = e.target.value; else if(k==='fnq') xs.fnq = e.target.value;
+  if(PR[state.view]) PR[state.view]();
+});
+$('v-mod').addEventListener('change', e => { if(e.target.dataset.xmapa!==undefined){ xs.mapa = +e.target.value; renderMod(state.view); } });
+$('acts').addEventListener('click', e => { const x = e.target.closest('[data-xtoast]'); if(x) toast(x.dataset.xtoast); });
+
 /* ═════════ Pesquisa global (equivale ao separador "Pesquisar" das apps) ═════════ */
 const srch = $('search'), q = $('q'), res = $('results');
 const RECENTES = ['historico','compras','combustivel','producao'];
@@ -856,7 +1419,7 @@ res.addEventListener('click', e => {
   const r = e.target.closest('[data-r]'); if(!r) return;
   const [t, v] = [r.dataset.r.slice(0,1), r.dataset.r.slice(2)];
   q.value=''; q.blur(); closeSearch();
-  if(t==='m') go(v); else if(t==='o') openObra(+v); else toast('Resumo da pessoa abre numa gaveta lateral');
+  if(t==='m') go(v); else if(t==='o') openObra(+v); else openColab(v);
 });
 document.addEventListener('mousedown', e => {
   if(!e.target.closest('#search')) closeSearch();

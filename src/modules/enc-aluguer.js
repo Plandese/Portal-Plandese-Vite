@@ -77,12 +77,49 @@ async function removeColabMOA(id, empId){
   showToast('Colaborador removido');
 }
 
+const _moaDesk=()=>document.body.classList.contains('device-desktop')&&!document.body.classList.contains('enc-mode');
+
+// Gaveta com os dados e os colaboradores de uma empresa (portal de computador)
+function _moaAbrirEmpresa(id){
+  const emp=EMPRESAS_MOA.find(e=>e.id===id);
+  const modal=document.getElementById('modal-moa-det');
+  if(!emp||!modal) return;
+  document.getElementById('mmd-title').textContent=emp.nome;
+  document.getElementById('mmd-sub').textContent=[emp.nif&&('NIF '+emp.nif),emp.contacto].filter(Boolean).join(' · ')||'Empresa cedente de mão de obra aluguer';
+  document.getElementById('mmd-editar').onclick=()=>editEmpresaMOA(id);
+  const tg=document.getElementById('mmd-toggle');
+  tg.textContent=emp.ativa?'Desativar':'Ativar';
+  tg.onclick=async()=>{ await toggleEmpresaMOA(id); modal.classList.remove('open'); };
+  const panel=modal.querySelector('.mmd-panel');
+  panel.id=`colabs-panel-${id}`;
+  _renderColabsPanelMOA(id,panel);
+  modal.classList.add('open');
+}
+document.addEventListener('click',e=>{
+  const r=e.target.closest('#empresas-moa-list [data-moa]');
+  if(r&&_moaDesk()) _moaAbrirEmpresa(r.dataset.moa);
+});
+
 function renderEmpresasMOA(){
   const cont=document.getElementById('empresas-moa-list');
   if(!cont) return;
   cont.innerHTML='';
   if(!EMPRESAS_MOA.length){
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma empresa criada. Clique em "Nova empresa".</div>';
+    return;
+  }
+  if(_moaDesk()){
+    const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    cont.innerHTML=`<div class="moa-l">${EMPRESAS_MOA.map(emp=>{
+      const n=(COLABORADORES_MOA[emp.id]||[]).length;
+      const sub=[emp.nif&&('NIF '+esc(emp.nif)),emp.contacto&&esc(emp.contacto)].filter(Boolean).join(' · ');
+      return `<div class="moa-r${emp.ativa?'':' off'}" data-moa="${emp.id}">
+        <span class="moa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4.5L19 8v13"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M9 14h.01M15 14h.01"/></svg></span>
+        <div class="moa-t"><b>${esc(emp.nome)}</b><small>${sub||'Sem dados de contacto'}</small></div>
+        <span class="moa-n">${n} colaborador${n!==1?'es':''}</span>
+        <span class="moa-p ${emp.ativa?'ok':'off'}">${emp.ativa?'Ativa':'Inativa'}</span>
+        <svg class="moa-ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`; }).join('')}</div>`;
     return;
   }
   EMPRESAS_MOA.forEach(emp=>{
@@ -607,7 +644,7 @@ async function moaTrabGuardar(){
     showToast(`✓ ${nome} registado`);
     _moaRefreshEmpresaSelects();
     const panel=document.getElementById(`colabs-panel-${empId}`);
-    if(panel) _renderColabsPanelMOA(empId,panel); else if(document.getElementById('empresas-moa-list')) renderEmpresasMOA();
+    if(panel) _renderColabsPanelMOA(empId,panel); if((!panel||_moaDesk())&&document.getElementById('empresas-moa-list')) renderEmpresasMOA();
     // No ecrã do encarregado, o trabalhador entra logo no registo do dia (se for da empresa em curso)
     if(_mmtDoEnc==='a'){
       // Ecrã A: deixar a empresa do trabalhador escolhida — ao continuar, ele já vem na lista
@@ -772,6 +809,9 @@ function _moaDraw(){
   res.innerHTML='';
   if(document.body.classList.contains('device-mobile')){ _moaDrawMobile(res); _moaCarregarFotos(res); return; }
 
+  // Portal em computador: tabela na linguagem da shell (igual à MO Plandese)
+  if(document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')){ _moaDrawDesktop(res); _moaCarregarFotos(res); return; }
+
   Object.keys(obraMap).sort().forEach(obraId=>{
     const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
     const obraData=obraMap[obraId];
@@ -847,6 +887,57 @@ function _moaDraw(){
     res.appendChild(wrap);
   });
   _moaCarregarFotos(res);
+}
+
+
+// Vista de computador (shell): mesma tabela da MO Plandese — pastilhas por dia, totais e aprovação diária
+function _moaDrawDesktop(res){
+  const {obraMap,dupByDay,days,dStrs,aprov}=_moaCache;
+  const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const curtos=['Seg','Ter','Qua','Qui','Sex','Sáb'], todayStr=fmt(new Date());
+  let grandN=0,grandE=0,grandT=0; const pessoas=new Set();
+  res.insertAdjacentHTML('beforeend',`<div class="hp-legend"><span><i class="hpc ok">8h</i> Dia normal</span><span><i class="hpc ex"><em>+2h</em></i> Horas extra</span><span class="hp-leg-n">Clique numa célula para editar · clique no nome para o resumo do mês</span></div>`);
+  Object.keys(obraMap).sort().forEach(obraId=>{
+    const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'(sem obra)';
+    const m=obraNome.match(/^(O\d+)\s*[-–]\s*(.+)$/), cod=m?m[1]:'', nome=m?m[2]:obraNome;
+    const obraData=obraMap[obraId];
+    let thead=`<thead><tr><th class="hp-who">Trabalhador</th>`;
+    days.forEach((d,i)=>{ const we=isNonWorkday(d), hoje=dStrs[i]===todayStr;
+      thead+=`<th class="hp-d${we?' we':''}${hoje?' today':''}">${curtos[i]}<small>${fmtPT(dStrs[i]).slice(0,5)}</small></th>`; });
+    thead+=`<th class="hp-tt">Normais</th><th class="hp-tt">Extra</th><th class="hp-tt">Total</th></tr>`;
+    if(obraId!=='_sem'){
+      thead+=`<tr class="hp-ap"><th class="hp-who">Aprovação diária</th>`;
+      dStrs.forEach((ds,i)=>{ const temReg=Object.values(obraData).some(t=>t.cells[i].length); thead+=`<th class="hp-d">${_moaAprovDiaHTML(obraId,ds,temReg)}</th>`; });
+      thead+=`<th colspan="3"></th></tr>`;
+    }
+    thead+='</thead>';
+    let totN=0,totE=0,totT=0; const totDia=days.map(()=>0);
+    let tbody='<tbody>';
+    const chaves=_moaSortedTrabs(obraData);
+    chaves.forEach(tKey=>{
+      const t=obraData[tKey]; pessoas.add(tKey);
+      _moaTrabIndex[`${obraId}__${tKey}`]=t;
+      let rN=0,rE=0,rT=0,tds='';
+      t.cells.forEach((regs,i)=>{
+        const cellKey=`${obraId}__${tKey}__${i}`; _moaCellIndex[cellKey]=regs;
+        let pil='<span class="hpc no">—</span>';
+        if(regs.length){
+          const h=_moaCellH(regs,days[i]); rN+=h.n; rE+=h.e; rT+=h.t; totDia[i]+=h.t;
+          if(h.t>0) pil=h.e>0?`<span class="hpc ex">${h.n>0?fmtH(h.n):''}<em>${h.n>0?'+':''}${fmtH(h.e)}${h.n>0?'':' extra'}</em></span>`:`<span class="hpc ok">${fmtH(h.t)}</span>`;
+          else pil='<span class="hpc no">0h</span>';
+        }
+        const warn=(dupByDay[dStrs[i]]?.[tKey]||0)>=2?`<span class="hp-warn" title="Vários registos neste dia — verificar">⚠</span>`:'';
+        tds+=`<td class="hp-cell moa-edit-btn${dStrs[i]===todayStr?' today':''}" onclick="moaEditCell(event,'${cellKey}')" title="Clique para editar">${pil}${warn}</td>`;
+      });
+      totN+=rN; totE+=rE; totT+=rT;
+      tbody+=`<tr><td class="hp-who"><div class="d-pp">${_moaAvatarHTML({nome:t.nome,foto_path:_moaFotoDe(t)},36)}<div><b onclick="moaAbrirResumo('${obraId}__${tKey}')" title="Ver resumo mensal">${esc(t.nome)}</b><small>${esc([t.funcao,t.empresa].filter(Boolean).join(' · ')||'—')}</small></div></div></td>${tds}
+        <td class="hp-tt n">${rN?fmtH(rN):'—'}</td><td class="hp-tt e${rE?'':' z'}">${rE?'+'+fmtH(rE):'—'}</td><td class="hp-tt t">${rT?fmtH(rT):'—'}</td></tr>`;
+    });
+    grandN+=totN; grandE+=totE; grandT+=totT;
+    tbody+=`<tr class="hp-tot"><td class="hp-who">Total da obra</td>${totDia.map(v=>`<td>${v?fmtH(v):'—'}</td>`).join('')}<td class="hp-tt n">${fmtH(totN)}</td><td class="hp-tt e">${totE?'+'+fmtH(totE):'—'}</td><td class="hp-tt t">${fmtH(totT)}</td></tr></tbody>`;
+    res.insertAdjacentHTML('beforeend',`<section class="hp-obra"><div class="hp-obra-h"><div class="hp-obra-t">${cod?`<span class="cod">${esc(cod)}</span>`:''}<b>${esc(nome)}</b><small>${chaves.length} ${chaves.length===1?'trabalhador':'trabalhadores'}</small></div>${_moaResumoHTML(obraId)}</div><div class="tbl-wrap hp-wrap"><table class="hp-t">${thead}${tbody}</table></div></section>`);
+  });
+  res.insertAdjacentHTML('beforeend',`<div class="hp-sum"><div><small>Trabalhadores</small><b>${pessoas.size}</b></div><div><small>Horas normais</small><b>${fmtH(grandN)}</b></div><div><small>Horas extra</small><b class="e">${grandE?fmtH(grandE):'—'}</b></div><div><small>Total da semana</small><b class="t">${fmtH(grandT)}</b></div></div>`);
 }
 
 // Telemóvel: seletor de dia + lista de trabalhadores desse dia (como na MO Plandese)

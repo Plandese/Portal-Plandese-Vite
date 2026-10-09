@@ -45,7 +45,25 @@ function _pessoas(o){
   };
 }
 
+// Portal em computador: cartões (como o resto da shell)
+function _renderObrasCartoes(lista){
+  const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ic='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4.5L19 8v13"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M9 14h.01M15 14h.01"/></svg>';
+  const wrap=document.createElement('div');wrap.className='d-cards';
+  wrap.innerHTML=lista.map(o=>{
+    const {diretorNome,diretorTitle,encNome,encTitle}=_pessoas(o);
+    const m=String(o.nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/);
+    return `<div class="d-card${o.ativa?'':' off'}">
+      <div class="d-card-top"><span class="d-ic">${ic}</span><div class="d-card-tt"><b title="${esc(o.nome)}">${m?esc(m[2]):esc(o.nome)}</b><small>${m?`<span class="d-cod">${esc(m[1])}</span> `:''}${esc(o.local||'')}</small></div><span class="badge ${o.ativa?'b-green':'b-gray'}">${o.ativa?'Ativa':'Inativa'}</span></div>
+      <div class="d-card-kv"><div>Prazo<b>${o.prazo?fmtPT(o.prazo):'—'}</b></div><div>Diretor<b title="${esc(diretorTitle)}">${esc(diretorNome||'—')}</b></div><div class="full">Encarregado<b title="${esc(encTitle)}">${esc(encNome||'—')}</b></div></div>
+      <div class="d-card-act"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm ${o.ativa?'d-b-off':'d-b-on'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div>
+    </div>`;
+  }).join('');
+  return wrap;
+}
+
 function _renderObrasLista(lista){
+  if(document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')) return _renderObrasCartoes(lista);
   const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='padding:0;overflow:hidden';
   const tblWrap=document.createElement('div');tblWrap.className='tbl-wrap';
   const rows=lista.map(o=>{

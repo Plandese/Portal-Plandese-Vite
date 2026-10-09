@@ -75,6 +75,8 @@ function prefs() {
   return o;
 }
 function gravar() { try { localStorage.setItem(_pk || chave(), JSON.stringify(_p)); } catch (e) { /* ignora */ } }
+export const mPrefs = () => prefs();   // preferências (favoritos + atividade), partilhadas com a shell de computador
+export const mGravar = () => gravar();
 const isFav = (k, id) => prefs().favs[k].includes(id);
 const favMods = () => prefs().favs.mods.filter(id => catalogo()[id]?.ch && canAccessSection(id));
 const favObras = () => prefs().favs.obras.filter(id => obrasAtivas().some(o => o.id === id));

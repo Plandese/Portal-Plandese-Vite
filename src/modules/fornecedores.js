@@ -68,8 +68,10 @@ function renderFornecedores() {
   }
   if (empty) empty.style.display = 'none';
 
+  const desk = document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+  const icForn = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>';
   tbody.innerHTML = slice.map(f => `<tr>
-    <td><strong>${f.nome}</strong>${f.num_conta ? `<div style="font-size:11px;color:var(--gray-400)">${f.num_conta}</div>` : ''}</td>
+    <td>${desk ? `<div class="d-pp"><span class="d-ic sm">${icForn}</span><div><b>${f.nome}</b>${f.num_conta ? `<small>Conta ${f.num_conta}</small>` : ''}</div></div>` : `<strong>${f.nome}</strong>${f.num_conta ? `<div style="font-size:11px;color:var(--gray-400)">${f.num_conta}</div>` : ''}`}</td>
     <td>${f.nif || '—'}</td>
     <td>${f.localidade || '—'}</td>
     <td>${f.telefone || f.telemovel || '—'}</td>

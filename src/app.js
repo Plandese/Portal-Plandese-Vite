@@ -58,10 +58,11 @@ import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, mo
 // Produção
 import { mOnGoTo, mShellReset, mSyncBell, mSyncChat } from './modules/m-shell.js';
 import './modules/enc-shell.js';
+import { dOnGoTo } from './modules/d-shell.js';
 import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
 
 // Admin/Painel
-import { renderPainel, abrirEstadoObra, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
+import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
 
 // Fornecedores
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
@@ -154,7 +155,7 @@ Object.assign(window, {
   dropboxLogin, dropboxLogout, dropboxIsConnected,
 
   // Navegação admin
-  abrirEstadoObra, painelMudarSemana, painelSetObra,
+  abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra,
   goTo, toggleNavGrp, refreshPortal,
   chatEnviar, chatApagar, chatKey, chatAutoH, chatTogglePainel, chatSetConv, chatVoltar, chatAbrirNotif, chatFechar,
 
@@ -397,6 +398,7 @@ window.savePerfil = async function () {
     }
     _orig(id, btn);
     mOnGoTo(id);
+    dOnGoTo(id);
     if (id === 'analise')      { renderAnalise(); }
     if (id === 'painel')       { renderPainel(); }
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }

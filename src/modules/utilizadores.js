@@ -26,7 +26,11 @@ export function renderUsers(){
     const roleLbl=ROLE_LABELS[u.role]||u.role;
     const badgeCls=ROLE_BADGE[u.role]||'b-gray';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500)">${key}</td><td style="font-weight:500">${u.nome}</td><td><span class="badge ${badgeCls}">${roleLbl}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400)">••••••••</td><td><span class="badge b-green">Ativo</span></td><td><button class="btn btn-secondary btn-sm" onclick="editUser('${key}')">Editar</button></td>`;
+    const desk=document.body.classList.contains('device-desktop')&&!document.body.classList.contains('enc-mode');
+    const ini=String(u.initials||u.nome||key).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    tr.innerHTML=desk
+      ? `<td><span class="d-cod" style="text-transform:none">${key}</span></td><td><div class="d-pp"><span class="d-rav">${ini}</span><div><b>${u.nome}</b></div></div></td><td><span class="badge ${badgeCls}">${roleLbl}</span></td><td style="color:var(--gray-400);letter-spacing:2px">••••••••</td><td><span class="badge b-green">Ativo</span></td><td style="text-align:right"><button class="btn btn-secondary btn-sm" onclick="editUser('${key}')">Editar</button></td>`
+      : `<td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-500)">${key}</td><td style="font-weight:500">${u.nome}</td><td><span class="badge ${badgeCls}">${roleLbl}</span></td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400)">••••••••</td><td><span class="badge b-green">Ativo</span></td><td><button class="btn btn-secondary btn-sm" onclick="editUser('${key}')">Editar</button></td>`;
     tbody.appendChild(tr);
   });
 }
