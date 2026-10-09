@@ -823,6 +823,7 @@ function filtraFaturas(){
   const de = document.getElementById('fat-f-de')?.value||'';
   const ate = document.getElementById('fat-f-ate')?.value||'';
   return FATURAS.filter(f=>{
+    if(_FAT_LAN.includes(f.status)) return false; // aprovadas/lançadas seguem para a Tesouraria
     if(q && !(`${f.fornecedor} ${f.nif}`.toLowerCase().includes(q))) return false;
     if(st && f.status!==st) return false;
     if(de && f.data<de) return false;
@@ -886,12 +887,12 @@ function _fatRenderDesk(lista){
   const box = document.getElementById('fat-tbl-d'), chips = document.getElementById('fat-chips-d'), form = document.getElementById('fat-form-card');
   if(!box || !_fatDesk()){ if(box) box.innerHTML=''; return; }
   const n = g => g==='todas' ? lista.length : lista.filter(f=>(g==='pd'?_FAT_PD:_FAT_LAN).includes(f.status)).length;
-  if(chips) chips.innerHTML = [['todas','Todas'],['pd','Por validar'],['lan','Lançadas']].map(([k,l])=>`<button type="button" class="d-chip-f${_fatChip===k?' on':''}" data-fchip="${k}">${l}<b>${n(k)}</b></button>`).join('');
+  if(chips) chips.innerHTML = [['todas','Todas'],['pd','Por validar']].map(([k,l])=>`<button type="button" class="d-chip-f${_fatChip===k?' on':''}" data-fchip="${k}">${l}<b>${n(k)}</b></button>`).join('');
   const vis = lista.filter(f=> _fatChip==='todas' || (_fatChip==='pd'?_FAT_PD:_FAT_LAN).includes(f.status));
   // seleciona a fatura mais recente quando entra uma nova (ou se a selecionada desapareceu)
   if(FATURAS.length > _fatNPrev){ const novo = [...FATURAS].sort((a,b)=>b.id-a.id)[0]; if(novo) _fatSel = novo.id; }
   _fatNPrev = FATURAS.length;
-  if(!FATURAS.some(f=>f.id===_fatSel)) _fatSel = (lista[0]||FATURAS[0]||{}).id ?? null;
+  if(!lista.some(f=>f.id===_fatSel)) _fatSel = (lista[0]||{}).id ?? null;
   box.innerHTML = vis.length ? `<div class="tbl-wrap"><table class="cmp-t fat-t"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Obra</th><th>Data</th><th class="r">Valor</th><th>Estado</th><th></th></tr></thead><tbody>${vis.map(f=>{
       const m = String(f.centroCusto||'').match(/^(O\d+)/);
       return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status)}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;

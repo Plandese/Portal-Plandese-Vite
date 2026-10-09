@@ -1,25 +1,26 @@
 // ═══════════════════════════════════════════════════════════════════
-//  TESOURARIA — mapa de todas as faturas inseridas, organizado por centro de custo
+//  TESOURARIA — mapa das faturas aprovadas (já com centro de custo), organizado por centro de custo
 //  Colunas: Centro de custo · Fornecedor · Fatura · Valor com IVA · Vencimento
 // ═══════════════════════════════════════════════════════════════════
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
 
 let _rows = [];
-let _estado = 'todas';   // todas | pendentes | aprovadas
+let _estado = 'todas';   // todas | por_pagar | pagas
 let _carregado = false;
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const eur = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-const PENDENTES = ['extraida', 'rever', 'pendente_aprovacao'];
+// A Tesouraria recebe as faturas assim que são aprovadas com centro de custo
 const APROVADAS = ['aprovada', 'validada', 'paga'];
+const POR_PAGAR = ['aprovada', 'validada'];
 
 async function carregar() {
   const { data, error } = await sb.from('faturas')
     .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo')
-    .neq('status', 'rejeitada')
+    .in('status', APROVADAS)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw error;
@@ -31,8 +32,8 @@ function filtrar() {
   const q = (document.getElementById('tes-q')?.value || '').trim().toLowerCase();
   const cc = document.getElementById('tes-cc')?.value || '';
   return _rows.filter(r => {
-    if (_estado === 'pendentes' && !PENDENTES.includes(r.status)) return false;
-    if (_estado === 'aprovadas' && !APROVADAS.includes(r.status)) return false;
+    if (_estado === 'por_pagar' && !POR_PAGAR.includes(r.status)) return false;
+    if (_estado === 'pagas' && r.status !== 'paga') return false;
     if (cc && (r.centro_custo || '') !== (cc === '__sem__' ? '' : cc)) return false;
     if (q && !`${r.fornecedor || ''} ${r.numero || ''} ${r.centro_custo || ''}`.toLowerCase().includes(q)) return false;
     return true;
@@ -56,7 +57,7 @@ function desenhar() {
   const chips = document.getElementById('tes-chips');
   if (chips) {
     const n = l => l.length;
-    chips.innerHTML = [['todas', 'Todas', _rows], ['pendentes', 'Por aprovar', _rows.filter(r => PENDENTES.includes(r.status))], ['aprovadas', 'Aprovadas', _rows.filter(r => APROVADAS.includes(r.status))]]
+    chips.innerHTML = [['todas', 'Todas', _rows], ['por_pagar', 'Por pagar', _rows.filter(r => POR_PAGAR.includes(r.status))], ['pagas', 'Pagas', _rows.filter(r => r.status === 'paga')]]
       .map(([k, l, arr]) => `<button type="button" class="d-chip-f${_estado === k ? ' on' : ''}" data-tes-chip="${k}">${l}<b>${n(arr)}</b></button>`).join('');
   }
 
