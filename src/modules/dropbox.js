@@ -195,6 +195,92 @@ export async function dropboxMoveFile(fromPath, toPath){
   return data.metadata?.path_display;
 }
 
+// ═══════════════════════════════════════════════════
+//  Pastas partilhadas da equipa (espaço raiz da Dropbox)
+//  Caminhos relativos ao espaço "Plandese Dropbox", como no explorador de ficheiros.
+// ═══════════════════════════════════════════════════
+const ROOT_NS_KEY = 'dbx_root_ns';
+
+async function _dbxFetch(url, init){
+  if(!localStorage.getItem(TOKEN_KEY)) throw new Error('Dropbox não conectada');
+  const go = () => fetch(url, { ...init, headers: { ...init.headers, 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` } });
+  let resp = await go();
+  if(resp.status === 401){
+    if(!(await _refreshToken())){ localStorage.removeItem(TOKEN_KEY); throw new Error('Sessão Dropbox expirada — ligue novamente'); }
+    resp = await go();
+  }
+  return resp;
+}
+
+async function _rootHeader(){
+  let ns = localStorage.getItem(ROOT_NS_KEY);
+  if(!ns){
+    const r = await _dbxFetch('https://api.dropboxapi.com/2/users/get_current_account', { method: 'POST', headers: {} });
+    if(!r.ok) throw new Error('Dropbox: não foi possível obter a conta — ' + await r.text());
+    ns = (await r.json()).root_info?.root_namespace_id || '';
+    if(ns) localStorage.setItem(ROOT_NS_KEY, ns);
+  }
+  return ns ? { 'Dropbox-API-Path-Root': JSON.stringify({ '.tag': 'root', root: ns }) } : {};
+}
+
+// Cabeçalhos HTTP só aceitam ASCII — escapa acentos no Dropbox-API-Arg
+const _asciiJson = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c => '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4));
+
+async function _rpc(endpoint, body){
+  const resp = await _dbxFetch('https://api.dropboxapi.com/2/' + endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await _rootHeader()) },
+    body: JSON.stringify(body),
+  });
+  if(!resp.ok) throw new Error(`Dropbox ${endpoint}: ` + await resp.text());
+  return resp.json();
+}
+
+// Lista os ficheiros (sem subpastas) de uma pasta
+export async function dropboxListFolder(path){
+  let res = await _rpc('files/list_folder', { path, recursive: false });
+  const out = [...res.entries];
+  while(res.has_more){ res = await _rpc('files/list_folder/continue', { cursor: res.cursor }); out.push(...res.entries); }
+  return out.filter(e => e['.tag'] === 'file');
+}
+
+export async function dropboxDownload(path){
+  const resp = await _dbxFetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: { 'Dropbox-API-Arg': _asciiJson({ path }), ...(await _rootHeader()) },
+  });
+  if(!resp.ok) throw new Error('Dropbox download falhou: ' + await resp.text());
+  return resp.blob();
+}
+
+export async function dropboxUploadTeam(blob, path){
+  const resp = await _dbxFetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      'Dropbox-API-Arg': _asciiJson({ path, mode: 'add', autorename: true, mute: false }),
+      'Content-Type': 'application/octet-stream',
+      ...(await _rootHeader()),
+    },
+    body: await blob.arrayBuffer(),
+  });
+  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await resp.text());
+  return (await resp.json()).path_display;
+}
+
+export async function dropboxDeleteTeam(path){
+  await _rpc('files/delete_v2', { path });
+}
+
+export async function dropboxLinkTeam(path){
+  try{
+    const d = await _rpc('sharing/create_shared_link_with_settings', { path, settings: { requested_visibility: { '.tag': 'public' } } });
+    return d.url?.replace('?dl=0', '?dl=1') || null;
+  } catch(e){
+    const m = String(e.message).match(/"url":\s*"([^"]+)"/);
+    return m ? m[1].replace('?dl=0', '?dl=1') : null;
+  }
+}
+
 // Atualiza o botão Dropbox na UI (se existir)
 function _renderDbxBtn(){
   const btn = document.getElementById('dbx-btn');

@@ -23,6 +23,7 @@
     "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.11.174",
     "qrcode": "^1.5.4",
     "tesseract.js": "^5.0.5",

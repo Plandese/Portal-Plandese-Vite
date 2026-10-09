@@ -1625,6 +1625,8 @@
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 13l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/></svg>
               Ligar Dropbox
             </button>
+            <button id="fat-dbx-import" class="btn btn-primary btn-sm" onclick="importarFaturasDropbox()" title="Ler as faturas novas da pasta 'Por aprovar' da Dropbox">Importar da Dropbox</button>
+            <button class="btn btn-secondary btn-sm" onclick="configurarPastasFaturas()" title="Alterar as pastas da Dropbox">Pastas…</button>
             <button class="btn btn-secondary" onclick="exportFaturasXLSX()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar Excel
@@ -3391,6 +3393,7 @@
     <div id="mf-aprovacao-bar" style="display:none;margin-top:14px;padding:14px 16px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;gap:10px;align-items:center;flex-wrap:wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       <span style="font-size:13px;font-weight:600;color:#15803d;flex:1">Fatura pendente de aprovação</span>
+      <select id="mf-cc-sel" style="padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:8px;font-size:13px;max-width:220px"></select>
       <button class="btn btn-sm" style="background:#16a34a;color:#fff;border:none" onclick="aprovarFatura()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
         Aprovar

@@ -5,7 +5,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
-import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile } from './dropbox.js';
+import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxLinkTeam } from './dropbox.js';
 
 let FATURAS = [];
 let FAT_QUEUE = [];
@@ -101,6 +101,20 @@ function handleFatFiles(fileList){
 async function processQueueItem(item){
   item.status='processing'; item.progress=2; renderQueue();
   try{
+    const fat = await lerFaturaDoFicheiro(item);
+    item.status='done'; item.progress=100; renderQueue();
+    // Abrir anotador visual em vez de adicionar diretamente
+    openFatSel(fat, item);
+  } catch(e){
+    console.error('Erro processamento fatura:', e);
+    item.status='error'; item.error = e.message || 'Erro ao processar';
+    renderQueue();
+    showToast(`Falha ao processar ${item.name}: ${item.error}`);
+  }
+}
+
+// Lê um ficheiro (PDF/imagem) e devolve os campos da fatura; lança erro se não conseguir extrair texto
+async function lerFaturaDoFicheiro(item){
     const isPDF = /\.pdf$/i.test(item.name) || item._file.type==='application/pdf';
     const isImg = /\.(jpe?g|png)$/i.test(item.name);
     let texto = '';
@@ -127,17 +141,7 @@ async function processQueueItem(item){
     }
 
     item.progress = 92; renderQueue();
-    const fat = extractInvoiceFields(texto, item);
-
-    item.status='done'; item.progress=100; renderQueue();
-    // Abrir anotador visual em vez de adicionar diretamente
-    openFatSel(fat, item);
-  } catch(e){
-    console.error('Erro processamento fatura:', e);
-    item.status='error'; item.error = e.message || 'Erro ao processar';
-    renderQueue();
-    showToast(`Falha ao processar ${item.name}: ${item.error}`);
-  }
+    return extractInvoiceFields(texto, item);
 }
 
 // Deteta se o texto extraído é "lixo" — PDFs com fontes embutidas com encoding personalizado
@@ -917,7 +921,13 @@ function editarFatura(id){
       obraFatura?.encarregado_id === uKey || obraFatura?.diretor_id === uKey ||
       (obraFatura?.encarregados_extra||[]).includes(uKey) ||
       (obraFatura?.diretores_extra||[]).includes(uKey);
-    aproBar.style.display = (isPending && canApprove) ? 'flex' : 'none';
+    const selCC = document.getElementById('mf-cc-sel');
+    if(selCC){
+      selCC.innerHTML = '<option value="">— Centro de custo —</option>' + S.OBRAS.filter(o=>o.ativa || o.nome===f.centroCusto)
+        .map(o=>`<option value="${_fEsc(o.nome)}"${o.nome===f.centroCusto?' selected':''}>${_fEsc(o.nome)}</option>`).join('');
+      selCC.disabled = !!f.centroCusto && S.currentUser?.role !== 'admin';
+    }
+    aproBar.style.display = (isPending && (canApprove || (!f.centroCusto && S.currentUser?.role === 'admin'))) ? 'flex' : 'none';
   }
 
   validaCamposModal();
@@ -979,30 +989,147 @@ function apagarFatura(){
 // ═══════════════════════════════════════
 //  WORKFLOW DE APROVAÇÃO
 // ═══════════════════════════════════════
+// Pastas da Dropbox (caminhos do espaço de equipa). A pasta de aprovadas é a irmã "2-Aprovadas".
+const FAT_PASTA_PENDENTES = '/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/02 - David Mósca/1-Por aprovar';
+const _pastaPendentes = () => (localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES).replace(/\/+$/,'');
+const _pastaAprovadas = () => localStorage.getItem('fat_dbx_aprovadas') || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
+
+function configurarPastasFaturas(){
+  const p = prompt('Pasta da Dropbox com as faturas POR APROVAR:', _pastaPendentes());
+  if(p == null) return;
+  const a = prompt('Pasta da Dropbox para as faturas APROVADAS (carimbadas):', p.trim().replace(/\/+$/,'').replace(/\/[^/]+$/,'') + '/2-Aprovadas');
+  if(a == null) return;
+  localStorage.setItem('fat_dbx_pendentes', p.trim());
+  localStorage.setItem('fat_dbx_aprovadas', a.trim());
+  showToast('Pastas da Dropbox guardadas');
+}
+
+// Importa para o portal as faturas novas da pasta "Por aprovar", já lidas e identificadas
+let _fatImportando = false;
+async function importarFaturasDropbox(){
+  if(_fatImportando) return;
+  if(!dropboxIsConnected()){ showToast('Ligue primeiro a Dropbox'); return; }
+  const btn = document.getElementById('fat-dbx-import');
+  const rotulo = btn?.innerHTML;
+  _fatImportando = true;
+  try{
+    if(btn) btn.disabled = true;
+    const ficheiros = (await dropboxListFolder(_pastaPendentes())).filter(e => /\.(pdf|jpe?g|png)$/i.test(e.name));
+    const conhecidos = new Set(FATURAS.map(f => (f.dropboxPath||'').toLowerCase()));
+    const novos = ficheiros.filter(e => !conhecidos.has((e.path_display||'').toLowerCase()));
+    if(!novos.length){ showToast('Sem faturas novas na Dropbox'); return; }
+    let ok = 0, falhas = 0;
+    for(let i=0; i<novos.length; i++){
+      const e = novos[i];
+      if(btn) btn.textContent = `A importar ${i+1}/${novos.length}…`;
+      try{
+        const blob = await dropboxDownload(e.path_lower || e.path_display);
+        const file = new File([blob], e.name, { type: blob.type || (/\.pdf$/i.test(e.name) ? 'application/pdf' : '') });
+        const item = { id: ++_fatSeq, name: e.name, size: file.size, status:'processing', progress:0, _file:file };
+        let fat;
+        try{ fat = await lerFaturaDoFicheiro(item); }
+        catch(err){
+          fat = { id: ++_fatSeq, fornecedor:'', nif:'', numero:'', base:null, iva:null, total:null, data:'', dataPag:'',
+            confianca:0, ficheiro:e.name, notas:'Não foi possível ler automaticamente — preencher manualmente.',
+            criadoEm:new Date().toISOString(), _flags:['low_extraction'], _fonte:'ocr', _rawText:'' };
+        }
+        fat.status = 'pendente_aprovacao';
+        fat._fonte = 'dropbox';
+        fat.dropboxPath = e.path_display;
+        fat.ficheiroUrl = await dropboxLinkTeam(e.path_display) || '';
+        FATURAS.push(fat);
+        await sbSaveFatura(fat);
+        ok++;
+      } catch(err){ console.warn('Importação Dropbox falhou:', e.name, err); falhas++; }
+    }
+    renderFaturas(); atualizaKPIs();
+    showToast(`${ok} fatura(s) importada(s) da Dropbox${falhas?` · ${falhas} com erro`:''}`);
+    if(ok) R.emitEvent?.({ acao:`Importadas ${ok} faturas da Dropbox`, seccao:'faturas' });
+  } catch(err){
+    console.error('Importar Dropbox:', err);
+    showToast('Dropbox: ' + (String(err.message).includes('not_found') ? 'pasta não encontrada — use "Pastas…" para corrigir o caminho' : err.message));
+  } finally {
+    _fatImportando = false;
+    if(btn){ btn.disabled = false; if(rotulo) btn.innerHTML = rotulo; }
+  }
+}
+
+// Carimba "APROVADO" + centro de custo na 1.ª página do PDF
+async function carimbarPDF(blob, f){
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const doc = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
+  const page = doc.getPages()[0];
+  const { width, height } = page.getSize();
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const reg  = await doc.embedFont(StandardFonts.Helvetica);
+  const verde = rgb(0.086, 0.5, 0.24);
+  const data = new Date(f.aprovadoEm).toLocaleDateString('pt-PT');
+  const linhas = [
+    { t:'APROVADO', font:bold, size:18 },
+    { t:f.centroCusto || '', font:bold, size:10 },
+    { t:`${f.aprovadoPor || ''} · ${data}`, font:reg, size:8 },
+  ];
+  const w = Math.min(width - 24, Math.max(150, ...linhas.map(l => l.font.widthOfTextAtSize(l.t, l.size))) + 20);
+  const h = 56, x = width - w - 12, y = height - h - 12;
+  // fundo branco semi-opaco para ficar legível sobre o conteúdo
+  page.drawRectangle({ x, y, width:w, height:h, color:rgb(1,1,1), opacity:0.88, borderColor:verde, borderWidth:2 });
+  let ty = y + h - 6;
+  linhas.forEach(l => {
+    ty -= l.size + 2;
+    let size = l.size;
+    while(size > 5 && l.font.widthOfTextAtSize(l.t, size) > w - 12) size -= 0.5;
+    page.drawText(l.t, { x: x + (w - l.font.widthOfTextAtSize(l.t, size))/2, y: ty, size, font:l.font, color:verde });
+  });
+  return new Blob([await doc.save()], { type:'application/pdf' });
+}
+
 async function aprovarFatura(){
   const id = parseInt(document.getElementById('mf-id').value, 10);
   const f = FATURAS.find(x=>x.id===id); if(!f) return;
-  if(!confirm(`Aprovar fatura de ${f.fornecedor||'fornecedor'}${f.total?' · '+f.total+'€':''}?`)) return;
 
-  f.status     = 'aprovada';
+  // Centro de custo obrigatório para aprovar
+  const selCC = document.getElementById('mf-cc-sel');
+  const cc = (selCC && !selCC.disabled ? selCC.value : '') || f.centroCusto || '';
+  if(!cc){ showToast('Escolha o centro de custo antes de aprovar'); selCC?.focus(); return; }
+  if(!confirm(`Aprovar fatura de ${f.fornecedor||'fornecedor'}${f.total?' · '+f.total+'€':''} para ${cc}?`)) return;
+
+  const antes = { status:f.status, centroCusto:f.centroCusto, aprovadoPor:f.aprovadoPor, aprovadoEm:f.aprovadoEm, dropboxPath:f.dropboxPath, ficheiroUrl:f.ficheiroUrl };
+  f.centroCusto = cc;
+  f.status      = 'aprovada';
   f.aprovadoPor = S.currentUser?.nome || S.currentUser?.key || 'admin';
   f.aprovadoEm  = new Date().toISOString();
 
-  // Mover ficheiro no Dropbox para pasta de aprovadas
   if(dropboxIsConnected() && f.dropboxPath){
     try{
-      const novoPath = dropboxFatPath(f, f.ficheiro || (f.dropboxPath.split('/').pop()), true);
-      const movedPath = await dropboxMoveFile(f.dropboxPath, novoPath);
-      f.dropboxPath = movedPath || novoPath;
-      const sharedUrl = await dropboxGetSharedLink(f.dropboxPath);
-      if(sharedUrl) f.ficheiroUrl = sharedUrl;
-    } catch(e){ console.warn('Dropbox move erro:', e); }
+      if(f._fonte === 'dropbox'){
+        // Ficheiro importado: carimbar, gravar na pasta de aprovadas e retirar da de pendentes
+        const nome = f.dropboxPath.split('/').pop();
+        let blob = await dropboxDownload(f.dropboxPath);
+        if(/\.pdf$/i.test(nome)) blob = await carimbarPDF(blob, f);
+        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${nome}`);
+        await dropboxDeleteTeam(f.dropboxPath);
+        f.dropboxPath = destino;
+        f.ficheiroUrl = await dropboxLinkTeam(destino) || '';
+      } else {
+        // Ficheiro carregado manualmente: apenas move para a pasta de aprovadas do centro de custo
+        const novoPath = dropboxFatPath(f, f.ficheiro || (f.dropboxPath.split('/').pop()), true);
+        const movedPath = await dropboxMoveFile(f.dropboxPath, novoPath);
+        f.dropboxPath = movedPath || novoPath;
+        const sharedUrl = await dropboxGetSharedLink(f.dropboxPath);
+        if(sharedUrl) f.ficheiroUrl = sharedUrl;
+      }
+    } catch(e){
+      console.error('Dropbox aprovação erro:', e);
+      Object.assign(f, antes);
+      showToast('Não foi possível carimbar/mover o ficheiro na Dropbox — fatura NÃO aprovada. ' + (e.message||''));
+      return;
+    }
   }
 
   await sbSaveFatura(f);
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
-  showToast(`Fatura aprovada${f.centroCusto?' — enviada para '+f.centroCusto:''}`);
+  showToast(`Fatura aprovada — ${f.centroCusto}`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
 }
 
@@ -1338,4 +1465,5 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
+  importarFaturasDropbox, configurarPastasFaturas,
 };
