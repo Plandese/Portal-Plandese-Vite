@@ -74,8 +74,7 @@ Deno.serve(async (req: Request) => {
         max_tokens: 1500,
         system: SYSTEM,
         tools: [TOOL],
-        tool_choice: { type: "tool", name: "registar_fatura" },
-        messages: [{ role: "user", content: [bloco, { type: "text", text: "Extrai os dados desta fatura." }] }],
+        messages: [{ role: "user", content: [bloco, { type: "text", text: "Extrai os dados desta fatura e regista-os chamando a ferramenta registar_fatura." }] }],
       }),
     });
     if (!resp.ok) return json({ error: `Anthropic ${resp.status}: ${await resp.text()}` }, 502);
