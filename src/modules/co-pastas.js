@@ -69,7 +69,38 @@ export function coParseCustos(wb){
 
 // ── Leitura de um auto de medição: total de cada auto (linha 4) e data (linha 5) ──
 // Devolve { 'YYYY-MM': valor }. Autos com data repetida/anterior passam para o mês seguinte.
+// Segundo modelo (Mercadona Alfragide, SIMAS Algés…): uma folha por auto ("Auto 1", "Auto 2"…) com o valor
+// mensal na lista "Auto n → valor" (colunas Q:S) no fim da folha do último auto. O mês vem de
+// "Trabalhos realizados: dd-mm-aaaa a dd-mm-aaaa" de cada folha.
+function coParseAutosFolhas(wb){
+  const folhas = wb.SheetNames.map(n => ({ n, k:(String(n).trim().match(/^auto\s*(\d+)$/i)||[])[1] })).filter(x => x.k).map(x => ({ ...x, k:+x.k }));
+  if(!folhas.length) return null;
+  const rowsDe = n => XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:true });
+  const ultima = folhas.reduce((a,b) => b.k>a.k ? b : a);
+  const valores = {};
+  rowsDe(ultima.n).forEach((r,i) => {
+    if(i<8) return;
+    for(let c=10;c<r.length-2;c++){
+      const m = typeof r[c]==='string' && r[c].trim().match(/^auto\s*(\d+)$/i);
+      if(m && typeof r[c+2]==='number' && r[c+2]) { valores[+m[1]] = r[c+2]; break; }
+    }
+  });
+  const out = {};
+  for(const f of folhas){
+    const v = valores[f.k]; if(!v) continue;
+    const txt = rowsDe(f.n).slice(0,8).flat().filter(x => typeof x==='string').join(' | ');
+    const m = txt.match(/realizados:\s*\d{2}-\d{2}-\d{4}\s*a\s*\d{2}-(\d{2})-(\d{4})/i) || txt.match(/data do auto:\s*\d{2}-(\d{2})-(\d{4})/i);
+    if(!m) throw new Error(`Mês do auto ${f.k} não encontrado`);
+    const mes = m[2]+'-'+m[1];
+    out[mes] = Math.round(((out[mes]||0)+v)*100)/100;
+  }
+  if(!Object.keys(out).length) throw new Error('Valores dos autos não encontrados');
+  return out;
+}
+
 export function coParseAutos(wb){
+  const porFolhas = coParseAutosFolhas(wb);
+  if(porFolhas) return porFolhas;
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:true });
   let hd = -1;
   for(let i=0;i<Math.min(rows.length,10) && hd<0;i++){
