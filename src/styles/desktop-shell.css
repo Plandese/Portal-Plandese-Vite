@@ -1236,3 +1236,10 @@ body.device-desktop:not(.enc-mode) #notif-panel .notif-all-btn:hover{background:
 
 body.device-desktop:not(.enc-mode) #admin-app .app-bar-title{cursor:pointer;-webkit-tap-highlight-color:transparent}
 body.device-desktop:not(.enc-mode) #admin-app .app-bar-title:focus-visible{outline:2px solid rgba(255,255,255,.7);outline-offset:4px;border-radius:10px}
+
+/* Detalhe da fatura — gaveta lateral */
+body.device-desktop:not(.enc-mode) #modal-fat{align-items:stretch;justify-content:flex-end;background:rgba(10,18,38,.5)}
+body.device-desktop:not(.enc-mode) #modal-fat > .modal{width:min(580px,100%)!important;max-width:100%!important;height:100vh;max-height:100vh;padding:24px 28px;border-radius:30px 0 0 30px;box-shadow:-24px 0 70px rgba(10,28,90,.28);overflow-y:auto;animation:dSlideIn .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+body.device-desktop:not(.enc-mode) #modal-fat .modal-title{margin:-24px -28px 0;padding:28px 28px 6px;background:var(--d-brand);color:#fff;font-size:23px;font-weight:800;letter-spacing:-.4px;border-radius:30px 0 0 0}
+body.device-desktop:not(.enc-mode) #modal-fat .modal-sub{margin:0 -28px 22px;padding:0 28px 32px;background:var(--d-brand);color:rgba(255,255,255,.84);font-size:14px}
+body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto;padding-top:16px}
