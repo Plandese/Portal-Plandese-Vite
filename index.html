@@ -1271,6 +1271,10 @@
           <span class="nav-label">Inserção de Faturas</span>
           <span class="nb" id="nb-fat" hidden></span>
         </button>
+        <button class="nav-btn" onclick="goTo('tesouraria',this)" id="nav-tes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+          <span class="nav-label">Tesouraria</span>
+        </button>
       </div>
 
       <button class="nav-lbl" data-grp="log" onclick="toggleNavGrp('log')" type="button">
@@ -1611,6 +1615,22 @@
         </div>
         <div class="alert alert-ok" id="empresamoa-alert">Empresa guardada.</div>
         <div id="empresas-moa-list"></div>
+      </section>
+
+      <!-- TESOURARIA -->
+      <section id="sec-tesouraria" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Tesouraria</div>
+            <div class="pg-sub">Mapa de todas as faturas inseridas, por centro de custo</div>
+          </div>
+        </div>
+        <div id="tes-chips" class="d-chips"></div>
+        <div class="filter-bar">
+          <input type="text" id="tes-q" placeholder="Pesquisar fornecedor, fatura ou centro de custo…" style="flex:1;min-width:220px"/>
+          <select id="tes-cc" style="min-width:240px"><option value="">Todos os centros de custo</option></select>
+        </div>
+        <div class="card" id="tes-mapa" style="padding:0;overflow:hidden"></div>
       </section>
 
       <!-- FATURAS -->

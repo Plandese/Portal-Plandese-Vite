@@ -21,7 +21,7 @@ const ativo = () => document.body.classList.contains('device-mobile') && !docume
 const toast = m => showToast(m);
 
 // Módulos que não aparecem na app de telemóvel (continuam no portal de computador)
-const OCULTOS_MOBILE = ['fecho-mes', 'mapas-comparativos', 'faturas', 'precos-unitarios', 'fornecedores'];
+const OCULTOS_MOBILE = ['fecho-mes', 'mapas-comparativos', 'faturas', 'tesouraria', 'precos-unitarios', 'fornecedores'];
 
 // ── Catálogo de módulos: lido da sidebar (fonte única de verdade) ─────────────
 let CAT = null;
