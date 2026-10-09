@@ -927,7 +927,7 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-fchip]'); if(c){ _fatChip = c.dataset.fchip; renderFaturas(); return; }
   const d = e.target.closest('[data-fdet]'); if(d){ editarFatura(+d.dataset.fdet); return; }
   const sv = e.target.closest('[data-fsave]'); if(sv){ _fatGuardarDesk(sv.dataset.fsave==='launch'); return; }
-  const r = e.target.closest('tr[data-fsel]'); if(r){ _fatSel = +r.dataset.fsel; renderFaturas(); }
+  const r = e.target.closest('tr[data-fsel]'); if(r){ _fatSel = +r.dataset.fsel; renderFaturas(); editarFatura(_fatSel); }
 });
 
 function atualizaKPIs(){
