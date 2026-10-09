@@ -1214,9 +1214,22 @@ async function carimboLayout(f, cc){
 
 // Grava o carimbo no PDF. pos = { page (1..n), cx, cy } — centro do carimbo em fração da página (origem: canto superior esquerdo)
 async function carimbarPDF(blob, f, cc, pos){
-  const { PDFDocument, rgb } = await import('pdf-lib');
+  const { PDFDocument, PDFName, rgb } = await import('pdf-lib');
   const lay = await carimboLayout(f, cc);
   const doc = await PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true });
+  // Muitas faturas vêm assinadas/certificadas digitalmente: ao reescrever o ficheiro a assinatura parte-se e o Acrobat
+  // recusa abri-lo. A cópia carimbada deixa por isso de ser um documento assinado (o original fica guardado à parte).
+  doc.catalog.delete(PDFName.of('Perms'));
+  doc.catalog.delete(PDFName.of('AcroForm'));
+  doc.catalog.delete(PDFName.of('NeedsRendering'));
+  doc.getPages().forEach(pg => {
+    const annots = pg.node.Annots();
+    if(!annots) return;
+    for(let i = annots.size() - 1; i >= 0; i--){
+      const a = annots.lookup(i);
+      if(a && typeof a.get === 'function' && a.get(PDFName.of('Subtype')) === PDFName.of('Widget')) annots.remove(i);
+    }
+  });
   const pages = doc.getPages();
   const page = pages[Math.min(Math.max((pos?.page || 1) - 1, 0), pages.length - 1)];
   const { width, height } = page.getSize();
@@ -1231,7 +1244,7 @@ async function carimbarPDF(blob, f, cc, pos){
     ty -= l.size + 2;
     page.drawText(l.t, { x: x + (lay.w - l.font.widthOfTextAtSize(l.t, l.size)) / 2, y: ty, size: l.size, font: l.font, color: verde });
   });
-  return new Blob([await doc.save()], { type: 'application/pdf' });
+  return new Blob([await doc.save({ useObjectStreams: false })], { type: 'application/pdf' });
 }
 
 // Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
@@ -1331,7 +1344,12 @@ async function concluirAprovacao(f, cc, pos){
         // Ficheiro importado: carimbar, gravar na pasta de aprovadas e retirar da de pendentes
         const nome = f.dropboxPath.split('/').pop();
         let blob = await dropboxDownload(f.dropboxPath);
-        if(/\.pdf$/i.test(nome)) blob = await carimbarPDF(blob, f, cc, pos);
+        if(/\.pdf$/i.test(nome)){
+          const carimbado = await carimbarPDF(blob, f, cc, pos);
+          // o original (possivelmente assinado digitalmente) fica guardado, sem alterações, em "Originais"
+          await dropboxUploadTeam(blob, `${_pastaAprovadas()}/Originais/${nome}`);
+          blob = carimbado;
+        }
         const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${nome}`);
         await dropboxDeleteTeam(f.dropboxPath);
         _docCache.delete(f.dropboxPath);
