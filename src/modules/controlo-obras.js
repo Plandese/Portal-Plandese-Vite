@@ -78,7 +78,7 @@ function coPeriodoBar(ids, comVista){
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
   const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${(CO.de||CO.ate) && !isMobile()?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
   const vista = (comVista && !isMobile()) ? coVistaToggle() : '';
-  const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="${vista?'':'margin-left:auto;'}display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
+  const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="${vista?'':'margin-left:auto;'}display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza tudo">↻ Atualizar tudo</button><button onclick="coAtualizar(false,'custos')" title="Atualiza só os custos (ficheiros de custos); não mexe nos proveitos">↻ Custos</button><button onclick="coAtualizar(false,'proveitos')" title="Atualiza só os proveitos (autos de medição e listagem); não mexe nos custos">↻ Proveitos</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
   return (per||upd||vista) ? `<div class="co-per">${per}${vista}${upd}</div><div id="co-upd-log"></div>` : '';
 }
 function coVista(v){
@@ -395,7 +395,8 @@ async function coDetTipo(key){
 // autos de medição + revisões de preços, com estornos. Para as restantes continuam a vir dos autos.
 const PROV_CENTRALGEST = ['O049','O053','O056','O059','O060','O064'];
 
-async function coAtualizar(escolher){
+// so: 'custos' | 'proveitos' | undefined (ambos)
+async function coAtualizar(escolher, so){
   if(!pastasSuportado()){ showToast('Este browser não permite ler pastas. Use o Chrome ou o Edge.'); return; }
   const btn = document.getElementById('co-upd-btn'), log = () => document.getElementById('co-upd-log');
   let raiz;
@@ -409,6 +410,8 @@ async function coAtualizar(escolher){
       const sp = split(o.nome), dir = await coPastaObra(raiz, sp.cod);
       if(!dir){ linhas.push(`<b>${esc(sp.cod||o.nome)}</b> — pasta não encontrada`); continue; }
       const r = await coLerObra(dir);
+      if(so==='custos'){ r.provContr = null; r.provCompl = null; if(r.custos) r.custos.prov = null; }
+      else if(so==='proveitos' && r.custos) r.custos = { agg:{}, n:0, det:[], prov:r.custos.prov };
       if(r.custos){
         const f = fatorCustos(o.id);
         escalar(r.custos.agg, f);
@@ -442,7 +445,7 @@ async function coAtualizar(escolher){
         if(mexeu) payload.push(row);
       });
       const partes = [];
-      if(r.custos) partes.push(`custos de ${Object.keys(r.custos.agg).length} meses`);
+      if(r.custos && Object.keys(r.custos.agg).length) partes.push(`custos de ${Object.keys(r.custos.agg).length} meses`);
       if(cg){
         const tc = Object.values(cg).reduce((a,p)=>a+p.c,0), tr = Object.values(cg).reduce((a,p)=>a+p.r,0);
         partes.push(`proveitos do CentralGest de ${Object.keys(cg).length} meses (${eur0(tc)} de autos + ${eur0(tr)} de revisão de preços)`);
