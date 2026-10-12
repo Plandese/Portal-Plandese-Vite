@@ -109,6 +109,13 @@ const axisY = (ymax, yfn, fmt) => Array.from({length:5},(_,i)=>{
   return `<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--gray-100)"/><text x="${PL-6}" y="${y+3}" font-size="10" text-anchor="end" fill="var(--gray-400)">${fmt(v)}</text>`;
 }).join('');
 
+// Etiqueta do mês no eixo: com muitos meses salta alguns (sempre inclui o último) para não se sobreporem
+function lblMes(i, n, cx, ym, pitch){
+  const passo = Math.max(1, Math.ceil(46/Math.max(pitch,1)));
+  if((n-1-i)%passo) return '';
+  return `<text x="${cx}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--gray-400)">${mesLabel(ym)}</text>`;
+}
+
 function barsCustoProv(rows, kA, kB, labelA, labelB, extraTip){
   const n=rows.length, pw=W-PL-PR, ph=H-PT-PB, gw=pw/n, bw=Math.min(20,gw*.32);
   const ymax=niceCeil(Math.max(1,...rows.flatMap(r=>[kA(r),kB(r)])));
@@ -118,7 +125,7 @@ function barsCustoProv(rows, kA, kB, labelA, labelB, extraTip){
     const cx=PL+i*gw+gw/2, a=kA(r), b=kB(r);
     const tip=`<title>${mesLabel(r.ym)}\n${labelA}: ${eur0(a)}\n${labelB}: ${eur0(b)}${extraTip?'\n'+extraTip(r):''}</title>`;
     s+=`<g>${tip}<rect x="${cx-bw-1}" y="${y(a)}" width="${bw}" height="${Math.max(0,PT+ph-y(a))}" rx="2" fill="${COR.custo}"/><rect x="${cx+1}" y="${y(b)}" width="${bw}" height="${Math.max(0,PT+ph-y(b))}" rx="2" fill="${COR.prov}"/></g>`;
-    s+=`<text x="${cx}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--gray-400)">${mesLabel(r.ym)}</text>`;
+    s+=lblMes(i,n,cx,r.ym,gw);
   });
   return s+`<line x1="${PL}" x2="${W-PR}" y1="${y(0)}" y2="${y(0)}" stroke="var(--gray-300)"/></svg>`;
 }
@@ -137,7 +144,7 @@ function linhaSaldo(rows){
   s+=`<path d="${path('acum')}" fill="none" stroke="var(--gray-900)" stroke-width="2.5" stroke-linejoin="round"/>`;
   rows.forEach((r,i)=>{
     s+=`<g><title>${mesLabel(r.ym)}\nSaldo do mês: ${eur0(r.saldo)}${r.margem!==null?' ('+pct(r.margem)+')':''}\nAcumulado: ${eur0(r.acum)}</title><circle cx="${x(i)}" cy="${y(r.saldo)}" r="4" fill="${r.saldo>=0?'var(--green)':'var(--red)'}" stroke="var(--white)" stroke-width="1.5"/><circle cx="${x(i)}" cy="${y(r.acum)}" r="3.5" fill="var(--gray-900)" stroke="var(--white)" stroke-width="1.5"/></g>`;
-    s+=`<text x="${x(i)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--gray-400)">${mesLabel(r.ym)}</text>`;
+    s+=lblMes(i,n,x(i),r.ym,n>1?pw/(n-1):pw);
   });
   const u=rows[n-1];
   s+=`<text x="${x(n-1)-7}" y="${u.acum>=u.saldo?y(u.acum)-11:y(u.acum)+19}" font-size="11" font-weight="600" text-anchor="end" fill="var(--gray-900)">${eur0(u.acum)}</text>`;
@@ -158,7 +165,7 @@ function barrasCarga(rows){
       const yEq=y(v.tot), hEq=Math.max(y(v.rmo)-yEq-2,0);
       s+=`<g><title>${mesLabel(v.ym)}\nMão de obra: ${pct(v.rmo)}\nEquipamentos: ${pct(v.req)}\nCarga total: ${pct(v.tot)}\nsobre ${eur0(v.prov)} faturados</title><rect x="${cx}" y="${y(v.rmo)}" width="${bw}" height="${Math.max(PT+ph-y(v.rmo),0)}" fill="${COR.custo}"/><rect x="${cx}" y="${yEq}" width="${bw}" height="${hEq}" rx="2" fill="${COR.equip}"/></g><text x="${cx+bw/2}" y="${yEq-5}" font-size="10" text-anchor="middle" fill="var(--gray-700)">${pct(v.tot,0)}</text>`;
     } else s+=`<text x="${cx+bw/2}" y="${y(0)-6}" font-size="10" text-anchor="middle" fill="var(--gray-400)">—</text>`;
-    s+=`<text x="${PL+i*gw+gw/2}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--gray-400)">${mesLabel(v.ym)}</text>`;
+    s+=lblMes(i,n,PL+i*gw+gw/2,v.ym,gw);
   });
   if(media>0 && media<=ymax) s+=`<line x1="${PL}" x2="${W-PR}" y1="${y(media)}" y2="${y(media)}" stroke="var(--gray-400)" stroke-width="2" stroke-dasharray="5 4"/>`;
   return s+`<line x1="${PL}" x2="${W-PR}" y1="${y(0)}" y2="${y(0)}" stroke="var(--gray-300)"/></svg>`;
