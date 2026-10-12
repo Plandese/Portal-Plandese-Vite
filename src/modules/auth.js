@@ -217,6 +217,7 @@ export async function entrarComoUtilizador(authedUser) {
     R.applyRolePermissions(authedUser.role);
     R.initNotifications();
     R.initChat?.();
+    R.initAgente?.();
     R.ensurePushSubscription?.();
     R.applyPendingSection?.();
   }
@@ -286,6 +287,7 @@ export function doLogout() {
   document.getElementById('push-prompt')?.remove();
   window.mShellReset?.();
   R.chatStop?.();
+  R.agenteStop?.();
   S.currentUser = null;
   localStorage.removeItem('plandese_session');
   sb.auth.signOut().catch(()=>{});

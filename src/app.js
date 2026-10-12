@@ -97,6 +97,7 @@ import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, 
 // Lembretes (quadro de cartões)
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
+import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
 import { initChat, chatStop, renderChat, chatEnviar, chatApagar, chatKey, chatAutoH, chatTogglePainel, chatSetConv, chatVoltar, chatAbrirNotif, chatFechar } from './modules/chat.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
@@ -117,6 +118,7 @@ Object.assign(R, {
   renderEncModsCheckboxes,
   renderAnalise, anlResetObras,
   initChat, chatStop,
+  initAgente, agenteStop,
 });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
@@ -160,6 +162,7 @@ Object.assign(window, {
   abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra,
   goTo, toggleNavGrp, refreshPortal,
   chatEnviar, chatApagar, chatKey, chatAutoH, chatTogglePainel, chatSetConv, chatVoltar, chatAbrirNotif, chatFechar,
+  agenteToggle,
 
   // Modais genéricos
   openModal, closeModal,

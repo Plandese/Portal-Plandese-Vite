@@ -7,6 +7,7 @@ const svg = (p, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="cur
 
 export const I = {
   menu:     svg('<path d="M3 6h18M3 12h18M3 18h18"/>'),
+  spark:    svg('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M17 5h4M5 17v4M3 19h4"/>'),
   bell:     svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
   back:     svg('<path d="m15 18-6-6 6-6"/>'),
   close:    svg('<path d="M18 6 6 18M6 6l12 12"/>'),

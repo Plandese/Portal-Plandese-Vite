@@ -400,6 +400,7 @@ function renderConta() {
     <div>
       ${rowAcao(I.bell, 'Notificações', 'mAbrirNotificacoes()', '<span class="m-row-n js-ntf-count" hidden></span>')}
       ${canAccessSection('chat') ? rowAcao(I.chat, 'Chat da equipa', "mAbrir('chat')", '<span class="m-row-n js-chat-count" hidden></span>') : ''}
+      ${rowAcao(I.spark || I.chat, 'Assistente IA', 'agenteToggle(true)')}
       ${rowAcao(I.calendar, 'Calendário', "mAbrir('calendario')")}
       ${rowAcao(I.user, 'Definições da conta', "mAbrir('m-defs')")}
       ${rowAcao(I.logout, 'Terminar sessão', 'doLogout()', '', 'red')}
@@ -433,6 +434,7 @@ function renderDrawer() {
     <nav class="m-drawer-nav">
       ${canAccessSection('producao') ? item(I.nav, 'As minhas obras', "mAbrir('producao')") : ''}
       ${canAccessSection('chat') ? item(I.chat, 'Chat da equipa', "mAbrir('chat')", '<span class="m-row-n js-chat-count" hidden></span>') : ''}
+      ${item(I.spark || I.chat, 'Assistente IA', 'agenteToggle(true)')}
       ${item(I.calendar, 'Calendário', "mAbrir('calendario')")}
       ${item(I.userCirc, 'Perfil', 'openProfileModal()')}
       ${item(I.gear, 'Definições', "mAbrir('m-defs')")}
