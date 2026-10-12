@@ -115,8 +115,30 @@ export async function dropboxMoveFile(fromPath, toPath){
 // ═══════════════════════════════════════════════════
 
 // Lista os ficheiros (sem subpastas) de uma pasta
+// Testa o caminho nível a nível (na raiz da equipa e na pessoal) para dizer onde falha
+async function _diagnosticarPasta(path){
+  const partes = path.split('/').filter(Boolean);
+  const out = [];
+  for(const team of [true, false]){
+    let ok = '', falhou = '';
+    for(let i = 0; i <= partes.length; i++){
+      const p = i ? '/' + partes.slice(0, i).join('/') : '';
+      try{ await _rpc('files/list_folder', { path: p, recursive: false }, team); ok = p || '(raiz)'; }
+      catch{ falhou = p || '(raiz)'; break; }
+    }
+    out.push(`${team ? 'equipa' : 'pessoal'}: abre até «${ok || 'nada'}»${falhou ? `, falha em «${falhou}»` : ', abre tudo'}`);
+  }
+  return out.join(' | ');
+}
+
 export async function dropboxListFolder(path){
-  let res = await _rpc('files/list_folder', { path, recursive: false });
+  let res;
+  try{ res = await _rpc('files/list_folder', { path, recursive: false }); }
+  catch(e){
+    const d = await _diagnosticarPasta(path).catch(() => '');
+    console.warn('Dropbox list_folder:', path, d);
+    throw new Error(e.message + (d ? ' — Diagnóstico: ' + d : ''));
+  }
   const out = [...res.entries];
   while(res.has_more){ res = await _rpc('files/list_folder/continue', { cursor: res.cursor }); out.push(...res.entries); }
   return out.filter(e => e['.tag'] === 'file');
