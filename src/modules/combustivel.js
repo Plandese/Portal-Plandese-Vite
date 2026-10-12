@@ -330,7 +330,7 @@ function _combAbrirRegDetalhe(id){
   document.getElementById('mcor-title').textContent=r.equipamento_nome||'Depósito de obra';
   document.getElementById('mcor-sub').textContent=`${fmtPT(r.data)} · ${obra}`;
   box.innerHTML=`<div class="cbr-big ${isEnt?'in':'out'}">${isEnt?'+':'−'}${_fmtL(l)}<small>${mov}</small></div>
-    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${kv('Obra',_escHtml(obra),1)}${kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
+    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${kv('Obra',_escHtml(obra),1)}${kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_fmtL(r.contador_valor).replace(/\s*L$/,'')+(r.contador_tipo==='km'?' km':' h')):''}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
   document.getElementById('mcor-editar').onclick=()=>abrirCombFormRegisto(null,String(r.id));
   openModal('modal-comb-reg');
 }

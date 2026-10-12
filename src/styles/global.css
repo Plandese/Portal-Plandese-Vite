@@ -2162,6 +2162,21 @@ body:not(.app-ativa) .bottom-nav{display:none!important}
 .pl-logo.sm{--pl-size:24px}
 .pl-logo.lg{--pl-size:72px}
 .pl-logo.light{--pl-base:rgba(255,255,255,.28);--pl-hi:#fff}
+/* ── Ecrã de carregamento após o login: cabeçalho azul + folha branca, como o portal ── */
+#loading-screen{position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;background:#173f9f;overflow:hidden}
+#loading-screen::before{content:'';position:absolute;right:-120px;top:-140px;width:420px;height:420px;border-radius:50%;background:rgba(255,255,255,.07)}
+.ld-head{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;height:calc(88px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);flex:none}
+.ld-mark{display:block;width:32px;height:32px;background:#fff;-webkit-mask:var(--m-logo-mask) center/contain no-repeat;mask:var(--m-logo-mask) center/contain no-repeat}
+.ld-head b{font-size:21px;font-weight:800;letter-spacing:-.5px}
+.ld-sheet{position:relative;z-index:1;flex:1;background:#fff;border-radius:34px 34px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 24px 80px}
+.ld-sheet .pl-logo{--pl-base:#d5dae3;--pl-hi:#173f9f}
+.ld-msg{font-size:14.5px;font-weight:600;color:#5d6678;text-align:center}
+.ld-skel{display:flex;flex-direction:column;gap:10px;width:min(320px,80%);margin-top:18px}
+.ld-skel i{display:block;height:14px;border-radius:99px;background:linear-gradient(90deg,#eef2f9 25%,#e1e7f3 50%,#eef2f9 75%) 0 0/200% 100%;animation:ldSkel 1.4s ease-in-out infinite}
+.ld-skel i:nth-child(2){width:82%}
+.ld-skel i:nth-child(3){width:58%}
+@keyframes ldSkel{from{background-position:200% 0}to{background-position:-200% 0}}
+@media(min-width:861px){.ld-sheet{margin:0 clamp(24px,6vw,96px)}}
 .pl-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px 20px;font-size:13px;color:var(--gray-400);text-align:center}
 td>.pl-load{padding:24px 20px}
 @keyframes plShine{from{background-position:100% 0}to{background-position:0% 0}}

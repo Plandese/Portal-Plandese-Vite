@@ -39,6 +39,7 @@ const ECRAS = {
   'enc-screen-comb-deposito':{ t: 'Depósito de obra', s: 'Entrada e saída de gasóleo', i: IC.drop, back: 'encGoCombustivel', nav: 'comb' },
   'enc-screen-comb-viatura': { t: 'Abastecimento bombas', s: 'Viaturas e máquinas', i: IC.fuel, back: 'encGoCombustivel', nav: 'comb', estados: {
     'comb-viatura-state-form': 'combViaturaVoltarScanner' } },
+  'enc-screen-comb-ultimos': { t: 'Últimos registos', s: 'Últimos 7 dias nas suas obras', i: IC.clock, back: 'encGoCombustivel', nav: 'comb' },
   'enc-screen-historico-enc':{ t: 'Histórico', s: 'Registos anteriores', i: IC.clock, back: 'encVoltarHome', nav: 'hist' },
   'enc-screen-compras-chat': { t: 'Compras', s: 'Assistente de compras', i: IC.cart, back: 'encVoltarHome', nav: 'home' },
 };

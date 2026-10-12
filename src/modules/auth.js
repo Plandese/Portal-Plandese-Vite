@@ -167,11 +167,11 @@ function pedirNovaPassword(nome){
   });
 }
 
-// Ecrã de carregamento a toda a largura, com o logo Plandese (criado só uma vez)
+// Ecrã de carregamento no desenho do portal (cabeçalho azul + folha branca), criado só uma vez
 function mostrarLoading(msg){
   let ls=document.getElementById('loading-screen');
   if(!ls){
-    document.body.insertAdjacentHTML('beforeend','<div id="loading-screen" style="position:fixed;inset:0;background:#103060;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998"><span class="pl-logo lg light"></span><div style="color:white;margin-top:20px;font-family:DM Sans,sans-serif;font-size:14px" id="loading-msg"></div></div>');
+    document.body.insertAdjacentHTML('beforeend','<div id="loading-screen"><div class="ld-head"><i class="ld-mark"></i><b>Plandese</b></div><div class="ld-sheet"><span class="pl-logo lg"></span><div class="ld-msg" id="loading-msg"></div><div class="ld-skel"><i></i><i></i><i></i></div></div></div>');
     ls=document.getElementById('loading-screen');
   }
   document.getElementById('loading-msg').textContent=msg;
@@ -301,7 +301,7 @@ export function doLogout() {
   document.body.classList.remove('enc-mode');
   S.encObraId = ''; S.encDataSel = '';
   ['enc-screen0','enc-screen1','enc-screen2',
-   'enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+   'enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });

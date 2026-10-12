@@ -47,6 +47,7 @@ body.enc-mode{background:#fff!important}
 #enc-app #enc-screen-historico-enc > .enc-hdr,
 #enc-app #enc-screen-combustivel > .enc-hdr,
 #enc-app #enc-screen-comb-deposito > .enc-hdr,
+#enc-app #enc-screen-comb-ultimos > .enc-hdr,
 #enc-app .enc-equip-body > .enc-hdr,
 #enc-app .chat-header{display:none}
 #enc-app .enc-equip-body{background:#fff}
@@ -233,3 +234,27 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 
 /* Sucesso */
 #enc-app .enc-equip-success{background:#fff}
+
+/* ───────── Combustível: detalhe/edição de um registo (folha inferior) ───────── */
+#enc-app #enc-creg-modal .enc-weather-sheet{padding-bottom:calc(16px + var(--m-safe-b))}
+#enc-app #enc-creg-body{padding:4px 20px 8px!important}
+#enc-app #enc-creg-modal .btn{
+  min-height:52px;padding:0 18px;border-radius:99px;font-family:inherit;font-size:16px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;box-shadow:none;letter-spacing:0;
+}
+#enc-app #enc-creg-modal .btn-primary{background:var(--m-brand)!important;color:#fff!important;border:0}
+#enc-app #enc-creg-modal .btn-primary:active{background:var(--m-brand-d)!important}
+#enc-app #enc-creg-modal .btn-secondary{background:#fff!important;color:var(--m-brand)!important;border:1.5px solid var(--m-brand)!important}
+#enc-app #enc-creg-modal .btn:disabled{opacity:.55}
+#enc-app #enc-creg-modal .field{margin-bottom:14px}
+#enc-app #enc-creg-modal .field label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--m-mute);margin-bottom:7px}
+#enc-app #enc-creg-modal .field input,
+#enc-app #enc-creg-modal .field select,
+#enc-app #enc-creg-modal .field textarea{
+  width:100%;min-height:50px;padding:0 14px;border:1.5px solid #b9c1ce;border-radius:14px;background:#fff;
+  font-family:inherit;font-size:16px;color:var(--m-ink);outline:0;
+}
+#enc-app #enc-creg-modal .field textarea{padding:12px 14px;min-height:96px;line-height:1.4;resize:none}
+#enc-app #enc-creg-modal .field input:focus,
+#enc-app #enc-creg-modal .field select:focus,
+#enc-app #enc-creg-modal .field textarea:focus{border-color:var(--m-brand);box-shadow:0 0 0 4px rgba(23,63,159,.14)}

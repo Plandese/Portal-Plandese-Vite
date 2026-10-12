@@ -229,7 +229,7 @@ async function initEnc(){
   document.getElementById('enc-screen0').style.display='flex';
   _applyEncModulePermissions();
   ['enc-screen1','enc-screen2','enc-screen-equip',
-   'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+   'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
    'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   const _nav=document.getElementById('enc-nav');
@@ -886,7 +886,7 @@ function _encSetNav(key){
 }
 
 function _encHideAll(){
-  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });

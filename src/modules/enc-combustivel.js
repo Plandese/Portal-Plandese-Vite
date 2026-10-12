@@ -30,7 +30,7 @@ const _escH = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
 
 let _combPickerOnSelect = null;
 function combAbrirPicker(onSelect){
-  _combPickerOnSelect = onSelect || (value=>{ document.getElementById('comb-viatura-nome-input').value=value; });
+  _combPickerOnSelect = onSelect || (value=>{ document.getElementById('comb-viatura-nome-input').value=value; _cntSyncViatura(); });
   const pk=document.getElementById('comb-picker');
   pk.hidden=false;
   const q=document.getElementById('comb-picker-q');
@@ -89,6 +89,41 @@ document.addEventListener('click',e=>{
 });
 
 let _depMovimento = 'entrada';
+// ── Horas / km do equipamento no momento do abastecimento ──
+// Veículo → quilómetros; máquina (e restantes) → horas. Equipamento desconhecido → o utilizador escolhe.
+function _cntTipoDe(eq){ return !eq?null:(eq.categoria==='veiculo'?'km':'horas'); }
+function _cntAplicar(p, ativo, eq){
+  const wrap=document.getElementById(p+'-cnt-wrap'); if(!wrap) return;
+  wrap.style.display=ativo?'block':'none';
+  if(!ativo) return;
+  const tipo=_cntTipoDe(eq);
+  wrap.dataset.tipo=tipo||'';
+  const un=document.getElementById(p+'-cnt-un');
+  un.style.display=tipo?'none':'';
+  un.parentElement.style.gridTemplateColumns=tipo?'1fr':'1fr auto';
+  const lbl=tipo==='km'?'Quilómetros':tipo==='horas'?'Horas de trabalho':'Horas ou km';
+  document.getElementById(p+'-cnt-label').innerHTML=lbl+' <span style="font-weight:400;color:var(--gray-400)">(opcional)</span>';
+}
+function _cntLer(p){
+  const wrap=document.getElementById(p+'-cnt-wrap');
+  const v=parseFloat(document.getElementById(p+'-cnt').value);
+  if(!wrap||wrap.style.display==='none'||!Number.isFinite(v)||v<0) return {};
+  const tipo=wrap.dataset.tipo||document.getElementById(p+'-cnt-un').value;
+  return {contador_valor:v, contador_tipo:tipo};
+}
+function _cntLimpar(p){ const i=document.getElementById(p+'-cnt'); if(i) i.value=''; }
+function _cntSyncViatura(){
+  let eq=null, ativo=true;
+  if(_combModoManual){
+    const nome=document.getElementById('comb-viatura-nome-input').value.trim();
+    eq=_combEqOpts.get(nome)||null;
+    ativo=!!nome;
+  } else {
+    eq=EQUIPAMENTOS.find(e=>e.id===_combQrEquipId)||null;
+  }
+  _cntAplicar('comb-viatura', ativo, eq);
+}
+
 let _depEquip = null;   // {id, nome} — equipamento que recebeu o combustível (só em saída)
 let _depHtml5Qr = null;
 let _combHtml5Qr = null;
@@ -103,7 +138,7 @@ let _chat = {
 };
 
 function _encHideAll(){
-  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura',
+  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
@@ -180,6 +215,7 @@ function _depRenderEquipEscolhido(){
     chosen.style.display='none';
     choice.style.display='flex';
   }
+  _cntAplicar('dep', !!_depEquip, _depEquip?(EQUIPAMENTOS.find(e=>e.id===_depEquip.id)||null):null);
 }
 function depTrocarEquip(){ _depEquip=null; _depRenderEquipEscolhido(); }
 
@@ -274,7 +310,7 @@ async function encOpenFuelModal(){
     box.innerHTML=data.map(r=>{
       const dep=r.tipo_registo==='deposito';
       const entrada=dep&&r.movimento!=='saida';
-      const titulo=dep?(entrada?'Entrada no depósito':'Saída do depósito'):'Abastecimento · '+esc(r.equipamento_nome||'Viatura');
+      const titulo=entrada?'Entrada no depósito':esc(r.equipamento_nome||(dep?'Saída do depósito':'Viatura'));
       const l=(parseFloat(r.litros)||0).toLocaleString('pt-PT',{maximumFractionDigits:1});
       const sub=[fmtPT(r.data),obras.length>1?esc(r.obra_nome):'',esc(r.encarregado_nome)].filter(Boolean).join(' · ');
       return `<div class="enc-fuel-row">
@@ -293,6 +329,151 @@ function encCloseFuelModal(){
   if(modal) modal.style.display='none';
 }
 
+// ── Últimos registos de combustível das obras do encarregado (últimos 7 dias) ──
+// O encarregado vê os registos dos últimos 7 dias e, nesse prazo, pode corrigi-los.
+const _CREG_DIAS=7;
+let _encUltRows=[];
+let _encUltObras=[];
+let _encCregId=null;
+
+const _cregLimite=()=>{ const d=new Date(); d.setDate(d.getDate()-_CREG_DIAS); return fmt(d); };
+const _cregEditavel=r=>!!r&&!!r.data&&r.data>=_cregLimite();
+const _cregNum=v=>(parseFloat(v)||0).toLocaleString('pt-PT',{maximumFractionDigits:1});
+
+function _cregInfo(r){
+  const dep=r.tipo_registo==='deposito';
+  const ent=dep&&r.movimento!=='saida';
+  return {
+    dep, ent,
+    titulo: ent?'Entrada no depósito':(r.equipamento_nome||(dep?'Saída do depósito':'Viatura')),
+    mov: dep?(ent?'Entrada em depósito':'Saída de depósito'):'Abastecimento de viatura',
+  };
+}
+
+function _renderCombUltimos(){
+  const lista=document.getElementById('enc-comb-ult-lista');
+  if(!_encUltRows.length){
+    lista.innerHTML='<div style="text-align:center;padding:48px 16px;color:var(--gray-400);font-size:14px">Sem registos de combustível nos últimos '+_CREG_DIAS+' dias.</div>';
+    return;
+  }
+  lista.innerHTML=_encUltRows.map(r=>{
+    const {ent,titulo}=_cregInfo(r);
+    const sub=[r.data?fmtPT(r.data):'',_encUltObras.length>1?(r.obra_nome||''):'',r.tipo_combustivel||'',r.encarregado_nome||''].filter(Boolean).map(_escH).join(' · ');
+    return `<div onclick="encCombRegAbrir('${_escH(r.id)}')" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 4px;border-bottom:1px solid var(--gray-100);cursor:pointer">
+      <div style="min-width:0">
+        <div style="font-size:15px;font-weight:700;color:var(--gray-900);line-height:1.3">${_escH(titulo)}</div>
+        <div style="font-size:12.5px;color:var(--gray-500);margin-top:3px">${sub}</div>
+      </div>
+      <div style="font-size:16px;font-weight:800;color:${ent?'#16a34a':'#dc2626'};white-space:nowrap;font-variant-numeric:tabular-nums">${ent?'+':'−'}${_cregNum(r.litros)} L</div>
+    </div>`;
+  }).join('');
+}
+
+async function encGoCombUltimos(){
+  stopCombQrScanner();
+  _encHideAll();
+  const s=document.getElementById('enc-screen-comb-ultimos');
+  s.style.display='flex'; s.style.flexDirection='column';
+  const lista=document.getElementById('enc-comb-ult-lista');
+  _encUltObras=_encObrasComb();
+  if(!_encUltObras.length){
+    lista.innerHTML='<div style="text-align:center;padding:48px 16px;color:var(--gray-400);font-size:14px">Sem obra atribuída.</div>';
+    return;
+  }
+  lista.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
+  try{
+    const _q=cols=>sb.from('registos_combustivel').select(cols)
+      .in('obra_id',_encUltObras.map(o=>o.id))
+      .gte('data',_cregLimite())
+      .order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(100);
+    const base='id,data,litros,movimento,tipo_registo,tipo_combustivel,equipamento_nome,obra_id,obra_nome,encarregado_nome,obs,fornecedor';
+    let {data,error}=await _q(base+',contador_valor,contador_tipo');
+    // Se as colunas do contador ainda não existirem na base de dados, mostra a lista sem elas
+    if(error) ({data,error}=await _q(base));
+    if(error) throw error;
+    _encUltRows=data||[];
+    _renderCombUltimos();
+  }catch(e){
+    console.warn('últimos registos combustível:',e);
+    lista.innerHTML='<div style="text-align:center;padding:32px 16px;color:#b91c1c;font-size:14px">Não foi possível carregar os registos.</div>';
+  }
+}
+
+// Detalhe do registo (folha inferior)
+function encCombRegAbrir(id){
+  const r=_encUltRows.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  _encCregId=r.id;
+  const {ent,titulo,mov}=_cregInfo(r);
+  const kv=(k,v)=>`<div style="padding:11px 0;border-bottom:1px solid #edf0f5"><div style="font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--m-mute)">${k}</div><div style="font-size:15.5px;font-weight:600;color:var(--m-ink);margin-top:3px;overflow-wrap:anywhere">${v}</div></div>`;
+  document.getElementById('enc-creg-title').textContent=titulo;
+  document.getElementById('enc-creg-body').innerHTML=`
+    <div style="font-size:34px;font-weight:800;letter-spacing:-1px;color:${ent?'#166534':'#b3261e'};padding:6px 0 2px">${ent?'+':'−'}${_cregNum(r.litros)} L</div>
+    <div style="font-size:13.5px;font-weight:600;color:var(--m-mute);margin-bottom:10px">${_escH(mov)}</div>
+    ${kv('Data',r.data?fmtPT(r.data):'—')}
+    ${kv('Obra',_escH(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—'))}
+    ${kv('Equipamento',_escH(r.equipamento_nome||'—'))}
+    ${kv('Combustível',_escH(r.tipo_combustivel||'—'))}
+    ${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_cregNum(r.contador_valor)+(r.contador_tipo==='km'?' km':' h')):''}
+    ${kv('Registado por',_escH(r.encarregado_nome||'—'))}
+    ${kv('Observações',_escH(r.obs||'—'))}
+    <div style="display:flex;gap:10px;margin-top:16px">
+      ${_cregEditavel(r)?'<button class="btn btn-primary" style="flex:1" onclick="encCombRegEditar()">Editar</button>':'<div style="flex:1;font-size:12.5px;color:var(--gray-500);align-self:center">Já passaram mais de '+_CREG_DIAS+' dias — não é possível editar.</div>'}
+      <button class="btn btn-secondary" style="flex:1" onclick="encCombRegFechar()">Fechar</button>
+    </div>`;
+  document.getElementById('enc-creg-modal').style.display='flex';
+}
+
+function encCombRegEditar(){
+  const r=_encUltRows.find(x=>String(x.id)===String(_encCregId));
+  if(!r||!_cregEditavel(r)) return;
+  const opt=v=>`<option${(r.tipo_combustivel||'Gasóleo')===v?' selected':''}>${v}</option>`;
+  document.getElementById('enc-creg-body').innerHTML=`
+    <div class="field"><label>Litros</label><input type="number" inputmode="decimal" step="0.1" min="0" id="enc-creg-litros" value="${_escH(r.litros??'')}"></div>
+    ${r.equipamento_nome&&r.equipamento_nome!=='Depósito de Obra'?`<div class="field"><label>${r.contador_tipo==='km'?'Quilómetros':'Horas'}</label><input type="number" inputmode="decimal" step="0.1" min="0" id="enc-creg-cnt" value="${_escH(r.contador_valor??'')}" placeholder="Leitura do contador"></div>`:''}
+    <div class="field"><label>Combustível</label><select id="enc-creg-tipo">${opt('Gasóleo')}${opt('Gasolina')}${opt('Outro')}</select></div>
+    <div class="field"><label>Observações</label><textarea id="enc-creg-obs" rows="3" style="width:100%">${_escH(r.obs||'')}</textarea></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" id="enc-creg-save" onclick="encCombRegGuardar()">Guardar</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="encCombRegAbrir('${_escH(r.id)}')">Cancelar</button>
+    </div>`;
+}
+
+async function encCombRegGuardar(){
+  const r=_encUltRows.find(x=>String(x.id)===String(_encCregId));
+  if(!r||!_cregEditavel(r)){ showToast('Já não é possível editar este registo'); return; }
+  const litros=parseFloat(document.getElementById('enc-creg-litros').value);
+  if(!litros||litros<=0){ showToast('Indique a quantidade de litros'); return; }
+  const upd={
+    litros,
+    tipo_combustivel:document.getElementById('enc-creg-tipo').value,
+    obs:document.getElementById('enc-creg-obs').value.trim()||null,
+  };
+  const cntEl=document.getElementById('enc-creg-cnt');
+  if(cntEl && cntEl.value!==''){
+    const cv=parseFloat(cntEl.value);
+    if(Number.isFinite(cv)&&cv>=0){ upd.contador_valor=cv; upd.contador_tipo=r.contador_tipo||'horas'; }
+  }
+  const btn=document.getElementById('enc-creg-save'); if(btn) btn.disabled=true;
+  try{
+    const {error}=await sb.from('registos_combustivel').update(upd).eq('id',r.id);
+    if(error) throw error;
+    Object.assign(r,upd);
+    showToast('Registo atualizado ✓');
+    _renderCombUltimos();
+    encUpdateFuelWidget();
+    encCombRegAbrir(r.id);
+  }catch(e){
+    showToast('Erro ao guardar: '+(e.message||e));
+    if(btn) btn.disabled=false;
+  }
+}
+
+function encCombRegFechar(){
+  const m=document.getElementById('enc-creg-modal'); if(m) m.style.display='none';
+  _encCregId=null;
+}
+
 function encGoCombDeposito(){
   _encHideAll();
   const s=document.getElementById('enc-screen-comb-deposito');
@@ -303,6 +484,7 @@ function encGoCombDeposito(){
   S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   document.getElementById('dep-litros').value='';
   document.getElementById('dep-obs').value='';
+  _cntLimpar('dep');
   document.getElementById('dep-tipo').value='Gasóleo';
   document.getElementById('dep-alert').style.display='none';
   _depMovimento='entrada';
@@ -337,7 +519,8 @@ async function encSubmeterCombDeposito(){
       tipo_registo:'deposito',
       movimento:_depMovimento,
       encarregado_nome:S.currentUser?.nome||'',
-      obs
+      obs,
+      ...(_depMovimento==='saida'?_cntLer('dep'):{})
     });
     if(error)throw error;
     document.getElementById('dep-alert').style.display='block';
@@ -350,6 +533,7 @@ async function encSubmeterCombDeposito(){
       document.getElementById('dep-obra').value='';
       document.getElementById('dep-alert').style.display='none';
       _depEquip=null;
+      _cntLimpar('dep');
       _depRenderEquipEscolhido();
       if(btn){btn.disabled=false;}
     },1800);
@@ -437,6 +621,7 @@ async function onCombQrScanned(text){
   document.getElementById('comb-viatura-nome').textContent=eq?eq.nome:`Equipamento ${equipId}`;
   document.getElementById('comb-viatura-cat').textContent=eq?(EQ_CATS[eq.categoria]?.label||'Equipamento'):'Equipamento';
   _combPreencherFormViatura();
+  _cntSyncViatura();
 }
 
 function combViaturaManual(){
@@ -448,6 +633,7 @@ function combViaturaManual(){
   document.getElementById('comb-viatura-scan-btn').style.display='inline-flex';
   document.getElementById('comb-viatura-nome-input').value='';
   _combPreencherFormViatura();
+  _cntSyncViatura();
   _combFillListaEquip();
   sbLoadEquipamentos().then(_combFillListaEquip).catch(()=>{});
 }
@@ -509,7 +695,8 @@ async function encSubmeterCombViatura(){
       movimento:'saida',
       fornecedor,
       encarregado_nome:S.currentUser?.nome||'',
-      obs
+      obs,
+      ..._cntLer('comb-viatura')
     });
     if(error)throw error;
     showToast('Abastecimento registado ✓');
@@ -921,7 +1108,7 @@ window.chatOnInput      = chatOnInput;
 export {
   encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip,
-  encGoCombViatura, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
+  encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, startCombQrScanner, stopCombQrScanner, onCombQrScanned,
   combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encSubmeterCombustivel,
   combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto,
   encGoComprasChat, _chatReset, _chatAddBot, _chatAddUser, chatOnInput, chatSend
