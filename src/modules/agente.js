@@ -78,7 +78,9 @@ function md(src){
     const h = /^(#{1,4})\s+(.*)$/.exec(l);
     if(h){ out.push(`<h4>${inline(h[2])}</h4>`); i++; continue; }
     if(!l.trim()){ i++; continue; }
-    const p = [];
+    // Consome sempre a 1.ª linha (uma tabela ainda incompleta durante o stream começa por "|" e não
+    // casa com nenhum bloco acima; sem isto o ciclo nunca avançava e o separador congelava).
+    const p = [L[i++]];
     while(i < L.length && L[i].trim() && !/^\s*([-*•]|\d+[.)])\s+/.test(L[i]) && !/^\s*\|/.test(L[i]) && !/^#{1,4}\s/.test(L[i])) p.push(L[i++]);
     out.push('<p>' + inline(p.join('<br>')) + '</p>');
   }

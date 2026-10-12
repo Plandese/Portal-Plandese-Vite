@@ -222,11 +222,6 @@ const FILTRO = {
 };
 const TOOLS = [
   {
-    name: "listar_tabelas",
-    description: "Devolve as tabelas e colunas consultáveis com a sua descrição. Chama quando não tiveres a certeza de onde estão os dados.",
-    input_schema: { type: "object", properties: {} },
-  },
-  {
     name: "consultar",
     description: "Lê linhas de uma tabela (máx. 200). Aceita filtros e ordenação. Já acrescenta obra_nome/colab_nome quando há obra_id/colab_numero. Para somas, médias ou contagens usa 'agregar'.",
     input_schema: {
@@ -316,7 +311,7 @@ const TOOLS = [
   },
 ];
 const ROTULOS: Record<string, string> = {
-  listar_tabelas: "A ver as tabelas disponíveis", consultar: "A consultar dados", agregar: "A calcular totais",
+  consultar: "A consultar dados", agregar: "A calcular totais",
   balanco_obras: "A calcular o balanço das obras", alertas: "A verificar alertas", calcular: "A fazer contas",
   ajuda_portal: "A consultar o guia do portal", abrir_seccao: "A preparar atalho", propor_acao: "A preparar a ação",
 };
@@ -342,6 +337,9 @@ FORMATO
 - Indica o âmbito dos números (obra, período, o que foi incluído) e assinala limitações (ex.: dados truncados, período sem lançamentos).
 - Se a pergunta for ambígua de forma que mude a resposta, faz UMA pergunta de esclarecimento; caso contrário assume o mais razoável e di-lo.
 - Quando fizer sentido, oferece o atalho "abrir_seccao" para a secção relevante.`;
+
+const CATALOGO_TXT = "\n\nTABELAS CONSULTÁVEIS (usa exatamente estes nomes; não é preciso listá-las)\n" +
+  Object.entries(TABELAS).map(([k, t]) => `- ${k}: ${t.desc} Colunas: ${[...t.cols, ...(t.virt ?? [])].join(", ")}`).join("\n");
 
 // ───────────────────────── Handler ─────────────────────────
 Deno.serve(async (req: Request) => {
@@ -462,7 +460,7 @@ Deno.serve(async (req: Request) => {
         const ativas = (obrasAll ?? []).filter((o: any) => o.ativa).map((o: any) => o.nome).sort();
         const ctx = body.contexto ?? {};
         const sistema = [
-          { type: "text", text: SYSTEM_FIXO, cache_control: { type: "ephemeral" } },
+          { type: "text", text: SYSTEM_FIXO + CATALOGO_TXT, cache_control: { type: "ephemeral" } },
           {
             type: "text",
             text: `CONTEXTO\n- Hoje: ${hojeLisboa()} (Europe/Lisbon)\n- Utilizador: ${u?.nome ?? username} (perfil: ${role})\n` +
@@ -568,7 +566,7 @@ Deno.serve(async (req: Request) => {
             case "consultar": {
               const tabela = String(input.tabela);
               const t = TABELAS[tabela];
-              if (!t) throw new Error(`Tabela não permitida: ${tabela}. Usa listar_tabelas.`);
+              if (!t) throw new Error(`Tabela não permitida: ${tabela}. Consulta o catálogo de tabelas.`);
               const pedidas: string[] = (input.colunas?.length ? input.colunas : [...colsReais(t), ...(t.virt ?? [])]);
               for (const c of pedidas) if (!validarColuna(t, c)) throw new Error(`Coluna inválida em ${tabela}: ${c}`);
               const reais = colunasNecessarias(t, tabela, pedidas);
