@@ -64,12 +64,30 @@ async function coSimApagar(){
 
 
 // Seletor De/Até: só afeta a análise; os lançamentos mensais mostram sempre tudo.
-function coPeriodoBar(ids){
+function coVistaToggle(){
+  const v = coVista();
+  const ic = {
+    cartoes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    lista:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>'
+  };
+  const b = (k, l) => `<button type="button" class="${v===k?'on':''}" aria-pressed="${v===k}" onclick="coVista('${k}')">${ic[k]}${l}</button>`;
+  return `<span class="obr-seg" role="group" aria-label="Vista" style="margin-left:auto">${b('cartoes','Cartões')}${b('lista','Lista')}</span>`;
+}
+function coPeriodoBar(ids, comVista){
   const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
   const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${(CO.de||CO.ate) && !isMobile()?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
-  const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="margin-left:auto;display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
-  return (per||upd) ? `<div class="co-per">${per}${upd}</div><div id="co-upd-log"></div>` : '';
+  const vista = (comVista && !isMobile()) ? coVistaToggle() : '';
+  const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="${vista?'':'margin-left:auto;'}display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza os valores">↻ Atualizar das pastas</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
+  return (per||upd||vista) ? `<div class="co-per">${per}${vista}${upd}</div><div id="co-upd-log"></div>` : '';
+}
+function coVista(v){
+  if(v===undefined){
+    if(isMobile()) return 'cartoes';
+    try{ return localStorage.getItem('co_vista')==='lista' ? 'lista' : 'cartoes'; }catch(e){ return 'cartoes'; }
+  }
+  try{ localStorage.setItem('co_vista', v==='lista'?'lista':'cartoes'); }catch(e){}
+  coRenderList();
 }
 function coPeriodo(qual, val){
   if(qual==='reset'){ CO.de = CO.ate = ''; }
@@ -113,7 +131,22 @@ function coRenderList(){
     const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
     return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])));
   }).join('');
-  el.innerHTML = `${coPeriodoBar(new Set(obras.map(o=>o.id)))}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size, simN(simIds(obras))).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+  const ids = new Set(obras.map(o=>o.id));
+  if(coVista()==='lista'){
+    const lin = (id, cor, cod, nome, c, meses, sim, tot) => `<tr class="${tot?'tot':''}" onclick="coAbrir('${id}')" title="Abrir balanço">
+      <td><span class="co-ob-dot" style="background:${cor}"></span><span class="co-ob-cod">${esc(cod)}</span> <b>${esc(nome)}</b>${sim?' <span class="co-sim-tag">SIMULADO</span>':''}</td>
+      <td class="r">${meses||'—'}</td><td class="r">${meses?eur0(c.provTot):'—'}</td><td class="r">${meses?eur0(c.custosTot):'—'}</td>
+      <td class="r ${meses?(c.saldo>=0?'pos':'neg'):''}"><b>${meses?eur0(c.saldo):'—'}</b></td>
+      <td class="r">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span>`:'—'}</td></tr>`;
+    const nMeses = new Set(CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size;
+    const corpo = lin('ALL','var(--gray-900)','TODAS',obras.length+' obras em curso',total,nMeses,simN(simIds(obras)),true) + obras.map((o,i) => {
+      const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
+      return lin(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])), false);
+    }).join('');
+    el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-tbl-wrap"><table class="co-tbl"><thead><tr><th>Empreitada</th><th class="r">Meses</th><th class="r">Proveitos</th><th class="r">Custos</th><th class="r">Saldo</th><th class="r">Margem</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+    return;
+  }
+  el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size, simN(simIds(obras))).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
 }
 
 // Existências em obra: um valor único por empreitada (co_obra.existencias), abate aos custos.
@@ -391,5 +424,5 @@ Atenção: os valores do Excel são multiplicados por ${String(fator).replace('.
 
 export {
   renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
-  coGuardarCelula, coAdicionarMes, coApagarMes,
+  coGuardarCelula, coAdicionarMes, coApagarMes, coVista,
 };

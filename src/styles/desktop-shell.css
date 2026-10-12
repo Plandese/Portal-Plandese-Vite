@@ -1280,3 +1280,19 @@ body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto}
 .obr-seg button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:6px 12px;border-radius:8px;font:inherit;font-size:13px;font-weight:600;color:var(--gray-500,#6b7488);cursor:pointer}
 .obr-seg button svg{width:15px;height:15px}
 .obr-seg button.on{background:#fff;color:var(--blue-700,#1e3a8a);box-shadow:0 1px 3px rgba(20,30,60,.12)}
+
+/* Controlo de Obras — vista em lista */
+body.device-desktop:not(.enc-mode) #admin-app .co-per .obr-seg button{height:auto;border:0;border-radius:8px;padding:6px 12px;background:transparent;color:var(--gray-500,#6b7488);font-size:13px}
+body.device-desktop:not(.enc-mode) #admin-app .co-per .obr-seg button.on{background:#fff;color:var(--d-brand);box-shadow:0 1px 3px rgba(20,30,60,.12)}
+.co-tbl-wrap{background:#fff;border:1px solid var(--gray-200,#e3e7ef);border-radius:16px;overflow:hidden}
+.co-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.co-tbl th{padding:12px 16px;text-align:left;font-size:12px;font-weight:600;color:var(--gray-500,#6b7488);background:var(--gray-50,#f6f8fb);border-bottom:1px solid var(--gray-200,#e3e7ef)}
+.co-tbl td{padding:13px 16px;border-bottom:1px solid var(--gray-100,#eef1f6)}
+.co-tbl tbody tr{cursor:pointer}
+.co-tbl tbody tr:hover{background:var(--gray-50,#f6f8fb)}
+.co-tbl tbody tr:last-child td{border-bottom:0}
+.co-tbl tr.tot{background:var(--d-tint,#eef3ff)}
+.co-tbl .r{text-align:right;font-variant-numeric:tabular-nums}
+.co-tbl .neg{color:#b3261e}
+.co-tbl .co-ob-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+.co-tbl .co-ob-cod{font-size:12px;font-weight:600;color:var(--d-brand);background:var(--d-tint,#eef3ff);padding:2px 8px;border-radius:6px;margin-right:6px}
