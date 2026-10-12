@@ -1158,7 +1158,7 @@ function apagarFatura(){
 //  WORKFLOW DE APROVAÇÃO
 // ═══════════════════════════════════════
 // Pastas da Dropbox (caminhos do espaço de equipa), partilhadas por todos os utilizadores (tabela app_config)
-const FAT_PASTA_PENDENTES = '/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/02 - David Mósca/1-Por aprovar';
+const FAT_PASTA_PENDENTES = '/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/00 - PORTAL PLANDESE/1-Por aprovar';
 const FAT_PASTAS_KEY = 'fatura_pastas';
 let _pastas = null;   // { pendentes, aprovadas } vindo do servidor
 const _lim = v => String(v||'').trim().replace(/\/+$/,'');
