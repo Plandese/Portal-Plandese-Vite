@@ -23,6 +23,14 @@ function obrasVisiveis() {
     .map(o => o.nome));
 }
 
+// Nome(s) do(s) diretor(es) de obra que aprovam as faturas desta obra
+function diretoresDaObra(nome) {
+  const o = (S.OBRAS || []).find(x => x.nome === nome);
+  const ids = [o?.diretor_id, ...(o?.diretores_extra || [])].filter(Boolean);
+  if (!ids.length) return 'Sem diretor atribuído';
+  return ids.map(id => S.USERS?.[id]?.nome || id).join(', ');
+}
+
 async function carregar() {
   const { data, error } = await sb.from('faturas')
     .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo')
@@ -87,10 +95,10 @@ function desenhar() {
     return `<button type="button" class="far-card" data-far-obra="${esc(k)}" title="Ver as faturas desta obra">
       <span class="far-card-top">
         <span class="far-card-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg></span>
-        <span class="far-card-tt"><b>${esc(k || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} por aprovar</small></span>
+        <span class="far-card-tt"><b>${esc(k || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} · ${eur(sub)}</small></span>
         <span class="far-card-n">${rs.length}</span>
       </span>
-      <span class="far-card-tot">${eur(sub)}</span>
+      <span class="far-card-dir"><small>Aprova</small><b title="${esc(diretoresDaObra(k))}">${esc(diretoresDaObra(k))}</b></span>
       <span class="far-card-foot">${venc
         ? `<span class="dd-pill bad">${venc} vencida${venc === 1 ? '' : 's'}</span>`
         : (prox ? `<span class="far-card-mut">Próx. vencimento ${fmtPT(prox)}</span>` : '<span class="far-card-mut">Sem vencimento</span>')}
@@ -118,7 +126,7 @@ function desenharObra(box, obra, rs, h) {
   }).join('');
   box.innerHTML = `<div class="far-obra-hdr">
       <button type="button" class="btn btn-secondary btn-sm" data-far-back="1">← Todas as obras</button>
-      <div class="far-obra-tt"><b>${esc(obra || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} por aprovar · ${eur(total)}</small></div>
+      <div class="far-obra-tt"><b>${esc(obra || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} por aprovar · ${eur(total)} · Aprova: ${esc(diretoresDaObra(obra))}</small></div>
     </div>
     <div class="tbl-wrap"><table class="cmp-t tes-t">
       <thead><tr><th>Fornecedor</th><th>Fatura</th><th>Data</th><th class="r">Valor com IVA</th><th>Vencimento</th><th></th></tr></thead>
