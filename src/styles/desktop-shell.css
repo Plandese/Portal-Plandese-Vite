@@ -1274,3 +1274,9 @@ body.device-desktop:not(.enc-mode) #modal-fat .modal-footer{margin-top:auto}
 .tes-t .tes-row{cursor:pointer}
 .tes-t .tes-row:hover td{background:#f6f8fc}
 
+
+/* Obras — alternar cartões / lista */
+.obr-seg{display:inline-flex;padding:3px;gap:2px;background:var(--gray-100,#eef1f6);border-radius:10px}
+.obr-seg button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:6px 12px;border-radius:8px;font:inherit;font-size:13px;font-weight:600;color:var(--gray-500,#6b7488);cursor:pointer}
+.obr-seg button svg{width:15px;height:15px}
+.obr-seg button.on{background:#fff;color:var(--blue-700,#1e3a8a);box-shadow:0 1px 3px rgba(20,30,60,.12)}

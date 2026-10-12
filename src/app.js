@@ -17,7 +17,7 @@ import { abrirResumoPonto, fecharResumo, resumoNav } from './modules/resumo-cola
 import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSemana, loadWeek, exportSemanaExcel, hpEditCell, hpPickReg, hpTipoChange, hpSaveCell, hpAnularCell, hpDeleteCell, _hpClosePopover, aprovarDiaPonto, retirarAprovacaoPonto } from './modules/ponto.js';
 
 // Obras, Colaboradores, Utilizadores
-import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
+import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
 import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos } from './modules/colaboradores.js';
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
@@ -175,7 +175,7 @@ Object.assign(window, {
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA,
 
   // Obras
-  renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas,
+  renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista,
   moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra,
 
   // Colaboradores

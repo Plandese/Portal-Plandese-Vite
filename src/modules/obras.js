@@ -26,6 +26,19 @@ export function novaObra(){
 }
 
 let _obrHideInativas=true;
+let _obrVista=null;   // 'cartoes' | 'lista'
+
+const _obrDesk=()=>document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+function _obrVistaAtual(){
+  if(!_obrDesk()) return 'lista';
+  if(!_obrVista){ try{ _obrVista=localStorage.getItem('obr_vista')==='lista'?'lista':'cartoes'; }catch(e){ _obrVista='cartoes'; } }
+  return _obrVista;
+}
+export function obrSetVista(v){
+  _obrVista = v==='lista' ? 'lista' : 'cartoes';
+  try{ localStorage.setItem('obr_vista', _obrVista); }catch(e){}
+  renderObras();
+}
 
 export function obrToggleHideInativas(){
   _obrHideInativas=document.getElementById('obr-hide-inativas').checked;
@@ -63,7 +76,7 @@ function _renderObrasCartoes(lista){
 }
 
 function _renderObrasLista(lista){
-  if(document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode')) return _renderObrasCartoes(lista);
+  if(_obrVistaAtual()==='cartoes') return _renderObrasCartoes(lista);
   const wrap=document.createElement('div');wrap.className='card';wrap.style.cssText='padding:0;overflow:hidden';
   const tblWrap=document.createElement('div');tblWrap.className='tbl-wrap';
   const rows=lista.map(o=>{
@@ -85,6 +98,12 @@ function _renderObrasLista(lista){
 
 export function renderObras(){
   const cont=document.getElementById('obras-list');cont.innerHTML='';
+  const seg=document.getElementById('obr-vista');
+  if(seg){
+    seg.style.display=_obrDesk()?'':'none';
+    const v=_obrVistaAtual();
+    seg.querySelectorAll('button[data-v]').forEach(b=>{ const on=b.dataset.v===v; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
+  }
   document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
   if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';return;}
   const lista=_obrHideInativas ? S.OBRAS.filter(o=>o.ativa) : S.OBRAS;

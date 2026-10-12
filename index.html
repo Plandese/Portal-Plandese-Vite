@@ -1533,6 +1533,14 @@
         <div class="pg-hdr">
           <div><div class="pg-title">Lista de Obras</div><div class="pg-sub">Obras disponíveis para os encarregados</div></div>
           <div style="display:flex;align-items:center;gap:16px">
+            <div class="obr-seg" id="obr-vista" role="group" aria-label="Vista">
+              <button type="button" data-v="cartoes" class="on" aria-pressed="true" onclick="obrSetVista('cartoes')" title="Cartões">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Cartões
+              </button>
+              <button type="button" data-v="lista" aria-pressed="false" onclick="obrSetVista('lista')" title="Lista">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>Lista
+              </button>
+            </div>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none">
               <input type="checkbox" id="obr-hide-inativas" checked onchange="obrToggleHideInativas()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
               Ocultar inativas
