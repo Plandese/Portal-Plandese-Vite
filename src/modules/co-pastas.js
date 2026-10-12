@@ -6,6 +6,8 @@
 //    · "... Autos de Medição 02 - TEC01 ....xls"  → proveitos de trabalhos complementares (1 por TECxx, o mais recente)
 // ═══════════════════════════════════════
 
+import { coParseAutoPdfTexto, coPdfTexto, coAgregaAutosPdf } from './co-autos-pdf.js';
+
 const GRUPO_KEY = { 'Mão de Obra':'mo', 'Equipamento':'eq', 'MateriaPrima':'mat', 'Geral':'geral', 'N/D':'sub' };
 const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replace(',','.')); return isNaN(n) ? 0 : n; };
 const sem = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
@@ -142,6 +144,53 @@ export function coParseAutos(wb){
   return out;
 }
 
+// ── Autos em PDF (ver co-autos-pdf.js) ────────────────────────────────
+let _pdfjsP = null;
+async function getPdfjs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  if(!_pdfjsP) _pdfjsP = (async () => {
+    const mod = await import('pdfjs-dist');
+    const pdfjs = mod.getDocument ? mod : (mod.default || mod);
+    try{ const W = (await import('pdfjs-dist/build/pdf.worker.min.js?worker')).default; pdfjs.GlobalWorkerOptions.workerPort = new W(); }
+    catch(e){ try{ pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.js?url')).default; }catch(e2){} }
+    window.pdfjsLib = pdfjs;
+    return pdfjs;
+  })();
+  return _pdfjsP;
+}
+// Faturas, plantas, mapas de detalhe e resumos não são autos
+const PDF_IGNORAR = /(^|[_\s-])FR([_\s.-]|$)|planta|detalhado|resumo|fatura|vistoria/i;
+const MESES_TAG = { jan:1, fev:2, mar:3, abr:4, mai:5, jun:6, jul:7, ago:8, set:9, out:10, nov:11, dez:12 };
+// Pasta do tipo "04_Auto de Medição nº 4 (Jun.26)" indica o mês do auto
+const mesDaPasta = caminho => { const m = sem(caminho).match(/\((jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?\s*(\d{2})\)/); return m ? `20${m[2]}-${String(MESES_TAG[m[1]]).padStart(2,'0')}` : null; };
+
+async function lerAutosPdf(pdfs, avisos){
+  const nomesPorPasta = new Set(pdfs.map(x => x.caminho + x.nome.toLowerCase()));
+  const cand = pdfs.filter(x => /auto/.test(sem(x.nome)) && !PDF_IGNORAR.test(x.nome)
+    // cópia assinada só conta se não houver o original ao lado
+    && !(/[_ ](signed|assin)\w*\.pdf$/i.test(x.nome) && nomesPorPasta.has(x.caminho + x.nome.replace(/[_ ](signed|assin)\w*(\.pdf)$/i, '$2').toLowerCase())));
+  if(!cand.length) return [];
+  let pdfjs; try{ pdfjs = await getPdfjs(); }catch(e){ avisos.push('PDF.js indisponível: '+e.message); return []; }
+  const out = [];
+  for(const x of cand){
+    try{
+      const doc = await pdfjs.getDocument({ data:new Uint8Array(await x.f.arrayBuffer()) }).promise;
+      const a = coParseAutoPdfTexto(await coPdfTexto(doc, 8));
+      if(!a) continue;
+      const tag = mesDaPasta(x.caminho);
+      out.push({ ...a, mes: tag || a.mes, mod:x.mod, nome:x.nome });
+    }catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
+  }
+  return out;
+}
+
+// Maior n.º de auto de um Excel: folhas "Auto n" ou "nº n" no nome do ficheiro
+function nAutoExcel(wb, nome){
+  const f = wb.SheetNames.map(n => +((String(n).trim().match(/^auto\s*(\d+)$/i)||[])[1]||0));
+  const m = sem(nome).match(/medicao\s*(?:n[o.º°]*\s*)?(\d+)/);
+  return Math.max(0, ...f, m ? +m[1] : 0);
+}
+
 // ── Procurar e ler os ficheiros de uma obra ───────────────────────────
 async function ficheiros(dir, caminho = '', prof = 0){
   const out = [];
@@ -150,9 +199,9 @@ async function ficheiros(dir, caminho = '', prof = 0){
       if(prof < 2) out.push(...await ficheiros(h, caminho + nome + '/', prof + 1));
       continue;
     }
-    if(h.kind!=='file' || nome.startsWith('~$') || !/\.xlsx?$/i.test(nome)) continue;
+    if(h.kind!=='file' || nome.startsWith('~$') || !/\.(xlsx?|pdf)$/i.test(nome)) continue;
     const f = await h.getFile();
-    out.push({ nome, f, mod:f.lastModified, caminho, prof });
+    out.push({ nome, f, mod:f.lastModified, caminho, prof, pdf:/\.pdf$/i.test(nome) });
   }
   return out;
 }
@@ -161,11 +210,13 @@ const lerWb = async (f, opts) => XLSX.read(await f.arrayBuffer(), { type:'array'
 
 // → { custos:{agg,n,ficheiro}|null, prov:{mes:valor}|null, ficheiros:[...], avisos:[...] }
 export async function coLerObra(dir){
-  const todos = await ficheiros(dir), avisos = [];
+  const tudo = await ficheiros(dir), avisos = [];
+  const todos = tudo.filter(x => !x.pdf), pdfs = tudo.filter(x => x.pdf);
   // _CMO = extrato de mão de obra de um auto (não é o auto) → ignorado
   const autos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)) && !/(^|[\s_-])cmo\.xlsx?$/.test(sem(x.nome)));
   const custosF = todos.filter(x => x.prof===0 && /custos/.test(sem(x.nome)) && !autos.includes(x));
   const res = { custos:null, provContr:null, provCompl:null, ficheiros:[], avisos };
+  const cobreContr = { n:0 }, cobreCompl = { n:0 };   // maior n.º de auto já coberto pelo Excel
 
   if(custosF.length){
     const x = maisRecente(custosF);
@@ -184,17 +235,38 @@ export async function coLerObra(dir){
     tcs.forEach(x => { const n = (sem(x.nome).match(/medicao\s*n[o.º°]*\s*(\d+)/)||[])[1]; (tec['tc'+(n||x.nome)] ||= []).push(x); });
         // contratual e complementares ficam separados: assim, se um dos ficheiros faltar, não se perde o outro
     const somar = (dest, p) => Object.entries(p).forEach(([m,v]) => dest[m] = Math.round(((dest[m]||0)+v)*100)/100);
-    const lerGrupo = async lista => {
+    const lerGrupo = async (lista, cobre) => {
       const out = {}; let ok = 0;
       for(const x of lista){
-        try{ somar(out, coParseAutos(await lerWb(x.f, { cellDates:false }))); res.ficheiros.push(x.nome); ok++; }
+        try{
+          const wb = await lerWb(x.f, { cellDates:false });
+          somar(out, coParseAutos(wb)); res.ficheiros.push(x.nome); ok++;
+          if(cobre) cobre.n = Math.max(cobre.n, nAutoExcel(wb, x.nome));
+        }
         catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
       }
       return ok ? out : null;
     };
-    if(contr.length) res.provContr = await lerGrupo([maisRecente(contr)]);
+    if(contr.length) res.provContr = await lerGrupo([maisRecente(contr)], cobreContr);
     const tecs = Object.values(tec).map(maisRecente);
-    if(tecs.length) res.provCompl = await lerGrupo(tecs);
+    if(tecs.length) res.provCompl = await lerGrupo(tecs, cobreCompl);
+  }
+
+  // Autos em PDF: completam o que o Excel não cobre (n.º de auto acima do último do Excel)
+  if(pdfs.length){
+    const lidos = await lerAutosPdf(pdfs, avisos);
+    if(lidos.length){
+      const junta = (dest, add) => { if(!Object.keys(add).length) return dest; const d = { ...(dest||{}) }; Object.entries(add).forEach(([m,v]) => d[m] = Math.round(((d[m]||0)+v)*100)/100); return d; };
+      // Os autos assinados (PDF) são os oficiais: se cobrem todos os n.os do Excel, substituem-no; senão só completam
+      const cobertos = (tc, ate) => { const ns = new Set(lidos.filter(a => a.tc===tc).map(a => a.n)); return ate>0 && Array.from({ length:ate }, (_,i) => ns.has(i+1)).every(Boolean); };
+      const gTodos = coAgregaAutosPdf(lidos);
+      const gNovos = coAgregaAutosPdf(lidos.filter(a => a.n > (a.tc ? cobreCompl.n : cobreContr.n)));
+      res.provContr = cobertos(false, cobreContr.n) ? gTodos.contr : junta(res.provContr, gNovos.contr);
+      res.provCompl = cobertos(true,  cobreCompl.n) ? gTodos.compl : junta(res.provCompl, gNovos.compl);
+      if(res.provContr && !Object.keys(res.provContr).length) res.provContr = null;
+      if(res.provCompl && !Object.keys(res.provCompl).length) res.provCompl = null;
+      lidos.forEach(a => { if(!res.ficheiros.includes(a.nome)) res.ficheiros.push(a.nome); });
+    }
   }
   return res;
 }
