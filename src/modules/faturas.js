@@ -917,7 +917,8 @@ function _fatRenderDesk(lista){
   const campo = (id,l,v,t='text',extra='') => `<div class="field${extra}"><label>${l}</label><input type="${t}" id="fd-${id}" value="${_fEsc(v==null?'':v)}"${t==='number'?' step="0.01"':''}/></div>`;
   form.innerHTML = `<div class="fat-ch"><span class="fat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span><div><b>Dados da fatura</b><small>Lidos automaticamente · confirme antes de lançar</small></div><span class="dd-pill ${auto?'ok':'warn'} fat-auto">${auto?'Leitura automática':'A rever'}</span></div>
     <div class="fat-fg">${campo('forn','Fornecedor',f.fornecedor)}${campo('num','Nº do documento',f.numero)}${campo('data','Data',f.data,'date')}${campo('nif','NIF',f.nif)}${campo('base','Valor s/ IVA',f.base,'number')}${campo('iva','IVA',f.iva,'number')}${campo('total','Total',f.total,'number')}
-      <div class="field"><label>Obra / centro de custo</label><input type="text" value="${_fEsc(f.centroCusto||'—')}" readonly/></div></div>
+      <div class="field"><label>Obra / centro de custo</label><input type="text" value="${_fEsc(f.centroCusto||'—')}" readonly/></div>
+      ${_quemAprovou(f) ? `<div class="field"><label>Aprovação</label><input type="text" value="${_fEsc(_quemAprovou(f).replace(/^Aprovada por /,''))}" readonly/></div>` : ''}</div>
     <div class="fat-fb"><button type="button" class="btn btn-secondary" data-fsave="draft">Guardar rascunho</button><button type="button" class="btn btn-primary" data-fsave="launch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><path d="m5 12 5 5L20 7"/></svg>Lançar fatura</button></div>`;
 }
 function _fatGuardarDesk(lancar){
@@ -965,6 +966,18 @@ function atualizaKPIs(){
 // ═══════════════════════════════════════
 //  MODAL EDITAR
 // ═══════════════════════════════════════
+// "Aprovada por Nome · 12/10/2026 às 14:35" (vazio se ainda não foi aprovada)
+function _quemAprovou(f){
+  if(!f.aprovadoPor || !['aprovada','paga'].includes(f.status)) return '';
+  const nome = S.USERS?.[f.aprovadoPor]?.nome || f.aprovadoPor;
+  let quando = '';
+  if(f.aprovadoEm){
+    const d = new Date(f.aprovadoEm);
+    if(!isNaN(d)) quando = ' · ' + d.toLocaleDateString('pt-PT') + ' às ' + d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+  }
+  return `Aprovada por ${nome}${quando}`;
+}
+
 function editarFatura(id){
   const f = FATURAS.find(x=>x.id===id); if(!f) return;
   _editFatId = id;
@@ -989,6 +1002,14 @@ function editarFatura(id){
   // Centro de custo
   const elCC = document.getElementById('mf-centro-custo');
   if(elCC) elCC.textContent = f.centroCusto || '—';
+
+  // Quem aprovou e quando
+  const elAp = document.getElementById('mf-aprov-info');
+  if(elAp){
+    const q = _quemAprovou(f);
+    elAp.style.display = q ? 'flex' : 'none';
+    const t = document.getElementById('mf-aprov-txt'); if(t) t.textContent = q;
+  }
 
   // PDF preview
   const previewWrap = document.getElementById('mf-pdf-preview');
