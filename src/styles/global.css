@@ -2240,3 +2240,25 @@ body:not(.device-mobile) #cmp-view-area{display:none}
   border-radius:12px;box-shadow:0 10px 30px rgba(15,37,87,.22);font-size:13px;color:var(--gray-800)}
 #push-prompt span{flex:1;min-width:200px}
 
+
+/* ───────── Faturas por aprovar: cartões por obra ───────── */
+.far-sum{display:flex;flex-wrap:wrap;gap:6px 18px;padding:14px 18px;font-size:13px;color:var(--d-mute,#5d6678);border-bottom:1px solid var(--d-line2,#edf0f5)}
+.far-sum b{color:var(--d-ink,#1b2130)}
+.far-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;padding:18px}
+.far-card{display:flex;flex-direction:column;gap:12px;text-align:left;font:inherit;cursor:pointer;padding:16px;border:1.5px solid var(--d-line,#dde2ea);border-radius:18px;background:#fff;color:var(--d-ink,#1b2130);transition:border-color .15s,box-shadow .15s,transform .15s}
+.far-card:hover,.far-card:focus-visible{border-color:#9db4e6;box-shadow:0 10px 26px rgba(23,63,159,.12);transform:translateY(-1px);outline:none}
+.far-card-top{display:flex;align-items:center;gap:12px;min-width:0}
+.far-card-ic{flex:none;width:42px;height:42px;border-radius:50%;background:var(--d-tint,#eaf0fc);color:var(--d-brand,#173f9f);display:grid;place-items:center}
+.far-card-ic svg{width:21px;height:21px}
+.far-card-tt{flex:1;min-width:0}
+.far-card-tt b{display:block;font-size:15px;font-weight:700;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.far-card-tt small{display:block;font-size:12.5px;color:var(--d-mute,#5d6678);margin-top:2px}
+.far-card-n{flex:none;min-width:30px;height:30px;padding:0 9px;border-radius:99px;background:var(--d-brand,#173f9f);color:#fff;font-weight:700;font-size:13.5px;display:grid;place-items:center}
+.far-card-tot{font-size:26px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
+.far-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--d-line2,#edf0f5);font-size:12.5px}
+.far-card-mut{color:var(--d-mute,#5d6678)}
+.far-card-go{color:var(--d-brand,#173f9f);font-weight:700}
+.far-obra-hdr{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--d-line2,#edf0f5)}
+.far-obra-tt{min-width:0}
+.far-obra-tt b{display:block;font-size:16px;font-weight:700}
+.far-obra-tt small{display:block;font-size:12.5px;color:var(--d-mute,#5d6678);margin-top:2px}

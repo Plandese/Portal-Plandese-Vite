@@ -404,7 +404,7 @@ window.savePerfil = async function () {
     if (id === 'analise')      { renderAnalise(); }
     if (id === 'painel')       { renderPainel(); }
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
-    if (id === 'faturas-aprovar') { renderFaturasAprovar(); }
+    if (id === 'faturas-aprovar') { renderFaturasAprovar({ reset: true }); }
     if (id === 'tesouraria')   { renderTesouraria(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); injectMapaCompBtns(); }
     if (id === 'equipamentos') { initEquipamentos(); }
