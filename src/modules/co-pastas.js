@@ -98,9 +98,29 @@ function coParseAutosFolhas(wb){
   return out;
 }
 
+// Terceiro modelo (ex.: trabalhos complementares do Alto dos Barronhos): uma folha só, com um único auto mensal.
+// Valor = linha "TOTAL MENSAL"; mês = fim de "Trabalhos realizados: dd-mm-aaaa a dd-mm-aaaa".
+function coParseAutoMensal(wb){
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:true });
+  let valor = 0;
+  for(const r of rows){
+    const c = r.findIndex(x => typeof x==='string' && /^total\s+mensal/i.test(x.trim()));
+    if(c<0) continue;
+    const n = r.slice(c+1).find(x => typeof x==='number');
+    if(n!==undefined){ valor = n; break; }
+  }
+  if(!valor) return null;
+  const txt = rows.slice(0,10).flat().filter(x => typeof x==='string').join(' | ');
+  const m = txt.match(/realizados:\s*\d{2}-\d{2}-\d{4}\s*a\s*\d{2}-(\d{2})-(\d{4})/i) || txt.match(/data do auto:\s*\d{2}-(\d{2})-(\d{4})/i);
+  if(!m) throw new Error('Mês do auto não encontrado');
+  return { [m[2]+'-'+m[1]]: Math.round(valor*100)/100 };
+}
+
 export function coParseAutos(wb){
   const porFolhas = coParseAutosFolhas(wb);
   if(porFolhas) return porFolhas;
+  const mensal = coParseAutoMensal(wb);
+  if(mensal) return mensal;
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:true });
   let hd = -1;
   for(let i=0;i<Math.min(rows.length,10) && hd<0;i++){
@@ -123,12 +143,16 @@ export function coParseAutos(wb){
 }
 
 // ── Procurar e ler os ficheiros de uma obra ───────────────────────────
-async function ficheiros(dir){
+async function ficheiros(dir, caminho = '', prof = 0){
   const out = [];
   for await (const [nome, h] of dir.entries()){
+    if(h.kind==='directory'){
+      if(prof < 2) out.push(...await ficheiros(h, caminho + nome + '/', prof + 1));
+      continue;
+    }
     if(h.kind!=='file' || nome.startsWith('~$') || !/\.xlsx?$/i.test(nome)) continue;
     const f = await h.getFile();
-    out.push({ nome, f, mod:f.lastModified });
+    out.push({ nome, f, mod:f.lastModified, caminho, prof });
   }
   return out;
 }
@@ -138,8 +162,9 @@ const lerWb = async (f, opts) => XLSX.read(await f.arrayBuffer(), { type:'array'
 // → { custos:{agg,n,ficheiro}|null, prov:{mes:valor}|null, ficheiros:[...], avisos:[...] }
 export async function coLerObra(dir){
   const todos = await ficheiros(dir), avisos = [];
-  const autos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)));
-  const custosF = todos.filter(x => /custos/.test(sem(x.nome)) && !autos.includes(x));
+  // _CMO = extrato de mão de obra de um auto (não é o auto) → ignorado
+  const autos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)) && !/(^|[\s_-])cmo\.xlsx?$/.test(sem(x.nome)));
+  const custosF = todos.filter(x => x.prof===0 && /custos/.test(sem(x.nome)) && !autos.includes(x));
   const res = { custos:null, provContr:null, provCompl:null, ficheiros:[], avisos };
 
   if(custosF.length){
@@ -149,9 +174,14 @@ export async function coLerObra(dir){
   }
 
   if(autos.length){
-    const contr = autos.filter(x => !/tec\s*\d+/i.test(x.nome));
+    // trabalhos complementares de um auto por mês: pasta "Trabalhos Complementares" ou nome com "TC"/"adicional"
+    const ehTC = x => /complementar/.test(sem(x.caminho)) || /(^|[^a-z])tc([^a-z]|$)|adicional/.test(sem(x.nome));
+    const tcs = autos.filter(x => !/tec\s*\d+/i.test(x.nome) && ehTC(x));
+    const contr = autos.filter(x => !/tec\s*\d+/i.test(x.nome) && !ehTC(x));
     const tec = {};
     autos.filter(x => /tec\s*\d+/i.test(x.nome)).forEach(x => { const k = +x.nome.match(/tec\s*0*(\d+)/i)[1]; (tec[k] ||= []).push(x); });
+    // um ficheiro por auto de TC (cada um traz só o seu mês): fica o mais recente de cada número
+    tcs.forEach(x => { const n = (sem(x.nome).match(/medicao\s*n[o.º°]*\s*(\d+)/)||[])[1]; (tec['tc'+(n||x.nome)] ||= []).push(x); });
         // contratual e complementares ficam separados: assim, se um dos ficheiros faltar, não se perde o outro
     const somar = (dest, p) => Object.entries(p).forEach(([m,v]) => dest[m] = Math.round(((dest[m]||0)+v)*100)/100);
     const lerGrupo = async lista => {
