@@ -2282,3 +2282,4 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 .tes-quem{display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow:auto;margin:6px 0 4px}
 .tes-quem-i{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--d-line2,#edf0f5);cursor:pointer;font-size:14px}
 .tes-quem-i small{margin-left:auto;color:var(--d-mute,#5d6678);text-transform:capitalize}
+.tes-t .tes-pill-prop{height:auto;min-height:26px;padding:4px 11px;white-space:normal;line-height:1.25}

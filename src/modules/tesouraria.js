@@ -22,6 +22,7 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 const ehAdmin = () => S.currentUser?.role === 'admin';
 const nomeDe = k => S.USERS?.[k]?.nome || k || '';
 const dm = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }); };
+const dmy = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
 const toast = m => (window.showToast ? window.showToast(m) : alert(m));
 
 // A Tesouraria recebe as faturas assim que são aprovadas com centro de custo
@@ -139,7 +140,7 @@ function desenhar() {
       const marcada = _sel.has(r.id);
       const estado = r.status === 'paga'
         ? `<span class="dd-pill mute" title="${r.pago_por ? 'Paga por ' + esc(nomeDe(r.pago_por)) + ' em ' + esc(dm(r.pago_em)) : 'Paga'}">Paga</span>`
-        : prop ? `<span class="dd-pill warn" title="Proposta por ${esc(nomeDe(r.proposta_por))} em ${esc(dm(r.proposta_em))}">Proposta · ${esc(nomeDe(r.proposta_por))} · ${esc(dm(r.proposta_em))}</span>`
+        : prop ? `<span class="dd-pill warn tes-pill-prop" title="Proposta a pagamento por ${esc(nomeDe(r.proposta_por))} em ${esc(dmy(r.proposta_em))}">Proposta a pagamento por: ${esc(nomeDe(r.proposta_por))} (${esc(dmy(r.proposta_em))})</span>`
         : '<span class="mut">—</span>';
       return `<tr class="tes-row${prop ? ' tes-prop' : ''}${marcada ? ' tes-sel' : ''}" data-tes-id="${r.id}" title="Clique para ver os detalhes da fatura">
         ${podeSel ? `<td class="tes-ck">${porPagar(r) ? `<input type="checkbox" data-tes-ck="${r.id}"${marcada ? ' checked' : ''} aria-label="Selecionar fatura"/>` : ''}</td>` : ''}
