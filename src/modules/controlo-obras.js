@@ -337,6 +337,10 @@ async function coGuardarObra(){
 }
 
 // ── Atualizar a partir das pastas (Dropbox) ──────────────────────────
+// Empreitadas cujos proveitos vêm da listagem do CentralGest (coluna "Proveitos" do ficheiro de custos):
+// autos de medição + revisões de preços, com estornos. Para as restantes continuam a vir dos autos.
+const PROV_CENTRALGEST = ['O049','O053'];
+
 async function coAtualizar(escolher){
   if(!pastasSuportado()){ showToast('Este browser não permite ler pastas. Use o Chrome ou o Edge.'); return; }
   const btn = document.getElementById('co-upd-btn'), log = () => document.getElementById('co-upd-log');
@@ -353,7 +357,10 @@ async function coAtualizar(escolher){
       const r = await coLerObra(dir);
       if(r.custos) escalar(r.custos.agg, fatorCustos(o.id));
       // Só se mexe nos meses que aparecem nos ficheiros; nada do que já existe é apagado por falta de ficheiro.
-      const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.provContr||{}), ...Object.keys(r.provCompl||{})]);
+      const cg = PROV_CENTRALGEST.includes(sp.cod) && r.custos && r.custos.prov && Object.keys(r.custos.prov).length ? r.custos.prov : null;
+      if(cg){ r.provContr = null; r.provCompl = null; }   // autos em ficheiro não se somam à listagem
+      const meses = new Set([...Object.keys(r.custos?r.custos.agg:{}), ...Object.keys(r.provContr||{}), ...Object.keys(r.provCompl||{}), ...Object.keys(cg||{}),
+        ...(cg ? CO.mensal.filter(x=>x.obra_id===o.id && (+x.proveitos||0)!==0).map(x=>x.mes) : [])]);
       let saltados = 0;
       const payload = [];
       [...meses].sort().forEach(mes => {
@@ -362,7 +369,11 @@ async function coAtualizar(escolher){
         const row = { obra_id:o.id, mes, proveitos:+cur.proveitos||0, mo:+cur.mo||0, eq:+cur.eq||0, mat:+cur.mat||0, geral:+cur.geral||0, sub:+cur.sub||0, outros:+cur.outros||0, prov_contr:cur.prov_contr==null?null:+cur.prov_contr, prov_compl:cur.prov_compl==null?null:+cur.prov_compl, atualizado:now };
         let mexeu = false;
         if(r.custos && r.custos.agg[mes]) { Object.assign(row, { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 }, r.custos.agg[mes]); mexeu = true; }
-        if(r.provContr || r.provCompl){
+        if(cg){
+          const p = cg[mes] || { c:0, r:0 };
+          Object.assign(row, { prov_contr:p.c, prov_compl:0, prov_rev:p.r, proveitos:Math.round((p.c+p.r)*100)/100 });
+          mexeu = true;
+        } else if(r.provContr || r.provCompl){
           // componente com ficheiro → valor do ficheiro (0 se o mês não tem auto); sem ficheiro → o que estava guardado
           const c = r.provContr ? (r.provContr[mes]||0) : (cur.prov_contr==null ? null : +cur.prov_contr);
           const k = r.provCompl ? (r.provCompl[mes]||0) : (cur.prov_compl==null ? null : +cur.prov_compl);
@@ -374,6 +385,10 @@ async function coAtualizar(escolher){
       });
       const partes = [];
       if(r.custos) partes.push(`custos de ${Object.keys(r.custos.agg).length} meses`);
+      if(cg){
+        const tc = Object.values(cg).reduce((a,p)=>a+p.c,0), tr = Object.values(cg).reduce((a,p)=>a+p.r,0);
+        partes.push(`proveitos do CentralGest de ${Object.keys(cg).length} meses (${eur0(tc)} de autos + ${eur0(tr)} de revisão de preços)`);
+      }
       if(r.provContr) partes.push(`proveitos contratuais de ${Object.keys(r.provContr).length} meses`);
       if(r.provCompl) partes.push(`proveitos complementares de ${Object.keys(r.provCompl).length} meses`);
       if(saltados) partes.push(`<span style="color:var(--red)">${saltados} ${saltados===1?'mês':'meses'} sem atualizar proveitos (falta um dos ficheiros de autos)</span>`);

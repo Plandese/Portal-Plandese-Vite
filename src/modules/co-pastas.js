@@ -48,12 +48,14 @@ export function coParseCustos(wb){
   const h = rows[hi].map(norm);
   const col = (nome, pref, dflt) => { let c=h.indexOf(nome); if(c<0) c=h.findIndex(x=>x.startsWith(pref)); return c<0?dflt:c; };
   const cData=col('data','data',0), cGrupo=col('grupoartigo','grupo',1), cCusto=col('custos','custo',5);
+  const cProv=col('proveitos','proveito',-1), cNome=col('nomeartigo','nome',-1);
   const cMes=h.indexOf('mes')<0?8:h.indexOf('mes'), cAno=h.indexOf('ano')<0?9:h.indexOf('ano');
-  const agg = {}; let n = 0;
+  const agg = {}, prov = {}; let n = 0;
   for(let i=hi+1;i<rows.length;i++){
     const r = rows[i]; if(!r || r.every(c=>c===''||c==null)) continue;
-    const v = num(r[cCusto]); if(!v) continue;
-    const grupo = String(r[cGrupo]||'').trim(); if(grupo==='Servico') continue;
+    const v = num(r[cCusto]), pv = cProv>=0 ? num(r[cProv]) : 0;
+    if(!v && !pv) continue;
+    const grupo = String(r[cGrupo]||'').trim();
     let d = r[cData], data = '';
     if(d instanceof Date) data = d.toISOString().slice(0,10);
     else if(typeof d==='number') data = new Date((d-25569)*86400000).toISOString().slice(0,10);
@@ -62,11 +64,20 @@ export function coParseCustos(wb){
     const mv=r[cMes], av=r[cAno];
     if(mv!=='' && av!=='' && String(av).trim().length===4) mes = String(av).trim()+'-'+String(mv).trim().padStart(2,'0');
     if(!/^\d{4}-\d{2}$/.test(mes)) continue;
-    const k = GRUPO_KEY[grupo] || 'outros';
-    (agg[mes] ||= { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 })[k] += Math.abs(v); n++;
+    // Proveitos (faturação de autos e revisões de preços) — mantém o sinal: estornos abatem
+    if(pv){
+      const rev = cNome>=0 && /revisao\s+de\s+precos/.test(sem(r[cNome]));
+      const p = (prov[mes] ||= { c:0, r:0 });
+      p[rev ? 'r' : 'c'] += pv;
+    }
+    if(v && grupo!=='Servico'){
+      const k = GRUPO_KEY[grupo] || 'outros';
+      (agg[mes] ||= { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 })[k] += Math.abs(v); n++;
+    }
   }
+  Object.values(prov).forEach(p => { p.c = Math.round(p.c*100)/100; p.r = Math.round(p.r*100)/100; });
   Object.values(agg).forEach(a => Object.keys(a).forEach(k => a[k] = Math.round(a[k]*100)/100));
-  return { agg, n };
+  return { agg, n, prov };
 }
 
 // ── Leitura de um auto de medição: total de cada auto (linha 4) e data (linha 5) ──
