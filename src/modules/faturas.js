@@ -1161,7 +1161,17 @@ function apagarFatura(){
 const FAT_PASTA_PENDENTES = '/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/00 - PORTAL PLANDESE/1-Por aprovar';
 const FAT_PASTAS_KEY = 'fatura_pastas';
 let _pastas = null;   // { pendentes, aprovadas } vindo do servidor
-const _lim = v => String(v||'').trim().replace(/\/+$/,'');
+// Aceita também caminhos colados do Windows ("C:\...\Plandese Dropbox\David Mósca\...") e converte-os
+// para o caminho relativo à raiz da Dropbox ("/David Mósca/...").
+const _lim = v => {
+  let s = String(v||'').trim().replace(/^["'“”]+|["'“”]+$/g,'').trim();
+  s = s.replace(/\\/g,'/');
+  const m = s.match(/Plandese Dropbox\/(.*)$/i);
+  if(m) s = m[1];
+  else s = s.replace(/^[A-Za-z]:\/.*?\/Dropbox\//i,'');
+  s = s.replace(/\/+$/,'');
+  return s && !s.startsWith('/') ? '/' + s : s;
+};
 const _pastaPendentes = () => _lim(_pastas?.pendentes || localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES);
 const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
 
