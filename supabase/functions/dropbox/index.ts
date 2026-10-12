@@ -85,9 +85,9 @@ Deno.serve(async (req: Request) => {
     const alvo = req.headers.get("x-dbx-url") ?? "";
     if (!PERMITIDOS.has(alvo)) return json({ error: "Endpoint da Dropbox não permitido" }, 400);
 
-    const corpo = req.headers.has("content-length") && req.headers.get("content-length") !== "0"
-      ? new Uint8Array(await req.arrayBuffer())
-      : undefined;
+    // Lê sempre o corpo (o gateway pode enviar em blocos, sem content-length)
+    const bruto = new Uint8Array(await req.arrayBuffer());
+    const corpo = bruto.length ? bruto : undefined;
 
     const enviar = async (tok: string) => {
       const h: Record<string, string> = { Authorization: "Bearer " + tok };
@@ -101,6 +101,12 @@ Deno.serve(async (req: Request) => {
 
     let resp = await enviar(await accessToken());
     if (resp.status === 401) resp = await enviar(await accessToken(true));
+
+    // Erros da Dropbox seguem como JSON {error, status} para a mensagem ser clara no portal
+    if (!resp.ok) {
+      const txt = (await resp.text()).slice(0, 600);
+      return json({ error: txt || "sem detalhe", status: resp.status, endpoint: alvo.split("/2/")[1] }, resp.status);
+    }
 
     const h = new Headers(cors);
     const ct = resp.headers.get("content-type");

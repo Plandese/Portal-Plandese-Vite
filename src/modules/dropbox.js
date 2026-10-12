@@ -26,8 +26,11 @@ async function _call(url, { headers = {}, body, team = false } = {}){
 
 async function _msg(resp){
   const t = await resp.text();
-  try{ const j = JSON.parse(t); if(j?.error && typeof j.error === 'string') return j.error; } catch{}
-  return t;
+  try{
+    const j = JSON.parse(t);
+    if(j?.error && typeof j.error === 'string') return j.error + (j.status ? ` [HTTP ${j.status}]` : '');
+  } catch{}
+  return t || `HTTP ${resp.status}`;
 }
 
 // A ligação é da empresa e vive no servidor: está sempre "ligada" do ponto de vista do utilizador.
