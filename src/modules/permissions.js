@@ -184,6 +184,8 @@ const SECTION_ROLES = {
 export function roleCanAccessSection(role, sec){
   if(role === 'admin') return true;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
+  // Faturas por aprovar: o diretor de obra acede mesmo sem o capítulo Financeiro (o RLS limita-o às faturas das suas obras)
+  if(sec === 'faturas-aprovar' && role === 'diretor_obra') return true;
   if(sec === 'chat') return !!role && role !== 'encarregado';
   if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
@@ -207,7 +209,7 @@ export function applyRolePermissions(role){
   const allowed = access.chapters || [];
   // Esconder capítulos inteiros (grupo + toggle) não permitidos na sidebar
   NAV_CHAPTERS.forEach(ch=>{
-    if(allowed.includes(ch.id)) return;
+    if(allowed.includes(ch.id) || ch.sections.some(sec=>roleCanAccessSection(role, sec))) return;
     document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
   });
   // Esconder páginas do Financeiro que não são deste perfil
