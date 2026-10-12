@@ -28,7 +28,7 @@ async function _msg(resp){
   const t = await resp.text();
   try{
     const j = JSON.parse(t);
-    if(j?.error && typeof j.error === 'string') return j.error + (j.status ? ` [HTTP ${j.status}]` : '');
+    if(j?.error && typeof j.error === 'string') return j.error + (j.status ? ` [HTTP ${j.status}${j.raiz ? ', raiz ' + j.raiz : ''}${j.pedido ? ', id ' + j.pedido : ''}]` : '');
   } catch{}
   return t || `HTTP ${resp.status}`;
 }

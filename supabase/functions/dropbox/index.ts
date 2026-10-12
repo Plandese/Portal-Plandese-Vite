@@ -101,11 +101,22 @@ Deno.serve(async (req: Request) => {
 
     let resp = await enviar(await accessToken());
     if (resp.status === 401) resp = await enviar(await accessToken(true));
+    // Erros 5xx da Dropbox são muitas vezes transitórios: repete até 2 vezes
+    for (let i = 0; i < 2 && resp.status >= 500; i++) {
+      await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+      resp = await enviar(await accessToken());
+    }
 
     // Erros da Dropbox seguem como JSON {error, status} para a mensagem ser clara no portal
     if (!resp.ok) {
       const txt = (await resp.text()).slice(0, 600);
-      return json({ error: txt || "sem detalhe", status: resp.status, endpoint: alvo.split("/2/")[1] }, resp.status);
+      return json({
+        error: txt || "sem detalhe",
+        status: resp.status,
+        endpoint: alvo.split("/2/")[1],
+        raiz: req.headers.get("x-dbx-root") === "team" ? (_rootNs || "sem raiz") : "home",
+        pedido: resp.headers.get("x-dropbox-request-id") ?? "",
+      }, resp.status);
     }
 
     const h = new Headers(cors);
