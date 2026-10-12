@@ -1232,7 +1232,9 @@ async function importarFaturasDropbox(){
     showToast(`${ok} fatura(s) importada(s) da Dropbox${duplicadas?` · ${duplicadas} já existiam`:''}${falhas?` · ${falhas} com erro: ${ultimoErro}`:''}`);
   } catch(err){
     console.error('Importar Dropbox:', err);
-    showToast('Dropbox: ' + (String(err.message).includes('not_found') ? 'pasta não encontrada — use "Pastas…" para corrigir o caminho' : err.message));
+    const msg = String(err.message);
+    const diag = msg.includes('Diagnóstico:') ? ' — ' + msg.slice(msg.indexOf('Diagnóstico:')) : '';
+    showToast('Dropbox: ' + (msg.includes('not_found') ? 'pasta «' + _pastaPendentes() + '» não encontrada' + diag : msg));
   } finally {
     _fatImportando = false;
     if(btn){ btn.disabled = false; if(rotulo) btn.innerHTML = rotulo; }

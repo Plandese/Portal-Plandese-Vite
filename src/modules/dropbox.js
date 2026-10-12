@@ -126,7 +126,13 @@ async function _diagnosticarPasta(path){
       try{ await _rpc('files/list_folder', { path: p, recursive: false }, team); ok = p || '(raiz)'; }
       catch{ falhou = p || '(raiz)'; break; }
     }
-    out.push(`${team ? 'equipa' : 'pessoal'}: abre até «${ok || 'nada'}»${falhou ? `, falha em «${falhou}»` : ', abre tudo'}`);
+    // Lista o que existe no último nível que abriu (para escolher o caminho certo)
+    let ver = '';
+    try{
+      const r = await _rpc('files/list_folder', { path: ok === '(raiz)' || !ok ? '' : ok, recursive: false }, team);
+      ver = r.entries.slice(0, 15).map(e => e.name).join(', ') + (r.entries.length > 15 ? '…' : '');
+    } catch{}
+    out.push(`${team ? 'equipa' : 'pessoal'}: abre até «${ok || 'nada'}»${falhou ? `, falha em «${falhou}»` : ', abre tudo'}${ver ? ` — aí existe: ${ver}` : ''}`);
   }
   return out.join(' | ');
 }
