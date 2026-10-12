@@ -121,8 +121,8 @@ function _combRenderGeral(){
 document.addEventListener('change',e=>{
   if(e.target.id==='cb-obra'){ _cbObra=e.target.value; _combRenderGeral(); } });
 document.addEventListener('click',e=>{
-  const rg=e.target.closest('#mcob-tbody tr[data-cbreg]');
-  if(rg&&_combDesk()&&!e.target.closest('button')){ _combAbrirRegDetalhe(rg.dataset.cbreg); return; }
+  const rg=e.target.closest('#mcob-tbody tr[data-cbreg], #mcoe-tbody tr[data-cbreg]');
+  if(rg&&!e.target.closest('button')){ _combAbrirRegDetalhe(rg.dataset.cbreg); return; }
   const q=e.target.closest('[data-cbeq]'); if(q){ abrirCombEquipDetalhe(q.dataset.cbeq); return; } const b=e.target.closest('[data-cbnav]'); if(b){ _cbOff+=+b.dataset.cbnav; _combRenderGeral(); } });
 
 function _renderCombGridFiltrada(){
@@ -305,7 +305,7 @@ function _renderCombEquipDetalhe(){
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">${lbl}</div>
       <div style="font-size:20px;font-weight:700;color:var(--gray-800);font-variant-numeric:tabular-nums">${val}</div></div>`;
   document.getElementById('mcoe-resumo').innerHTML=box('Consumo total',_fmtL(total))+box('Abastecimentos',rows.length)+box('Média por abastecimento',rows.length?_fmtL(total/rows.length):'—');
-  document.getElementById('mcoe-tbody').innerHTML=rows.map(r=>`<tr>
+  document.getElementById('mcoe-tbody').innerHTML=rows.map(r=>`<tr class="clk" data-cbreg="${r.id}">
       <td>${fmtPT(r.data)}</td>
       <td>${_escHtml(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—')}</td>
       <td><span style="font-weight:700;color:#dc2626">${(parseFloat(r.litros)||0).toFixed(1)}L</span></td>

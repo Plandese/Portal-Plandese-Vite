@@ -543,3 +543,108 @@ body.device-mobile #sec-analise .m-home-panel{position:sticky;top:0;z-index:20}
 .m-drawer-links .m-row-tx b{font-size:16px}
 .m-drawer-foot{padding-top:clamp(8px,2vh,18px);font-size:12px;line-height:1.4}
 .m-drawer-foot b{font-size:13px}
+
+/* Faturas: sem cartões de totais nem barra de filtros na versão mobile */
+body.device-mobile #admin-app #sec-faturas .fat-kpis,
+body.device-mobile #admin-app #sec-faturas .filter-bar{display:none}
+/* Faturas: sem botões da Dropbox (ligar, importar, apagar, pastas) na versão mobile */
+body.device-mobile #admin-app #sec-faturas .pg-hdr > div:not(:first-child){display:none !important}
+/* Faturas: ícone decorativo do cabeçalho dos cartões (só estilizado no desktop) */
+body.device-mobile #admin-app #sec-faturas .fat-ch .fat-ic{display:none}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMBUSTÍVEL — registos da obra (folha inferior)
+   Cabeçalho compacto · períodos em 4 colunas · registos como linhas de lista
+═══════════════════════════════════════════════════════════════════════════ */
+body.device-mobile #modal-comb-obra > .modal{
+  width:100%!important;max-width:100%!important;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;
+}
+/* Cabeçalho: nome da obra à esquerda e "+ Registo" à direita; sem o stock; entradas/saídas logo a seguir */
+body.device-mobile #modal-comb-obra > .modal > div:first-of-type{
+  flex:none;display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center!important;gap:10px 12px!important;flex-wrap:nowrap!important;margin-bottom:10px;
+}
+body.device-mobile #modal-comb-obra > .modal > div:first-of-type > div:last-child{display:contents!important}
+body.device-mobile #modal-comb-obra #mcob-stock-box{display:none}
+body.device-mobile #modal-comb-obra #mcob-stock-box + .btn{grid-column:2;grid-row:1;align-self:center;min-height:38px;padding:0 16px}
+/* Ordem visual: cabeçalho+stock → entradas/saídas → filtros → registos → fechar */
+body.device-mobile #modal-comb-obra #mcob-resumo{order:1}
+body.device-mobile #modal-comb-obra > .modal > div:nth-of-type(2){order:2}
+body.device-mobile #modal-comb-obra .tbl-wrap,body.device-mobile #modal-comb-obra #mcob-empty{order:3}
+body.device-mobile #modal-comb-obra .modal-footer{order:4}
+
+/* Filtros: período em 4 colunas, navegação e viatura a toda a largura */
+body.device-mobile #modal-comb-obra > .modal > div:nth-of-type(2){flex:none;flex-direction:column;align-items:stretch!important;gap:10px!important;margin:0 0 12px!important}
+body.device-mobile #modal-comb-obra > .modal > div:nth-of-type(2) > div{flex-direction:column;align-items:stretch!important;gap:10px!important}
+body.device-mobile #modal-comb-obra #mcob-periodo-tabs{display:grid!important;grid-template-columns:repeat(4,1fr);border-radius:99px!important}
+body.device-mobile #modal-comb-obra .mcob-p-btn{padding:9px 0!important;border-radius:99px!important;font-size:13.5px!important}
+body.device-mobile #modal-comb-obra #mcob-nav{justify-content:space-between}
+body.device-mobile #modal-comb-obra #mcob-nav-label{flex:1;min-width:0!important;font-size:13.5px!important}
+body.device-mobile #modal-comb-obra #mcob-equip-filter{width:100%;max-width:100%!important}
+body.device-mobile #modal-comb-obra #mcob-resumo{flex:none;margin-bottom:12px!important}
+body.device-mobile #modal-comb-obra #mcob-resumo > div{border-radius:16px!important;padding:10px 12px!important}
+
+/* Registos: cada linha é um cartão — viatura + litros em cima, data + encarregado por baixo */
+body.device-mobile #modal-comb-obra .tbl-wrap{flex:1;min-height:0;max-height:none!important;overflow-y:auto;border:0;border-radius:0}
+body.device-mobile #modal-comb-obra .tbl-wrap table,
+body.device-mobile #modal-comb-obra .tbl-wrap tbody{display:block;width:100%;min-width:0}
+body.device-mobile #modal-comb-obra .tbl-wrap thead{display:none}
+body.device-mobile #modal-comb-obra #mcob-tbody tr{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:3px;
+  padding:12px 2px;border-bottom:1px solid var(--m-line);cursor:pointer;
+}
+body.device-mobile #modal-comb-obra #mcob-tbody tr:active{background:#f6f8fc}
+body.device-mobile #modal-comb-obra #mcob-tbody td{display:block;padding:0;border:0;background:none;white-space:normal}
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(2){grid-column:1;grid-row:1;font-size:15px;color:var(--m-ink);line-height:1.3}
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(4){grid-column:2;grid-row:1;text-align:right;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(1){grid-column:1;grid-row:2;font-size:12.5px;color:var(--m-mute)}
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(7){grid-column:2;grid-row:2;text-align:right;font-size:12.5px;color:var(--m-mute)}
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(3),
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(5),
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(6),
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(8),
+body.device-mobile #modal-comb-obra #mcob-tbody td:nth-child(9){display:none}
+body.device-mobile #modal-comb-obra .modal-footer{flex:none;padding-top:10px}
+body.device-mobile #modal-comb-obra #mcob-nav[style*="hidden"]{display:none!important}
+
+/* Combustível — detalhe de um registo (folha inferior) */
+body.device-mobile #modal-comb-reg > .modal{width:100%!important;max-width:100%!important}
+body.device-mobile .cbr-big{padding:16px 18px;border:1.5px solid var(--m-line);border-radius:20px;font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1.1;margin:16px 0 12px;font-variant-numeric:tabular-nums}
+body.device-mobile .cbr-big.out{color:#b3261e}
+body.device-mobile .cbr-big.in{color:#166534}
+body.device-mobile .cbr-big small{display:block;font-size:13px;font-weight:600;letter-spacing:0;color:var(--m-mute);margin-top:6px}
+body.device-mobile .cbr-kv{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 18px;border:1.5px solid var(--m-line);border-radius:20px}
+body.device-mobile .cbr-kv .full{grid-column:1 / -1}
+body.device-mobile .cbr-kv span{display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--m-mute);margin-bottom:3px}
+body.device-mobile .cbr-kv b{display:block;font-size:15px;font-weight:600;color:var(--m-ink);overflow-wrap:anywhere}
+
+/* Combustível — consumo de equipamentos: pesquisa a toda a largura e "Lista completa" por baixo */
+body.device-mobile #comb-view-cons .card > div:first-child{flex-direction:column!important;align-items:stretch!important;gap:12px!important}
+body.device-mobile #comb-view-cons .card > div:first-child .btn{width:100%;justify-content:center}
+
+/* Combustível — consumo de um equipamento (folha inferior): todos os registos, cada um abre o detalhe */
+body.device-mobile #modal-comb-equip > .modal{
+  width:100%!important;max-width:100%!important;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;
+}
+body.device-mobile #modal-comb-equip #mcoe-resumo{flex:none;gap:8px!important;margin:12px 0!important}
+body.device-mobile #modal-comb-equip #mcoe-resumo > div{padding:8px 6px!important;border-radius:14px!important;display:flex;flex-direction:column;justify-content:space-between}
+body.device-mobile #modal-comb-equip #mcoe-resumo > div > div:first-child{font-size:9.5px!important;line-height:1.25;margin-bottom:4px!important}
+body.device-mobile #modal-comb-equip #mcoe-resumo > div > div:last-child{font-size:17px!important;white-space:nowrap}
+body.device-mobile #modal-comb-equip .tbl-wrap{flex:1;min-height:0;max-height:none!important;overflow-y:auto;border:0;border-radius:0}
+body.device-mobile #modal-comb-equip .tbl-wrap table,
+body.device-mobile #modal-comb-equip .tbl-wrap tbody{display:block;width:100%;min-width:0}
+body.device-mobile #modal-comb-equip .tbl-wrap thead{display:none}
+body.device-mobile #modal-comb-equip #mcoe-tbody tr{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:3px;
+  padding:12px 2px;border-bottom:1px solid var(--m-line);cursor:pointer;
+}
+body.device-mobile #modal-comb-equip #mcoe-tbody tr:active{background:#f6f8fc}
+body.device-mobile #modal-comb-equip #mcoe-tbody td{display:block;padding:0;border:0;background:none;white-space:normal}
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(2){grid-column:1;grid-row:1;font-size:15px;font-weight:600;color:var(--m-ink);line-height:1.3}
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(3){grid-column:2;grid-row:1;text-align:right;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(1){grid-column:1;grid-row:2;font-size:12.5px;color:var(--m-mute)}
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(6){grid-column:2;grid-row:2;text-align:right;font-size:12.5px;color:var(--m-mute)}
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(4),
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(5),
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(7),
+body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(8){display:none}
+body.device-mobile #modal-comb-equip .modal-footer{flex:none;padding-top:10px}
