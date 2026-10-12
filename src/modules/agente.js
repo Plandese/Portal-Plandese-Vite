@@ -161,6 +161,7 @@ export function initAgente(){
   });
   inp.addEventListener('input', () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 130) + 'px'; });
   document.addEventListener('keydown', onEsc);
+  document.addEventListener('mousedown', onFora, true);
   render();
   setTimeout(() => carregarBriefing(), 3000);
 }
@@ -170,11 +171,19 @@ export function agenteStop(){
   ctrl = null; busy = false; corrente = null;
   $('ag-fab')?.remove(); $('ag-panel')?.remove();
   document.removeEventListener('keydown', onEsc);
+  document.removeEventListener('mousedown', onFora, true);
   document.body.classList.remove('ag-open');
   msgs = []; alertas = []; briefingTs = 0; started = false; aberto = false;
 }
 
 const onEsc = e => { if(e.key === 'Escape' && aberto) agenteToggle(false); };
+// Clicar fora do painel minimiza-o (mousedown: o alvo ainda existe, antes de qualquer re-render)
+const onFora = e => {
+  if(!aberto) return;
+  const t = e.target;
+  if(!(t instanceof Element) || t.closest('#ag-panel') || t.closest('#ag-fab')) return;
+  agenteToggle(false);
+};
 
 export function agenteToggle(abrir){
   if(!started) return;
