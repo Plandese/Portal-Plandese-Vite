@@ -50,7 +50,8 @@ export function coParseCustos(wb){
   const cData=col('data','data',0), cGrupo=col('grupoartigo','grupo',1), cCusto=col('custos','custo',5);
   const cProv=col('proveitos','proveito',-1), cNome=col('nomeartigo','nome',-1);
   const cMes=h.indexOf('mes')<0?8:h.indexOf('mes'), cAno=h.indexOf('ano')<0?9:h.indexOf('ano');
-  const agg = {}, prov = {}; let n = 0;
+  const agg = {}, prov = {}, det = {}; let n = 0;
+  const cForn = col('fornecedor','fornec',-1), cQtd = col('qtd','qtd',-1);
   for(let i=hi+1;i<rows.length;i++){
     const r = rows[i]; if(!r || r.every(c=>c===''||c==null)) continue;
     const v = num(r[cCusto]), pv = cProv>=0 ? num(r[cProv]) : 0;
@@ -73,11 +74,18 @@ export function coParseCustos(wb){
     if(v && grupo!=='Servico'){
       const k = GRUPO_KEY[grupo] || 'outros';
       (agg[mes] ||= { mo:0, eq:0, mat:0, geral:0, sub:0, outros:0 })[k] += Math.abs(v); n++;
+      // detalhe por fornecedor/artigo (para o duplo clique nas rubricas)
+      const forn = cForn>=0 ? String(r[cForn]||'').replace(/^\d+\s*-\s*/,'').trim() : '';
+      const art = cNome>=0 ? String(r[cNome]||'').trim() : '';
+      const d = (det[[k,mes,forn,art].join('|')] ||= { tipologia:k, mes, fornecedor:forn, artigo:art, qtd:0, valor:0 });
+      d.valor += Math.abs(v);
+      if(cQtd>=0) d.qtd += num(r[cQtd]);
     }
   }
   Object.values(prov).forEach(p => { p.c = Math.round(p.c*100)/100; p.r = Math.round(p.r*100)/100; });
   Object.values(agg).forEach(a => Object.keys(a).forEach(k => a[k] = Math.round(a[k]*100)/100));
-  return { agg, n, prov };
+  const detalhe = Object.values(det).map(d => ({ ...d, qtd:Math.round(d.qtd*1000)/1000, valor:Math.round(d.valor*100)/100 })).filter(d => d.valor);
+  return { agg, n, prov, det:detalhe };
 }
 
 // ── Leitura de um auto de medição: total de cada auto (linha 4) e data (linha 5) ──

@@ -5,7 +5,7 @@
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast, closeModal } from './navigation.js';
-import { coBalancoHtml, coBalancoCalc, splitProv } from './co-balanco.js';
+import { coBalancoHtml, coBalancoCalc, splitProv, TIPOLOGIAS } from './co-balanco.js';
 import { coRelatorioPdf } from './co-relatorio.js';
 import { coParseCustos, coPastaRaiz, coPastaObra, coLerObra, pastasSuportado } from './co-pastas.js';
 
@@ -336,6 +336,61 @@ async function coGuardarObra(){
   showToast('Dados da obra guardados');
 }
 
+// ── Detalhe dos custos por fornecedor/artigo (duplo clique numa rubrica) ──
+// Substitui o detalhe dos meses que vêm no ficheiro; não toca nos restantes.
+async function coGuardarDetalhe(obra_id, det){
+  try{
+    const meses = [...new Set(det.map(d=>d.mes))];
+    const del = await sb.from('co_custo_det').delete().eq('obra_id', obra_id).in('mes', meses);
+    if(del.error) throw del.error;
+    for(let i=0;i<det.length;i+=500){
+      const { error } = await sb.from('co_custo_det').insert(det.slice(i,i+500).map(d => ({ obra_id, ...d })));
+      if(error) throw error;
+    }
+  }catch(e){ console.warn('co_custo_det', e); showToast('Detalhe dos custos não guardado: '+(e.message||e)); }
+}
+
+async function coDetTipo(key){
+  const t = TIPOLOGIAS.find(x=>x.key===key); if(!t) return;
+  const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
+  const ids = obras.map(o=>o.id);
+  document.getElementById('co-det-ov')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'co-det-ov';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('mousedown', e => { if(e.target===ov) ov.remove(); });
+  const corpo = h => { ov.innerHTML = `<div style="background:var(--white,#fff);border-radius:16px;max-width:880px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">${h}</div>`; };
+  const cab = sub => `<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--gray-200)"><div style="flex:1"><div style="font-weight:700;font-size:16px">${esc(t.label)}</div><div style="font-size:12px;color:var(--gray-500)">${sub}</div></div><button class="btn btn-secondary btn-sm" onclick="document.getElementById('co-det-ov').remove()">Fechar</button></div>`;
+  corpo(cab('A carregar…')); document.body.appendChild(ov);
+  let rows = [];
+  try{
+    for(let from=0;;from+=1000){
+      let q = sb.from('co_custo_det').select('obra_id,mes,fornecedor,artigo,qtd,valor').in('obra_id', ids).eq('tipologia', key).order('mes').range(from, from+999);
+      if(CO.de) q = q.gte('mes', CO.de);
+      if(CO.ate) q = q.lte('mes', CO.ate);
+      const { data, error } = await q;
+      if(error) throw error;
+      rows = rows.concat(data||[]);
+      if(!data || data.length<1000) break;
+    }
+  }catch(e){ corpo(cab('')+`<div class="co-empty">Erro ao carregar o detalhe: ${esc(e.message||e)}</div>`); return; }
+  if(!rows.length){ corpo(cab('')+`<div class="co-empty" style="padding:30px">Sem detalhe guardado para esta rubrica. Carregue em "Atualizar das pastas" para o importar.</div>`); return; }
+  const porForn = {};
+  rows.forEach(r => {
+    const f = (porForn[r.fornecedor||'(sem fornecedor)'] ||= { valor:0, arts:{} });
+    f.valor += +r.valor;
+    const a = (f.arts[r.artigo||'(sem artigo)'] ||= { valor:0, qtd:0 });
+    a.valor += +r.valor; a.qtd += +r.qtd;
+  });
+  const total = rows.reduce((s,r)=>s+(+r.valor),0);
+  const nQ = v => new Intl.NumberFormat('pt-PT',{maximumFractionDigits:2}).format(v);
+  const lista = Object.entries(porForn).sort((a,b)=>b[1].valor-a[1].valor).map(([forn,f]) => `<details style="border-bottom:1px solid var(--gray-100)">
+    <summary style="display:flex;gap:12px;padding:9px 20px;cursor:pointer;align-items:center"><span style="flex:1;font-weight:600">${esc(forn)}</span><span style="color:var(--gray-400);font-size:12px;width:56px;text-align:right">${total?(f.valor/total*100).toFixed(1).replace('.',',')+'%':''}</span><b style="width:100px;text-align:right">${eur0(f.valor)}</b></summary>
+    <div style="padding:0 20px 8px 36px">${Object.entries(f.arts).sort((a,b)=>b[1].valor-a[1].valor).map(([art,a]) => `<div style="display:flex;gap:12px;font-size:12.5px;padding:3px 0;color:var(--gray-700)"><span style="flex:1">${esc(art)}</span><span style="color:var(--gray-400);width:90px;text-align:right">${a.qtd?nQ(a.qtd)+' un.':''}</span><span style="width:100px;text-align:right">${eur0(a.valor)}</span></div>`).join('')}</div>
+  </details>`).join('');
+  corpo(cab(`${Object.keys(porForn).length} fornecedores · ${eur0(total)}${CO.de||CO.ate?' no período escolhido':''} · clique num fornecedor para ver os artigos`) + `<div style="overflow:auto;flex:1">${lista}</div>`);
+}
+
 // ── Atualizar a partir das pastas (Dropbox) ──────────────────────────
 // Empreitadas cujos proveitos vêm da listagem do CentralGest (coluna "Proveitos" do ficheiro de custos):
 // autos de medição + revisões de preços, com estornos. Para as restantes continuam a vir dos autos.
@@ -355,7 +410,11 @@ async function coAtualizar(escolher){
       const sp = split(o.nome), dir = await coPastaObra(raiz, sp.cod);
       if(!dir){ linhas.push(`<b>${esc(sp.cod||o.nome)}</b> — pasta não encontrada`); continue; }
       const r = await coLerObra(dir);
-      if(r.custos) escalar(r.custos.agg, fatorCustos(o.id));
+      if(r.custos){
+        const f = fatorCustos(o.id);
+        escalar(r.custos.agg, f);
+        if(f!==1 && r.custos.det) r.custos.det.forEach(d => { d.valor = Math.round(d.valor*f*100)/100; });
+      }
       // Só se mexe nos meses que aparecem nos ficheiros; nada do que já existe é apagado por falta de ficheiro.
       const cg = PROV_CENTRALGEST.includes(sp.cod) && r.custos && r.custos.prov && Object.keys(r.custos.prov).length ? r.custos.prov : null;
       if(cg){ r.provContr = null; r.provCompl = null; }   // autos em ficheiro não se somam à listagem
@@ -397,6 +456,7 @@ async function coAtualizar(escolher){
         if(!await coUpsert(payload)){ linhas.push(`<b>${esc(sp.cod)}</b> — erro ao guardar`); continue; }
         payload.forEach(p => coAplicarLocal(o.id, p.mes, p));
       }
+      if(r.custos && r.custos.det && r.custos.det.length) await coGuardarDetalhe(o.id, r.custos.det);
       linhas.push(`<b>${esc(sp.cod)}</b> — ${partes.join(', ')}${r.ficheiros.length?` <span style="color:var(--gray-400)">(${r.ficheiros.map(esc).join(' · ')})</span>`:''}${r.avisos.map(a=>`<br><span style="color:var(--red)">⚠ ${esc(a)}</span>`).join('')}`);
     }
   }catch(e){ console.error('coAtualizar', e); linhas.push(`<span style="color:var(--red)">Erro: ${esc(e.message)}</span>`); }
@@ -439,5 +499,5 @@ Atenção: os valores do Excel são multiplicados por ${String(fator).replace('.
 
 export {
   renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
-  coGuardarCelula, coAdicionarMes, coApagarMes, coVista,
+  coGuardarCelula, coAdicionarMes, coApagarMes, coVista, coDetTipo,
 };

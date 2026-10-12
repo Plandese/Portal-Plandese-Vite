@@ -61,7 +61,7 @@ import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, mo
 import { mOnGoTo, mShellReset, mSyncBell, mSyncChat } from './modules/m-shell.js';
 import './modules/enc-shell.js';
 import { dOnGoTo } from './modules/d-shell.js';
-import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coVista, coGuardarCelula, coAdicionarMes, coApagarMes } from './modules/controlo-obras.js';
+import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coVista, coGuardarCelula, coAdicionarMes, coApagarMes, coDetTipo } from './modules/controlo-obras.js';
 
 // Admin/Painel
 import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
@@ -271,7 +271,7 @@ Object.assign(window, {
   // Controlo de Obras
   mShellReset, mSyncBell, mSyncChat,
   coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coVista,
-  coGuardarCelula, coAdicionarMes, coApagarMes,
+  coGuardarCelula, coAdicionarMes, coApagarMes, coDetTipo,
   exportSemanaExcel,
 
   // Notificações

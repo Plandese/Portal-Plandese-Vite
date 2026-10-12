@@ -180,7 +180,8 @@ const tile = (lbl,val,sub,cor) => `<div class="co-an-tile"><div class="co-an-lbl
 function tipoBodyHtml(c, tot){
   const linhas = TIPOLOGIAS.filter(t=>Math.abs(tot[t.key])>0.005);
   const maxAbs = Math.max(1,...linhas.map(t=>Math.abs(tot[t.key])));
-  return linhas.map(t=>`<div class="co-an-tip">
+  const DET = ['mo','eq','mat','geral','sub','outros'];
+  return linhas.map(t=>`<div class="co-an-tip"${DET.includes(t.key)?` style="cursor:pointer" title="Duplo clique para ver o detalhe" ondblclick="coDetTipo('${t.key}')"`:''}>
       <div>${t.label}</div>
       <div class="co-an-track"><div style="width:${Math.abs(tot[t.key])/maxAbs*100}%;height:100%;border-radius:4px;background:${t.cor||COR.custo}"></div></div>
       <div class="co-an-n">${eur0(tot[t.key])}</div>
