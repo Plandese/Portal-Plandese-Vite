@@ -104,10 +104,9 @@ body.ag-open #ag-fab{display:none}
 #ag-send svg{width:19px;height:19px}
 .ag-foot{padding:0 14px 8px;font-size:10.5px;color:var(--gray-500);text-align:center;background:var(--white)}
 
-/* Telemóvel: ecrã inteiro, botão por cima do botão do chat */
+/* Telemóvel: ecrã inteiro */
 body.device-mobile #ag-panel{width:100vw;height:100dvh;padding-top:var(--m-safe-t,0px)}
 body.device-mobile #ag-fab{right:20px;bottom:calc(var(--m-bar,58px) + var(--m-safe-b,10px) + 22px)}
-body.device-mobile[data-m-screen="home"] #ag-fab{bottom:calc(var(--m-bar,58px) + var(--m-safe-b,10px) + 90px)}
 body.device-mobile[data-m-search="1"] #ag-fab{display:none}
 body.device-mobile .ag-compose{padding-bottom:calc(10px + var(--m-safe-b,0px))}
 body.device-mobile #ag-in{font-size:16px} /* evita zoom automático no iOS */

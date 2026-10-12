@@ -51,14 +51,14 @@ import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnteri
 // Enc-equip
 import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
 
-// Enc-combustivel + chat
+// Enc-combustivel + assistente de compras
 import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
 
 // Produção
-import { mOnGoTo, mShellReset, mSyncBell, mSyncChat } from './modules/m-shell.js';
+import { mOnGoTo, mShellReset, mSyncBell } from './modules/m-shell.js';
 import './modules/enc-shell.js';
 import { dOnGoTo } from './modules/d-shell.js';
 import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coVista, coGuardarCelula, coAdicionarMes, coApagarMes, coDetTipo } from './modules/controlo-obras.js';
@@ -98,7 +98,6 @@ import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, 
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
-import { initChat, chatStop, renderChat, chatEnviar, chatApagar, chatKey, chatAutoH, chatTogglePainel, chatSetConv, chatVoltar, chatAbrirNotif, chatFechar } from './modules/chat.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
@@ -117,7 +116,6 @@ Object.assign(R, {
   initCompras, initMOAFilters,
   renderEncModsCheckboxes,
   renderAnalise, anlResetObras,
-  initChat, chatStop,
   initAgente, agenteStop,
 });
 
@@ -161,7 +159,6 @@ Object.assign(window, {
   // Navegação admin
   abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra,
   goTo, toggleNavGrp, refreshPortal,
-  chatEnviar, chatApagar, chatKey, chatAutoH, chatTogglePainel, chatSetConv, chatVoltar, chatAbrirNotif, chatFechar,
   agenteToggle,
 
   // Modais genéricos
@@ -272,7 +269,7 @@ Object.assign(window, {
   puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
 
   // Controlo de Obras
-  mShellReset, mSyncBell, mSyncChat,
+  mShellReset, mSyncBell,
   coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar, coVista,
   coGuardarCelula, coAdicionarMes, coApagarMes, coDetTipo,
   exportSemanaExcel,
@@ -421,7 +418,6 @@ window.savePerfil = async function () {
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
     if (id === 'notificacoes')       { initNotifPage(); }
     if (id === 'calendario')         { initCalendario(); }
-    if (id === 'chat')               { renderChat(); }
   };
 })();
 

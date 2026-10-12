@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
 //  D-SHELL — estrutura do portal em computador (administração), na linguagem das apps
-//    · cabeçalho azul com logo, pesquisa global (Ctrl K), chat, notificações e utilizador
+//    · cabeçalho azul com logo, pesquisa global (Ctrl K), notificações e utilizador
 //    · folha branca arredondada com o menu lateral (favoritos ★ + capítulos) e o conteúdo
 //    · título de cada página com ícone
 //  Só atua em body.device-desktop (a app dos encarregados e o modo telemóvel não passam por aqui).
@@ -20,7 +20,6 @@ const ativo = () => document.body.classList.contains('device-desktop') && !docum
 
 const ICO = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg>',
-  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.7l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg>',
   starFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.7l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/></svg>',
@@ -98,16 +97,6 @@ function montar() {
     title.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
   }
 
-  // Chat (atalho no cabeçalho)
-  const right = inner.querySelector('.app-bar-right');
-  if (right) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'd-chat-btn'; b.id = 'd-chat-btn'; b.title = 'Chat da equipa'; b.setAttribute('aria-label', 'Chat da equipa');
-    b.innerHTML = ICO.chat + '<i class="d-dot" hidden></i>';
-    b.onclick = () => window.goTo('chat');
-    right.querySelector('.notif-wrap')?.after(b);
-  }
-
   // Utilizador (dentro do botão das definições, que já abre o painel de definições)
   const sb = $('settings-btn');
   if (sb && !sb.querySelector('.d-user')) {
@@ -137,17 +126,12 @@ function montar() {
   }, true);
 
   ligarPesquisa();
-
-  // o ponto do chat muda sem navegação: acompanha o contador do painel de definições
-  const nb = $('nb-chat');
-  if (nb) new MutationObserver(syncChat).observe(nb, { attributes: true, attributeFilter: ['hidden'] });
 }
 
 // ── Menu do utilizador (painel das definições) como no mockup: Móvel | PC, ícones em traço e rótulos novos ──
 const ICO_MENU = {
   perfil: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   tavira: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   calendario: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   notificacoes: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   atualizar: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/>',
@@ -168,7 +152,6 @@ function montarMenuUtilizador() {
   };
   troca('.settings-item[onclick*="openProfileModal"]', 'perfil', 'Ajustes de perfil');
   troca('.settings-item[onclick*="pendentes-tavira"]', 'tavira');
-  troca('.settings-item[onclick*="goTo(\'chat\'"]', 'chat');
   troca('.settings-item[onclick*="calendario"]', 'calendario');
   troca('.settings-item[onclick*="notificacoes"]', 'notificacoes');
   troca('.settings-item[onclick*="refreshPortal"]', 'atualizar', 'Atualizar dados');
@@ -214,11 +197,6 @@ function syncUser() {
   set('d-user-av', $('u-av')?.textContent || '');
   set('d-user-nm', $('u-nm')?.textContent || '');
   set('d-user-role', $('u-role')?.textContent || '');
-}
-function syncChat() {
-  const nb = $('nb-chat'), d = document.querySelector('#d-chat-btn .d-dot'), b = $('d-chat-btn');
-  if (d) d.hidden = !nb || nb.hidden;
-  if (b) b.style.display = canAccessSection('chat') ? '' : 'none';   // o perfil pode mudar sem recarregar a página
 }
 
 // ── Pesquisa global ─────────────────────────────────────────────────────────────────
@@ -292,7 +270,7 @@ export function dOnGoTo(id) {
   if (!ativo()) return;
   montar();
   if (!montado) return;
-  syncUser(); syncChat();
+  syncUser();
   registarUso(id);
   tituloComIcone(id);
   renderFavs();

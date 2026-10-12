@@ -169,7 +169,7 @@ function chapterOfSection(sec){
 }
 
 // Secções abertas a todos os perfis autenticados (não pertencem a nenhum capítulo)
-const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','chat','m-modulos','m-favoritos','m-conta','m-defs'];
+const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos','m-favoritos','m-conta','m-defs'];
 
 // ── Verificação central de acesso ──────────────────────────────────
 // Fonte única de verdade: sidebar, goTo, painel, análise e notificações usam estas funções.
@@ -186,7 +186,6 @@ export function roleCanAccessSection(role, sec){
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   // Faturas por aprovar: o diretor de obra acede mesmo sem o capítulo Financeiro (o RLS limita-o às faturas das suas obras)
   if(sec === 'faturas-aprovar' && role === 'diretor_obra') return true;
-  if(sec === 'chat') return !!role && role !== 'encarregado';
   if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
   if(!chId) return false;

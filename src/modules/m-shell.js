@@ -39,7 +39,7 @@ function catalogo() {
     };
   });
   // ecrãs que não são módulos da sidebar mas precisam de título/ícone
-  [['analise', 'Análise de dados', I.chart], ['chat', 'Chat da equipa', I.chat], ['calendario', 'Calendário', I.calendar],
+  [['analise', 'Análise de dados', I.chart], ['calendario', 'Calendário', I.calendar],
    ['notificacoes', 'Notificações', I.bell], ['m-defs', 'Definições', I.gear], ['painel', 'Painel Principal', I.grid]]
     .forEach(([id, label, icon]) => { if (!c[id]) c[id] = { id, ch: null, label, icon }; });
   return (CAT = c);
@@ -106,7 +106,6 @@ function ecraDe(id) {
   if (id === 'm-favoritos') return 'favoritos';
   if (id === 'm-conta') return 'conta';
   if (id === 'notificacoes') return 'notif';
-  if (id === 'chat') return 'chat';
   return 'child';
 }
 
@@ -141,7 +140,6 @@ function aplicarHeader(cfg) {
   }
   $('m-hdr-title').innerHTML = cfg.title ? `${cfg.icon || ''}<span>${esc(cfg.title)}</span>` : '';
   document.body.dataset.mVariant = cfg.variant;
-  mSyncChat();
   const tc = document.querySelector('meta[name="theme-color"]');
   if (tc) tc.setAttribute('content', cfg.variant === 'plain' ? '#ffffff' : '#173f9f');
 }
@@ -153,11 +151,6 @@ export function mSyncBell() {
   b.textContent = n > 9 ? '9+' : n;
   b.hidden = !n;
   document.querySelectorAll('.js-ntf-count').forEach(e => { e.textContent = n > 99 ? '99+' : n; e.hidden = !n; });
-}
-export function mSyncChat() {
-  const nb = $('nb-chat');
-  $('m-hl')?.classList.toggle('dot', !!nb && !nb.hidden);
-  document.querySelectorAll('.js-chat-count').forEach(e => { e.textContent = nb ? nb.textContent : ''; e.hidden = !nb || nb.hidden; });
 }
 
 // ── Ligação ao goTo ───────────────────────────────────────────────────────────
@@ -399,13 +392,12 @@ function renderConta() {
     ${card}
     <div>
       ${rowAcao(I.bell, 'Notificações', 'mAbrirNotificacoes()', '<span class="m-row-n js-ntf-count" hidden></span>')}
-      ${canAccessSection('chat') ? rowAcao(I.chat, 'Chat da equipa', "mAbrir('chat')", '<span class="m-row-n js-chat-count" hidden></span>') : ''}
       ${rowAcao(I.spark || I.chat, 'Assistente IA', 'agenteToggle(true)')}
       ${rowAcao(I.calendar, 'Calendário', "mAbrir('calendario')")}
       ${rowAcao(I.user, 'Definições da conta', "mAbrir('m-defs')")}
       ${rowAcao(I.logout, 'Terminar sessão', 'doLogout()', '', 'red')}
     </div>`;
-  mSyncBell(); mSyncChat();
+  mSyncBell();
 }
 
 // ── Definições ────────────────────────────────────────────────────────────────
@@ -433,7 +425,6 @@ function renderDrawer() {
     </div>
     <nav class="m-drawer-nav">
       ${canAccessSection('producao') ? item(I.nav, 'As minhas obras', "mAbrir('producao')") : ''}
-      ${canAccessSection('chat') ? item(I.chat, 'Chat da equipa', "mAbrir('chat')", '<span class="m-row-n js-chat-count" hidden></span>') : ''}
       ${item(I.spark || I.chat, 'Assistente IA', 'agenteToggle(true)')}
       ${item(I.calendar, 'Calendário', "mAbrir('calendario')")}
       ${item(I.userCirc, 'Perfil', 'openProfileModal()')}
@@ -446,7 +437,7 @@ function renderDrawer() {
       ${item(I.refresh, 'Atualizar dados', 'refreshPortal()')}
     </div>
     <div class="m-drawer-foot"><b>Plandese, SA</b>Portal da empresa</div>`;
-  mSyncBell(); mSyncChat();
+  mSyncBell();
 }
 export function mDrawer(abrir) {
   const d = $('m-drawer'); if (!d) return;
@@ -486,5 +477,5 @@ window.addEventListener('resize', () => setTimeout(() => {
 Object.assign(window, {
   mTab, mBack, mLeft, mRight, mDrawer, mModo, mSeg, mAbrir, mAbrirObra, mAbrirObraModulo, mResumoLista, mResumoVoltar, mAbrirPessoa, mResumoCompleto, mAbrirNotificacoes,
   mFavToggle, mFavAdd, mSheetClose, mAjuda, mPesquisa, mPesquisaLimpar, mNtfSeg, irParaInicio,
-  mSyncBell, mSyncChat,
+  mSyncBell,
 });

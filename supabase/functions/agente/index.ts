@@ -215,10 +215,10 @@ const SECCOES: Record<string, string> = {
   colaboradores: "Colaboradores", compras: "Compras", "mapas-comparativos": "Mapas comparativos", faturas: "Faturas",
   "faturas-aprovar": "Faturas por aprovar", tesouraria: "Tesouraria", equipamentos: "Equipamentos", combustivel: "Combustível",
   producao: "Controlo de Obras", "precos-unitarios": "Preços unitários", "pendentes-tavira": "Pendentes Tavira",
-  obras: "Obras", utilizadores: "Utilizadores", "empresas-moa": "Empresas MOA", fornecedores: "Fornecedores", chat: "Chat da equipa",
+  obras: "Obras", utilizadores: "Utilizadores", "empresas-moa": "Empresas MOA", fornecedores: "Fornecedores",
 };
 const GUIA: Record<string, string> = {
-  geral: "O menu lateral agrupa as secções por capítulo: Recursos Humanos (Folha de Ponto, Fecho do mês, Mapa de férias, Colaboradores), Compras (Compras, Mapas comparativos), Financeiro (Faturas, Faturas por aprovar, Tesouraria), Logística e Equipamentos (Equipamentos, Combustível), Produção (Controlo de Obras, Preços unitários, Pendentes Tavira) e Definições (Obras, Utilizadores, Empresas MOA, Fornecedores). Cada utilizador só vê os capítulos que o seu perfil permite (matriz em Utilizadores → Permissões). Há ainda Chat da equipa, Calendário, Lembretes e Notificações. Em telemóvel o portal tem 4 separadores e menu lateral com favoritos (★).",
+  geral: "O menu lateral agrupa as secções por capítulo: Recursos Humanos (Folha de Ponto, Fecho do mês, Mapa de férias, Colaboradores), Compras (Compras, Mapas comparativos), Financeiro (Faturas, Faturas por aprovar, Tesouraria), Logística e Equipamentos (Equipamentos, Combustível), Produção (Controlo de Obras, Preços unitários, Pendentes Tavira) e Definições (Obras, Utilizadores, Empresas MOA, Fornecedores). Cada utilizador só vê os capítulos que o seu perfil permite (matriz em Utilizadores → Permissões). Há ainda Calendário, Lembretes e Notificações. Em telemóvel o portal tem 4 separadores e menu lateral com favoritos (★).",
   ponto: "Folha de Ponto (Recursos Humanos): mostra o ponto semanal por obra/colaborador, preenchido pelos encarregados na app deles. O diretor aprova cada dia/obra; depois de aprovado o dia fica bloqueado. O encarregado só edita o próprio registo até 24h. Horas: almoço 12h–13h descontado, 8h normais em dia útil; fins de semana e feriados contam como extra. Fecho do mês consolida o mês para exportação.",
   controlo_obras: "Controlo de Obras (Produção): por empreitada mostra proveitos (contratuais, complementares, revisão de preços) e custos por tipologia (mão de obra, equipamentos, materiais, geral, subcontratos, outros), mais estrutura central (% sobre proveitos), material transferido e existências. Margem = (proveitos − custos) / proveitos. Os valores vêm da importação de ficheiros Excel de custos e dos lançamentos mensais; duplo clique/clique numa rubrica mostra o detalhe por fornecedor e artigo. A O099 é centro de custo, não empreitada.",
   faturas: "Faturas (Financeiro): importação de PDF/imagem com leitura automática por IA (ou da Dropbox), com fornecedor, NIF, base, IVA, total e centro de custo (obra). Estados: aguarda diretor → aprovada → paga. As faturas de uma obra aguardam a aprovação do diretor dessa obra em Faturas por aprovar. Tesouraria resume o que há a pagar.",
@@ -226,7 +226,7 @@ const GUIA: Record<string, string> = {
   equipamentos: "Equipamentos (Logística): ficha de cada equipamento/viatura (matrícula, seguro, IPO, estado), QR code para registar localização/obra, manutenções (pendente/resolvida) com fotos e quadro de manutenção. O Combustível regista abastecimentos de viaturas e movimentos do depósito por obra.",
   obras: "Obras (Definições): lista de obras com código O0NN, local, prazo, diretor e encarregado (pode haver diretores/encarregados extra). Obras inativas ficam arquivadas.",
   permissoes: "Permissões: em Utilizadores → Permissões define-se que capítulos cada perfil (administrador, diretor de obra, compras, financeiro, comercial) pode ver. Os encarregados usam uma app própria com módulos ativáveis por utilizador. O agente respeita exatamente as permissões de quem pergunta.",
-  agente: "O assistente responde a perguntas sobre os dados do portal, faz cálculos, avisa de alertas (margens negativas, prazos, documentos de equipamentos a expirar, aprovações em atraso) e, com a sua confirmação, cria lembretes, eventos de calendário e mensagens no chat. Não altera mais nada e nunca vê dados a que o seu perfil não tem acesso.",
+  agente: "O assistente responde a perguntas sobre os dados do portal, faz cálculos, avisa de alertas (margens negativas, prazos, documentos de equipamentos a expirar, aprovações em atraso) e, com a sua confirmação, cria lembretes, eventos de calendário. Não altera mais nada e nunca vê dados a que o seu perfil não tem acesso.",
 };
 
 // ───────────────────────── Definição das ferramentas ─────────────────────────
@@ -320,11 +320,11 @@ const TOOLS = [
   },
   {
     name: "propor_acao",
-    description: "Propõe uma ação para o utilizador CONFIRMAR (nada é feito sem confirmação). Tipos: criar_lembrete {titulo, descricao?, prioridade baixa|media|alta, coluna a_fazer|em_curso, prazo AAAA-MM-DD?}; criar_evento_calendario {titulo, data AAAA-MM-DD, hora HH:MM?, notas?, categoria lembrete|importante|reuniao|aniversario|outro}; enviar_mensagem_chat {texto, para? (username; omitir = canal geral)}. Só quando o utilizador pedir a ação explicitamente.",
+    description: "Propõe uma ação para o utilizador CONFIRMAR (nada é feito sem confirmação). Tipos: criar_lembrete {titulo, descricao?, prioridade baixa|media|alta, coluna a_fazer|em_curso, prazo AAAA-MM-DD?}; criar_evento_calendario {titulo, data AAAA-MM-DD, hora HH:MM?, notas?, categoria lembrete|importante|reuniao|aniversario|outro}. Só quando o utilizador pedir a ação explicitamente.",
     input_schema: {
       type: "object",
       properties: {
-        tipo: { type: "string", enum: ["criar_lembrete", "criar_evento_calendario", "enviar_mensagem_chat"] },
+        tipo: { type: "string", enum: ["criar_lembrete", "criar_evento_calendario"] },
         resumo: { type: "string", description: "Frase curta que descreve o que será feito, mostrada no botão de confirmação." },
         dados: { type: "object" },
       },
@@ -914,16 +914,6 @@ async function validarAcao(sb: any, tipo: string, d: any) {
       categoria: ["lembrete", "importante", "reuniao", "aniversario", "outro"].includes(d.categoria) ? d.categoria : "lembrete",
     };
   }
-  if (tipo === "enviar_mensagem_chat") {
-    if (!txt(d.texto, 1000)) throw new Error("A mensagem está vazia.");
-    let para: string | null = null;
-    if (d.para) {
-      const { data } = await sb.from("utilizadores").select("username,role").eq("username", String(d.para)).maybeSingle();
-      if (!data || data.role === "encarregado") throw new Error("Destinatário inválido (o chat não inclui encarregados).");
-      para = data.username;
-    }
-    return { texto: txt(d.texto, 1000), para };
-  }
   throw new Error(`Tipo de ação desconhecido: ${tipo}`);
 }
 
@@ -944,11 +934,6 @@ async function executarAcao(sb: any, username: string, tipo: string, p: any) {
       });
       if (error) throw new Error(error.message);
       return { ok: true, mensagem: "Evento criado no calendário.", seccao: "calendario" };
-    }
-    if (tipo === "enviar_mensagem_chat") {
-      const { error } = await sb.from("chat_mensagens").insert({ autor: username, texto: p.texto, para: p.para });
-      if (error) throw new Error(error.message);
-      return { ok: true, mensagem: p.para ? "Mensagem enviada." : "Mensagem enviada para o canal geral.", seccao: "chat" };
     }
     return { ok: false, erro: "Tipo de ação desconhecido." };
   } catch (e) {

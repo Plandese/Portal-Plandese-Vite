@@ -84,7 +84,6 @@ export const NOTIF_SECTIONS = {
   'colaboradores':'Colaboradores',
   'utilizadores': 'Utilizadores',
   'mapa-ferias':  'Férias',
-  'chat':         'Chat',
 };
 
 // Capítulos da sidebar — fonte única de verdade para o agrupamento de secções

@@ -126,7 +126,7 @@ export function initPushPrompt(){
     el.id = 'push-prompt';
     const txt = st === 'precisa-instalar'
       ? 'Para receber notificações no iPhone, adicione o Portal ao ecrã principal (Partilhar → Adicionar ao Ecrã Principal).'
-      : 'Quer receber as notificações (incluindo o chat) no telemóvel?';
+      : 'Quer receber as notificações no telemóvel?';
     el.innerHTML = `<span>${txt}</span>` +
       (st === 'default' ? '<button type="button" class="btn btn-primary btn-sm" id="push-prompt-ok">Ativar</button>' : '') +
       '<button type="button" class="btn btn-secondary btn-sm" id="push-prompt-no">Agora não</button>';

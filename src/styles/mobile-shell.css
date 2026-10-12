@@ -260,14 +260,6 @@ body.device-mobile #sec-notificacoes .m-seg-only-m{display:grid}
 body.device-mobile #admin-app .card{box-shadow:0 1px 2px rgba(24,44,96,.06),0 4px 14px rgba(24,44,96,.05)}
 body.device-mobile .toast{bottom:calc(var(--m-bar) + var(--m-safe-b) + 18px)}
 
-/* O botão de chat fica só na página inicial (canto inferior direito, como o (+) da app
-   da CP); nos restantes ecrãs o chat está no menu e em myPlandese, com ponto vermelho no menu */
-body.device-mobile #chat-fab{cursor:pointer;z-index:205;display:none!important;left:auto!important;right:20px;top:auto!important;bottom:calc(var(--m-bar) + var(--m-safe-b) + 22px);transform:none;width:54px;height:54px;background:var(--m-brand);box-shadow:0 8px 20px rgba(14,40,110,.3)}
-body.device-mobile[data-m-screen="home"] #chat-fab{display:flex!important}
-body.device-mobile[data-m-search="1"] #chat-fab,body.device-mobile[data-m-search="1"] .m-pill{display:none!important}
-body.device-mobile #chat-fab:hover{transform:none}
-body.device-mobile #chat-fab-panel{display:none!important}
-
 /* Fora do portal (login, escolha de modo) e na app dos encarregados nada disto aparece */
 body:not(.app-ativa) .m-fab,body:not(.app-ativa) .m-pill,
 body.enc-mode .m-fab,body.enc-mode .m-pill{display:none!important}
@@ -284,7 +276,6 @@ body.enc-mode .m-fab,body.enc-mode .m-pill{display:none!important}
     background-attachment:fixed;
   }
   body.forced-mobile .m-fab{right:calc(50% - 230px + 20px)}
-  body.forced-mobile #chat-fab{right:calc(50% - 230px + 20px)}
   body.forced-mobile #bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:460px}
 }
 

@@ -154,7 +154,7 @@ export function notifClick(id, section){
   if(n && !n.lida){ n.lida = true; sbMarkNotifRead(n.id); }
   renderNotifPanel();
   closeNotifPanel();
-  if(section === 'chat' && n && window.chatAbrirNotif){ window.chatAbrirNotif(n); return; }
+  if(section === 'chat') return;   // notificações antigas do chat (removido)
   goToSection(section);
 }
 
