@@ -84,7 +84,7 @@ function coPeriodoBar(ids, comVista){
 function coVista(v){
   if(v===undefined){
     if(isMobile()) return 'cartoes';
-    try{ return localStorage.getItem('co_vista')==='lista' ? 'lista' : 'cartoes'; }catch(e){ return 'cartoes'; }
+    try{ return localStorage.getItem('co_vista')==='cartoes' ? 'cartoes' : 'lista'; }catch(e){ return 'lista'; }
   }
   try{ localStorage.setItem('co_vista', v==='lista'?'lista':'cartoes'); }catch(e){}
   coRenderList();
