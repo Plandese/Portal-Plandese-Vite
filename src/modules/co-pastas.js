@@ -129,6 +129,33 @@ function coParseAutoMensal(wb){
   return { [m[2]+'-'+m[1]]: Math.round(valor*100)/100 };
 }
 
+// Quarto modelo: "Resumo de autos de medição" — uma linha por mês (data na 1.ª coluna), uma coluna para o auto
+// contratual e uma por cada trabalho complementar (TC01, TC02…). Devolve { contr:{mes:v}, compl:{mes:v} } ou null.
+export function coParseResumoAutos(wb){
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:true });
+  let h = -1, cc = -1;
+  for(let i=0;i<Math.min(rows.length,15) && h<0;i++){
+    const c = rows[i].findIndex(x => typeof x==='string' && /contratual/i.test(x));
+    if(c>=0){ h = i; cc = c; }
+  }
+  if(h<0) return null;
+  const tcCols = [];
+  rows[h].forEach((x,c) => { if(c>cc && typeof x==='string' && x.trim()) tcCols.push(c); });
+  const contr = {}, compl = {};
+  const somar = (d, mes, v) => { if(v) d[mes] = Math.round(((d[mes]||0)+v)*100)/100; };
+  for(let i=h+1;i<rows.length;i++){
+    const r = rows[i];
+    const dc = r.findIndex((x,c) => c<cc && typeof x==='number' && x>40000 && x<70000);
+    if(dc<0) continue;
+    const dt = new Date((r[dc]-25569)*86400000);
+    const mes = dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0');
+    if(typeof r[cc]==='number') somar(contr, mes, r[cc]);
+    tcCols.forEach(c => { if(typeof r[c]==='number') somar(compl, mes, r[c]); });
+  }
+  if(!Object.keys(contr).length && !Object.keys(compl).length) throw new Error('Valores do resumo de autos não encontrados');
+  return { contr, compl };
+}
+
 export function coParseAutos(wb){
   const porFolhas = coParseAutosFolhas(wb);
   if(porFolhas) return porFolhas;
@@ -224,7 +251,10 @@ export async function coLerObra(dir){
   const tudo = await ficheiros(dir), avisos = [];
   const todos = tudo.filter(x => !x.pdf), pdfs = tudo.filter(x => x.pdf);
   // _CMO = extrato de mão de obra de um auto (não é o auto) → ignorado
-  const autos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)) && !/(^|[\s_-])cmo\.xlsx?$/.test(sem(x.nome)));
+  const autosTodos = todos.filter(x => /autos?\s+de\s+medi/.test(sem(x.nome)) && !/(^|[\s_-])cmo\.xlsx?$/.test(sem(x.nome)));
+  // "Resumo de autos de medição" (um mês por linha) é a fonte oficial da obra: dispensa os autos individuais e os PDF
+  const resumoF = autosTodos.filter(x => /resumo/.test(sem(x.nome)));
+  const autos = resumoF.length ? [] : autosTodos;
   const custosF = todos.filter(x => x.prof===0 && /custos/.test(sem(x.nome)) && !autos.includes(x));
   const res = { custos:null, provContr:null, provCompl:null, ficheiros:[], avisos };
   const cobreContr = { n:0 }, cobreCompl = { n:0 };   // maior n.º de auto já coberto pelo Excel
@@ -233,6 +263,18 @@ export async function coLerObra(dir){
     const x = maisRecente(custosF);
     try{ const p = coParseCustos(await lerWb(x.f, { cellDates:true })); res.custos = { ...p, ficheiro:x.nome }; res.ficheiros.push(x.nome); }
     catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
+  }
+
+  if(resumoF.length){
+    const x = maisRecente(resumoF);
+    try{
+      const p = coParseResumoAutos(await lerWb(x.f, { cellDates:false }));
+      if(p){
+        res.provContr = Object.keys(p.contr).length ? p.contr : null;
+        res.provCompl = Object.keys(p.compl).length ? p.compl : null;
+        res.ficheiros.push(x.nome);
+      } else avisos.push(`${x.nome}: formato não reconhecido`);
+    }catch(e){ avisos.push(`${x.nome}: ${e.message}`); }
   }
 
   if(autos.length){
@@ -264,7 +306,7 @@ export async function coLerObra(dir){
   }
 
   // Autos em PDF: completam o que o Excel não cobre (n.º de auto acima do último do Excel)
-  if(pdfs.length){
+  if(pdfs.length && !resumoF.length){
     const lidos = await lerAutosPdf(pdfs, avisos);
     if(lidos.length){
       const junta = (dest, add) => { if(!Object.keys(add).length) return dest; const d = { ...(dest||{}) }; Object.entries(add).forEach(([m,v]) => d[m] = Math.round(((d[m]||0)+v)*100)/100); return d; };
