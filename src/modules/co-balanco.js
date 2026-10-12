@@ -186,7 +186,7 @@ function tipoBodyHtml(c, tot){
       <div class="co-an-track"><div style="width:${Math.abs(tot[t.key])/maxAbs*100}%;height:100%;border-radius:4px;background:${t.cor||COR.custo}"></div></div>
       <div class="co-an-n">${eur0(tot[t.key])}</div>
       <div class="co-an-n" style="color:var(--gray-400)">${c.provTot>0?pct(tot[t.key]/c.provTot):'—'}</div>
-    </div>`).join('') + `<div class="co-an-tip" style="border-top:1px solid var(--gray-200);font-weight:600"><div>Total</div><div></div><div class="co-an-n">${eur0(c.custosTot)}</div><div class="co-an-n">${c.provTot>0?pct(c.custosTot/c.provTot):'—'}</div></div>`;
+    </div>${DET.includes(t.key)?`<div id="co-det-${t.key}"></div>`:''}`).join('') + `<div class="co-an-tip" style="border-top:1px solid var(--gray-200);font-weight:600"><div>Total</div><div></div><div class="co-an-n">${eur0(c.custosTot)}</div><div class="co-an-n">${c.provTot>0?pct(c.custosTot/c.provTot):'—'}</div></div>`;
 }
 
 // ── Versão resumida para telemóvel ─────────────────────────────────────

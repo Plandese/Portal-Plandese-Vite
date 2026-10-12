@@ -354,14 +354,13 @@ async function coDetTipo(key){
   const t = TIPOLOGIAS.find(x=>x.key===key); if(!t) return;
   const obras = CO.sel==='ALL' ? obrasAtivas() : obrasAtivas().filter(o=>o.id===CO.sel);
   const ids = obras.map(o=>o.id);
-  document.getElementById('co-det-ov')?.remove();
-  const ov = document.createElement('div');
-  ov.id = 'co-det-ov';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  ov.addEventListener('mousedown', e => { if(e.target===ov) ov.remove(); });
-  const corpo = h => { ov.innerHTML = `<div style="background:var(--white,#fff);border-radius:16px;max-width:880px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">${h}</div>`; };
-  const cab = sub => `<div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--gray-200)"><div style="flex:1"><div style="font-weight:700;font-size:16px">${esc(t.label)}</div><div style="font-size:12px;color:var(--gray-500)">${sub}</div></div><button class="btn btn-secondary btn-sm" onclick="document.getElementById('co-det-ov').remove()">Fechar</button></div>`;
-  corpo(cab('A carregar…')); document.body.appendChild(ov);
+  // O detalhe abre logo por baixo da rubrica; novo clique fecha-o
+  const box = document.getElementById('co-det-'+key); if(!box) return;
+  if(box.dataset.aberto){ box.innerHTML = ''; delete box.dataset.aberto; return; }
+  box.dataset.aberto = '1';
+  const corpo = h => { box.innerHTML = `<div style="margin:2px 0 10px 16px;border-left:3px solid var(--gray-200);background:var(--gray-50,#f8fafc);border-radius:0 10px 10px 0;max-height:420px;overflow:auto">${h}</div>`; };
+  const cab = sub => `<div style="padding:8px 16px;font-size:12px;color:var(--gray-500)">${sub}</div>`;
+  corpo(cab('A carregar…'));
   let rows = [];
   try{
     for(let from=0;;from+=1000){
@@ -385,10 +384,10 @@ async function coDetTipo(key){
   const total = rows.reduce((s,r)=>s+(+r.valor),0);
   const nQ = v => new Intl.NumberFormat('pt-PT',{maximumFractionDigits:2}).format(v);
   const lista = Object.entries(porForn).sort((a,b)=>b[1].valor-a[1].valor).map(([forn,f]) => `<details style="border-bottom:1px solid var(--gray-100)">
-    <summary style="display:flex;gap:12px;padding:9px 20px;cursor:pointer;align-items:center"><span style="flex:1;font-weight:600">${esc(forn)}</span><span style="color:var(--gray-400);font-size:12px;width:56px;text-align:right">${total?(f.valor/total*100).toFixed(1).replace('.',',')+'%':''}</span><b style="width:100px;text-align:right">${eur0(f.valor)}</b></summary>
-    <div style="padding:0 20px 8px 36px">${Object.entries(f.arts).sort((a,b)=>b[1].valor-a[1].valor).map(([art,a]) => `<div style="display:flex;gap:12px;font-size:12.5px;padding:3px 0;color:var(--gray-700)"><span style="flex:1">${esc(art)}</span><span style="color:var(--gray-400);width:90px;text-align:right">${a.qtd?nQ(a.qtd)+' un.':''}</span><span style="width:100px;text-align:right">${eur0(a.valor)}</span></div>`).join('')}</div>
+    <summary style="display:flex;gap:12px;padding:7px 16px;cursor:pointer;align-items:center"><span style="flex:1;font-weight:600">${esc(forn)}</span><span style="color:var(--gray-400);font-size:12px;width:56px;text-align:right">${total?(f.valor/total*100).toFixed(1).replace('.',',')+'%':''}</span><b style="width:100px;text-align:right">${eur0(f.valor)}</b></summary>
+    <div style="padding:0 16px 8px 32px">${Object.entries(f.arts).sort((a,b)=>b[1].valor-a[1].valor).map(([art,a]) => `<div style="display:flex;gap:12px;font-size:12.5px;padding:3px 0;color:var(--gray-700)"><span style="flex:1">${esc(art)}</span><span style="color:var(--gray-400);width:90px;text-align:right">${a.qtd?nQ(a.qtd)+' un.':''}</span><span style="width:100px;text-align:right">${eur0(a.valor)}</span></div>`).join('')}</div>
   </details>`).join('');
-  corpo(cab(`${Object.keys(porForn).length} fornecedores · ${eur0(total)}${CO.de||CO.ate?' no período escolhido':''} · clique num fornecedor para ver os artigos`) + `<div style="overflow:auto;flex:1">${lista}</div>`);
+  corpo(cab(`${Object.keys(porForn).length} fornecedores · clique num fornecedor para ver os artigos`) + lista);
 }
 
 // ── Atualizar a partir das pastas (Dropbox) ──────────────────────────
