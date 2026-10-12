@@ -132,7 +132,29 @@ async function _diagnosticarPasta(path){
       const r = await _rpc('files/list_folder', { path: ok === '(raiz)' || !ok ? '' : ok, recursive: false }, team);
       ver = r.entries.slice(0, 15).map(e => e.name).join(', ') + (r.entries.length > 15 ? '…' : '');
     } catch{}
-    out.push(`${team ? 'equipa' : 'pessoal'}: abre até «${ok || 'nada'}»${falhou ? `, falha em «${falhou}»` : ', abre tudo'}${ver ? ` — aí existe: ${ver}` : ''}`);
+    // Se falhou logo no 1.º nível, procura a pasta pedida mais abaixo (até 3 níveis)
+    let achada = '';
+    if(falhou && partes.length && ok === '(raiz)' && falhou === '/' + partes[0]){
+      const alvo = partes[0].toLowerCase();
+      let fila = [''], chamadas = 0;
+      for(let nivel = 0; nivel < 3 && !achada && fila.length; nivel++){
+        const prox = [];
+        for(const base of fila){
+          if(chamadas++ > 30 || achada) break;
+          try{
+            const r = await _rpc('files/list_folder', { path: base, recursive: false }, team);
+            for(const e of r.entries){
+              if(e['.tag'] !== 'folder') continue;
+              const p = base + '/' + e.name;
+              if(e.name.toLowerCase() === alvo){ achada = p; break; }
+              prox.push(p);
+            }
+          } catch{}
+        }
+        fila = prox;
+      }
+    }
+    out.push(`${team ? 'equipa' : 'pessoal'}: abre até «${ok || 'nada'}»${falhou ? `, falha em «${falhou}»` : ', abre tudo'}${ver ? ` — aí existe: ${ver}` : ''}${achada ? ` — «${partes[0]}» ENCONTRADA em «${achada}»` : ''}`);
   }
   return out.join(' | ');
 }
