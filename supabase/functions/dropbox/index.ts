@@ -35,12 +35,15 @@ function json(body: unknown, status = 200) {
 let _token = "";
 let _tokenAte = 0;
 let _rootNs = "";
+let _tokenDe = "";
 
 async function accessToken(forcar = false): Promise<string> {
-  if (!forcar && _token && Date.now() < _tokenAte - 60_000) return _token;
   const appKey = Deno.env.get("DROPBOX_APP_KEY");
   const refresh = Deno.env.get("DROPBOX_REFRESH_TOKEN");
   if (!appKey || !refresh) throw new Error("Dropbox não configurada no servidor (DROPBOX_APP_KEY / DROPBOX_REFRESH_TOKEN)");
+  // Se o segredo mudou (ligação a outra conta), descarta o token e a raiz em cache
+  if (refresh !== _tokenDe) { _token = ""; _tokenAte = 0; _rootNs = ""; _tokenDe = refresh; }
+  if (!forcar && _token && Date.now() < _tokenAte - 60_000) return _token;
   const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refresh, client_id: appKey });
   const secret = Deno.env.get("DROPBOX_APP_SECRET");
   if (secret) body.set("client_secret", secret);
