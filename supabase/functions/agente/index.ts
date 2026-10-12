@@ -69,7 +69,7 @@ function calcHoras(ent: string | null, sai: string | null, data: string) {
 
 // ───────────────────────── Tabelas permitidas ─────────────────────────
 // Lista branca de tabelas/colunas. Nada de passwords, telefones, IBANs. A RLS continua a aplicar-se por cima.
-type Tab = { desc: string; cols: string[]; virt?: string[]; admin?: string[] };
+type Tab = { desc: string; cols: string[]; virt?: string[]; admin?: string[]; cap?: string[] };
 const TABELAS: Record<string, Tab> = {
   obras: { desc: "Obras/empreitadas. nome = 'O0NN - Designação'. ativa=false: terminadas/arquivadas. id é interno (obra_...).", cols: ["id", "nome", "local", "descricao", "ativa", "prazo", "encarregado_id", "diretor_id"] },
   colaboradores: { desc: "Colaboradores da Plandese (RH).", cols: ["numero", "nome", "funcao", "ativo"], admin: ["remuneracao_hora"] },
@@ -96,6 +96,28 @@ const TABELAS: Record<string, Tab> = {
 const COLS_CONT = ["obra_id"]; // colunas que ganham nome automático
 
 // ───────────────────────── Utilitários ─────────────────────────
+// Capítulo do menu exigido por cada tabela (igual à matriz de Permissões). Sem entrada = livre para qualquer perfil.
+// A RLS do Supabase continua a aplicar-se por cima; isto fecha as tabelas que a RLS deixa abertas a qualquer utilizador.
+const CAP_TABELA: Record<string, string[]> = {
+  colaboradores: ["rh"], registos_ponto: ["rh"], registos_ponto_moa: ["rh"], aprovacoes_ponto: ["rh"],
+  ferias_previstas: ["rh"], advertencias: ["rh"], empresas_moa: ["rh", "def"],
+  co_mensal: ["prod"], co_custo_det: ["prod"], co_obra: ["prod"], tavira_estado: ["prod"],
+  equipamentos: ["log"], eq_manutencoes: ["log"], eq_movimentos: ["log"], registos_combustivel: ["log"],
+  faturas: ["fin"], pedidos_compra: ["cmp"], fornecedores: ["cmp", "fin", "def", "prod"],
+};
+for (const [k, v] of Object.entries(CAP_TABELA)) if (TABELAS[k]) TABELAS[k].cap = v;
+const CAP_SECCAO: Record<string, string> = {
+  historico: "rh", "fecho-mes": "rh", "mapa-ferias": "rh", colaboradores: "rh",
+  compras: "cmp", "mapas-comparativos": "cmp", faturas: "fin", "faturas-aprovar": "fin", tesouraria: "fin",
+  equipamentos: "log", combustivel: "log", producao: "prod", "precos-unitarios": "prod", "pendentes-tavira": "prod",
+  obras: "def", utilizadores: "def", "empresas-moa": "def", fornecedores: "def",
+};
+const CAP_NOME: Record<string, string> = {
+  rh: "Recursos Humanos (ponto, colaboradores, férias, advertências)", cmp: "Compras",
+  fin: "Financeiro (faturas, tesouraria)", log: "Logística e Equipamentos (equipamentos, manutenções, combustível)",
+  prod: "Produção (Controlo de Obras)", def: "Definições",
+};
+
 const norm = (s: unknown) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -338,10 +360,6 @@ FORMATO
 - Se a pergunta for ambígua de forma que mude a resposta, faz UMA pergunta de esclarecimento; caso contrário assume o mais razoável e di-lo.
 - Quando fizer sentido, oferece o atalho "abrir_seccao" para a secção relevante.`;
 
-const CATALOGO_TXT = "\n\nTABELAS CONSULTÁVEIS (usa exatamente estes nomes; não é preciso listá-las)\n" +
-  Object.entries(TABELAS).map(([k, t]) => `- ${k}: ${t.desc} Colunas: ${[...t.cols, ...(t.virt ?? [])].join(", ")}`).join("\n");
-
-// ───────────────────────── Handler ─────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Método não suportado" }, 405);
@@ -360,6 +378,21 @@ Deno.serve(async (req: Request) => {
   if (!role || !username) return json({ error: "Sessão inválida ou utilizador sem perfil." }, 401);
   if (role === "encarregado") return json({ error: "O assistente não está disponível para encarregados." }, 403);
   const isAdmin = role === "admin";
+  // Capítulos do perfil (matriz de Permissões em app_config). null = administrador (tudo).
+  let caps: Set<string> | null = null;
+  if (!isAdmin) {
+    const { data: cfg } = await sb.from("app_config").select("value").eq("key", "role_permissions").maybeSingle();
+    const arr = cfg?.value?.[role];
+    caps = new Set(Array.isArray(arr) ? arr : []);
+  }
+  const temCap = (c?: string | null) => !c || caps === null || caps.has(c);
+  const podeTabela = (t: Tab) => !t.cap || caps === null || t.cap.some((c) => caps!.has(c));
+  const capAlerta = (sec: string) => (sec === "obras" ? null : CAP_SECCAO[sec] ?? null);
+  const filtrarAlertas = (a: any) => (Array.isArray(a) ? a.filter((x: any) => temCap(capAlerta(String(x?.seccao ?? "")))) : []);
+  const semAcesso = () => Object.keys(CAP_NOME).filter((c) => !temCap(c)).map((c) => CAP_NOME[c]);
+  const catalogoPara = () => "\n\nTABELAS CONSULTÁVEIS (usa exatamente estes nomes; não é preciso listá-las)\n" +
+    Object.entries(TABELAS).filter(([, t]) => podeTabela(t))
+      .map(([k, t]) => `- ${k}: ${t.desc} Colunas: ${[...t.cols, ...(t.virt ?? [])].join(", ")}`).join("\n");
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Pedido inválido" }, 400); }
@@ -377,7 +410,7 @@ Deno.serve(async (req: Request) => {
   if (acao === "briefing") {
     const { data, error } = await sb.rpc("ag_alertas");
     if (error) return json({ error: error.message }, 500);
-    return json({ alertas: data ?? [], usadas: await usadas(), limite });
+    return json({ alertas: filtrarAlertas(data), usadas: await usadas(), limite });
   }
 
   // ── Confirmar / cancelar ação proposta ───────────────────────
@@ -401,7 +434,8 @@ Deno.serve(async (req: Request) => {
   // ── Resumo proativo escrito pelo modelo leve ─────────────────
   if (acao === "resumo") {
     if ((await usadas()) >= limite) return json({ error: "Atingiu o limite diário do assistente." }, 429);
-    const { data: alertas } = await sb.rpc("ag_alertas");
+    const { data: alertasRaw } = await sb.rpc("ag_alertas");
+    const alertas = filtrarAlertas(alertasRaw);
     const t0 = Date.now();
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -419,7 +453,7 @@ Deno.serve(async (req: Request) => {
       utilizador: username, role, pergunta: "[resumo proativo]", resposta: texto.slice(0, 8000),
       ferramentas: [{ nome: "alertas" }], tokens_in: d.usage?.input_tokens, tokens_out: d.usage?.output_tokens, ms: Date.now() - t0,
     });
-    return json({ texto, alertas: alertas ?? [] });
+    return json({ texto, alertas });
   }
 
   // ── Chat com ferramentas (stream NDJSON) ─────────────────────
@@ -453,20 +487,22 @@ Deno.serve(async (req: Request) => {
         const obrasMap = new Map<string, string>((obrasAll ?? []).map((o: any) => [o.id, o.nome]));
         const colabMap = new Map<number, string>();
         const carregarColabs = async () => {
-          if (colabMap.size) return;
+          if (colabMap.size || !temCap("rh")) return;
           const { data } = await sb.from("colaboradores").select("numero,nome").limit(2000);
           (data ?? []).forEach((c: any) => colabMap.set(c.numero, c.nome));
         };
         const ativas = (obrasAll ?? []).filter((o: any) => o.ativa).map((o: any) => o.nome).sort();
         const ctx = body.contexto ?? {};
         const sistema = [
-          { type: "text", text: SYSTEM_FIXO + CATALOGO_TXT, cache_control: { type: "ephemeral" } },
+          { type: "text", text: SYSTEM_FIXO + catalogoPara(), cache_control: { type: "ephemeral" } },
           {
             type: "text",
             text: `CONTEXTO\n- Hoje: ${hojeLisboa()} (Europe/Lisbon)\n- Utilizador: ${u?.nome ?? username} (perfil: ${role})\n` +
               (ctx.seccao ? `- Está no ecrã: ${SECCOES[ctx.seccao] ?? ctx.seccao}\n` : "") +
               (ctx.obra_nome ? `- Obra em foco no ecrã: ${String(ctx.obra_nome).slice(0, 120)}${ctx.obra_id ? " (id " + String(ctx.obra_id).slice(0, 40) + ")" : ""}\n` : "") +
-              `- Obras ativas: ${ativas.join(" | ") || "(nenhuma visível)"}`,
+              `- Obras ativas: ${ativas.join(" | ") || "(nenhuma visível)"}
+` +
+              (semAcesso().length ? `- SEM ACESSO a: ${semAcesso().join("; ")}. Se pedirem dados destas áreas, diz que o perfil não tem permissão (não tentes contornar nem deduzir por outras tabelas).` : "- Acesso a todas as áreas."),
           },
         ];
 
@@ -567,6 +603,7 @@ Deno.serve(async (req: Request) => {
               const tabela = String(input.tabela);
               const t = TABELAS[tabela];
               if (!t) throw new Error(`Tabela não permitida: ${tabela}. Consulta o catálogo de tabelas.`);
+              if (!podeTabela(t)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
               const pedidas: string[] = (input.colunas?.length ? input.colunas : [...colsReais(t), ...(t.virt ?? [])]);
               for (const c of pedidas) if (!validarColuna(t, c)) throw new Error(`Coluna inválida em ${tabela}: ${c}`);
               const reais = colunasNecessarias(t, tabela, pedidas);
@@ -598,6 +635,7 @@ Deno.serve(async (req: Request) => {
               const tabela = String(input.tabela);
               const t = TABELAS[tabela];
               if (!t) throw new Error(`Tabela não permitida: ${tabela}.`);
+              if (!podeTabela(t)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
               const grupos: string[] = input.agrupar_por ?? [];
               const metricas: Array<{ coluna: string; fn: string }> = input.metricas ?? [];
               if (!metricas.length) throw new Error("Indica pelo menos uma métrica.");
@@ -679,6 +717,7 @@ Deno.serve(async (req: Request) => {
             }
 
             case "balanco_obras": {
+              if (!temCap("prod")) throw new Error("Sem permissão: o perfil do utilizador não tem acesso ao Controlo de Obras.");
               let obraId: string | null = null;
               if (input.obra) {
                 const m = resolverObra(String(input.obra));
@@ -704,7 +743,7 @@ Deno.serve(async (req: Request) => {
             case "alertas": {
               const { data, error } = await sb.rpc("ag_alertas");
               if (error) throw new Error(error.message);
-              return { alertas: data ?? [] };
+              return { alertas: filtrarAlertas(data) };
             }
 
             case "calcular": {
@@ -721,6 +760,7 @@ Deno.serve(async (req: Request) => {
             case "abrir_seccao": {
               const id = String(input.seccao);
               if (!SECCOES[id]) throw new Error(`Secção desconhecida: ${id}`);
+              if (!temCap(CAP_SECCAO[id])) throw new Error("Sem permissão para abrir esta secção.");
               emit({ type: "nav", seccao: id, rotulo: SECCOES[id] });
               return { ok: true, nota: "Botão de atalho mostrado ao utilizador." };
             }
