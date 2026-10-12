@@ -1,133 +1,73 @@
 // ═══════════════════════════════════════════════════
-//  Dropbox PKCE OAuth + File Upload
+//  Dropbox da empresa — ligação única guardada no servidor
+//  O portal fala com a Edge Function "dropbox", que usa a conta da empresa (refresh token
+//  nos segredos do Supabase). Ninguém precisa de ligar a sua própria conta Dropbox.
 // ═══════════════════════════════════════════════════
-const APP_KEY      = '6xmi67376olea1l';
-const TOKEN_KEY    = 'dbx_token';
-const REFRESH_KEY  = 'dbx_refresh';
-const VERIFIER_KEY = 'dbx_verifier';
+import { sb } from '../supabase.js';
 
-function _redirectUri(){
-  return window.location.origin;
+const URL_FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dropbox`;
+const ANON   = import.meta.env.VITE_SUPABASE_KEY;
+
+const API = 'https://api.dropboxapi.com/2/';
+const CONTENT = 'https://content.dropboxapi.com/2/';
+
+// Cabeçalhos HTTP só aceitam ASCII — escapa acentos no Dropbox-API-Arg
+const _asciiJson = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c => '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4));
+
+// Envia um pedido à Dropbox através da ponte. team=true usa o espaço raiz partilhado da equipa.
+async function _call(url, { headers = {}, body, team = false } = {}){
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if(!token) throw new Error('Sessão expirada. Volte a iniciar sessão.');
+  const h = { Authorization: 'Bearer ' + token, apikey: ANON, 'x-dbx-url': url, ...headers };
+  if(team) h['x-dbx-root'] = 'team';
+  return fetch(URL_FN, { method: 'POST', headers: h, body });
 }
 
-function _b64url(buf){
-  return btoa(String.fromCharCode(...buf))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+async function _msg(resp){
+  const t = await resp.text();
+  try{ const j = JSON.parse(t); if(j?.error && typeof j.error === 'string') return j.error; } catch{}
+  return t;
 }
 
-async function _pkce(){
-  const verifier  = _b64url(crypto.getRandomValues(new Uint8Array(32)));
-  const digest    = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = _b64url(new Uint8Array(digest));
-  return { verifier, challenge };
-}
+// A ligação é da empresa e vive no servidor: está sempre "ligada" do ponto de vista do utilizador.
+export function dropboxIsConnected(){ return true; }
 
-export function dropboxIsConnected(){
-  return !!localStorage.getItem(TOKEN_KEY);
-}
-
+// Compatibilidade com os botões antigos: testa a ligação da empresa e informa o resultado.
 export async function dropboxLogin(){
-  const { verifier, challenge } = await _pkce();
-  sessionStorage.setItem(VERIFIER_KEY, verifier);
-  const p = new URLSearchParams({
-    client_id:             APP_KEY,
-    response_type:         'code',
-    code_challenge:        challenge,
-    code_challenge_method: 'S256',
-    redirect_uri:          _redirectUri(),
-    token_access_type:     'offline',
-  });
-  window.location.href = `https://www.dropbox.com/oauth2/authorize?${p}`;
-}
-
-export function dropboxLogout(){
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  _renderDbxBtn();
-}
-
-// Chamado no arranque da app — trata o redirect de volta da Dropbox
-export async function dropboxInit(){
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  if(!code) { _renderDbxBtn(); return; }
-
-  const verifier = sessionStorage.getItem(VERIFIER_KEY);
-  if(!verifier){ window.history.replaceState({}, '', window.location.pathname); _renderDbxBtn(); return; }
-
+  const toast = typeof window.showToast === 'function' ? window.showToast : alert;
   try{
-    const resp = await fetch('https://api.dropboxapi.com/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        grant_type:    'authorization_code',
-        code_verifier: verifier,
-        client_id:     APP_KEY,
-        redirect_uri:  _redirectUri(),
-      }),
-    });
-    if(!resp.ok) throw new Error(await resp.text());
-    const data = await resp.json();
-    localStorage.setItem(TOKEN_KEY, data.access_token);
-    if(data.refresh_token) localStorage.setItem(REFRESH_KEY, data.refresh_token);
-    sessionStorage.removeItem(VERIFIER_KEY);
-    window.history.replaceState({}, '', window.location.pathname);
-    _renderDbxBtn();
-    if(typeof window.showToast === 'function') window.showToast('Dropbox ligada com sucesso');
+    const r = await _call(API + 'users/get_current_account', { headers: { 'Content-Type': 'application/json' }, body: 'null' });
+    if(!r.ok) throw new Error(await _msg(r));
+    const d = await r.json();
+    toast('Dropbox da empresa ligada' + (d?.email ? ' (' + d.email + ')' : ''));
   } catch(e){
-    console.warn('Dropbox OAuth erro:', e);
-    window.history.replaceState({}, '', window.location.pathname);
+    toast('Dropbox: ' + (e.message || e));
   }
 }
 
-async function _refreshToken(){
-  const refresh = localStorage.getItem(REFRESH_KEY);
-  if(!refresh) return false;
+export function dropboxLogout(){}
+
+// Chamado no arranque: remove restos da antiga ligação por utilizador
+export async function dropboxInit(){
   try{
-    const resp = await fetch('https://api.dropboxapi.com/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type:    'refresh_token',
-        refresh_token: refresh,
-        client_id:     APP_KEY,
-      }),
-    });
-    if(!resp.ok) return false;
-    const data = await resp.json();
-    localStorage.setItem(TOKEN_KEY, data.access_token);
-    return true;
-  } catch{ return false; }
+    ['dbx_token', 'dbx_refresh', 'dbx_root_ns'].forEach(k => localStorage.removeItem(k));
+    sessionStorage.removeItem('dbx_verifier');
+  } catch{}
+  _renderDbxBtn();
 }
 
 export async function dropboxUpload(file, destPath){
-  let token = localStorage.getItem(TOKEN_KEY);
-  if(!token) throw new Error('Dropbox não conectada');
-
-  // Converter File/Blob para ArrayBuffer para garantir compatibilidade com Dropbox API
   const buf = file instanceof ArrayBuffer ? file : await file.arrayBuffer();
-
-  const _upload = async (tok) => fetch('https://content.dropboxapi.com/2/files/upload', {
-    method: 'POST',
+  const resp = await _call(CONTENT + 'files/upload', {
     headers: {
-      'Authorization':   `Bearer ${tok}`,
-      'Dropbox-API-Arg': JSON.stringify({ path: destPath, mode: 'add', autorename: true, mute: false }),
+      'Dropbox-API-Arg': _asciiJson({ path: destPath, mode: 'add', autorename: true, mute: false }),
       'Content-Type':    'application/octet-stream',
     },
     body: buf,
   });
-
-  let resp = await _upload(token);
-  if(resp.status === 401){
-    const ok = await _refreshToken();
-    if(!ok){ localStorage.removeItem(TOKEN_KEY); throw new Error('Sessão Dropbox expirada — ligue novamente'); }
-    token = localStorage.getItem(TOKEN_KEY);
-    resp = await _upload(token);
-  }
-  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await resp.text());
-  const result = await resp.json();
-  return result.path_display;
+  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
+  return (await resp.json()).path_display;
 }
 
 export function dropboxFatPath(fat, fileName, aprovada = false){
@@ -145,53 +85,24 @@ export function dropboxFatPath(fat, fileName, aprovada = false){
   return `/04_DP/Faturas/${ym}/${name}${ext}`;
 }
 
+async function _rpc(endpoint, body, team = true){
+  const resp = await _call(API + endpoint, { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), team });
+  if(!resp.ok) throw new Error(`Dropbox ${endpoint}: ` + await _msg(resp));
+  return resp.json();
+}
+
 export async function dropboxGetSharedLink(path){
-  let token = localStorage.getItem(TOKEN_KEY);
-  if(!token) return null;
   try{
-    let resp = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, settings: { requested_visibility: { '.tag': 'public' } } }),
-    });
-    if(resp.status === 401){
-      const ok = await _refreshToken();
-      if(!ok) return null;
-      token = localStorage.getItem(TOKEN_KEY);
-      resp = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, settings: { requested_visibility: { '.tag': 'public' } } }),
-      });
-    }
-    if(resp.status === 409){
-      // Link já existe — extrair do body
-      const err = await resp.json();
-      return err?.error?.shared_link_already_exists?.metadata?.url?.replace('?dl=0','?dl=1') || null;
-    }
-    if(!resp.ok) return null;
-    const data = await resp.json();
-    return data.url?.replace('?dl=0','?dl=1') || null;
-  } catch{ return null; }
+    const d = await _rpc('sharing/create_shared_link_with_settings', { path, settings: { requested_visibility: { '.tag': 'public' } } }, false);
+    return d.url?.replace('?dl=0','?dl=1') || null;
+  } catch(e){
+    const m = String(e.message).match(/"url":\s*"([^"]+)"/);
+    return m ? m[1].replace('?dl=0','?dl=1') : null;
+  }
 }
 
 export async function dropboxMoveFile(fromPath, toPath){
-  let token = localStorage.getItem(TOKEN_KEY);
-  if(!token) throw new Error('Dropbox não conectada');
-  const _move = async (tok) => fetch('https://api.dropboxapi.com/2/files/move_v2', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from_path: fromPath, to_path: toPath, autorename: true }),
-  });
-  let resp = await _move(token);
-  if(resp.status === 401){
-    const ok = await _refreshToken();
-    if(!ok){ localStorage.removeItem(TOKEN_KEY); throw new Error('Sessão Dropbox expirada'); }
-    token = localStorage.getItem(TOKEN_KEY);
-    resp = await _move(token);
-  }
-  if(!resp.ok) throw new Error('Dropbox move falhou: ' + await resp.text());
-  const data = await resp.json();
+  const data = await _rpc('files/move_v2', { from_path: fromPath, to_path: toPath, autorename: true }, false);
   return data.metadata?.path_display;
 }
 
@@ -199,42 +110,6 @@ export async function dropboxMoveFile(fromPath, toPath){
 //  Pastas partilhadas da equipa (espaço raiz da Dropbox)
 //  Caminhos relativos ao espaço "Plandese Dropbox", como no explorador de ficheiros.
 // ═══════════════════════════════════════════════════
-const ROOT_NS_KEY = 'dbx_root_ns';
-
-async function _dbxFetch(url, init){
-  if(!localStorage.getItem(TOKEN_KEY)) throw new Error('Dropbox não conectada');
-  const go = () => fetch(url, { ...init, headers: { ...init.headers, 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` } });
-  let resp = await go();
-  if(resp.status === 401){
-    if(!(await _refreshToken())){ localStorage.removeItem(TOKEN_KEY); throw new Error('Sessão Dropbox expirada — ligue novamente'); }
-    resp = await go();
-  }
-  return resp;
-}
-
-async function _rootHeader(){
-  let ns = localStorage.getItem(ROOT_NS_KEY);
-  if(!ns){
-    const r = await _dbxFetch('https://api.dropboxapi.com/2/users/get_current_account', { method: 'POST', headers: {} });
-    if(!r.ok) throw new Error('Dropbox: não foi possível obter a conta — ' + await r.text());
-    ns = (await r.json()).root_info?.root_namespace_id || '';
-    if(ns) localStorage.setItem(ROOT_NS_KEY, ns);
-  }
-  return ns ? { 'Dropbox-API-Path-Root': JSON.stringify({ '.tag': 'root', root: ns }) } : {};
-}
-
-// Cabeçalhos HTTP só aceitam ASCII — escapa acentos no Dropbox-API-Arg
-const _asciiJson = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c => '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4));
-
-async function _rpc(endpoint, body){
-  const resp = await _dbxFetch('https://api.dropboxapi.com/2/' + endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(await _rootHeader()) },
-    body: JSON.stringify(body),
-  });
-  if(!resp.ok) throw new Error(`Dropbox ${endpoint}: ` + await resp.text());
-  return resp.json();
-}
 
 // Lista os ficheiros (sem subpastas) de uma pasta
 export async function dropboxListFolder(path){
@@ -245,25 +120,21 @@ export async function dropboxListFolder(path){
 }
 
 export async function dropboxDownload(path){
-  const resp = await _dbxFetch('https://content.dropboxapi.com/2/files/download', {
-    method: 'POST',
-    headers: { 'Dropbox-API-Arg': _asciiJson({ path }), ...(await _rootHeader()) },
-  });
-  if(!resp.ok) throw new Error('Dropbox download falhou: ' + await resp.text());
+  const resp = await _call(CONTENT + 'files/download', { headers: { 'Dropbox-API-Arg': _asciiJson({ path }) }, team: true });
+  if(!resp.ok) throw new Error('Dropbox download falhou: ' + await _msg(resp));
   return resp.blob();
 }
 
 export async function dropboxUploadTeam(blob, path){
-  const resp = await _dbxFetch('https://content.dropboxapi.com/2/files/upload', {
-    method: 'POST',
+  const resp = await _call(CONTENT + 'files/upload', {
     headers: {
       'Dropbox-API-Arg': _asciiJson({ path, mode: 'add', autorename: true, mute: false }),
       'Content-Type': 'application/octet-stream',
-      ...(await _rootHeader()),
     },
     body: await blob.arrayBuffer(),
+    team: true,
   });
-  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await resp.text());
+  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
   return (await resp.json()).path_display;
 }
 
@@ -281,17 +152,12 @@ export async function dropboxLinkTeam(path){
   }
 }
 
-// Atualiza o botão Dropbox na UI (se existir)
+// Botão Dropbox na UI (se existir): mostra que a ligação é da empresa; clicar testa-a
 function _renderDbxBtn(){
   const btn = document.getElementById('dbx-btn');
   if(!btn) return;
-  if(dropboxIsConnected()){
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 13l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/></svg>Dropbox ligada`;
-    btn.className = 'btn btn-success btn-sm';
-    btn.onclick = () => { if(confirm('Desligar Dropbox?')) dropboxLogout(); };
-  } else {
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 13l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/></svg>Ligar Dropbox`;
-    btn.className = 'btn btn-secondary btn-sm';
-    btn.onclick = dropboxLogin;
-  }
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M6 2l6 4-6 4-6-4 6-4zm12 0l6 4-6 4-6-4 6-4zM0 13l6 4 6-4-6-4-6 4zm18-4l-6 4 6 4 6-4-6-4zM6 18l6 4 6-4-6-4-6 4z"/></svg>Dropbox da empresa`;
+  btn.className = 'btn btn-success btn-sm';
+  btn.title = 'Testar a ligação da Dropbox da empresa';
+  btn.onclick = dropboxLogin;
 }
