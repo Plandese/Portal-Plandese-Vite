@@ -339,7 +339,7 @@ async function coGuardarObra(){
 // ── Atualizar a partir das pastas (Dropbox) ──────────────────────────
 // Empreitadas cujos proveitos vêm da listagem do CentralGest (coluna "Proveitos" do ficheiro de custos):
 // autos de medição + revisões de preços, com estornos. Para as restantes continuam a vir dos autos.
-const PROV_CENTRALGEST = ['O049','O053'];
+const PROV_CENTRALGEST = ['O049','O052','O053','O056','O059','O060','O064'];
 
 async function coAtualizar(escolher){
   if(!pastasSuportado()){ showToast('Este browser não permite ler pastas. Use o Chrome ou o Edge.'); return; }
