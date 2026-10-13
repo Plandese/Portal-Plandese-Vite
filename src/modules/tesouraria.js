@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
-//  TESOURARIA — mapa das faturas aprovadas (já com centro de custo), organizado por centro de custo
-//  Colunas: Centro de custo · Fornecedor · Fatura · Valor com IVA · Vencimento · Estado
+//  TESOURARIA — mapa das faturas aprovadas (já com centro de custo), organizado por fornecedor
+//  Colunas: Fornecedor · Centro de custo · Fatura · Valor com IVA · Vencimento · Estado
 //  Propostas de pagamento: quem pode (administrador + lista em app_config) seleciona faturas e propõe-nas;
 //  as propostas ficam a amarelo. Só o administrador marca como paga (em lote).
 // ═══════════════════════════════════════════════════════════════════
@@ -119,9 +119,9 @@ function desenhar() {
     return;
   }
 
-  // agrupa por centro de custo (ordem alfabética; "sem centro de custo" no fim)
+  // agrupa por fornecedor (ordem alfabética; "sem fornecedor" no fim)
   const grupos = new Map();
-  lista.forEach(r => { const k = r.centro_custo || ''; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
+  lista.forEach(r => { const k = (r.fornecedor || '').trim(); if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
   const chaves = [...grupos.keys()].sort((a, b) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b, 'pt'));
   const h = hoje();
   const podeSel = _podePropor || ehAdmin();
@@ -144,21 +144,21 @@ function desenhar() {
         : '<span class="mut">—</span>';
       return `<tr class="tes-row${prop ? ' tes-prop' : ''}${marcada ? ' tes-sel' : ''}" data-tes-id="${r.id}" title="Clique para ver os detalhes da fatura">
         ${podeSel ? `<td class="tes-ck">${porPagar(r) ? `<input type="checkbox" data-tes-ck="${r.id}"${marcada ? ' checked' : ''} aria-label="Selecionar fatura"/>` : ''}</td>` : ''}
-        <td class="tes-cc">${k ? esc(k) : '<span class="mut">Sem centro de custo</span>'}</td>
-        <td>${esc(r.fornecedor || '—')}</td>
+        <td class="tes-cc">${k ? esc(k) : '<span class="mut">Sem fornecedor</span>'}</td>
+        <td>${r.centro_custo ? esc(r.centro_custo) : '<span class="mut">Sem centro de custo</span>'}</td>
         <td><b>${esc(r.numero || '—')}</b></td>
         <td class="r"><b>${eur(r.total)}</b></td>
         <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
         <td>${estado}</td>
       </tr>`;
     }).join('');
-    const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste centro de custo"/>` : ''}</td>` : '';
-    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem centro de custo'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="2"></td></tr>${linhas}</tbody>`;
+    const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
+    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="2"></td></tr>${linhas}</tbody>`;
   }).join('');
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Centro de custo</th><th>Fornecedor</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Estado</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Estado</th></tr></thead>
     ${corpo}
     <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="2"></td></tr></tfoot>
   </table></div>`;
@@ -279,7 +279,7 @@ document.addEventListener('click', e => {
   const ckg = e.target.closest('[data-tes-ckg]');
   if (ckg) {
     const k = ckg.dataset.tesCkg;
-    _rows.filter(r => (r.centro_custo || '') === k && porPagar(r) && filtrar().includes(r))
+    _rows.filter(r => (r.fornecedor || '').trim() === k && porPagar(r) && filtrar().includes(r))
       .forEach(r => { if (ckg.checked) _sel.add(r.id); else _sel.delete(r.id); });
     desenhar();
     return;
