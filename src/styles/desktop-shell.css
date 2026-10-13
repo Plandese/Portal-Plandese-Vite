@@ -920,7 +920,7 @@ body.device-desktop:not(.enc-mode) #modal-compra > .modal > .modal-footer .btn{m
 /* ───────── Inserção de Faturas ───────── */
 #sec-faturas .fat-top{display:block}
 #sec-faturas .fat-tbl-d,#sec-faturas .d-chips{display:none}
-body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .fat-top{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;margin-bottom:22px}
+body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .fat-top{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;margin-bottom:22px}
 body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .fat-kpis,body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .filter-bar,body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .fat-tbl-old{display:none}
 body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .fat-tbl-d{display:block}
 body.device-desktop:not(.enc-mode) #admin-app #sec-faturas .d-chips{display:flex;margin-bottom:18px}
