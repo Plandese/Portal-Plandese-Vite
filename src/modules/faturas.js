@@ -695,6 +695,7 @@ function _rowToFat(r){
 }
 
 async function carregarFaturas(){
+  carregarAprovadoresFaturas();
   try{
     const { data, error } = await sb.from('faturas')
       .select('*').order('criado_em', { ascending: false }).limit(500);
@@ -1036,7 +1037,7 @@ function editarFatura(id){
     const etapa2 = f.status === 'aguarda_diretor';
     const role = S.currentUser?.role, uKey = S.currentUser?.key;
     const obraFatura = S.OBRAS.find(o=>o.nome===f.centroCusto);
-    const eDiretor = !!obraFatura && (obraFatura.diretor_id === uKey || (obraFatura.diretores_extra||[]).includes(uKey));
+    const eDiretor = ehAprovadorFaturas(obraFatura);
     const pode1 = etapa1 && (role === 'admin' || role === 'financeiro');
     const pode2 = etapa2 && (role === 'admin' || eDiretor);
     const selCC = document.getElementById('mf-cc-sel');
@@ -1195,6 +1196,22 @@ const _lim = v => {
 };
 const _pastaPendentes = () => _lim(_pastas?.pendentes || localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES);
 const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
+
+// Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
+let _aprovadoresFat = [];
+async function carregarAprovadoresFaturas(){
+  try{
+    const { data } = await sb.from('app_config').select('value').eq('key', 'faturas_aprovadores').maybeSingle();
+    _aprovadoresFat = Array.isArray(data?.value) ? data.value : [];
+  } catch(e){ console.warn('Aprovadores de faturas:', e); }
+}
+// Diretor da obra (ou extra) ou aprovador global
+function ehAprovadorFaturas(obra){
+  const uKey = S.currentUser?.key;
+  if(!uKey) return false;
+  if(_aprovadoresFat.includes(uKey)) return true;
+  return !!obra && (obra.diretor_id === uKey || (obra.diretores_extra||[]).includes(uKey));
+}
 
 async function carregarPastasFaturas(){
   try{
@@ -1492,7 +1509,7 @@ async function confirmarCentroCusto(f, cc){
   const msg = `Fatura por aprovar: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${cc})`;
   R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar' });
   const obra = S.OBRAS.find(o=>o.nome===cc);
-  const destinatarios = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra||[])].filter(u => u && u !== S.currentUser?.key))];
+  const destinatarios = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra||[]), ..._aprovadoresFat].filter(u => u && u !== S.currentUser?.key))];
   if(destinatarios.length){
     try{
       await sb.from('notificacoes').insert(destinatarios.map(destinatario => ({
@@ -1862,4 +1879,5 @@ export {
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
   importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas,
+  carregarAprovadoresFaturas, ehAprovadorFaturas,
 };

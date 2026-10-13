@@ -6,7 +6,7 @@
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
-import { abrirFaturaPorDbId, carregarPastasFaturas } from './faturas.js';
+import { abrirFaturaPorDbId, carregarPastasFaturas, carregarAprovadoresFaturas, ehAprovadorFaturas } from './faturas.js';
 
 let _rows = [];
 let _obra = null;   // centro de custo aberto (null = cartões das obras)
@@ -18,6 +18,7 @@ const eur = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-
 function obrasVisiveis() {
   const role = S.currentUser?.role, uKey = S.currentUser?.key;
   if (role === 'admin' || role === 'financeiro') return null;
+  if (ehAprovadorFaturas(null)) return null;   // aprovador global
   return new Set((S.OBRAS || [])
     .filter(o => o.diretor_id === uKey || (o.diretores_extra || []).includes(uKey))
     .map(o => o.nome));
@@ -32,6 +33,7 @@ function diretoresDaObra(nome) {
 }
 
 async function carregar() {
+  await carregarAprovadoresFaturas();
   const { data, error } = await sb.from('faturas')
     .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo')
     .eq('status', 'aguarda_diretor')
