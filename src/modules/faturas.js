@@ -1513,7 +1513,8 @@ async function _carregarCarimbo(f, cc, { ov, d, w, fechar, fora }){
       const page = await pdf.getPage(p);
       const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 1.6 });
       ptsW.push(vp1.width); ptsH.push(vp1.height);
-      const canvas = d.createElement('canvas');
+      // o canvas é criado na janela do portal: é onde o PDF.js regista os tipos de letra (na janela nova saíam como quadrados)
+      const canvas = document.createElement('canvas');
       canvas.width = vp.width; canvas.height = vp.height;
       await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
       const wrap = d.createElement('div');
