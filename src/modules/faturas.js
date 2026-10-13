@@ -1440,18 +1440,37 @@ async function guardarAprovacaoEmSegundoPlano(f, cc, pos){
 }
 
 // Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
-async function abrirColocarCarimbo(f, cc){
+// Abre-se num separador novo do navegador (se o bloqueador de pop-ups deixar); senão, numa janela sobre o portal
+function abrirColocarCarimbo(f, cc){
   document.getElementById('fat-stamp-ov')?.remove();
-  const ov = document.createElement('div');
+  const w = window.open('', '_blank');
+  let d = document, fora = false;
+  if(w && w.document){
+    fora = true; d = w.document;
+    d.open();
+    d.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aprovar fatura — Plandese</title></head><body></body></html>');
+    d.close();
+    // mesmos estilos do portal
+    document.querySelectorAll('link[rel="stylesheet"], style').forEach(n => d.head.appendChild(n.cloneNode(true)));
+    const ext = d.createElement('style');
+    ext.textContent = 'html,body{margin:0;height:100%;background:#0a1226;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.fst-ov{padding:0}.fst-box{width:100%;height:100%;max-height:100%;border-radius:0;box-shadow:none}.fst-page{max-width:980px}';
+    d.head.appendChild(ext);
+    d.title = 'Aprovar fatura — ' + (f.fornecedor || 'Plandese');
+  }
+  const ov = d.createElement('div');
   ov.id = 'fat-stamp-ov'; ov.className = 'fst-ov';
   ov.innerHTML = `<div class="fst-box">
     <div class="fst-h"><div><b>Onde colocar o carimbo?</b><small>Clique na fatura ou arraste o carimbo para a posição pretendida</small></div></div>
     <div class="fst-pages" id="fst-pages"><div class="mf-doc-msg">A carregar a fatura…</div></div>
     <div class="fst-f"><button type="button" class="btn btn-secondary" id="fst-cancel">Cancelar</button>
       <button type="button" class="btn btn-primary" id="fst-ok" disabled>Guardar fatura aprovada</button></div></div>`;
-  document.body.appendChild(ov);
-  const fechar = () => ov.remove();
+  d.body.appendChild(ov);
+  const fechar = () => { if(fora) { try{ w.close(); }catch{} } else ov.remove(); };
   ov.querySelector('#fst-cancel').onclick = fechar;
+  return _carregarCarimbo(f, cc, { ov, d, w: fora ? w : window, fechar, fora });
+}
+
+async function _carregarCarimbo(f, cc, { ov, d, w, fechar, fora }){
 
   const box = ov.querySelector('#fst-pages');
   try{
@@ -1467,7 +1486,7 @@ async function abrirColocarCarimbo(f, cc){
     const pdf = await pdfjsLib.getDocument({ data: await doc.blob.arrayBuffer() }).promise;
     box.innerHTML = '';
     const pos = { page: 1, cx: 0.8, cy: 0.07 };
-    const stamp = document.createElement('div');
+    const stamp = d.createElement('div');
     stamp.className = 'fst-stamp';
     stamp.innerHTML = lay.linhas.map(l => `<div data-s="${l.size}" style="font-weight:${l.bold ? 800 : 500}">${_fEsc(l.t)}</div>`).join('');
     const wraps = [];
@@ -1492,10 +1511,10 @@ async function abrirColocarCarimbo(f, cc){
       const page = await pdf.getPage(p);
       const vp1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: 1.6 });
       ptsW.push(vp1.width); ptsH.push(vp1.height);
-      const canvas = document.createElement('canvas');
+      const canvas = d.createElement('canvas');
       canvas.width = vp.width; canvas.height = vp.height;
       await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-      const wrap = document.createElement('div');
+      const wrap = d.createElement('div');
       wrap.className = 'fst-page'; wrap.appendChild(canvas);
       wrap.addEventListener('click', ev => { if(ev.target === stamp || stamp.contains(ev.target)) return; mover(ev, wrap); });
       box.appendChild(wrap); wraps.push(wrap);
@@ -1505,10 +1524,10 @@ async function abrirColocarCarimbo(f, cc){
       ev.preventDefault();
       const wrap = stamp.parentElement;
       const mv = e2 => mover(e2, wrap);
-      const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); };
-      document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+      const up = () => { d.removeEventListener('pointermove', mv); d.removeEventListener('pointerup', up); };
+      d.addEventListener('pointermove', mv); d.addEventListener('pointerup', up);
     });
-    window.addEventListener('resize', estilo, { once: true });
+    w.addEventListener('resize', estilo);
     const ok = ov.querySelector('#fst-ok');
     ok.disabled = false;
     // Fecha a janela já e guarda em segundo plano, para se poder continuar a trabalhar no portal
@@ -1516,6 +1535,7 @@ async function abrirColocarCarimbo(f, cc){
       const posFinal = { ...pos };
       fechar();
       closeModal('modal-fat');
+      if(fora) window.focus();
       guardarAprovacaoEmSegundoPlano(f, cc, posFinal);
     };
   } catch(e){
