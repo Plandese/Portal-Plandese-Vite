@@ -138,6 +138,7 @@ export function initAgente(){
   const pn = document.createElement('aside');
   pn.id = 'ag-panel'; pn.setAttribute('role', 'dialog'); pn.setAttribute('aria-label', 'Assistente Plandese');
   pn.innerHTML = `
+    <div class="ag-resize" title="Arraste para ajustar a largura (duplo clique repõe)"></div>
     <header class="ag-hdr">
       <div class="ag-hdr-ic">${ICO.spark}</div>
       <div class="ag-hdr-tx"><b>Assistente Plandese</b><small id="ag-sub">Pergunte sobre os dados do portal</small></div>
@@ -153,6 +154,24 @@ export function initAgente(){
     </div>
     <div class="ag-foot">As respostas usam apenas os dados que o seu perfil pode ver. Confirme valores importantes.</div>`;
   document.body.append(fab, pn);
+
+  // Largura ajustável: arrastar a borda esquerda (lembrada neste navegador; duplo clique repõe)
+  const LS = 'plandese_ag_largura', MIN = 340, maxW = () => Math.round(window.innerWidth * 0.92);
+  const aplicar = w => { if(document.body.classList.contains('device-mobile')) return; pn.style.width = Math.max(MIN, Math.min(maxW(), w)) + 'px'; };
+  try{ const g = parseInt(localStorage.getItem(LS), 10); if(g) aplicar(g); }catch(e){}
+  const rz = pn.querySelector('.ag-resize');
+  rz.addEventListener('pointerdown', ev => {
+    ev.preventDefault(); rz.setPointerCapture(ev.pointerId); document.body.classList.add('ag-resizing');
+    const mover = e => aplicar(window.innerWidth - e.clientX);
+    const fim = () => {
+      rz.removeEventListener('pointermove', mover); rz.removeEventListener('pointerup', fim); rz.removeEventListener('pointercancel', fim);
+      document.body.classList.remove('ag-resizing');
+      try{ localStorage.setItem(LS, parseInt(pn.style.width, 10)); }catch(e){}
+    };
+    rz.addEventListener('pointermove', mover); rz.addEventListener('pointerup', fim); rz.addEventListener('pointercancel', fim);
+  });
+  rz.addEventListener('dblclick', () => { pn.style.width = ''; try{ localStorage.removeItem(LS); }catch(e){} });
+  window.addEventListener('resize', () => { if(pn.style.width) aplicar(parseInt(pn.style.width, 10)); });
 
   pn.addEventListener('click', onClick);
   const inp = $('ag-in');
