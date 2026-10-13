@@ -1405,6 +1405,27 @@ async function carimbarPDF(blob, f, cc, pos){
   return new Blob([await out.save({ useObjectStreams: false })], { type: 'application/pdf' });
 }
 
+// Aprovações a carimbar/guardar em segundo plano (a Dropbox demora uns segundos por ficheiro)
+const _aGuardar = new Set();
+function _indicadorGuardar(){
+  let el = document.getElementById('fat-guardar-chip');
+  if(!_aGuardar.size){ el?.remove(); return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'fat-guardar-chip';
+    el.style.cssText = 'position:fixed;left:16px;bottom:16px;z-index:99999;background:#1f2937;color:#fff;padding:10px 14px;border-radius:10px;font:600 13px/1.2 system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)';
+    document.body.appendChild(el);
+  }
+  el.textContent = `⏳ A guardar ${_aGuardar.size} fatura${_aGuardar.size === 1 ? '' : 's'} aprovada${_aGuardar.size === 1 ? '' : 's'}…`;
+}
+async function guardarAprovacaoEmSegundoPlano(f, cc, pos){
+  if(_aGuardar.has(f.id)) return;
+  _aGuardar.add(f.id); _indicadorGuardar();
+  try{ await concluirAprovacao(f, cc, pos); }
+  catch(e){ console.error('Aprovação em segundo plano:', e); showToast('Erro ao guardar a fatura aprovada: ' + (e.message||e)); }
+  finally{ _aGuardar.delete(f.id); _indicadorGuardar(); }
+}
+
 // Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
 async function abrirColocarCarimbo(f, cc){
   document.getElementById('fat-stamp-ov')?.remove();
@@ -1477,10 +1498,12 @@ async function abrirColocarCarimbo(f, cc){
     window.addEventListener('resize', estilo, { once: true });
     const ok = ov.querySelector('#fst-ok');
     ok.disabled = false;
-    ok.onclick = async () => {
-      ok.disabled = true; ok.textContent = 'A guardar…';
-      const feito = await concluirAprovacao(f, cc, { ...pos });
-      if(feito) fechar(); else { ok.disabled = false; ok.textContent = 'Guardar fatura aprovada'; }
+    // Fecha a janela já e guarda em segundo plano, para se poder continuar a trabalhar no portal
+    ok.onclick = () => {
+      const posFinal = { ...pos };
+      fechar();
+      closeModal('modal-fat');
+      guardarAprovacaoEmSegundoPlano(f, cc, posFinal);
     };
   } catch(e){
     console.error('Colocar carimbo:', e);
@@ -1533,7 +1556,8 @@ async function concluirAprovacao(f, cc, pos){
 
   await sbSaveFatura(f);
   renderFaturas(); atualizaKPIs();
-  closeModal('modal-fat');
+  // só fecha o detalhe se ainda for desta fatura (o utilizador pode ter aberto outra entretanto)
+  if(parseInt(document.getElementById('mf-id')?.value, 10) === f.id) closeModal('modal-fat');
   _refrescarTesouraria();
   showToast(`Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
@@ -1543,6 +1567,7 @@ async function concluirAprovacao(f, cc, pos){
 async function aprovarFatura(){
   const id = parseInt(document.getElementById('mf-id').value, 10);
   const f = FATURAS.find(x=>x.id===id); if(!f) return;
+  if(_aGuardar.has(f.id)){ showToast('Esta fatura já está a ser guardada…'); return; }
 
   // Centro de custo obrigatório
   const selCC = document.getElementById('mf-cc-sel');
