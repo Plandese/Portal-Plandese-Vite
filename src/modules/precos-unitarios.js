@@ -106,9 +106,6 @@ function _puRenderDetail(){
        <button class="btn btn-green" onclick="puExportExcel()">
          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Descarregar Excel
        </button>
-       <button id="pu-sel-mode-btn" class="btn" style="${_puState.selMode?'background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;font-weight:600':''}" onclick="puToggleSelMode()">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 19 7"/></svg>${_puState.selMode?'A selecionar…':'Para mapa de compras'}
-       </button>
        <button class="btn" style="color:var(--red);background:var(--red-bg);border:1px solid #fca5a5" onclick="puLimpar()">
          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>Limpar
        </button>`
@@ -788,22 +785,8 @@ function _puRenderSelBar(){
   bar.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 19 7"/></svg>
     <span><span id="pu-sel-count" style="font-weight:700;color:#60a5fa">${count}</span> <span id="pu-sel-txt" style="color:rgba(255,255,255,.7)">artigo${count!==1?'s':''} selecionado${count!==1?'s':''}</span></span>
-    <button id="pu-sel-criar-btn" onclick="puCriarMapaComp()" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;${!count?'opacity:.4;pointer-events:none':''}">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-      Criar Mapa Comparativo
-    </button>
     <button onclick="puToggleSelMode()" style="background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.7);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px">Cancelar</button>`;
   document.body.appendChild(bar);
-}
-
-function puCriarMapaComp(){
-  const lista = PRECOS_UNIT.find(l => l.obraId === _puState.obraId);
-  if(!lista) return;
-  const artigos = lista.artigos.filter((a,i) => !a.isCapitulo && _puState.selIdxs.has(i));
-  if(!artigos.length){ showToast('Selecione pelo menos um artigo'); return; }
-  const obraId = _puState.obraId;
-  window.goTo('mapas-comparativos', document.getElementById('nav-mapas-comp'));
-  setTimeout(() => { if(window.openModalMapaFromLPU) window.openModalMapaFromLPU(obraId, artigos); }, 350);
 }
 
 function _show(id){ const el=document.getElementById(id); if(el) el.style.display=''; }
@@ -819,6 +802,6 @@ export {
   puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave,
   puExportExcel, puLimpar,
   puEditCell, puToggleNota, puSaveNota, _puRefreshDetail,
-  puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
+  puToggleSelMode, puToggleArtigoSel, puToggleSelAll,
   _puLoad, _puSave
 };

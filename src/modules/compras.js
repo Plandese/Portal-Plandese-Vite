@@ -200,12 +200,6 @@ function _cmpNotasResumo(c, max = 140) {
   return t.length > max ? t.slice(0, max).trimEnd() + '…' : t;
 }
 const _CMP_ICO_EDIT = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
-const _CMP_ICO_MAPA = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>';
-
-function cmpAbrirMapaComp(id) {
-  window.goTo('mapas-comparativos', document.getElementById('nav-mapas-comp'));
-  setTimeout(() => window.openModalMapa?.(id), 200);
-}
 
 // ── Vistas (Lista / Por Obra / Encomendas) ───────────────────────
 let _cmpView = 'lista';
@@ -240,7 +234,6 @@ function _cmpBuscaRowHtml(c) {
         ${cmpWorkflowBadges(c)}
       </div>
       <div style="white-space:nowrap;flex-shrink:0">
-        ${c.estado === 'aprovado' ? `<button class="btn btn-secondary btn-sm" onclick="cmpAbrirMapaComp('${c.id}')" title="Criar mapa comparativo">${_CMP_ICO_MAPA} Mapa</button>` : ''}
         <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button>
       </div>
     </div>
@@ -278,7 +271,7 @@ function _cmpTabelaDesk(list) {
       <td>${c.dataLimite && c.estado !== 'entregue' ? dataLimiteBadge(c.dataLimite, c.estado) : '<span class="dl-none">—</span>'}</td>
       <td class="mut">${cmpEsc(c.criadoNome || '—')}<small>${c.criadoEm ? fmtPT(c.criadoEm) : ''}</small></td>
       <td>${cmpEstadoBadge(c.estado)}</td>
-      <td class="cmp-t-act" onclick="event.stopPropagation()">${c.estado === 'aprovado' ? `<button class="btn btn-secondary btn-sm" onclick="cmpAbrirMapaComp('${c.id}')" title="Criar mapa comparativo">${_CMP_ICO_MAPA} Mapa</button>` : ''}<button class="btn btn-secondary btn-sm" onclick="editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button></td>
+      <td class="cmp-t-act" onclick="event.stopPropagation()"><button class="btn btn-secondary btn-sm" onclick="editarCompra('${c.id}')" title="Editar">${_CMP_ICO_EDIT}</button></td>
     </tr>`;
   }).join('');
   return `<div class="card cmp-tcard"><div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Pedido</th><th>Obra</th><th>Fornecedor</th><th>Urgência</th><th>Data limite</th><th>Criado por</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -1337,5 +1330,5 @@ export {
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
   openCompraModal, enviarEmailNotificacao, initCompras,
   urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras,
-  cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp
+  cmpVerListaCompleta, abrirCmpObraDetalhe
 };

@@ -37,7 +37,7 @@ import { renderFaturasAprovar } from './modules/faturas-aprovar.js';
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela } from './modules/faturas.js';
 
 // Compras
-import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
+import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal } from './modules/compras.js';
 
 // Equipamentos
 import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, openEqManut, abrirEqDetalhe, eqVerLocalizacao, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
@@ -69,8 +69,6 @@ import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, p
 // Fornecedores
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
-// Mapas comparativos
-import { sbLoadMapasComp, renderMapasComp, openModalMapa, openModalMapaFromLPU, editarMapaComp, adicionarFornecedorMapa, removerFornecedorMapa, adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa, uploadListaMapaSecos, uploadListaMapaSecosFile, uploadProposta, uploadPropostaFile, mprToggleSel, mprSetLinha, mprUpdateCount, confirmarPropostaReview, saveMapaComp, apagarMapaComp, abrirMapaComparativo, abrirResumoMapa, exportResumoPDF, injectMapaCompBtns } from './modules/mapas-comp.js';
 
 // Dropbox
 import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './modules/dropbox.js';
@@ -79,7 +77,7 @@ import { dropboxInit, dropboxLogin, dropboxLogout, dropboxIsConnected } from './
 import { renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs } from './modules/ferias.js';
 
 // Preços Unitários
-import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave, puExportExcel, puLimpar, puEditCell, puToggleNota, puSaveNota, _puRefreshDetail, puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp } from './modules/precos-unitarios.js';
+import { initPrecosUnit, puGoList, puOpenObra, puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave, puExportExcel, puLimpar, puEditCell, puToggleNota, puSaveNota, _puRefreshDetail, puToggleSelMode, puToggleArtigoSel, puToggleSelAll } from './modules/precos-unitarios.js';
 
 // Advertências
 import { openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF } from './modules/advertencias.js';
@@ -204,7 +202,7 @@ Object.assign(window, {
   cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido,
   cmpAddForn, cmpRemoveForn,
   abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais,
-  uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpAbrirMapaComp,
+  uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe,
   cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
   openCompraModal,
@@ -266,7 +264,7 @@ Object.assign(window, {
   puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave,
   puExportExcel, puLimpar, _puRefreshDetail,
   puEditCell, puToggleNota, puSaveNota,
-  puToggleSelMode, puToggleArtigoSel, puToggleSelAll, puCriarMapaComp,
+  puToggleSelMode, puToggleArtigoSel, puToggleSelAll,
 
   // Controlo de Obras
   mShellReset, mSyncBell,
@@ -288,22 +286,6 @@ Object.assign(window, {
   sbLoadFornecedores, renderFornecedores,
   openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX,
   fornPag, editarFornecedor,
-
-  // Mapas Comparativos
-  sbLoadMapasComp, renderMapasComp,
-  openModalMapa, openModalMapaFromLPU, editarMapaComp,
-  adicionarFornecedorMapa, removerFornecedorMapa,
-  adicionarLinhaMapa, removerLinhaMapa, atualizarValorFornMapa,
-  uploadListaMapaSecos, uploadListaMapaSecosFile,
-  uploadProposta, uploadPropostaFile, mprToggleSel, mprSetLinha, mprUpdateCount, confirmarPropostaReview,
-  saveMapaComp, apagarMapaComp, abrirMapaComparativo, abrirResumoMapa, exportResumoPDF,
-  criarMapaFromPedido: function() {
-    const id = document.getElementById('mcmp-id').value;
-    if (!id) return;
-    closeModal('modal-compra');
-    goTo('mapas-comparativos', document.getElementById('nav-mapas-comp'));
-    setTimeout(() => openModalMapa(id), 300);
-  },
 
   // Chat compras
   encGoComprasChat, chatSend, chatOnInput,
@@ -406,14 +388,13 @@ window.savePerfil = async function () {
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
     if (id === 'faturas-aprovar') { renderFaturasAprovar({ reset: true }); }
     if (id === 'tesouraria')   { renderTesouraria(); }
-    if (id === 'compras')      { populaCmpObras(); renderCompras(); injectMapaCompBtns(); }
+    if (id === 'compras')      { populaCmpObras(); renderCompras(); }
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }
     if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
-    if (id === 'mapas-comparativos') { sbLoadMapasComp().then(() => renderMapasComp()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
     if (id === 'notificacoes')       { initNotifPage(); }

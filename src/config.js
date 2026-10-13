@@ -90,7 +90,7 @@ export const NOTIF_SECTIONS = {
 // e para a matriz de "Permissões de Acesso" em Gerir Utilizadores.
 export const NAV_CHAPTERS = [
   {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','colaboradores']},
-  {id:'cmp',  label:'Compras',                   sections:['compras','mapas-comparativos']},
+  {id:'cmp',  label:'Compras',                   sections:['compras']},
   {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','tesouraria']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
   {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios','pendentes-tavira']},
