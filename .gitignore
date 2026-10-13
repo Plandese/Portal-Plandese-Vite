@@ -27,3 +27,4 @@ android/.idea/caches/
 *.bat
 *.ps1
 .vercel
+supabase/.temp/
