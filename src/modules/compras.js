@@ -205,6 +205,23 @@ function cmpPedirCotacao() {
   }, i * 700));
 
   _cmpCotEnviada = true;
+  // Pergunta se o estado deve passar de Pendente para "Pedido de cotação enviado"
+  setTimeout(() => {
+    const sel = document.getElementById('mcmp-estado');
+    if (!sel || sel.value !== 'pendente') return;
+    if (!confirm('Pedido de cotação enviado?\n\nMudar o estado de "Pendente" para "Pedido de cotação enviado"?')) return;
+    sel.value = 'cotacao';
+    const rawId = document.getElementById('mcmp-id').value;
+    const reg = rawId ? COMPRAS.find(x => String(x.id) === rawId) : null;
+    if (reg) {
+      reg.estado = 'cotacao';
+      reg.pedidoCotacao = true;
+      sbSaveCompra(reg).then(() => renderCompras());
+      showToast('Estado alterado para "Pedido de cotação enviado"');
+    } else {
+      showToast('Estado alterado — guarde o pedido para confirmar');
+    }
+  }, links.length * 700 + 400);
   const msgs = [`${links.length} email(s) de cotação aberto(s)`];
   if (semEmail.length) msgs.push(`sem email registado: ${semEmail.join(', ')}`);
   if (cortados) msgs.push(`lista longa: incluídos ${cortados} de ${_cmpArtigosEdit.length} artigos`);
@@ -221,6 +238,7 @@ function urgBadge(u) {
 function cmpEstadoBadge(e) {
   const map = {
     pendente:    {cls:'cmp-estado-pendente',   label:'Pendente'},
+    cotacao:     {cls:'cmp-estado-cotacao',    label:'Pedido de cotação enviado'},
     aprovado:    {cls:'cmp-estado-aprovado',   label:'Aprovado'},
     encomendado: {cls:'cmp-estado-encomendado',label:'Encomendado'},
     entregue:    {cls:'cmp-estado-entregue',   label:'Entregue'}
@@ -318,7 +336,7 @@ function _cmpBuscaRowHtml(c) {
 }
 
 const _cmpDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
-const _CMP_ESTADOS = [['pendente','Pendente','#8693a8'],['aprovado','Aprovado','#2b5dd1'],['encomendado','Encomendado','#d9780a'],['entregue','Entregue','#12a150']];
+const _CMP_ESTADOS = [['pendente','Pendente','#8693a8'],['cotacao','Cotação enviada','#7c3aed'],['aprovado','Aprovado','#2b5dd1'],['encomendado','Encomendado','#d9780a'],['entregue','Entregue','#12a150']];
 
 // Indicadores no topo (portal de computador)
 function _cmpRenderKpisDesk() {

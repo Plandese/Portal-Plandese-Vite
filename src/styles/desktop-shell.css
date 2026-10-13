@@ -652,10 +652,11 @@ body.device-desktop:not(.enc-mode) #admin-app .urg-normal{background:#eef1f6;col
 body.device-desktop:not(.enc-mode) #admin-app .urg-urgente{background:#fff0d9;color:#a35a08}
 body.device-desktop:not(.enc-mode) #admin-app .urg-muito{background:#fde8e8;color:#b3261e}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-estado-pendente{background:#eef1f6;color:#5d6678}
+body.device-desktop:not(.enc-mode) #admin-app .cmp-estado-cotacao{background:#ede9fe;color:#6d28d9}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-estado-aprovado{background:#e5eeff;color:#1d4ed8}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-estado-encomendado{background:#fff0d9;color:#a35a08}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-estado-entregue{background:#dff5e7;color:#166534}
-body.device-desktop:not(.enc-mode) #admin-app .cmp-board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:16px;align-items:start;overflow-x:auto;padding-bottom:6px}
+body.device-desktop:not(.enc-mode) #admin-app .cmp-board{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:16px;align-items:start;overflow-x:auto;padding-bottom:6px}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-col{background:#eef1f7;border-radius:22px;padding:12px;min-height:200px}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-col-h{display:flex;align-items:center;gap:8px;padding:4px 6px 12px;font-size:13.5px;font-weight:800;color:var(--d-ink)}
 body.device-desktop:not(.enc-mode) #admin-app .cmp-col-h .dot{width:9px;height:9px;border-radius:50%}
