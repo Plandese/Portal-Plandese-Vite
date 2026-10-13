@@ -141,7 +141,7 @@ async function registarFaturaLida(fat, dropboxPath){
   FATURAS.push(fat);
   await sbSaveFatura(fat);
   renderFaturas(); atualizaKPIs();
-  R.emitEvent?.({ acao:'Fatura inserida: '+(fat.fornecedor||'')+(fat.total?' · '+fat.total+'€':''), seccao:'faturas', obra:fat.centroCusto });
+  // Sem notificações na inserção: os diretores só são avisados quando a fatura passa a "Por aprovar" (confirmarCentroCusto)
 }
 
 // Leitura com o Claude (Edge Function ler-fatura). Lança erro se não conseguir ler.
@@ -1909,30 +1909,9 @@ async function fssSave(){
     }
   }
 
-  // Notificação
-  if(_fssFat.centroCusto){
-    const obra = S.OBRAS.find(o=>o.nome===_fssFat.centroCusto);
-    const destinatarios = [...new Set([
-      obra?.encarregado_id, obra?.diretor_id,
-      ...(obra?.encarregados_extra||[]), ...(obra?.diretores_extra||[])
-    ].filter(u => u && u !== S.currentUser?.key))];
-    const msg = `Fatura pendente de aprovação: ${_fssFat.fornecedor||''}${_fssFat.total?' · '+_fssFat.total+'€':''} (${_fssFat.centroCusto})`;
-    R.emitEvent?.({ acao: msg, seccao:'faturas', obra:_fssFat.centroCusto });
-    // Notificação direta ao(s) diretor(es)/encarregado(s) da obra
-    if(destinatarios.length){
-      try{
-        await sb.from('notificacoes').insert(destinatarios.map(destinatario => ({
-          actor: S.currentUser?.key||null,
-          actor_nome: S.currentUser?.nome||'Sistema',
-          acao: msg, seccao:'faturas', destinatario
-        })));
-      } catch(e){ console.warn('Notif encarregado:', e); }
-    }
-    showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
-  } else {
-    R.emitEvent?.({ acao:'Fatura inserida: '+(_fssFat.fornecedor||'')+(_fssFat.total?' · '+_fssFat.total+'€':''), seccao:'faturas', obra:_fssFat.centroCusto });
-    showToast(validaNIF(_fssFat.nif) ? `${_fssItem?.name||'Fatura'}: guardada e fornecedor memorizado` : `${_fssItem?.name||'Fatura'}: guardada`);
-  }
+  // Sem notificações na inserção: os diretores só são avisados quando a fatura passa a "Por aprovar" (confirmarCentroCusto)
+  if(_fssFat.centroCusto) showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
+  else showToast(validaNIF(_fssFat.nif) ? `${_fssItem?.name||'Fatura'}: guardada e fornecedor memorizado` : `${_fssItem?.name||'Fatura'}: guardada`);
 
   fssClose();
 }
