@@ -1443,7 +1443,9 @@ async function guardarAprovacaoEmSegundoPlano(f, cc, pos){
 // Abre-se num separador novo do navegador (se o bloqueador de pop-ups deixar); senão, numa janela sobre o portal
 function abrirColocarCarimbo(f, cc){
   document.getElementById('fat-stamp-ov')?.remove();
-  const w = window.open('', '_blank');
+  // Mesma janela (tamanho e posição) que o duplo clique na fatura abre
+  const lw = Math.min(1000, screen.availWidth - 80), lh = Math.min(900, screen.availHeight - 80);
+  const w = window.open('', '_blank', `popup=yes,width=${lw},height=${lh},left=60,top=40`);
   let d = document, fora = false;
   if(w && w.document){
     fora = true; d = w.document;
@@ -1453,7 +1455,7 @@ function abrirColocarCarimbo(f, cc){
     // mesmos estilos do portal
     document.querySelectorAll('link[rel="stylesheet"], style').forEach(n => d.head.appendChild(n.cloneNode(true)));
     const ext = d.createElement('style');
-    ext.textContent = 'html,body{margin:0;height:100%;background:#0a1226;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.fst-ov{padding:0}.fst-box{width:100%;height:100%;max-height:100%;border-radius:0;box-shadow:none}.fst-page{max-width:980px}';
+    ext.textContent = 'html,body{margin:0;height:100%;background:#525659;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.fst-ov{padding:0;background:#525659}.fst-box{width:100%;height:100%;max-height:100%;border-radius:0;box-shadow:none;background:#525659}.fst-h{padding:10px 18px}.fst-h b{font-size:15px}.fst-h small{font-size:12px;margin-top:1px}.fst-pages{background:#525659;padding:14px 18px}.fst-page{max-width:900px;margin:0 auto 12px;box-shadow:0 2px 10px rgba(0,0,0,.45)}.fst-f{padding:10px 18px}';
     d.head.appendChild(ext);
     d.title = 'Aprovar fatura — ' + (f.fornecedor || 'Plandese');
   }
