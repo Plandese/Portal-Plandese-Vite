@@ -703,8 +703,37 @@ async function carregarFaturas(){
     if(data){
       FATURAS = data.map(_rowToFat);
       renderFaturas(); atualizaKPIs();
+      verificarFicheirosDropbox();
     }
   } catch(e){ console.warn('Erro ao carregar faturas:', e); }
+}
+
+// Faturas cujo ficheiro desapareceu das pastas da Dropbox (só assinaladas — nunca apagadas automaticamente)
+const _semFicheiro = new Set();   // _dbId
+let _verifFicheirosEm = 0;
+const _norm = p => String(p||'').toLowerCase();
+const _pasta = p => _norm(p).replace(/\/[^/]*$/, '');
+export const faturaSemFicheiro = dbId => _semFicheiro.has(dbId);
+async function verificarFicheirosDropbox(){
+  if(Date.now() - _verifFicheirosEm < 5*60*1000) return;
+  _verifFicheirosEm = Date.now();
+  try{
+    await carregarPastasFaturas();
+    const pastas = [...new Set([_pastaPendentes(), _pastaAprovadas()].map(_norm))].filter(Boolean);
+    const existentes = new Set();
+    for(const pasta of pastas){
+      const lista = await dropboxListFolder(pasta);   // se falhar, não assinala nada
+      lista.forEach(e => existentes.add(_norm(e.path_display)));
+    }
+    _semFicheiro.clear();
+    FATURAS.forEach(f => {
+      if(f._fonte !== 'dropbox' || !f.dropboxPath || !f._dbId) return;
+      if(!pastas.includes(_pasta(f.dropboxPath))) return;   // ficheiros fora das pastas vigiadas: não sabemos
+      if(!existentes.has(_norm(f.dropboxPath))) _semFicheiro.add(f._dbId);
+    });
+    renderFaturas();
+    _refrescarTesouraria();
+  } catch(e){ console.warn('Verificação de ficheiros da Dropbox:', e); }
 }
 
 // Abre o detalhe de uma fatura a partir do id da base de dados (usado pela Tesouraria)
@@ -925,7 +954,7 @@ function _fatRenderDesk(lista){
   if(!lista.some(f=>f.id===_fatSel)) _fatSel = (lista[0]||{}).id ?? null;
   box.innerHTML = vis.length ? `<div class="tbl-wrap"><table class="cmp-t fat-t"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Obra</th><th>Data</th><th class="r">Valor</th><th>Estado</th><th></th></tr></thead><tbody>${vis.map(f=>{
       const m = String(f.centroCusto||'').match(/^(O\d+)/);
-      return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status)}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;
+      return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status)}${_semFicheiro.has(f._dbId)?' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>':''}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;
     }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar. Carregue o primeiro documento acima.</div>';
   if(!form) return;
   const f = FATURAS.find(x=>x.id===_fatSel);

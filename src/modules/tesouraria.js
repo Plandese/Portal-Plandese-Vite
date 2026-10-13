@@ -7,7 +7,7 @@
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
-import { abrirFaturaPorDbId } from './faturas.js';
+import { abrirFaturaPorDbId, faturaSemFicheiro } from './faturas.js';
 
 let _rows = [];
 let _estado = 'todas';   // todas | por_pagar | propostas | pagas
@@ -149,7 +149,7 @@ function desenhar() {
         <td><b>${esc(r.numero || '—')}</b></td>
         <td class="r"><b>${eur(r.total)}</b></td>
         <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
-        <td>${estado}</td>
+        <td>${estado}${faturaSemFicheiro(r.id) ? ' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>' : ''}</td>
       </tr>`;
     }).join('');
     const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
