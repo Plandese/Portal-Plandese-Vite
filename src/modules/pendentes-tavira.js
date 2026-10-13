@@ -67,9 +67,7 @@ async function carregarFotos(){
 }
 
 function setSync(ok){
-  const el = $('pt-sync'); if(!el) return;
-  el.textContent = ok ? 'Sincronizado' : 'Sem ligação';
-  el.classList.toggle('on', ok);
+  // Sem indicador visível; a falha de ligação é avisada por toast em initPendentesTavira
 }
 
 // Chamado pelo hook goTo('pendentes-tavira')
@@ -141,7 +139,7 @@ function card(i){
   if(i.id===editId) return formEditar(i);
   const d = !!estado[i.id]?.done, ph = fotos.filter(f=>f.topic===i.id);
   return `<article class="pt-item ${d?'done':''}">
-    <div class="pt-meta"><span class="pt-pill ${d?'ok':'pend'}">${d?'Resolvido':'Pendente'}</span>${i.rec?'<span class="pt-pill rec">Reclamação</span>':''}${i.custom?'<span class="pt-pill">Adicionado</span>':''}</div>
+    <div class="pt-meta"><span class="pt-pill ${d?'ok':'pend'}">${d?'Resolvido':'Pendente'}</span>${i.rec?'<span class="pt-pill rec">Reclamação</span>':''}</div>
     <p class="pt-txt">${esc(i.t)}</p>
     ${ph.length?`<div class="pt-photos">${ph.map(f=>`<button type="button" class="pt-ph" data-ph="${f.id}" aria-label="Ver foto"><img loading="lazy" alt="Foto do pendente" src="${f.data}"></button>`).join('')}</div>`:''}
     <div class="pt-acts">
