@@ -141,7 +141,7 @@ function encEqListaEscolher(id){
 function _encEqIrParaAcao(eq){
   _encEqEquip = eq;
   document.getElementById('enc-eq-act-nome').textContent = eq.nome;
-  document.getElementById('enc-eq-act-cat').textContent = EQ_CATS[eq.categoria]?.label || 'Equipamento';
+  document.getElementById('enc-eq-act-cat').textContent = EQ_CATS[eqCatNorm(eq.categoria)].label;
   _encEqShowState('acao');
 }
 
@@ -165,7 +165,7 @@ function encEqEscolherAcao(acao){
 function _encEqPrepFormRegisto(){
   const eq=_encEqEquip;
   document.getElementById('enc-eq-nome').textContent=eq.nome;
-  document.getElementById('enc-eq-cat').textContent=EQ_CATS[eq.categoria]?.label||'Equipamento';
+  document.getElementById('enc-eq-cat').textContent=EQ_CATS[eqCatNorm(eq.categoria)].label;
   const sel=document.getElementById('enc-eq-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
   S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
@@ -238,7 +238,7 @@ function submitEncEquipamento(){
 function _encEqPrepFormManut(){
   const eq=_encEqEquip;
   document.getElementById('enc-manut-eq-nome').textContent=eq.nome;
-  document.getElementById('enc-manut-eq-cat').textContent=EQ_CATS[eq.categoria]?.label||'Equipamento';
+  document.getElementById('enc-manut-eq-cat').textContent=EQ_CATS[eqCatNorm(eq.categoria)].label;
   const descEl=document.getElementById('enc-manut-desc');
   if(descEl) descEl.value='';
   _encManutFotos=[]; _encManutFotosRender();

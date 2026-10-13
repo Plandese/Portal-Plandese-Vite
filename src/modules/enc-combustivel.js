@@ -13,7 +13,7 @@ let _combPickerCat = '';
 // Lista de equipamentos para o registo manual: guarda em _combEqOpts o texto
 // mostrado no campo → equipamento (o submit usa este mapa para obter o id)
 function _combFillListaEquip(){
-  const lista=EQUIPAMENTOS.filter(e=>e.categoria!=='outro').sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  const lista=EQUIPAMENTOS.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
   const cont={}; lista.forEach(e=>{cont[e.nome]=(cont[e.nome]||0)+1;});
   _combEqOpts=new Map();
   lista.forEach(e=>{
@@ -72,7 +72,7 @@ function combPickerRender(){
     res.map(([v,e])=>{
       const sub=[e.matricula,e.marcaModelo,e.ultimoLocal].filter(Boolean).join(' · ');
       return `<button type="button" class="comb-picker-item${v===atual?' sel':''}" data-v="${_escH(v)}">
-        <span class="comb-picker-ic">${_escH((EQ_CATS[e.categoria]?.label||'?').charAt(0))}</span>
+        <span class="comb-picker-ic">${_escH((EQ_CATS[eqCatNorm(e.categoria)].label).charAt(0))}</span>
         <span class="comb-picker-tx"><b>${_escH(v)}</b>${sub?`<small>${_escH(sub)}</small>`:''}</span>
       </button>`;
     }).join('')
@@ -91,7 +91,7 @@ document.addEventListener('click',e=>{
 let _depMovimento = 'entrada';
 // ── Horas / km do equipamento no momento do abastecimento ──
 // Veículo → quilómetros; máquina (e restantes) → horas. Equipamento desconhecido → o utilizador escolhe.
-function _cntTipoDe(eq){ return !eq?null:(eq.categoria==='veiculo'?'km':'horas'); }
+function _cntTipoDe(eq){ return !eq?null:(eqCatIsVeiculo(eq.categoria)?'km':'horas'); }
 function _cntAplicar(p, ativo, eq){
   const wrap=document.getElementById(p+'-cnt-wrap'); if(!wrap) return;
   wrap.style.display=ativo?'block':'none';
@@ -619,7 +619,7 @@ async function onCombQrScanned(text){
   document.getElementById('comb-viatura-nome-field').style.display='none';
   document.getElementById('comb-viatura-scan-btn').style.display='inline-flex';
   document.getElementById('comb-viatura-nome').textContent=eq?eq.nome:`Equipamento ${equipId}`;
-  document.getElementById('comb-viatura-cat').textContent=eq?(EQ_CATS[eq.categoria]?.label||'Equipamento'):'Equipamento';
+  document.getElementById('comb-viatura-cat').textContent=eq?(EQ_CATS[eqCatNorm(eq.categoria)].label):'Equipamento';
   _combPreencherFormViatura();
   _cntSyncViatura();
 }

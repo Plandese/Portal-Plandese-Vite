@@ -27,13 +27,20 @@ function genEqId(){ return 'EQ' + Date.now().toString(36).toUpperCase(); }
 
 // ── Categorias ─────────────────────────
 const EQ_CATS = {
-  maquina:    {label:'Máquina',    cls:'eq-cat-maquina'},
-  veiculo:    {label:'Veículo',    cls:'eq-cat-veiculo'},
-  ferramenta: {label:'Ferramenta', cls:'eq-cat-ferramenta'},
-  outro:      {label:'Outro',      cls:'eq-cat-outro'}
+  equipamento:         {label:'Equipamento',                       cls:'eq-cat-equipamento'},
+  veiculo_passageiros: {label:'Veículo ligeiro de passageiros',    cls:'eq-cat-vpass'},
+  veiculo_mercadorias: {label:'Veículo ligeiro de mercadorias',    cls:'eq-cat-vmerc'},
+  veiculo_pesado:      {label:'Veículo pesado',                    cls:'eq-cat-vpes'}
 };
+// Valores antigos (maquina/ferramenta/outro/veiculo) passam para as novas categorias
+function eqCatNorm(c){
+  if(EQ_CATS[c]) return c;
+  if(c==='veiculo') return 'veiculo_mercadorias';
+  return 'equipamento';
+}
+function eqCatIsVeiculo(c){ return eqCatNorm(c).indexOf('veiculo_')===0; }
 function eqCatBadge(cat){
-  const c = EQ_CATS[cat]||EQ_CATS.outro;
+  const c = EQ_CATS[eqCatNorm(cat)];
   return `<span class="eq-cat-badge ${c.cls}">${c.label}</span>`;
 }
 
@@ -65,7 +72,7 @@ function eqValChip(label, iso){
 // ── Mapeamento linha Supabase <-> objeto local ──
 function eqFromRow(row){
   return {
-    id:row.id, nome:row.nome, categoria:row.categoria||'outro',
+    id:row.id, nome:row.nome, categoria:eqCatNorm(row.categoria),
     serie:row.serie||'', descricao:row.descricao||'',
     criadoEm:row.criado_em||new Date().toISOString(),
     ultimoLocal:row.ultimo_local||null, ultimoLat:row.ultimo_lat||null,
@@ -131,11 +138,14 @@ function showEqAlert(msg){
 // ── Portal em computador: indicadores, filtros por estado e cartões ──
 const _eqDesk = () => document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
 let _eqEstFiltro = 'todos';
+let _eqCatFiltro = 'todas';
+let _eqVista = 'lista';   // 'lista' (por defeito) | 'cartoes'
+try{ if(localStorage.getItem('plandese_eq_vista')==='cartoes') _eqVista='cartoes'; }catch(e){}
 const _EQ_IC = {
-  maquina:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
-  veiculo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h13v13H1zM14 8h4l4 4v4h-8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/></svg>',
-  ferramenta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>',
-  outro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>'
+  equipamento:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M5 16v-4h5v4M10 12l4-7 5 5M19 10l1.5 4H17"/></svg>',
+  veiculo_passageiros:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
+  veiculo_mercadorias:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8a1 1 0 0 1 1-1h9v10M13 10h4l3 3v4h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></svg>',
+  veiculo_pesado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 17V6a1 1 0 0 1 1-1h11v12M13 9h5l3 4v4"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="10.5" cy="17.5" r="2"/><circle cx="18" cy="17.5" r="2"/><path d="M1 17h2.5M12.5 17H16"/></svg>'
 };
 function _eqGrupoEstado(e){ return e==='operacional'?'operacional':(e==='manutencao'||e==='oficina')?'manutencao':e==='parada'?'parada':'operacional'; }
 function _eqRenderKpisDesk(){
@@ -150,13 +160,35 @@ function _eqRenderKpisDesk(){
     + k('yellow','Em manutenção',n('manutencao'),'manutenção ou oficina')+k('red','Parados',n('parada'),'sem poder trabalhar')
     + k('orange','Validades',expira,'seguro, IPO ou garantia a ≤ 30 dias');
 }
+const _EQ_CAT_CURTO = {equipamento:'Equipamento', veiculo_passageiros:'Ligeiros passageiros', veiculo_mercadorias:'Ligeiros mercadorias', veiculo_pesado:'Pesados'};
 function _eqRenderChipsDesk(){
   const box = document.getElementById('eq-chips-d');
   if(!box) return;
   if(!_eqDesk()){ box.innerHTML=''; return; }
-  const c = g => g==='todos'?EQUIPAMENTOS.length:EQUIPAMENTOS.filter(e=>_eqGrupoEstado(e.estado)===g).length;
-  box.innerHTML = [['todos','Todos'],['operacional','Operacional'],['manutencao','Em manutenção'],['parada','Parado']]
-    .map(([k,l])=>`<button type="button" class="d-chip-f${_eqEstFiltro===k?' on':''}" data-eqf="${k}">${l}<b>${c(k)}</b></button>`).join('');
+  box.innerHTML = [['todas','Todas','Todas as categorias'],...Object.entries(EQ_CATS).map(([k,v])=>[k,_EQ_CAT_CURTO[k],v.label])]
+      .map(([k,l,t])=>`<button type="button" class="d-chip-f${_eqCatFiltro===k?' on':''}" data-eqc="${k}" title="${eqEsc(t)}">${l}${k==='todas'?'':`<b>${EQUIPAMENTOS.filter(e=>eqCatNorm(e.categoria)===k).length}</b>`}</button>`).join('')
+    + `<div class="eq-vista-tg" role="group" aria-label="Vista">
+        <button type="button" class="${_eqVista==='lista'?'on':''}" data-eqv="lista" title="Ver em lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Lista</span></button>
+        <button type="button" class="${_eqVista==='cartoes'?'on':''}" data-eqv="cartoes" title="Ver em cartões"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Cartões</span></button>
+      </div>`;
+}
+function _eqRowDesk(eq){
+  const fd = iso => iso ? iso.slice(0,10).split('-').reverse().join('/') : '—';
+  const ms = EQ_MANUT.filter(m=>m.equipId===eq.id && m.data);
+  const feitas = ms.filter(m=>m.estado!=='pendente').map(m=>m.data).sort();
+  const pend = ms.filter(m=>m.estado==='pendente').map(m=>m.data).sort();
+  const quando = eq.ultimoRegisto ? eqTimeAgo(new Date(eq.ultimoRegisto)) : '';
+  const ident = [eq.codigo, eq.matricula].filter(Boolean).map(eqEsc).join(' · ') || '—';
+  return `<tr onclick="abrirEqDetalhe('${eq.id}')">
+    <td><span class="eq-t-nome"><span class="d-ic sm">${_EQ_IC[eqCatNorm(eq.categoria)]}</span><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b></span></td>
+    <td>${eqEsc(EQ_CATS[eqCatNorm(eq.categoria)].label)}</td>
+    <td>${ident}</td>
+    <td>${eqEstadoBadge(eq.estado)}</td>
+    <td>${eqEsc(eq.ultimoLocal||'—')}${quando?` <small class="eq-t-quando">${eqEsc(quando)}</small>`:''}</td>
+    <td>${fd(feitas[feitas.length-1])}</td><td>${fd(pend[0])}</td></tr>`;
+}
+function _eqTabelaDesk(lista){
+  return `<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Categoria</th><th>Código / Matrícula</th><th>Estado</th><th>Localização</th><th>Últ. manutenção</th><th>Próxima</th></tr></thead><tbody>${lista.map(_eqRowDesk).join('')}</tbody></table></div>`;
 }
 function _eqCardDesk(eq){
   const ult = eq.ultimoLocal || 'Sem localização registada';
@@ -167,13 +199,22 @@ function _eqCardDesk(eq){
   const feitas = ms.filter(m=>m.estado!=='pendente').map(m=>m.data).sort();
   const pend = ms.filter(m=>m.estado==='pendente').map(m=>m.data).sort();
   return `<div class="d-card eq-d-card" onclick="abrirEqDetalhe('${eq.id}')">
-    <div class="d-card-top eq-d-top"><span class="d-ic">${_EQ_IC[eq.categoria]||_EQ_IC.outro}</span>
-      <div class="d-card-tt"><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b><small>${sub||eqEsc(EQ_CATS[eq.categoria]?.label||'Equipamento')}</small></div>${eqEstadoBadge(eq.estado)}</div>
+    <div class="d-card-top eq-d-top"><span class="d-ic">${_EQ_IC[eqCatNorm(eq.categoria)]}</span>
+      <div class="d-card-tt"><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b><small>${sub||eqEsc(EQ_CATS[eqCatNorm(eq.categoria)].label)}</small></div>${eqEstadoBadge(eq.estado)}</div>
     <div class="eq-d-loc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${eqEsc(ult)}</span>${quando?`<small>${quando}</small>`:''}</div>
     <div class="d-card-kv"><div>Última manutenção<b>${fd(feitas[feitas.length-1])}</b></div><div>Próxima<b>${fd(pend[0])}</b></div></div>
   </div>`;
 }
 document.addEventListener('click', ev => {
+  const v = ev.target.closest('[data-eqv]');
+  if(v){
+    _eqVista = v.dataset.eqv==='cartoes' ? 'cartoes' : 'lista';
+    try{ localStorage.setItem('plandese_eq_vista', _eqVista); }catch(e){}
+    renderEqBusca();
+    return;
+  }
+  const c = ev.target.closest('[data-eqc]');
+  if(c){ _eqCatFiltro = c.dataset.eqc; renderEqBusca(); return; }
   const b = ev.target.closest('[data-eqf]');
   if(!b) return;
   _eqEstFiltro = b.dataset.eqf;
@@ -474,13 +515,13 @@ function eqVerLocalizacao(id){
   });
   setTimeout(()=>{
     const lat=parseFloat(eq.ultimoLat), lng=parseFloat(eq.ultimoLng);
-    const colors={maquina:'#6D28D9',veiculo:'#1D4ED8',ferramenta:'#92400E',outro:'#6B7280'};
+    const colors={equipamento:'#6D28D9',veiculo_passageiros:'#1D4ED8',veiculo_mercadorias:'#0F766E',veiculo_pesado:'#B45309'};
     _eqLocMap = L.map('meql-map').setView([lat,lng],15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
       attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>', maxZoom:19
     }).addTo(_eqLocMap);
     const icon=L.divIcon({className:'',
-      html:`<div style="width:28px;height:28px;background:${colors[eq.categoria]||'#6B7280'};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
+      html:`<div style="width:28px;height:28px;background:${colors[eqCatNorm(eq.categoria)]||'#6B7280'};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
       iconSize:[28,28],iconAnchor:[14,28]});
     L.marker([lat,lng],{icon}).addTo(_eqLocMap);
     _eqLocMap.invalidateSize();
@@ -498,9 +539,10 @@ function renderEqBusca(){
     _eqRenderChipsDesk();
     const lista = EQUIPAMENTOS.filter(eq =>
       (_eqEstFiltro==='todos' || _eqGrupoEstado(eq.estado)===_eqEstFiltro) &&
+      (_eqCatFiltro==='todas' || eqCatNorm(eq.categoria)===_eqCatFiltro) &&
       (!term || [eq.nome,eq.serie,eq.matricula,eq.codigo,eq.marcaModelo,eq.condutor,eq.fornecedor,eq.ultimoLocal].join(' ').toLowerCase().includes(term))
     ).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
-    box.innerHTML = lista.length ? `<div class="d-cards">${lista.map(_eqCardDesk).join('')}</div>` : '<div class="d-empty">Sem equipamentos para o filtro escolhido.</div>';
+    box.innerHTML = lista.length ? (_eqVista==='cartoes' ? `<div class="d-cards">${lista.map(_eqCardDesk).join('')}</div>` : _eqTabelaDesk(lista)) : '<div class="d-empty">Sem equipamentos para o filtro escolhido.</div>';
     return;
   }
   if(!term){ box.innerHTML=''; if(hint) hint.style.display=''; return; }
@@ -551,15 +593,15 @@ function refreshEqMap(){
   }
   if(mapEl)   mapEl.style.display  ='';
   if(emptyEl) emptyEl.style.display='none';
-  const colors={maquina:'#6D28D9',veiculo:'#1D4ED8',ferramenta:'#92400E',outro:'#6B7280'};
+  const colors={equipamento:'#6D28D9',veiculo_passageiros:'#1D4ED8',veiculo_mercadorias:'#0F766E',veiculo_pesado:'#B45309'};
   const bounds=[];
   withLoc.forEach(eq=>{
     const lat=parseFloat(eq.ultimoLat), lng=parseFloat(eq.ultimoLng);
-    const color=colors[eq.categoria]||'#6B7280';
+    const color=colors[eqCatNorm(eq.categoria)]||'#6B7280';
     const icon=L.divIcon({className:'',
       html:`<div style="width:28px;height:28px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
       iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-30]});
-    const cat = EQ_CATS[eq.categoria]||EQ_CATS.outro;
+    const cat = EQ_CATS[eqCatNorm(eq.categoria)];
     const ago = eq.ultimoRegisto ? eqTimeAgo(new Date(eq.ultimoRegisto)) : '—';
     const popup=`<div class="eq-popup-name">${eq.nome}</div>
       <div class="eq-popup-cat">${cat.label}${eq.serie?' · '+eq.serie:''}</div>
@@ -579,7 +621,7 @@ function openEqModal(eq=null){
   document.getElementById('meq-title').textContent=eq?'Editar equipamento':'Novo equipamento';
   const d=eq||{};
   document.getElementById('meq-id').value   =eq?eq.id:'';
-  eqSet('meq-nome',d.nome); eqSet('meq-cat',d.categoria||'maquina');
+  eqSet('meq-nome',d.nome); eqSet('meq-cat',eqCatNorm(d.categoria));
   eqSet('meq-serie',d.serie); eqSet('meq-desc',d.descricao);
   eqSet('meq-prop',d.propriedade||'propria'); eqSet('meq-estado',d.estado||'operacional');
   eqSet('meq-codigo',d.codigo); eqSet('meq-matricula',d.matricula); eqSet('meq-marca',d.marcaModelo);
@@ -636,7 +678,7 @@ function showQrCode(id){
   const eq=EQUIPAMENTOS.find(e=>e.id===id); if(!eq){ showToast('Equipamento não encontrado'); return; }
   const qrUrl=location.href.split('?')[0]+'?reg='+id;
   document.getElementById('mqr-title').textContent=eq.nome;
-  document.getElementById('mqr-sub').textContent=(EQ_CATS[eq.categoria]?.label||'Equipamento')+(eq.serie?' · '+eq.serie:'');
+  document.getElementById('mqr-sub').textContent=(EQ_CATS[eqCatNorm(eq.categoria)].label)+(eq.serie?' · '+eq.serie:'');
   document.getElementById('mqr-url').textContent=qrUrl;
   const qrDiv=document.getElementById('mqr-qrcode'); qrDiv.innerHTML='';
   if(window.QRCodeLib){
@@ -673,7 +715,7 @@ function printQrCode(){
 function showEqHistorico(id){
   const eq=EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
   document.getElementById('meqh-title').textContent='Histórico — '+eq.nome;
-  document.getElementById('meqh-sub').textContent=(EQ_CATS[eq.categoria]?.label||'Equipamento')+(eq.serie?' · '+eq.serie:'');
+  document.getElementById('meqh-sub').textContent=(EQ_CATS[eqCatNorm(eq.categoria)].label)+(eq.serie?' · '+eq.serie:'');
   const movs=EQ_MOVIMENTOS.filter(m=>m.equipId===id).sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
   const list=document.getElementById('meqh-list');
   if(!movs.length){
@@ -707,7 +749,7 @@ function exportEquipamentosXLSX(){
   if(!EQUIPAMENTOS.length){ showToast('Sem equipamentos para exportar'); return; }
   const dados=EQUIPAMENTOS.map(eq=>({
     'ID':eq.id,'Código':eq.codigo||'','Nome':eq.nome,
-    'Categoria':EQ_CATS[eq.categoria]?.label||eq.categoria,
+    'Categoria':EQ_CATS[eqCatNorm(eq.categoria)].label,
     'Propriedade':eq.propriedade==='aluguer'?'Aluguer':'Plandese',
     'Estado':(EQ_ESTADOS[eq.estado]||EQ_ESTADOS.operacional).label,
     'Matrícula':eq.matricula||'','Marca/modelo':eq.marcaModelo||'','Nº Série':eq.serie||'',
@@ -874,7 +916,7 @@ async function initQrRegistration(){
   try{ const {data}=await sb.rpc('fn_qr_info',{p_equip_id:regId}); info=data; }catch(e){}
   const eq=EQUIPAMENTOS.find(e=>e.id===regId)||info?.equipamento||null;
   document.getElementById('qr-equip-nome').textContent=eq?eq.nome:`Equipamento ${regId}`;
-  document.getElementById('qr-equip-cat').textContent=eq?(EQ_CATS[eq.categoria]?.label||'Equipamento'):'';
+  document.getElementById('qr-equip-cat').textContent=eq?(EQ_CATS[eqCatNorm(eq.categoria)].label):'';
   const sel=document.getElementById('qr-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
   const obras=info?.obras?.length?info.obras:S.OBRAS.filter(o=>o.ativa);

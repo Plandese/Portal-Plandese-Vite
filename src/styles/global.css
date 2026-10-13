@@ -612,8 +612,8 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 ───────────────────────────────────────────────────── */
 #eq-map{height:360px;border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden}
 .eq-cat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
-.eq-cat-maquina{background:#EDE9FE;color:#6D28D9}.eq-cat-veiculo{background:#DBEAFE;color:#1D4ED8}
-.eq-cat-ferramenta{background:#FEF3C7;color:#92400E}.eq-cat-outro{background:var(--gray-100);color:var(--gray-600)}
+.eq-cat-equipamento{background:#EDE9FE;color:#6D28D9}.eq-cat-vpass{background:#DBEAFE;color:#1D4ED8}
+.eq-cat-vmerc{background:#CCFBF1;color:#0F766E}.eq-cat-vpes{background:#FEF3C7;color:#92400E}
 .eq-est-badge,.eq-prop-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-est-ok{background:#DCFCE7;color:#15803D}.eq-est-man{background:#FEF3C7;color:#B45309}.eq-est-par{background:#FEE2E2;color:#B91C1C}
 .eq-prop-badge{background:#FEF9C3;color:#854D0E;margin-left:4px}
@@ -2314,3 +2314,10 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 .tes-quem-i{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--d-line2,#edf0f5);cursor:pointer;font-size:14px}
 .tes-quem-i small{margin-left:auto;color:var(--d-mute,#5d6678);text-transform:capitalize}
 .tes-t .tes-pill-prop{height:auto;min-height:26px;padding:4px 11px;white-space:normal;line-height:1.25}
+
+/* Histórico de atividade */
+.ati-tbl td{vertical-align:top;font-size:13px}
+.ati-det{max-width:420px;word-break:break-word}
+.ati-chg{font-size:12px;color:var(--gray-600);line-height:1.5}
+.ati-chg b{color:var(--gray-800)}
+.ati-chg s{color:var(--gray-400)}

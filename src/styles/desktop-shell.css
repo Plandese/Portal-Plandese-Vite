@@ -1286,3 +1286,34 @@ body.device-desktop:not(.enc-mode) #admin-app .co-per .obr-seg button.on{backgro
 .co-tbl .neg{color:#b3261e}
 .co-tbl .co-ob-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
 .co-tbl .co-ob-cod{font-size:12px;font-weight:600;color:var(--d-brand);background:var(--d-tint,#eef3ff);padding:2px 8px;border-radius:6px;margin-right:6px}
+
+/* Equipamentos: alternar Lista / Cartões + tabela */
+body.device-desktop:not(.enc-mode) #admin-app .eq-vista-tg{display:inline-flex;margin-left:auto;border:1.5px solid #d5dae3;border-radius:99px;overflow:hidden;background:#fff}
+body.device-desktop:not(.enc-mode) #admin-app .eq-vista-tg button{display:inline-flex;align-items:center;gap:6px;height:37px;padding:0 14px;border:0;background:transparent;font:inherit;font-weight:600;font-size:13.5px;color:#5d6678;cursor:pointer}
+body.device-desktop:not(.enc-mode) #admin-app .eq-vista-tg button svg{width:16px;height:16px}
+body.device-desktop:not(.enc-mode) #admin-app .eq-vista-tg button.on{background:#1e3a8a;color:#fff}
+#admin-app .eq-tbl-wrap{overflow-x:auto;border:1.5px solid var(--d-line,#e3e7ee);border-radius:18px;background:#fff}
+#admin-app .eq-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+#admin-app .eq-tbl th{text-align:left;padding:12px 14px;font-size:12px;font-weight:600;color:#5d6678;background:#f6f8fb;border-bottom:1px solid #e3e7ee;white-space:nowrap}
+#admin-app .eq-tbl td{padding:10px 14px;border-bottom:1px solid #eef1f6;vertical-align:middle}
+#admin-app .eq-tbl tbody tr{cursor:pointer}
+#admin-app .eq-tbl tbody tr:hover{background:#f1f4fa}
+#admin-app .eq-tbl tbody tr:last-child td{border-bottom:0}
+#admin-app .eq-t-nome{display:flex;align-items:center;gap:10px;min-width:200px}
+#admin-app .eq-t-nome b{font-weight:600}
+#admin-app .eq-t-nome .d-ic.sm{flex:none}
+#admin-app .eq-t-quando{color:#8a93a5;margin-left:6px}
+#admin-app .eq-t-nome .d-ic.sm{width:32px;height:32px}
+#admin-app .eq-t-nome .d-ic.sm svg{width:17px;height:17px}
+#admin-app .eq-chips-br{flex-basis:100%;height:0}
+#admin-app .eq-tbl th{white-space:normal}
+#admin-app .eq-tbl th,#admin-app .eq-tbl td{padding-left:10px;padding-right:10px}
+#admin-app .eq-t-nome{min-width:150px}
+
+/* Equipamentos: filtros numa só linha */
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d{flex-wrap:nowrap;gap:6px;align-items:center}
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .d-chip-f{height:36px;padding:0 11px;gap:6px;font-size:13px;white-space:nowrap;flex:none}
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .d-chip-f b{font-size:11.5px;padding:1px 7px}
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg{flex:none}
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button{height:33px;padding:0 10px}
+body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button span{display:none}

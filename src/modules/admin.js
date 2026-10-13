@@ -408,9 +408,10 @@ const _MO_CEL = {
 };
 
 const _DD_IC = {
-  maquina: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
-  veiculo: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M3 12h18"/>',
-  ferramenta: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  equipamento: '<path d="M3 18a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M5 16v-4h5v4M10 12l4-7 5 5M19 10l1.5 4H17"/>',
+  veiculo_passageiros: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  veiculo_mercadorias: '<path d="M3 17V8a1 1 0 0 1 1-1h9v10M13 10h4l3 3v4h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/>',
+  veiculo_pesado: '<path d="M1 17V6a1 1 0 0 1 1-1h11v12M13 9h5l3 4v4"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="10.5" cy="17.5" r="2"/><circle cx="18" cy="17.5" r="2"/><path d="M1 17h2.5M12.5 17H16"/>',
   outro: '<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',
 };
 const _ddFechar = () => {
@@ -452,7 +453,7 @@ function _abrirEstadoObraGaveta(o) {
   const linhaEq = e => {
     const nao = _EQ_NAO_OP.includes(e.estado);
     const sub = [e.codigo, e.matricula, e.propriedade === 'aluguer' ? 'Aluguer' : ''].filter(Boolean).join(' · ');
-    return `<div class="dd-row"><span class="d-ic sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${_DD_IC[e.categoria] || _DD_IC.outro}</svg></span>
+    return `<div class="dd-row"><span class="d-ic sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${_DD_IC[e.categoria] || _DD_IC.equipamento}</svg></span>
       <div class="dd-tx"><b>${_esc(e.nome)}</b><small>${_esc(sub || '—')}</small>${nao ? e.pend.slice(0, 2).map(x => `<small class="dd-warn">⚠ ${_esc(x.descricao)}${x.data ? ' · ' + fmtPT(x.data) : ''}</small>`).join('') : ''}</div>
       <div class="dd-pills">${pill(_EQ_ESTADO_TXT[e.estado] || _esc(e.estado), nao ? 'warn' : 'ok')}</div></div>`;
   };
