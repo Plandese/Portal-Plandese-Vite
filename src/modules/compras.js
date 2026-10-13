@@ -872,6 +872,46 @@ function cmpRenderArtigosSelected() {
     `</tbody></table>`;
 }
 
+// ── Sugestões de fornecedores (lista por baixo do campo) ─────────
+async function cmpFornSug() {
+  const box = document.getElementById('mcmp-forn-sug');
+  const inp = document.getElementById('mcmp-forn-input');
+  if (!box || !inp) return;
+  if (!S.FORNECEDORES || !S.FORNECEDORES.length) await sbLoadFornecedores();
+  const terms = _lstNorm(inp.value).split(' ').filter(Boolean);
+  const jaIds = new Set(_cmpFornsEdit.map(f => f && f.id).filter(Boolean));
+  const lista = (S.FORNECEDORES || [])
+    .filter(f => f.ativo !== false && !jaIds.has(f.id))
+    .filter(f => { const t = _lstNorm(`${f.nome} ${f.nif||''} ${f.localidade||''}`); return terms.every(x => t.includes(x)); })
+    .slice(0, 8);
+  if (!lista.length) {
+    box.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400)">' +
+      (terms.length ? 'Sem resultados — carregue em Adicionar para usar o nome escrito' : 'Sem fornecedores registados') + '</div>';
+  } else {
+    box.innerHTML = lista.map(f =>
+      `<div onmousedown="event.preventDefault();cmpPickForn('${f.id}')" style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);font-size:13px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">` +
+      `<div style="font-weight:600;color:var(--gray-800)">${cmpEsc(f.nome)}</div>` +
+      `<div style="font-size:11px;color:var(--gray-500)">${[f.nif, f.localidade, f.email_compras || f.email].filter(Boolean).map(cmpEsc).join(' · ')}</div></div>`
+    ).join('');
+  }
+  box.style.display = 'block';
+}
+function cmpFornSugHide() {
+  const box = document.getElementById('mcmp-forn-sug');
+  if (box) box.style.display = 'none';
+}
+function cmpPickForn(id) {
+  const f = S.FORNECEDORES?.find(x => String(x.id) === String(id));
+  if (!f) return;
+  if (!_cmpFornsEdit.some(x => x && x.id === f.id)) {
+    _cmpFornsEdit.push({ id: f.id, nome: f.nome });
+    cmpRenderFornChips();
+  }
+  const inp = document.getElementById('mcmp-forn-input');
+  if (inp) inp.value = '';
+  cmpFornSugHide();
+}
+
 // ── Fornecedores chips ────────────────────────────────────────────
 function cmpAddForn() {
   const inp = document.getElementById('mcmp-forn-input');
@@ -1391,7 +1431,7 @@ export {
   uploadListaExcel, uploadListaExcelFile,
   cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
-  openCompraModal, enviarEmailNotificacao, cmpPedirCotacao, initCompras,
+  openCompraModal, enviarEmailNotificacao, cmpPedirCotacao, cmpFornSug, cmpFornSugHide, cmpPickForn, initCompras,
   urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras,
   cmpVerListaCompleta, abrirCmpObraDetalhe
 };
