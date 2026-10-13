@@ -43,7 +43,7 @@ body{font-family:var(--font);color:var(--gray-900);height:100%;overflow:hidden;f
 /* ─────────────────────────────────────────────────────
    LOGIN SCREEN
 ───────────────────────────────────────────────────── */
-#login-screen{min-height:100vh;display:flex;flex-direction:row;background:#fff}
+#login-screen{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:row;background:#fff}
 /* Painel da marca (azul, à esquerda) */
 .lg-brand{flex:1.05;background:#173f9f;color:#fff;padding:56px 64px;display:flex;flex-direction:column;justify-content:center;gap:48px;position:relative;overflow:hidden}
 .lg-brand::before{content:'';position:absolute;right:-160px;bottom:-160px;width:480px;height:480px;border-radius:50%;background:rgba(255,255,255,.07)}
@@ -70,10 +70,17 @@ body{font-family:var(--font);color:var(--gray-900);height:100%;overflow:hidden;f
 #login-screen .btn-login:hover{background:#143786;filter:none}
 @media(max-width:860px){
   #login-screen{flex-direction:column}
-  .lg-brand{flex:none;padding:56px 28px 36px;gap:0}
-  .lg-hero h2{font-size:28px}
+  /* Cabeçalho compacto: em telemóvel o formulário e o botão Entrar têm de caber no ecrã (o body não faz scroll) */
+  .lg-brand{flex:none;padding:28px 24px 22px;gap:0}
+  .lg-mark{margin-bottom:12px}
+  .lg-mark i{width:40px;height:40px}
+  .lg-mark b{font-size:22px}
+  .lg-hero h2{font-size:20px;letter-spacing:-.4px}
+  .lg-hero p{display:none}
   .lg-foot{display:none}
-  .lg-form{align-items:flex-start;padding:32px 24px 40px}
+  .lg-form{flex:none;align-items:flex-start;padding:24px 24px 40px}
+  .lg-sub{margin-bottom:18px}
+  #login-screen .field{margin-bottom:12px}
 }
 .login-logo{width:76px;height:76px;background:white;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
 .field{margin-bottom:16px}
