@@ -738,8 +738,24 @@ async function sbSaveFatura(f){
 async function sbDeleteFatura(dbId){
   if(!dbId) return;
   try{
-    await sb.from('faturas').delete().eq('id', dbId);
-  } catch(e){ console.warn('Erro ao apagar fatura:', e); }
+    const { data, error } = await sb.from('faturas').delete().eq('id', dbId).select('id');
+    if(error) throw error;
+    return (data||[]).length > 0;   // false = o servidor não apagou nada (sem permissão)
+  } catch(e){ console.warn('Erro ao apagar fatura:', e); return false; }
+}
+
+// Apaga da Dropbox o ficheiro de uma fatura apagada no portal (e a cópia do original, se foi carimbada)
+async function apagarFicheiroDropbox(f){
+  const path = f?.dropboxPath;
+  if(!path) return;
+  const caminhos = [path];
+  const nome = path.split('/').pop();
+  if(/\.pdf$/i.test(nome)) caminhos.push(`${_pastaAprovadas()}/Originais/${nome}`);
+  for(const c of caminhos){
+    try{ await dropboxDeleteTeam(c); }
+    catch(e){ if(!/not_found/.test(String(e.message))) console.warn('Dropbox: não foi possível apagar', c, e); }
+  }
+  _docCache.delete(path);
 }
 
 function matchValor(texto, patterns){
@@ -1164,16 +1180,20 @@ function saveFatura(){
   showToast(validaNIF(f.nif) ? 'Fatura atualizada — memória do fornecedor atualizada' : 'Fatura atualizada');
   R.emitEvent?.({ acao:'Fatura atualizada: '+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
 }
-function apagarFatura(){
+async function apagarFatura(){
   const id = parseInt(document.getElementById('mf-id').value,10);
-  if(!confirm('Apagar esta fatura?')) return;
   const fat = FATURAS.find(f=>f.id===id);
-  if(fat) sbDeleteFatura(fat._dbId);
+  if(!confirm('Apagar esta fatura?' + (fat?.dropboxPath ? ' — o ficheiro também será apagado da Dropbox.' : ''))) return;
+  if(fat?._dbId && !(await sbDeleteFatura(fat._dbId))){
+    showToast('Não foi possível apagar a fatura (sem permissão ou erro de ligação)');
+    return;
+  }
+  if(fat) await carregarPastasFaturas().then(() => apagarFicheiroDropbox(fat));
   FATURAS = FATURAS.filter(f=>f.id!==id);
   closeModal('modal-fat');
   renderFaturas();
   setTimeout(_refrescarTesouraria, 400);
-  showToast('Fatura apagada');
+  showToast('Fatura apagada' + (fat?.dropboxPath ? ' (e o ficheiro da Dropbox)' : ''));
 }
 
 // ═══════════════════════════════════════
