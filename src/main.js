@@ -8,6 +8,23 @@ import './styles/enc-shell.css';
 import './styles/desktop-shell.css';
 import './styles/agente.css';
 
+// Separador aberto com uma versão antiga do portal: depois de um deploy, os ficheiros com hash antigo já não
+// existem e os módulos carregados a pedido (pdf, carimbo…) falham. Recarrega a página uma vez para apanhar a versão nova.
+function _recarregarVersaoNova(){
+  try{
+    const k = 'plandese_reload_chunk';
+    if(Date.now() - Number(sessionStorage.getItem(k) || 0) < 60000) return false;   // evita ciclos
+    sessionStorage.setItem(k, String(Date.now()));
+  } catch(e){}
+  location.reload();
+  return true;
+}
+window.addEventListener('vite:preloadError', e => { e.preventDefault(); _recarregarVersaoNova(); });
+window.addEventListener('unhandledrejection', e => {
+  if(/dynamically imported module|Importing a module script failed/i.test(String(e.reason?.message || e.reason))) _recarregarVersaoNova();
+});
+window.plandeseVersaoAntiga = _recarregarVersaoNova;
+
 // Leaflet — exposto como global para compatibilidade com app.js (usa L.map, L.tileLayer, etc.)
 import L from 'leaflet';
 window.L = L;

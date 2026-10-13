@@ -1169,6 +1169,7 @@ async function mostrarDocumentoFatura(f){
     box.appendChild(lnk);
   } catch(e){
     console.warn('Pré-visualização falhou:', e);
+    if(/dynamically imported module|Importing a module script failed/i.test(String(e?.message||e)) && window.plandeseVersaoAntiga?.()) return;
     box.innerHTML = '<div class="mf-doc-msg">Não foi possível carregar o ficheiro da Dropbox.</div>'
       + (f.ficheiroUrl ? `<a class="mf-doc-open" href="${_fEsc(f.ficheiroUrl)}" target="_blank" rel="noopener">Abrir pelo link ↗</a>` : '');
   }
@@ -1511,6 +1512,7 @@ async function abrirColocarCarimbo(f, cc){
     };
   } catch(e){
     console.error('Colocar carimbo:', e);
+    if(/dynamically imported module|Importing a module script failed/i.test(String(e?.message||e)) && window.plandeseVersaoAntiga?.()) return;   // versão antiga do portal: recarrega
     box.innerHTML = '<div class="mf-doc-msg">Não foi possível carregar a fatura da Dropbox: ' + _fEsc(e.message || e) + '</div>';
   }
 }
