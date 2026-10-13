@@ -137,21 +137,23 @@ function enviarEmailNotificacao(c) {
 }
 
 // ── Pedido de cotação por email ──────────────────────────────────
-// Abre um email já preenchido (fornecedores em Bcc) no Outlook (app, via mailto) ou no Gmail (website).
+// Abre um email já preenchido (um por fornecedor, para o endereço dele) no Outlook (app, via mailto) ou no Gmail (website).
 function cmpPedirCotacao() {
   const titulo = document.getElementById('mcmp-titulo').value.trim();
   if (!titulo) { showToast('Indique o título do pedido'); return; }
   if (!_cmpArtigosEdit.length) { showToast('Adicione pelo menos um artigo'); return; }
   if (!_cmpFornsEdit.length) { showToast('Adicione pelo menos um fornecedor'); return; }
 
-  const semEmail = [], emails = [];
+  // Um email por fornecedor, enviado diretamente para o endereço dele
+  const semEmail = [], destinos = [];
   _cmpFornsEdit.forEach(f => {
     const nome = typeof f === 'string' ? f : f.nome;
     const reg = S.FORNECEDORES?.find(x => (f.id && x.id === f.id) || (x.nome || '').toLowerCase() === (nome || '').toLowerCase());
     const em = (reg?.email_compras || reg?.email || '').trim();
-    if (em) { if (!emails.includes(em)) emails.push(em); } else semEmail.push(nome);
+    if (!em) semEmail.push(nome);
+    else if (!destinos.some(d => d.email === em)) destinos.push({ nome, email: em });
   });
-  if (!emails.length) { showToast('Nenhum dos fornecedores tem email registado'); return; }
+  if (!destinos.length) { showToast('Nenhum dos fornecedores tem email registado'); return; }
 
   const obraId   = document.getElementById('mcmp-obra').value;
   const obraNome = S.OBRAS.find(o => String(o.id) === String(obraId))?.nome || '';
@@ -162,8 +164,8 @@ function cmpPedirCotacao() {
   try { localStorage.setItem('cmp_cot_cliente', cliente); } catch(e) {}
 
   const subject = `Pedido de cotação — ${titulo}${obraNome ? ' · ' + obraNome : ''}`;
-  const montaBody = (artigos, cortada) =>
-    'Bom dia,\n\nSolicitamos o envio de cotação para o seguinte material:\n\n' +
+  const montaBody = (nomeForn, artigos, cortada) =>
+    `Exmos. Senhores (${nomeForn}),\n\nSolicitamos o envio de cotação para o seguinte material:\n\n` +
     artigos.map(a => `• ${a.nome} — ${a.qty} ${a.un}${a.ref ? ' (ref. ' + a.ref + ')' : ''}`).join('\n') +
     (cortada ? `\n• … e mais ${_cmpArtigosEdit.length - artigos.length} artigo(s) (lista completa a enviar a pedido)` : '') +
     '\n\n' +
@@ -174,26 +176,40 @@ function cmpPedirCotacao() {
     `\nAgradecemos resposta com preços unitários, prazo de entrega e condições de pagamento.\n\n` +
     `Com os melhores cumprimentos,\n${S.currentUser?.nome || 'PLANDESE'}\nPLANDESE`;
 
-  const bcc = emails.join(',');
-  const url = (body) => cliente === 'gmail'
-    ? `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bcc)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    : `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const url = (to, body) => cliente === 'gmail'
+    ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    : `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   // Links muito compridos são cortados pelos clientes de email: reduz a lista até caber
   const MAX = 1900;
-  let n = _cmpArtigosEdit.length, link = url(montaBody(_cmpArtigosEdit, false));
-  while (link.length > MAX && n > 1) {
-    n = Math.max(1, Math.floor(n * 0.8));
-    link = url(montaBody(_cmpArtigosEdit.slice(0, n), true));
-  }
+  let cortados = 0;
+  const links = destinos.map(d => {
+    let n = _cmpArtigosEdit.length, link = url(d.email, montaBody(d.nome, _cmpArtigosEdit, false));
+    while (link.length > MAX && n > 1) {
+      n = Math.max(1, Math.floor(n * 0.8));
+      link = url(d.email, montaBody(d.nome, _cmpArtigosEdit.slice(0, n), true));
+    }
+    if (n < _cmpArtigosEdit.length) cortados = Math.max(cortados, n);
+    return link;
+  });
 
-  if (cliente === 'gmail') window.open(link, '_blank', 'noopener');
-  else window.location.href = link;
+  // Abre um email por fornecedor, com pequeno intervalo entre eles
+  links.forEach((link, i) => setTimeout(() => {
+    if (cliente === 'gmail') {
+      window.open(link, '_blank', 'noopener');
+    } else {
+      const a = document.createElement('a');
+      a.href = link; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+  }, i * 700));
 
   _cmpCotEnviada = true;
-  showToast(n < _cmpArtigosEdit.length
-    ? `Lista longa: foram incluídos ${n} de ${_cmpArtigosEdit.length} artigos no email`
-    : (semEmail.length ? `Sem email registado: ${semEmail.join(', ')}` : 'Email de cotação aberto'));
+  const msgs = [`${links.length} email(s) de cotação aberto(s)`];
+  if (semEmail.length) msgs.push(`sem email registado: ${semEmail.join(', ')}`);
+  if (cortados) msgs.push(`lista longa: incluídos ${cortados} de ${_cmpArtigosEdit.length} artigos`);
+  if (links.length > 1 && cliente === 'gmail') msgs.push('se faltar algum, permita pop-ups neste site');
+  showToast(msgs.join(' · '));
 }
 
 // ── Badges ───────────────────────────────────────────────────────
