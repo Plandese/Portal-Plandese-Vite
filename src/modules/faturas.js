@@ -1666,7 +1666,7 @@ function exportFaturasXLSX(){
   const dados = FATURAS.map(f=>({
     'Data emissão': f.data, 'Fornecedor': f.fornecedor, 'NIF': f.nif,
     'Base (€)': f.base, 'IVA (€)': f.iva, 'Total (€)': f.total,
-    'Data pagamento': f.dataPag||'', 'Estado': f.status,
+    'Data de Vencimento': f.dataPag||'', 'Estado': f.status,
     'Confiança (%)': Math.round((f.confianca||0)*100), 'Ficheiro': f.ficheiro||'', 'Notas': f.notas||''
   }));
   const ws = XLSX.utils.json_to_sheet(dados);
