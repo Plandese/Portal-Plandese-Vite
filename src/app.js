@@ -67,6 +67,7 @@ import { renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImpo
 import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra, renderFechoMes, abrirFechoMes, exportFechoMes } from './modules/admin.js';
 
 // Fornecedores
+import { initAtividade } from './modules/atividade.js';
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
 
@@ -394,6 +395,7 @@ window.savePerfil = async function () {
     if (id === 'fecho-mes')    { abrirFechoMes(); }
     if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
+    if (id === 'atividade')    { initAtividade(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }

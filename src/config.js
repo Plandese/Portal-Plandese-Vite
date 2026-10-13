@@ -94,7 +94,7 @@ export const NAV_CHAPTERS = [
   {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','tesouraria']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
   {id:'prod', label:'Produção',                  sections:['producao','precos-unitarios','pendentes-tavira']},
-  {id:'def',  label:'Definições',                sections:['obras','utilizadores','empresas-moa','fornecedores']},
+  {id:'def',  label:'Definições',                sections:['obras','utilizadores','atividade','empresas-moa','fornecedores']},
 ];
 
 // Módulos da app do encarregado — fonte única de verdade para os checkboxes
