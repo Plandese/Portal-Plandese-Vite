@@ -231,7 +231,7 @@ function submitEncEquipamento(){
     (obraNome?`em <strong>${_encEsc(obraNome)}</strong>`:'sem obra associada')+
     `<br><span style="font-size:11px;opacity:.65;display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
   _encEqShowState('sucesso');
-  R.emitEvent?.({ acao:'Equipamento registado: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
+  R.emitEvent?.({ acao:'Equipamento registado: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos', obra:obraId });
 }
 
 // ── Formulário: pedir manutenção ────────
@@ -337,7 +337,7 @@ async function submitEncManutencao(){
     (obraNome?`<br>em <strong>${_encEsc(obraNome)}</strong>`:'')+
     `<br><span style="font-size:11px;opacity:.65;display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
   _encEqShowState('sucesso');
-  R.emitEvent?.({ acao:'Pedido de manutenção: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos' });
+  R.emitEvent?.({ acao:'Pedido de manutenção: '+_encEqEquip.nome+(obraNome?' · '+obraNome:''), seccao:'equipamentos', obra:obraNome });
 }
 
 export {

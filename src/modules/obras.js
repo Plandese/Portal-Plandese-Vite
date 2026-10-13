@@ -238,7 +238,7 @@ export async function saveObra(){
     await _syncObraExtra('obra_encarregados_extra','encarregado_id',id,encarregados_extra,antigoEnc);
     if(existing>=0)S.OBRAS[existing]={...S.OBRAS[existing],...rec};else S.OBRAS.push(rec);
     closeModal('modal-obra');renderObras();populateFilterSelects();flashAlert('obra-alert');
-    R.emitEvent?.({ acao:(existing>=0?'Obra atualizada':'Nova obra')+': '+nome, seccao:'obras' });
+    R.emitEvent?.({ acao:(existing>=0?'Obra atualizada':'Nova obra')+': '+nome, seccao:'obras', obra:rec.id });
   } catch(e){
     alert('Erro ao guardar obra: '+e.message+'\nVerifique a ligação ao Supabase.');
   }

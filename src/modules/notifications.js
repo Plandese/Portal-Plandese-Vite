@@ -58,7 +58,9 @@ function onRealtimeInsert(row){
 // ── EMISSÃO DE EVENTOS ──────────────────────────────────────────────
 // Chamar sempre que alguém faz algo no portal:
 //   R.emitEvent({ acao:'Novo pedido de compra · Obra X', seccao:'compras' })
-export async function emitEvent({ acao, seccao }){
+// `obra` (opcional): id ou nome da obra a que o evento diz respeito (ou lista delas). Os diretores de obra
+// só são notificados se estiverem associados a essa obra; os restantes perfis recebem como antes.
+export async function emitEvent({ acao, seccao, obra }){
   try {
     const actor = S.currentUser?.key || null;
     const actor_nome = S.currentUser?.nome || 'Sistema';
@@ -75,6 +77,18 @@ export async function emitEvent({ acao, seccao }){
 
     // Não notificar o próprio autor da acção
     if(actor) recipients.delete(actor);
+
+    // Diretores de obra: só as obras em que estão associados
+    const refs = (Array.isArray(obra) ? obra : [obra]).filter(Boolean).map(r => String(r).trim().toLowerCase());
+    if(refs.length){
+      const obras = (S.OBRAS||[]).filter(o => refs.includes(String(o.id).toLowerCase()) || refs.includes(String(o.nome||'').trim().toLowerCase()));
+      if(obras.length){
+        const dirs = new Set(obras.flatMap(o => [o.diretor_id, ...(o.diretores_extra||[])]).filter(Boolean));
+        [...recipients].forEach(dest => {
+          if(S.USERS?.[dest]?.role === 'diretor_obra' && !dirs.has(dest)) recipients.delete(dest);
+        });
+      }
+    }
 
     // Só notificar quem tem acesso à secção (subscrições antigas de perfis entretanto bloqueados)
     [...recipients].forEach(dest=>{

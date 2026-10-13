@@ -141,7 +141,7 @@ async function registarFaturaLida(fat, dropboxPath){
   FATURAS.push(fat);
   await sbSaveFatura(fat);
   renderFaturas(); atualizaKPIs();
-  R.emitEvent?.({ acao:'Fatura inserida: '+(fat.fornecedor||'')+(fat.total?' · '+fat.total+'€':''), seccao:'faturas' });
+  R.emitEvent?.({ acao:'Fatura inserida: '+(fat.fornecedor||'')+(fat.total?' · '+fat.total+'€':''), seccao:'faturas', obra:fat.centroCusto });
 }
 
 // Leitura com o Claude (Edge Function ler-fatura). Lança erro se não conseguir ler.
@@ -984,7 +984,7 @@ function _fatGuardarDesk(lancar){
   sbSaveFatura(f);
   renderFaturas();
   showToast(lancar ? 'Fatura lançada ✓' : 'Rascunho guardado');
-  R.emitEvent?.({ acao:(lancar?'Fatura lançada: ':'Fatura atualizada: ')+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
+  R.emitEvent?.({ acao:(lancar?'Fatura lançada: ':'Fatura atualizada: ')+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas', obra:f.centroCusto });
 }
 document.addEventListener('click', e => {
   if(!_fatDesk()) return;
@@ -1212,7 +1212,7 @@ function saveFatura(){
   setTimeout(_refrescarTesouraria, 600);
   flashAlert('fat-alert');
   showToast(validaNIF(f.nif) ? 'Fatura atualizada — memória do fornecedor atualizada' : 'Fatura atualizada');
-  R.emitEvent?.({ acao:'Fatura atualizada: '+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas' });
+  R.emitEvent?.({ acao:'Fatura atualizada: '+(f.fornecedor||'')+(f.total?' · '+f.total+'€':''), seccao:'faturas', obra:f.centroCusto });
 }
 async function apagarFatura(){
   const id = parseInt(document.getElementById('mf-id').value,10);
@@ -1564,7 +1564,7 @@ async function concluirAprovacao(f, cc, pos){
   if(parseInt(document.getElementById('mf-id')?.value, 10) === f.id) closeModal('modal-fat');
   _refrescarTesouraria();
   showToast(`Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`);
-  R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas' });
+  R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas', obra:f.centroCusto });
   return true;
 }
 
@@ -1609,7 +1609,7 @@ async function confirmarCentroCusto(f, cc){
   showToast(`Fatura enviada para aprovação do diretor — ${cc}`);
 
   const msg = `Fatura por aprovar: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${cc})`;
-  R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar' });
+  R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar', obra:cc });
   const obra = S.OBRAS.find(o=>o.nome===cc);
   const destinatarios = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra||[]), ..._aprovadoresFat].filter(u => u && u !== S.currentUser?.key))];
   if(destinatarios.length){
@@ -1659,7 +1659,7 @@ async function rejeitarFatura(){
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
   showToast('Fatura rejeitada');
-  R.emitEvent?.({ acao:`Fatura rejeitada: ${f.fornecedor||''} (${f.centroCusto||''})`, seccao:'faturas' });
+  R.emitEvent?.({ acao:`Fatura rejeitada: ${f.fornecedor||''} (${f.centroCusto||''})`, seccao:'faturas', obra:f.centroCusto });
 }
 
 // ═══════════════════════════════════════
@@ -1877,7 +1877,7 @@ async function fssSave(){
       ...(obra?.encarregados_extra||[]), ...(obra?.diretores_extra||[])
     ].filter(u => u && u !== S.currentUser?.key))];
     const msg = `Fatura pendente de aprovação: ${_fssFat.fornecedor||''}${_fssFat.total?' · '+_fssFat.total+'€':''} (${_fssFat.centroCusto})`;
-    R.emitEvent?.({ acao: msg, seccao:'faturas' });
+    R.emitEvent?.({ acao: msg, seccao:'faturas', obra:_fssFat.centroCusto });
     // Notificação direta ao(s) diretor(es)/encarregado(s) da obra
     if(destinatarios.length){
       try{
@@ -1890,7 +1890,7 @@ async function fssSave(){
     }
     showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
   } else {
-    R.emitEvent?.({ acao:'Fatura inserida: '+(_fssFat.fornecedor||'')+(_fssFat.total?' · '+_fssFat.total+'€':''), seccao:'faturas' });
+    R.emitEvent?.({ acao:'Fatura inserida: '+(_fssFat.fornecedor||'')+(_fssFat.total?' · '+_fssFat.total+'€':''), seccao:'faturas', obra:_fssFat.centroCusto });
     showToast(validaNIF(_fssFat.nif) ? `${_fssItem?.name||'Fatura'}: guardada e fornecedor memorizado` : `${_fssItem?.name||'Fatura'}: guardada`);
   }
 

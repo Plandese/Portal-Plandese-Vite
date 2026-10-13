@@ -297,7 +297,7 @@ export async function aprovarDiaPonto(obraId, dateStr){
     const { error } = await sb.from('aprovacoes_ponto').insert({ obra_id: obraId, data: dateStr, aprovado_por: S.currentUser.key });
     if (error && error.code !== '23505') throw error; // 23505 = já aprovado por outra pessoa
     showToast(`${fmtPT(dateStr)} aprovado ✓`);
-    R.emitEvent?.({ acao: `Folha de ponto aprovada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico' });
+    R.emitEvent?.({ acao: `Folha de ponto aprovada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico', obra: obraId });
     await renderHistSemana();
   } catch (e) {
     showToast('Erro ao aprovar: ' + (e.message || e));
@@ -314,7 +314,7 @@ export async function retirarAprovacaoPonto(obraId, dateStr){
     if (error) throw error;
     if (!data?.length) throw new Error('sem permissão ou aprovação já retirada');
     showToast('Aprovação retirada');
-    R.emitEvent?.({ acao: `Aprovação da folha de ponto retirada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico' });
+    R.emitEvent?.({ acao: `Aprovação da folha de ponto retirada: ${obraNome} · ${fmtPT(dateStr)}`, seccao: 'historico', obra: obraId });
     await renderHistSemana();
   } catch (e) {
     showToast('Erro ao retirar aprovação: ' + (e.message || e));

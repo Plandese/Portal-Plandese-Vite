@@ -526,7 +526,7 @@ async function encSubmeterCombDeposito(){
     document.getElementById('dep-alert').style.display='block';
     showToast((_depMovimento==='entrada'?'Entrada':'Saída')+' no depósito registada ✓');
     encUpdateFuelWidget();
-    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:'')+(_depMovimento==='saida'?' · '+_depEquip.nome:''), seccao:'combustivel' });
+    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:'')+(_depMovimento==='saida'?' · '+_depEquip.nome:''), seccao:'combustivel', obra:obraId });
     setTimeout(()=>{
       document.getElementById('dep-litros').value='';
       document.getElementById('dep-obs').value='';
@@ -700,7 +700,7 @@ async function encSubmeterCombViatura(){
     });
     if(error)throw error;
     showToast('Abastecimento registado ✓');
-    R.emitEvent?.({ acao:'Combustível · Abastecimento '+litros+'L em '+equipNome+(obraId?' · '+obraNome:''), seccao:'combustivel' });
+    R.emitEvent?.({ acao:'Combustível · Abastecimento '+litros+'L em '+equipNome+(obraId?' · '+obraNome:''), seccao:'combustivel', obra:obraId });
     const encNome=S.currentUser?.nome||'Encarregado';
     document.getElementById('comb-viatura-success-txt').innerHTML=
       `<strong>${encNome}</strong> registou<br>`+

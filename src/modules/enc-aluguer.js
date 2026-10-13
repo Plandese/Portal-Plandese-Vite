@@ -469,7 +469,7 @@ async function encAlugSubmeter(){
     for(const e of edits){ const {error}=await sb.from('registos_ponto_moa').update(e.row).eq('id',e.id); if(error) throw error; }
     showToast('Registo submetido com sucesso! ✓');
     try{ localStorage.setItem(`enc_done_aluguer_${fmt(new Date())}`,'1'); }catch(e){}
-    R.emitEvent?.({acao:'MO Aluguer submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+encAlugTrabalhadores.length+' trab.)',seccao:'historico'});
+    R.emitEvent?.({acao:'MO Aluguer submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+encAlugTrabalhadores.length+' trab.)',seccao:'historico',obra:encAlugObraId});
     setTimeout(()=>encVoltarHome(),1500);
   }catch(e){
     showToast('⚠️ Não foi possível submeter: '+(e.message||e));
@@ -1021,7 +1021,7 @@ async function aprovarDiaMOA(obraId,ds){
     const {error}=await sb.from('aprovacoes_ponto_moa').insert({obra_id:obraId,data:ds,aprovado_por:S.currentUser.key});
     if(error&&error.code!=='23505') throw error;
     showToast(`${fmtPT(ds)} aprovado ✓`);
-    R.emitEvent?.({acao:`Folha de ponto MO Aluguer aprovada: ${obraNome} · ${fmtPT(ds)}`,seccao:'historico'});
+    R.emitEvent?.({acao:`Folha de ponto MO Aluguer aprovada: ${obraNome} · ${fmtPT(ds)}`,seccao:'historico',obra:obraId});
     await loadMOAWeek();
   }catch(e){ showToast('Erro ao aprovar: '+(e.message||e)); }
 }
@@ -1035,7 +1035,7 @@ async function retirarAprovacaoMOA(obraId,ds){
     if(error) throw error;
     if(!data?.length) throw new Error('sem permissão ou aprovação já retirada');
     showToast('Aprovação retirada');
-    R.emitEvent?.({acao:`Aprovação da MO Aluguer retirada: ${obraNome} · ${fmtPT(ds)}`,seccao:'historico'});
+    R.emitEvent?.({acao:`Aprovação da MO Aluguer retirada: ${obraNome} · ${fmtPT(ds)}`,seccao:'historico',obra:obraId});
     await loadMOAWeek();
   }catch(e){ showToast('Erro ao retirar aprovação: '+(e.message||e)); }
 }

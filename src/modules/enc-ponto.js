@@ -580,7 +580,8 @@ async function encSubmeterRegisto(){
   if(erro){showToast('⚠️ Não foi possível submeter: '+erro);return;}
   showToast('Registo submetido com sucesso! ✓');
   _encMarkDoneToday('plandese');
-  R.emitEvent?.({ acao:'Folha de ponto submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+(S.activeRows[dk]||[]).length+' colab.)', seccao:'historico' });
+  R.emitEvent?.({ acao:'Folha de ponto submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+(S.activeRows[dk]||[]).length+' colab.)', seccao:'historico',
+    obra:(S.OBRAS||[]).filter(o=>o.encarregado_id===S.currentUser?.key||(o.encarregados_extra||[]).includes(S.currentUser?.key)).map(o=>o.id) });
   setTimeout(()=>encVoltarHome(), 1500);
 }
 
