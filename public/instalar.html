@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instalar Plandese</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f3f5fa;color:#0f172a;min-height:100vh;display:flex;flex-direction:column}
+  header{background:#173f9f;color:#fff;padding:28px 24px 24px}
+  header img{width:44px;height:44px;border-radius:10px;background:#fff;padding:4px;display:block;margin-bottom:12px}
+  header h1{font-size:22px;font-weight:800;letter-spacing:-.3px}
+  header p{margin-top:6px;font-size:14.5px;opacity:.85;line-height:1.4}
+  main{flex:1;padding:22px 20px 40px;max-width:480px;width:100%;margin:0 auto}
+  .btn{display:block;width:100%;text-align:center;background:#173f9f;color:#fff;text-decoration:none;font-weight:700;font-size:18px;padding:18px;border-radius:99px;box-shadow:0 10px 24px rgba(23,63,159,.3)}
+  .btn:active{background:#143786}
+  ol{margin:26px 0 0;padding:0;list-style:none;counter-reset:p}
+  li{counter-increment:p;background:#fff;border-radius:14px;padding:14px 16px 14px 56px;margin-bottom:10px;position:relative;font-size:15.5px;line-height:1.4;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+  li::before{content:counter(p);position:absolute;left:14px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:#e3eaf9;color:#173f9f;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .note{margin-top:18px;font-size:13.5px;color:#475569;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <img src="/plandese_logo.png" alt="">
+  <h1>Atualizar a app Plandese</h1>
+  <p>Instale esta versão uma única vez. Depois a app atualiza-se sozinha.</p>
+</header>
+<main>
+  <a class="btn" href="/plandese.apk" download="Plandese.apk">Descarregar e instalar</a>
+  <ol>
+    <li>Toque no botão azul acima.</li>
+    <li>Quando o telemóvel avisar que o ficheiro pode ser perigoso, toque em <b>Descarregar</b> / <b>Abrir</b>.</li>
+    <li>Toque em <b>Instalar</b>. Se pedir permissão, ative <b>Permitir desta origem</b> e volte atrás.</li>
+    <li>Abra a app <b>Plandese Portal</b> e entre como habitualmente.</li>
+  </ol>
+  <p class="note">Se aparecer “Aplicação não instalada”, desinstale primeiro a app Plandese antiga (mantenha o dedo no ícone → Desinstalar) e repita os passos. Os seus dados ficam guardados no servidor, não perde nada.</p>
+</main>
+</body>
+</html>
