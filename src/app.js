@@ -33,7 +33,7 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 
 // Faturas
 import { renderTesouraria } from './modules/tesouraria.js';
-import { renderFaturasAprovar } from './modules/faturas-aprovar.js';
+import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela } from './modules/faturas.js';
 
 // Compras
@@ -106,7 +106,7 @@ Object.assign(R, {
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
   ensurePushSubscription, initPushPrompt, applyPendingSection,
-  renderPainel, renderFaturas, renderTesouraria, renderFaturasAprovar, renderCompras, renderObras,
+  renderPainel, renderFaturas, renderTesouraria, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos,
   loadCombustivelAdmin, renderControloObras,
   renderFechoMes, applyFilter, renderEmpresasMOA,

@@ -10,6 +10,19 @@ import { abrirFaturaPorDbId, carregarPastasFaturas, carregarAprovadoresFaturas, 
 
 let _rows = [];
 let _obra = null;   // centro de custo aberto (null = cartões das obras)
+const _ocultas = new Set();   // faturas já aprovadas pelo utilizador, ainda a ser carimbadas/guardadas em segundo plano
+
+// Tira (ou repõe) uma fatura da lista enquanto a Dropbox a guarda em segundo plano
+export function ocultarFaturaPorAprovar(dbId, ocultar = true) {
+  if (dbId == null) return;
+  if (ocultar) {
+    _ocultas.add(dbId);
+    _rows = _rows.filter(r => r.id !== dbId);
+    desenhar();
+  } else {
+    _ocultas.delete(dbId);
+  }
+}
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const eur = v => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -41,7 +54,7 @@ async function carregar() {
     .limit(2000);
   if (error) throw error;
   const vis = obrasVisiveis();
-  _rows = (data || []).filter(r => !vis || vis.has(r.centro_custo));
+  _rows = (data || []).filter(r => !_ocultas.has(r.id) && (!vis || vis.has(r.centro_custo)));
 }
 
 function filtrar() {

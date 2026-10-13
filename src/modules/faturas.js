@@ -1426,9 +1426,17 @@ function _indicadorGuardar(){
 async function guardarAprovacaoEmSegundoPlano(f, cc, pos){
   if(_aGuardar.has(f.id)) return;
   _aGuardar.add(f.id); _indicadorGuardar();
-  try{ await concluirAprovacao(f, cc, pos); }
+  // A fatura sai logo da lista "Por aprovar" para se poder aprovar a seguinte sem esperar pela Dropbox
+  R.ocultarFaturaPorAprovar?.(f._dbId, true);
+  let ok = false;
+  try{ ok = await concluirAprovacao(f, cc, pos); }
   catch(e){ console.error('Aprovação em segundo plano:', e); showToast('Erro ao guardar a fatura aprovada: ' + (e.message||e)); }
-  finally{ _aGuardar.delete(f.id); _indicadorGuardar(); }
+  finally{
+    _aGuardar.delete(f.id); _indicadorGuardar();
+    R.ocultarFaturaPorAprovar?.(f._dbId, false);
+    // Falhou: volta a aparecer na lista
+    if(!ok && document.getElementById('sec-faturas-aprovar')?.classList.contains('active')) R.renderFaturasAprovar?.();
+  }
 }
 
 // Janela para escolher onde colocar o carimbo; "Guardar" conclui a aprovação
@@ -1531,19 +1539,26 @@ async function concluirAprovacao(f, cc, pos){
       if(f._fonte === 'dropbox'){
         // Ficheiro importado: carimbar, gravar na pasta de aprovadas e retirar da de pendentes
         const nome = f.dropboxPath.split('/').pop();
-        let blob = await dropboxDownload(f.dropboxPath);
+        // reaproveita o ficheiro já descarregado para escolher a posição do carimbo (evita nova ida à Dropbox)
+        const original = _docCache.get(f.dropboxPath)?.blob || await dropboxDownload(f.dropboxPath);
+        let blob = original;
+        // a pasta do fornecedor (Dropbox cria-a se ainda não existir) é resolvida enquanto se carimba
+        const pastaP = _pastaDoFornecedor(f);
         if(/\.pdf$/i.test(nome)){
-          const carimbado = await carimbarPDF(blob, f, cc, pos);
-          // o original (possivelmente assinado digitalmente) fica guardado, sem alterações, em "Originais"
-          await dropboxUploadTeam(blob, `${_pastaAprovadas()}/Originais/${nome}`);
+          // o original (possivelmente assinado digitalmente) fica guardado, sem alterações, em "Originais";
+          // o upload corre ao mesmo tempo que o carimbo
+          const [carimbado] = await Promise.all([
+            carimbarPDF(original, f, cc, pos),
+            dropboxUploadTeam(original, `${_pastaAprovadas()}/Originais/${nome}`),
+          ]);
           blob = carimbado;
         }
-        // uma subpasta por fornecedor dentro da pasta de aprovadas (a Dropbox cria-a se ainda não existir)
-        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${await _pastaDoFornecedor(f)}/${nome}`);
-        await dropboxDeleteTeam(f.dropboxPath);
+        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${await pastaP}/${nome}`);
+        // retirar da pasta de pendentes e criar o link partilhado ao mesmo tempo
+        const [, link] = await Promise.all([dropboxDeleteTeam(f.dropboxPath), dropboxLinkTeam(destino)]);
         _docCache.delete(f.dropboxPath);
         f.dropboxPath = destino;
-        f.ficheiroUrl = await dropboxLinkTeam(destino) || '';
+        f.ficheiroUrl = link || '';
       } else {
         // Ficheiro carregado manualmente: apenas move para a pasta de aprovadas do centro de custo
         const novoPath = dropboxFatPath(f, f.ficheiro || (f.dropboxPath.split('/').pop()), true);
