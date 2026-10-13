@@ -648,6 +648,7 @@ function _fatToRow(f){
     numero:       f.numero || null,
     data:         f.data || null,
     data_pag:     f.dataPag || null,
+    tipo_pagamento: f.tipoPagamento || 'pagamento',
     base:         f.base ?? null,
     iva:          f.iva ?? null,
     total:        f.total ?? null,
@@ -675,6 +676,7 @@ function _rowToFat(r){
     numero:     r.numero || '',
     data:       r.data || '',
     dataPag:    r.data_pag || '',
+    tipoPagamento: r.tipo_pagamento || 'pagamento',
     base:       r.base != null ? Number(r.base) : null,
     iva:        r.iva  != null ? Number(r.iva)  : null,
     total:      r.total != null ? Number(r.total) : null,
@@ -1037,6 +1039,7 @@ function editarFatura(id){
   document.getElementById('mf-iva').value = f.iva??'';
   document.getElementById('mf-total').value = f.total??'';
   document.getElementById('mf-pago').value = f.dataPag||'';
+  { const t = document.getElementById('mf-tipo-pag'); if(t) t.value = f.tipoPagamento || 'pagamento'; }
   document.getElementById('mf-status').value = f.status||'extraida';
   document.getElementById('mf-notas').value = f.notas||'';
   const elRaw = document.getElementById('mf-rawtext');
@@ -1192,6 +1195,7 @@ function saveFatura(){
   f.iva  = parseFloat(document.getElementById('mf-iva').value||0);
   f.total= parseFloat(document.getElementById('mf-total').value||0);
   f.dataPag = document.getElementById('mf-pago').value;
+  f.tipoPagamento = document.getElementById('mf-tipo-pag')?.value || 'pagamento';
   f.status = document.getElementById('mf-status').value;
   f.notas  = document.getElementById('mf-notas').value;
   // Re-avalia flags

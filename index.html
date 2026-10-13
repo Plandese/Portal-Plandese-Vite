@@ -3281,6 +3281,13 @@
       <div class="field"><label>IVA (€) <span id="mf-iva-warn"></span></label><input type="number" step="0.01" id="mf-iva" placeholder="0,00"/></div>
     </div>
     <div class="field"><label>Total (€)</label><input type="number" step="0.01" id="mf-total" placeholder="0,00"/></div>
+    <div class="field"><label>Tipo de pagamento</label>
+      <select id="mf-tipo-pag">
+        <option value="pagamento">Fatura a pagamento</option>
+        <option value="debito_direto">Fatura a débito direto</option>
+        <option value="referencia_mb">Fatura com referência MB</option>
+      </select>
+    </div>
     <div class="field"><label>Estado</label>
       <select id="mf-status">
         <option value="extraida">Extraída</option>

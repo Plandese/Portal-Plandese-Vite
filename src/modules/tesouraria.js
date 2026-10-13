@@ -33,7 +33,7 @@ const proposta = r => porPagar(r) && !!r.proposta_por;
 
 async function carregar() {
   const { data, error } = await sb.from('faturas')
-    .select('id,fornecedor,nif,numero,total,data,data_pag,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
+    .select('id,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
     .in('status', APROVADAS)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
@@ -149,7 +149,7 @@ function desenhar() {
         <td><b>${esc(r.numero || '—')}</b></td>
         <td class="r"><b>${eur(r.total)}</b></td>
         <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
-        <td>${estado}${faturaSemFicheiro(r.id) ? ' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>' : ''}</td>
+        <td>${estado}${r.tipo_pagamento === 'debito_direto' ? ' <span class="dd-pill info" title="Fatura a débito direto">Débito direto</span>' : r.tipo_pagamento === 'referencia_mb' ? ' <span class="dd-pill info" title="Fatura com referência MB">Ref. MB</span>' : ''}${faturaSemFicheiro(r.id) ? ' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>' : ''}</td>
       </tr>`;
     }).join('');
     const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
