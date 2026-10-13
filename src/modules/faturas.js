@@ -719,18 +719,19 @@ async function verificarFicheirosDropbox(){
   _verifFicheirosEm = Date.now();
   try{
     await carregarPastasFaturas();
-    const pastas = [...new Set([_pastaPendentes(), _pastaAprovadas()].map(_norm))].filter(Boolean);
+    const raizes = [_norm(_pastaPendentes()), _norm(_pastaAprovadas())].filter(Boolean);
+    const vigiada = p => raizes.some(r => _pasta(p) === r || _pasta(p).startsWith(r + '/'));
+    const candidatas = FATURAS.filter(f => f._fonte === 'dropbox' && f.dropboxPath && f._dbId && vigiada(f.dropboxPath));
     const existentes = new Set();
-    for(const pasta of pastas){
-      const lista = await dropboxListFolder(pasta);   // se falhar, não assinala nada
-      lista.forEach(e => existentes.add(_norm(e.path_display)));
+    for(const pasta of new Set(candidatas.map(f => f.dropboxPath.replace(/\/[^/]*$/, '')))){
+      try{
+        (await dropboxListFolder(pasta)).forEach(e => existentes.add(_norm(e.path_display)));
+      } catch(e){
+        if(!/not_found/.test(String(e.message))) throw e;   // pasta inexistente = ficheiros em falta; outro erro = não assinala nada
+      }
     }
     _semFicheiro.clear();
-    FATURAS.forEach(f => {
-      if(f._fonte !== 'dropbox' || !f.dropboxPath || !f._dbId) return;
-      if(!pastas.includes(_pasta(f.dropboxPath))) return;   // ficheiros fora das pastas vigiadas: não sabemos
-      if(!existentes.has(_norm(f.dropboxPath))) _semFicheiro.add(f._dbId);
-    });
+    candidatas.forEach(f => { if(!existentes.has(_norm(f.dropboxPath))) _semFicheiro.add(f._dbId); });
     renderFaturas();
     _refrescarTesouraria();
   } catch(e){ console.warn('Verificação de ficheiros da Dropbox:', e); }
@@ -1244,6 +1245,11 @@ const _lim = v => {
   return s && !s.startsWith('/') ? '/' + s : s;
 };
 const _pastaPendentes = () => _lim(_pastas?.pendentes || localStorage.getItem('fat_dbx_pendentes') || FAT_PASTA_PENDENTES);
+// Nome de pasta seguro para um fornecedor (a Dropbox não aceita \ / : * ? " < > | nem terminar em ponto/espaço)
+const _pastaFornecedor = nome => {
+  const s = String(nome||'').replace(/[\\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,100);
+  return s || 'Sem fornecedor';
+};
 const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
 
 // Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
@@ -1486,7 +1492,8 @@ async function concluirAprovacao(f, cc, pos){
           await dropboxUploadTeam(blob, `${_pastaAprovadas()}/Originais/${nome}`);
           blob = carimbado;
         }
-        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${nome}`);
+        // uma subpasta por fornecedor dentro da pasta de aprovadas (a Dropbox cria-a se ainda não existir)
+        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${_pastaFornecedor(f.fornecedor)}/${nome}`);
         await dropboxDeleteTeam(f.dropboxPath);
         _docCache.delete(f.dropboxPath);
         f.dropboxPath = destino;
