@@ -1250,6 +1250,23 @@ const _pastaFornecedor = nome => {
   const s = String(nome||'').replace(/[\\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,100);
   return s || 'Sem fornecedor';
 };
+// Pasta do fornecedor, agrupada pelo NIF: reutiliza a pasta de faturas já aprovadas com o mesmo NIF
+// (mesmo que o nome do fornecedor venha escrito de outra maneira); senão usa o nome desta fatura
+async function _pastaDoFornecedor(f){
+  const nif = String(f.nif||'').replace(/\D/g,'');
+  if(nif.length === 9){
+    try{
+      const raiz = _pastaAprovadas();
+      const { data } = await sb.from('faturas').select('dropbox_path')
+        .in('nif', [...new Set([String(f.nif).trim(), nif])]).like('dropbox_path', raiz + '/%').limit(50);
+      for(const r of data||[]){
+        const resto = String(r.dropbox_path||'').slice(raiz.length + 1).split('/');
+        if(resto.length >= 2 && resto[0] && resto[0].toLowerCase() !== 'originais') return resto[0];
+      }
+    } catch(e){ console.warn('Pasta por NIF:', e); }
+  }
+  return _pastaFornecedor(f.fornecedor);
+}
 const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
 
 // Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
@@ -1493,7 +1510,7 @@ async function concluirAprovacao(f, cc, pos){
           blob = carimbado;
         }
         // uma subpasta por fornecedor dentro da pasta de aprovadas (a Dropbox cria-a se ainda não existir)
-        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${_pastaFornecedor(f.fornecedor)}/${nome}`);
+        const destino = await dropboxUploadTeam(blob, `${_pastaAprovadas()}/${await _pastaDoFornecedor(f)}/${nome}`);
         await dropboxDeleteTeam(f.dropboxPath);
         _docCache.delete(f.dropboxPath);
         f.dropboxPath = destino;
