@@ -112,10 +112,3 @@ body.device-mobile .ag-compose{padding-bottom:calc(10px + var(--m-safe-b,0px))}
 body.device-mobile #ag-in{font-size:16px} /* evita zoom automático no iOS */
 body.enc-mode #ag-fab,body.enc-mode #ag-panel{display:none!important}
 
-/* Largura ajustável (arrastar a borda esquerda) */
-.ag-resize{position:absolute;left:-4px;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:2;touch-action:none}
-.ag-resize::after{content:'';position:absolute;left:3px;top:50%;width:4px;height:44px;margin-top:-22px;border-radius:99px;background:rgba(37,99,235,.55);opacity:0;transition:opacity .15s}
-.ag-resize:hover::after,body.ag-resizing .ag-resize::after{opacity:1}
-body.ag-resizing{cursor:ew-resize;user-select:none}
-body.ag-resizing #ag-panel{transition:none}
-body.device-mobile .ag-resize{display:none}

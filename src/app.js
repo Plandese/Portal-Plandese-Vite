@@ -68,6 +68,7 @@ import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, p
 
 // Fornecedores
 import { initAtividade } from './modules/atividade.js';
+import { initPainelRedim } from './modules/painel-redim.js';
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
 
@@ -126,6 +127,7 @@ window.S = S;
 // ── Device detection ao carregar ──
 applyDeviceClass();
 window.addEventListener('resize', applyDeviceClass);
+initPainelRedim();
 
 // ── QR Registration via URL param ──
 initQrRegistration();
