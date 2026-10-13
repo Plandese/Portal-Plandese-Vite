@@ -139,11 +139,16 @@ function _populateEncSelect(selectedId=''){
   });
 }
 
+// Utilizadores que podem ser diretor de obra: o perfil Diretor de Obra e administradores
+// expressamente associados (mantêm os privilégios de admin).
+const _ADMINS_DIRETORES=['david.mosca'];
+const _podeSerDiretor=(un,u)=>u?.role==='diretor_obra' || _ADMINS_DIRETORES.includes(un);
+
 function _populateDiretorSelect(selectedId=''){
   const sel=document.getElementById('mo-diretor');
   if(!sel) return;
   sel.innerHTML='<option value="">— Nenhum —</option>';
-  Object.entries(S.USERS||{}).filter(([,u])=>u.role==='diretor_obra').forEach(([username,u])=>{
+  Object.entries(S.USERS||{}).filter(([un,u])=>_podeSerDiretor(un,u)).forEach(([username,u])=>{
     const op=document.createElement('option');
     op.value=username; op.textContent=u.nome||username;
     if(username===selectedId) op.selected=true;
@@ -165,7 +170,7 @@ function _renderMoExtras(){
   const addDir=document.getElementById('mo-diretor-extra-add');
   if(addDir){
     addDir.innerHTML='<option value="">+ adicionar diretor…</option>';
-    Object.entries(S.USERS||{}).filter(([un,u])=>u.role==='diretor_obra' && un!==diretorPrincipal && !_moDiretoresExtra.includes(un))
+    Object.entries(S.USERS||{}).filter(([un,u])=>_podeSerDiretor(un,u) && un!==diretorPrincipal && !_moDiretoresExtra.includes(un))
       .forEach(([un,u])=>{ const op=document.createElement('option'); op.value=un; op.textContent=u.nome||un; addDir.appendChild(op); });
   }
 
