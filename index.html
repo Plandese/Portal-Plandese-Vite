@@ -3062,6 +3062,17 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="cmpAddForn()" style="white-space:nowrap;flex-shrink:0">+ Adicionar</button>
       </div>
       <div id="mcmp-forn-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px">
+        <select id="mcmp-cot-cliente" style="width:auto;padding:7px 10px;font-size:13px" title="Aplicação de email a abrir">
+          <option value="outlook">Outlook (app)</option>
+          <option value="gmail">Gmail (website)</option>
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cmpPedirCotacao()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Pedir cotação por email
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Abre um email pronto a enviar aos fornecedores acima (em cópia oculta), com a lista de artigos.</div>
     </div>
     </div>
 

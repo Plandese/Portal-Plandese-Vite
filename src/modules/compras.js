@@ -10,6 +10,7 @@ import { sbLoadFornecedores } from './fornecedores.js';
 let COMPRAS = [];
 let _cmpSeq = 1;
 let _cmpArtigosEdit = [];
+let _cmpCotEnviada = false;
 let _cmpFornsEdit   = [];
 let _artPickerItems = [];
 let _mapaLeaflet = null;
@@ -133,6 +134,66 @@ function enviarEmailNotificacao(c) {
     `\nCriado por: ${c.criadoNome||c.criadoPor} em ${c.criadoEm}`
   );
   window.open(`mailto:${c.emailNotif}?subject=${subject}&body=${body}`, '_blank');
+}
+
+// ── Pedido de cotação por email ──────────────────────────────────
+// Abre um email já preenchido (fornecedores em Bcc) no Outlook (app, via mailto) ou no Gmail (website).
+function cmpPedirCotacao() {
+  const titulo = document.getElementById('mcmp-titulo').value.trim();
+  if (!titulo) { showToast('Indique o título do pedido'); return; }
+  if (!_cmpArtigosEdit.length) { showToast('Adicione pelo menos um artigo'); return; }
+  if (!_cmpFornsEdit.length) { showToast('Adicione pelo menos um fornecedor'); return; }
+
+  const semEmail = [], emails = [];
+  _cmpFornsEdit.forEach(f => {
+    const nome = typeof f === 'string' ? f : f.nome;
+    const reg = S.FORNECEDORES?.find(x => (f.id && x.id === f.id) || (x.nome || '').toLowerCase() === (nome || '').toLowerCase());
+    const em = (reg?.email_compras || reg?.email || '').trim();
+    if (em) { if (!emails.includes(em)) emails.push(em); } else semEmail.push(nome);
+  });
+  if (!emails.length) { showToast('Nenhum dos fornecedores tem email registado'); return; }
+
+  const obraId   = document.getElementById('mcmp-obra').value;
+  const obraNome = S.OBRAS.find(o => String(o.id) === String(obraId))?.nome || '';
+  const local    = document.getElementById('mcmp-local').value.trim();
+  const limite   = document.getElementById('mcmp-data-limite').value;
+  const notas    = document.getElementById('mcmp-notas').value.trim();
+  const cliente  = document.getElementById('mcmp-cot-cliente')?.value === 'gmail' ? 'gmail' : 'outlook';
+  try { localStorage.setItem('cmp_cot_cliente', cliente); } catch(e) {}
+
+  const subject = `Pedido de cotação — ${titulo}${obraNome ? ' · ' + obraNome : ''}`;
+  const montaBody = (artigos, cortada) =>
+    'Bom dia,\n\nSolicitamos o envio de cotação para o seguinte material:\n\n' +
+    artigos.map(a => `• ${a.nome} — ${a.qty} ${a.un}${a.ref ? ' (ref. ' + a.ref + ')' : ''}`).join('\n') +
+    (cortada ? `\n• … e mais ${_cmpArtigosEdit.length - artigos.length} artigo(s) (lista completa a enviar a pedido)` : '') +
+    '\n\n' +
+    (obraNome ? `Obra: ${obraNome}\n` : '') +
+    (local ? `Local de entrega: ${local}\n` : '') +
+    (limite ? `Data limite de entrega: ${fmtPT(limite)}\n` : '') +
+    (notas ? `\nNotas: ${notas}\n` : '') +
+    `\nAgradecemos resposta com preços unitários, prazo de entrega e condições de pagamento.\n\n` +
+    `Com os melhores cumprimentos,\n${S.currentUser?.nome || 'PLANDESE'}\nPLANDESE`;
+
+  const bcc = emails.join(',');
+  const url = (body) => cliente === 'gmail'
+    ? `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bcc)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    : `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Links muito compridos são cortados pelos clientes de email: reduz a lista até caber
+  const MAX = 1900;
+  let n = _cmpArtigosEdit.length, link = url(montaBody(_cmpArtigosEdit, false));
+  while (link.length > MAX && n > 1) {
+    n = Math.max(1, Math.floor(n * 0.8));
+    link = url(montaBody(_cmpArtigosEdit.slice(0, n), true));
+  }
+
+  if (cliente === 'gmail') window.open(link, '_blank', 'noopener');
+  else window.location.href = link;
+
+  _cmpCotEnviada = true;
+  showToast(n < _cmpArtigosEdit.length
+    ? `Lista longa: foram incluídos ${n} de ${_cmpArtigosEdit.length} artigos no email`
+    : (semEmail.length ? `Sem email registado: ${semEmail.join(', ')}` : 'Email de cotação aberto'));
 }
 
 // ── Badges ───────────────────────────────────────────────────────
@@ -1104,6 +1165,8 @@ function openCompraModal(c) {
   const elAdjud   = document.getElementById('mcmp-adjud');
   const elDataForn = document.getElementById('mcmp-data-forn');
   if (elCotacao)  elCotacao.checked  = c ? !!c.pedidoCotacao : false;
+  _cmpCotEnviada = c ? !!c.pedidoCotacao : false;
+  try { const sel = document.getElementById('mcmp-cot-cliente'); if (sel) sel.value = localStorage.getItem('cmp_cot_cliente') || 'outlook'; } catch(e) {}
   if (elAprovDO)  elAprovDO.checked  = c ? !!c.aprovadoDO    : false;
   if (elAdjud)    elAdjud.checked    = c ? !!c.adjudicado    : false;
   if (elDataForn) elDataForn.value   = c ? (c.dataFornecimento||'') : '';
@@ -1140,7 +1203,7 @@ async function saveCompra() {
   const artigos   = JSON.parse(JSON.stringify(_cmpArtigosEdit));
   const fornecedores = [..._cmpFornsEdit];
   const fornecedor   = fornecedores[0] || '';
-  const pedidoCotacao = document.getElementById('mcmp-cotacao')?.checked ?? false;
+  const pedidoCotacao = document.getElementById('mcmp-cotacao')?.checked ?? _cmpCotEnviada;
   const aprovadoDO    = document.getElementById('mcmp-aprov-do')?.checked ?? false;
   const adjudicado    = document.getElementById('mcmp-adjud')?.checked ?? false;
   const dataFornecimento = document.getElementById('mcmp-data-forn')?.value || null;
@@ -1328,7 +1391,7 @@ export {
   uploadListaExcel, uploadListaExcelFile,
   cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
-  openCompraModal, enviarEmailNotificacao, initCompras,
+  openCompraModal, enviarEmailNotificacao, cmpPedirCotacao, initCompras,
   urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras,
   cmpVerListaCompleta, abrirCmpObraDetalhe
 };
