@@ -99,6 +99,7 @@ import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave
 
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
 import { initTelasFinaisLink, abrirTelasFinais } from './modules/telas-finais.js';
+import { initExistencias, exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar } from './modules/existencias.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
@@ -121,6 +122,7 @@ Object.assign(R, {
   initTelasFinaisLink,
 });
 window.abrirTelasFinais = abrirTelasFinais;
+Object.assign(window, { exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
 window.fmt = fmt; window.fmtPT = fmtPT; window.calcH = calcH; window.fmtH = fmtH;
@@ -399,6 +401,7 @@ window.savePerfil = async function () {
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }
     if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
+    if (id === 'existencias')       { initExistencias(); }
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'atividade')    { initAtividade(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }

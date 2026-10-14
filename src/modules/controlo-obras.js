@@ -109,7 +109,7 @@ async function coLoad(){
 // ── Página ────────────────────────────────────────────────────────────
 async function renderControloObras(voltarLista){
   const el = document.getElementById('co-root'); if(!el) return;
-  if(voltarLista===true){ CO.sel = null; simReset(); }
+  if(voltarLista===true){ CO.sel = null; simReset(); CO.loaded = false; }  // recarrega (as existências podem ter mudado)
   if(!CO.loaded){ el.innerHTML = '<div class="co-empty">A carregar…</div>'; await coLoad(); }
   if(CO.sel && CO.sel!=='ALL' && !obrasAtivas().some(o=>o.id===CO.sel)) CO.sel = null;
   if(CO.sel) coRenderDetail(); else coRenderList();
