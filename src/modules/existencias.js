@@ -37,6 +37,12 @@ function obrasVisiveis(){
 export async function initExistencias(){
   EX.obra = null; EX.view = '';
   if(!EX.mes) EX.mes = mesAtual();
+  // regresso da página "Adicionar artigo": reabre a mesma obra e mês
+  try{
+    const r = JSON.parse(sessionStorage.getItem('plandese_exist_ret') || 'null');
+    sessionStorage.removeItem('plandese_exist_ret');
+    if(r && obrasVisiveis().some(o=>o.id===r.obra)){ EX.obra = r.obra; EX.mes = r.mes || EX.mes; EX.q = ''; await exCarregar(); return; }
+  }catch(e){}
   await exCartoes();
 }
 
@@ -255,22 +261,16 @@ export async function exGravar(){
   exRender();
 }
 
-// "Adicionar artigo" abre uma página nova no browser (/existencias-artigo/) com a lista de artigos do CentralGest.
-// Essa página escreve no rascunho local desta contagem; esta página apanha-o quando volta a ter o foco.
+// "Adicionar artigo" leva para uma página à parte (/existencias-artigo/) com a lista de artigos do CentralGest.
+// Essa página escreve no rascunho local desta contagem e volta ao portal, que reabre a mesma obra e mês.
 export function exAbrirAdd(){
   const o = obrasVisiveis().find(x=>x.id===EX.obra);
   const sp = o ? split(o.nome) : null;
   const nome = sp ? (sp.cod ? sp.cod+' · ' : '') + sp.nome : '';
   const url = '/existencias-artigo/?obra=' + encodeURIComponent(EX.obra) + '&mes=' + encodeURIComponent(EX.mes) + '&nome=' + encodeURIComponent(nome);
-  window.open(url, '_blank');
+  try{ sessionStorage.setItem('plandese_exist_ret', JSON.stringify({ obra:EX.obra, mes:EX.mes })); }catch(e){}
+  window.location.href = url;
 }
-function exApanharRascunho(){
-  const sec = document.getElementById('sec-existencias');
-  if(!EX.obra || !EX.carregado || !sec || !sec.classList.contains('active')) return;
-  exAplicarMes();
-}
-window.addEventListener('storage', e => { if(e.key && e.key === draftKey()) exApanharRascunho(); });
-document.addEventListener('visibilitychange', () => { if(!document.hidden) exApanharRascunho(); });
 
 export function exSetPreco(i, inp){
   const l = EX.linhas[i]; if(!l) return;
