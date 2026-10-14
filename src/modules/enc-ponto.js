@@ -4,7 +4,7 @@
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, calcH, fmtH } from '../utils/helpers.js';
-import { TIPOS, ENC_MODULES } from '../config.js';
+import { TIPOS, ENC_MODULES, obraEmCurso } from '../config.js';
 import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
 import { encEqAbrir, stopEncQrScanner } from './enc-equip.js';
@@ -17,7 +17,7 @@ import { stopCombQrScanner, encUpdateFuelWidget } from './enc-combustivel.js';
 
 function _encObraDoEncarregado(){
   const username=S.currentUser?.key;
-  return S.OBRAS.filter(o=>o.ativa&&o.prazo&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)))
+  return S.OBRAS.filter(o=>obraEmCurso(o)&&o.prazo&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)))
     .sort((a,b)=>a.prazo.localeCompare(b.prazo))[0];
 }
 
@@ -249,7 +249,7 @@ async function initEnc(){
       const {data:encexs}=await sb.from('obra_encarregados_extra').select('obra_id,encarregado_id');
       const encexPorObra={};
       (encexs||[]).forEach(r=>{ (encexPorObra[r.obra_id] ||= []).push(r.encarregado_id); });
-      S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa,prazo:o.prazo||null,encarregado_id:o.encarregado_id||null,encarregados_extra:encexPorObra[o.id]||[]}));
+      S.OBRAS=obras.map(o=>({id:o.id,nome:o.nome,local:o.local||'',desc:o.descricao||'',ativa:o.ativa,estado:o.estado||'em_curso',prazo:o.prazo||null,encarregado_id:o.encarregado_id||null,encarregados_extra:encexPorObra[o.id]||[]}));
     }
   } catch(e){ console.warn('obras:',e); }
   // Buscar colaboradores
@@ -261,7 +261,7 @@ async function initEnc(){
   const os=document.getElementById('enc-obra-sel');
   if(os){
     os.innerHTML='<option value="">— Selecione uma obra —</option>';
-    S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+    S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   }
   // Reforçar visibilidade (caso algo tenha mudado durante o carregamento)
   document.getElementById('enc-screen0').style.display='flex';
@@ -842,7 +842,7 @@ async function encGoFolhaPontoAluguer(){
   // Preencher obras
   const os=document.getElementById('enc-alug-obra');
   os.innerHTML='<option value="">— Selecione uma obra —</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   // Recarregar empresas cedentes do Supabase (garante lista actualizada)
   await loadEmpresasMOA().catch(e=>console.warn('loadEmpresasMOA:',e));
   const es=document.getElementById('enc-alug-empresa');

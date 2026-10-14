@@ -5,6 +5,7 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal, openModal } from './navigation.js';
+import { obraEmCurso } from '../config.js';
 
 let EQUIPAMENTOS  = JSON.parse(localStorage.getItem('plandese_eq')||'[]');
 let EQ_MOVIMENTOS = JSON.parse(localStorage.getItem('plandese_eq_mov')||'[]');
@@ -919,7 +920,7 @@ async function initQrRegistration(){
   document.getElementById('qr-equip-cat').textContent=eq?(EQ_CATS[eqCatNorm(eq.categoria)].label):'';
   const sel=document.getElementById('qr-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
-  const obras=info?.obras?.length?info.obras:S.OBRAS.filter(o=>o.ativa);
+  const obras=info?.obras?.length?info.obras:S.OBRAS.filter(obraEmCurso);
   obras.forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
   // Sessão guardada — pré-preencher nome se o encarregado já está logado
   let _qrSession = null;

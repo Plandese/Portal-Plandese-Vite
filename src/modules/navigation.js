@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════
 import { S, R } from '../state.js';
 import { fmt } from '../utils/helpers.js';
+import { obraEmCurso } from '../config.js';
 
 let toastTimer = null;
 export function showToast(msg){
@@ -61,7 +62,7 @@ export function populateFilterSelects(){
   ['f-obra'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     el.innerHTML='<option value="">Todas as obras</option>';
-    S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;el.appendChild(op);});
+    S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;el.appendChild(op);});
   });
 }
 

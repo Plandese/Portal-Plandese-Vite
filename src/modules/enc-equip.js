@@ -5,6 +5,7 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { showToast } from './navigation.js';
 import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
+import { obraEmCurso } from '../config.js';
 
 let _encHtml5Qr = null;
 let _encQrGpsLat = null, _encQrGpsLng = null;
@@ -168,7 +169,7 @@ function _encEqPrepFormRegisto(){
   document.getElementById('enc-eq-cat').textContent=EQ_CATS[eqCatNorm(eq.categoria)].label;
   const sel=document.getElementById('enc-eq-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
   document.getElementById('enc-eq-obs').value='';
   document.getElementById('enc-eq-use-gps').checked=true;
   document.getElementById('enc-eq-loc-dot').className='qr-loc-dot loading';
@@ -244,7 +245,7 @@ function _encEqPrepFormManut(){
   _encManutFotos=[]; _encManutFotosRender();
   const sel=document.getElementById('enc-manut-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{ const op=document.createElement('option'); op.value=o.nome; op.textContent=o.nome; sel.appendChild(op); });
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{ const op=document.createElement('option'); op.value=o.nome; op.textContent=o.nome; sel.appendChild(op); });
   const ultimoLocal = eq.ultimo_local || eq.ultimoLocal;
   if(ultimoLocal && [...sel.options].some(o=>o.value===ultimoLocal)) sel.value=ultimoLocal;
 }

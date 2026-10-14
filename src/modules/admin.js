@@ -5,7 +5,7 @@ import { sb } from '../supabase.js';
 import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
-import { MESES_PT } from '../config.js';
+import { MESES_PT, obraEmCurso } from '../config.js';
 import { showToast, openModal } from './navigation.js';
 import { canAccessSection } from './permissions.js';
 
@@ -194,7 +194,7 @@ export async function htmlKpisPainel() {
     const filtra = r => !_pObra || r.obra_id === _pObra;
     const presentes = new Set(dHoje.filter(r => filtra(r) && _TIPOS_PRESENTE.includes(r.tipo || 'Presença')).map(r => r.colab_numero));
     const ativos = S.COLABORADORES.filter(c => c.ativo).length;
-    const obrasAtivas = S.OBRAS.filter(o => o.ativa);
+    const obrasAtivas = S.OBRAS.filter(obraEmCurso);
     const obrasHoje = new Set(dHoje.filter(r => r.obra_id && _TIPOS_PRESENTE.includes(r.tipo || 'Presença')).map(r => r.obra_id));
     const comPonto = obrasAtivas.filter(o => obrasHoje.has(o.id)).length;
     const falta = obrasAtivas.length - comPonto;
@@ -260,7 +260,7 @@ async function _estadoObrasCarregar(dias, podeMO, podeEQ) {
 
 function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
   const uteis = dias.slice(0, 5).map(_ymd);
-  const obras = S.OBRAS.filter(o => o.ativa);
+  const obras = S.OBRAS.filter(obraEmCurso);
   const porObra = new Map(obras.map(o => [o.id, { obra: o, equipa: new Map(), equips: [] }]));
 
   // Cada colaborador conta na obra do seu registo mais recente (esta semana ou a anterior)
@@ -381,7 +381,7 @@ function _rotSemana() {
 export function htmlFiltrosPainel() {
   if (!canAccessSection('historico') && !canAccessSection('equipamentos')) return '';
   const dias = _painelSemana();
-  const opcoes = S.OBRAS.filter(o => o.ativa).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+  const opcoes = S.OBRAS.filter(obraEmCurso).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
     .map(o => `<option value="${_esc(o.id)}"${o.id === _pObra ? ' selected' : ''}>${_esc(o.nome)}</option>`).join('');
   return `<div class="eo-bar-nav">
     <div class="eo-sem">

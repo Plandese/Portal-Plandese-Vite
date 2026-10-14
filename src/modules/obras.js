@@ -6,6 +6,7 @@ import { S, R } from '../state.js';
 import { sbToggleObra } from '../db.js';
 import { closeModal, populateFilterSelects, flashAlert } from './navigation.js';
 import { fmtPT } from '../utils/helpers.js';
+import { OBRA_ESTADOS } from '../config.js';
 
 let _moDiretoresExtra=[];
 let _moEncarregadosExtra=[];
@@ -17,6 +18,7 @@ export function novaObra(){
   document.getElementById('mo-local').value='';
   document.getElementById('mo-desc').value='';
   document.getElementById('mo-prazo').value='';
+  document.getElementById('mo-estado').value='em_curso';
   _moDiretoresExtra=[];
   _moEncarregadosExtra=[];
   _populateEncSelect('');
@@ -45,6 +47,15 @@ export function obrToggleHideInativas(){
   renderObras();
 }
 
+// Estado da obra (só faz sentido nas ativas): selo com cor
+const _EST_COR = { em_preparacao:'background:#fef3c7;color:#92400e', em_curso:'background:var(--green-bg,#dcfce7);color:var(--green,#15803d)', concluida:'background:#e0e7ff;color:#3730a3' };
+function _estadoBadge(o){
+  if(!o.ativa) return '<span class="badge b-gray">Inativa</span>';
+  const e=o.estado||'em_curso';
+  const l=(OBRA_ESTADOS.find(x=>x.id===e)||{}).label||e;
+  return `<span class="badge" style="${_EST_COR[e]||''}">${l}</span>`;
+}
+
 function _nomeUser(id){ return S.USERS[id]?.nome || id; }
 
 function _pessoas(o){
@@ -67,7 +78,7 @@ function _renderObrasCartoes(lista){
     const {diretorNome,diretorTitle,encNome,encTitle}=_pessoas(o);
     const m=String(o.nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/);
     return `<div class="d-card${o.ativa?'':' off'}">
-      <div class="d-card-top"><span class="d-ic">${ic}</span><div class="d-card-tt"><b title="${esc(o.nome)}">${m?esc(m[2]):esc(o.nome)}</b><small>${m?`<span class="d-cod">${esc(m[1])}</span> `:''}${esc(o.local||'')}</small></div><span class="badge ${o.ativa?'b-green':'b-gray'}">${o.ativa?'Ativa':'Inativa'}</span></div>
+      <div class="d-card-top"><span class="d-ic">${ic}</span><div class="d-card-tt"><b title="${esc(o.nome)}">${m?esc(m[2]):esc(o.nome)}</b><small>${m?`<span class="d-cod">${esc(m[1])}</span> `:''}${esc(o.local||'')}</small></div>${_estadoBadge(o)}</div>
       <div class="d-card-kv"><div>Prazo<b>${o.prazo?fmtPT(o.prazo):'—'}</b></div><div>Diretor<b title="${esc(diretorTitle)}">${esc(diretorNome||'—')}</b></div><div class="full">Encarregado<b title="${esc(encTitle)}">${esc(encNome||'—')}</b></div></div>
       <div class="d-card-act"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm ${o.ativa?'d-b-off':'d-b-on'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div>
     </div>`;
@@ -87,7 +98,7 @@ function _renderObrasLista(lista){
       <td style="color:var(--gray-500)">${o.prazo?fmtPT(o.prazo):'—'}</td>
       <td style="color:var(--gray-500)" title="${diretorTitle}">${diretorNome||'—'}</td>
       <td style="color:var(--gray-500)" title="${encTitle}">${encNome||'—'}</td>
-      <td><span class="badge ${o.ativa?'b-green':'b-gray'}">${o.ativa?'Ativa':'Inativa'}</span></td>
+      <td>${_estadoBadge(o)}</td>
       <td><div style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm" onclick="editObra('${o.id}')">Editar</button><button class="btn btn-sm" style="background:${o.ativa?'var(--yellow-bg)':'var(--green-bg)'};color:${o.ativa?'var(--yellow)':'var(--green)'};border:1px solid ${o.ativa?'#FDE68A':'var(--green-light)'}" onclick="toggleObra('${o.id}')">${o.ativa?'Desativar':'Ativar'}</button></div></td>
     </tr>`;
   }).join('');
@@ -106,8 +117,10 @@ export function renderObras(){
   }
   document.getElementById('nb-obras').textContent=S.OBRAS.filter(o=>o.ativa).length;
   if(!S.OBRAS.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra criada. Clique em "Nova obra".</div>';return;}
-  const lista=_obrHideInativas ? S.OBRAS.filter(o=>o.ativa) : S.OBRAS;
-  if(!lista.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra ativa.</div>';return;}
+  const fEst=document.getElementById('obr-estado-filtro')?.value||'';
+  let lista=_obrHideInativas ? S.OBRAS.filter(o=>o.ativa) : S.OBRAS;
+  if(fEst) lista=lista.filter(o=>o.ativa && (o.estado||'em_curso')===fEst);
+  if(!lista.length){cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma obra'+(fEst?' neste estado':' ativa')+'.</div>';return;}
   cont.appendChild(_renderObrasLista(lista));
 }
 
@@ -119,6 +132,7 @@ export function editObra(id){
   document.getElementById('mo-local').value=o.local||'';
   document.getElementById('mo-desc').value=o.desc||'';
   document.getElementById('mo-prazo').value=o.prazo||'';
+  document.getElementById('mo-estado').value=o.estado||'em_curso';
   _moDiretoresExtra=[...(o.diretores_extra||[])];
   _moEncarregadosExtra=[...(o.encarregados_extra||[])];
   _populateEncSelect(o.encarregado_id||'');
@@ -229,11 +243,12 @@ export async function saveObra(){
   const encarregado_id=document.getElementById('mo-encarregado').value||null;
   const diretor_id=document.getElementById('mo-diretor').value||null;
   const ativa=existing>=0?S.OBRAS[existing].ativa:true;
+  const estado=document.getElementById('mo-estado').value||'em_curso';
   const diretores_extra=[..._moDiretoresExtra], encarregados_extra=[..._moEncarregadosExtra];
-  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa,prazo,encarregado_id,diretor_id,diretores_extra,encarregados_extra};
+  const rec={id,nome,local:document.getElementById('mo-local').value.trim(),desc:document.getElementById('mo-desc').value.trim(),ativa,estado,prazo,encarregado_id,diretor_id,diretores_extra,encarregados_extra};
   try {
     const {error} = await sb.from('obras').upsert({
-      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa,
+      id:rec.id, nome:rec.nome, local:rec.local||null, descricao:rec.desc||null, ativa, estado,
       prazo:prazo||null, encarregado_id:encarregado_id||null, diretor_id:diretor_id||null
     });
     if(error) throw error;

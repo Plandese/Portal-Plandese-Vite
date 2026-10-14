@@ -6,7 +6,7 @@
 //  Só atua em body.device-mobile (a app dos encarregados não passa por aqui).
 // ═══════════════════════════════════════
 import { S, R } from '../state.js';
-import { NAV_CHAPTERS, ROLE_LABELS } from '../config.js';
+import { NAV_CHAPTERS, ROLE_LABELS, obraEmCurso } from '../config.js';
 import { fmt } from '../utils/helpers.js';
 import { canAccessSection } from './permissions.js';
 import { showToast } from './navigation.js';
@@ -54,7 +54,7 @@ function modulosPorCapitulo() {
 
 // ── Obras ─────────────────────────────────────────────────────────────────────
 // O099 (centro de custos) não é uma empreitada
-const obrasAtivas = () => (S.OBRAS || []).filter(o => o.ativa !== false && !/^O099/.test(o.nome || ''));
+const obrasAtivas = () => (S.OBRAS || []).filter(o => obraEmCurso(o) && !/^O099/.test(o.nome || ''));
 const splitObra = nome => { const m = String(nome || '').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod: m[1], nome: m[2] } : { cod: '', nome: nome || '' }; };
 
 // ── Preferências por utilizador (favoritos + atividade recente) ───────────────

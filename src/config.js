@@ -54,6 +54,16 @@ export const USERS_BASE = {
   'admin':{nome:'Administrador',initials:'AD',role:'admin'},
 };
 
+// Estado da obra (dentro das obras ativas):
+//  em_preparacao — ainda não começou · em_curso — em funcionamento · concluida — acabou, mas segue ativa p/ custos e fecho
+export const OBRA_ESTADOS = [
+  { id:'em_preparacao', label:'Em preparação' },
+  { id:'em_curso',      label:'Em curso' },
+  { id:'concluida',     label:'Concluída' },
+];
+// Obra "em funcionamento": a que aparece no ponto, equipamentos, combustível e painel
+export const obraEmCurso = o => !!o && o.ativa !== false && (o.estado || 'em_curso') === 'em_curso';
+
 export const ROLE_LABELS = {
   'admin':       'Administrador',
   'diretor_obra':'Diretor de Obra',

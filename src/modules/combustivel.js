@@ -6,6 +6,7 @@ import { S } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, openModal, closeModal } from './navigation.js';
 import { EQUIPAMENTOS, sbLoadEquipamentos } from './equipamentos.js';
+import { obraEmCurso } from '../config.js';
 
 const _escHtml = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -491,7 +492,7 @@ function combFormTipoChange(){
 function _combFillFormObraSelect(selectedId){
   const sel=document.getElementById('mcf-obra');
   sel.innerHTML='<option value="">— Sem obra —</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;sel.appendChild(op);});
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;sel.appendChild(op);});
   if(selectedId&&[...sel.options].some(o=>o.value===selectedId)) sel.value=selectedId;
 }
 

@@ -1609,6 +1609,12 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>Lista
               </button>
             </div>
+            <select id="obr-estado-filtro" onchange="obrToggleHideInativas()" title="Filtrar por estado" style="padding:7px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white)">
+              <option value="">Todos os estados</option>
+              <option value="em_preparacao">Em preparação</option>
+              <option value="em_curso">Em curso</option>
+              <option value="concluida">Concluídas</option>
+            </select>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-600);cursor:pointer;user-select:none">
               <input type="checkbox" id="obr-hide-inativas" checked onchange="obrToggleHideInativas()" style="width:16px;height:16px;accent-color:var(--blue-500);cursor:pointer"/>
               Ocultar inativas
@@ -2890,6 +2896,13 @@
       <label>Diretores adicionais</label>
       <select id="mo-diretor-extra-add" onchange="moAddDiretorExtra(this.value)"><option value="">+ adicionar diretor…</option></select>
       <div id="mo-diretores-extra" class="mo-chips"></div>
+    </div>
+    <div class="field"><label>Estado da obra</label>
+      <select id="mo-estado">
+        <option value="em_preparacao">Em preparação — ainda não começou</option>
+        <option value="em_curso" selected>Em curso — em funcionamento</option>
+        <option value="concluida">Concluída — mantém-se ativa só para custos e fecho de obra</option>
+      </select>
     </div>
     <div class="field"><label>Notas</label><textarea id="mo-desc" style="resize:vertical;min-height:60px" placeholder="Notas..."></textarea></div>
     <div class="modal-footer">

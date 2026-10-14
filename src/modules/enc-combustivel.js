@@ -6,6 +6,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
 import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
+import { obraEmCurso } from '../config.js';
 
 let _combEqOpts = new Map();
 let _combPickerCat = '';
@@ -149,7 +150,7 @@ function _encHideAll(){
 // Cartão da home: litros de gasóleo em stock no(s) depósito(s) da(s) obra(s) do encarregado
 function _encObrasComb(){
   const username=S.currentUser?.key;
-  return S.OBRAS.filter(o=>o.ativa&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)));
+  return S.OBRAS.filter(o=>obraEmCurso(o)&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)));
 }
 
 async function encUpdateFuelWidget(){
@@ -481,7 +482,7 @@ function encGoCombDeposito(){
   document.getElementById('dep-data').value=fmt(new Date());
   const os=document.getElementById('dep-obra');
   os.innerHTML='<option value="">— Selecione uma obra —</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   document.getElementById('dep-litros').value='';
   document.getElementById('dep-obs').value='';
   _cntLimpar('dep');
@@ -642,7 +643,7 @@ function _combPreencherFormViatura(){
   document.getElementById('comb-viatura-data').value=fmt(new Date());
   const os=document.getElementById('comb-viatura-obra');
   os.innerHTML='<option value="">— Selecione uma obra —</option>';
-  S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   document.getElementById('comb-viatura-litros').value='';
   document.getElementById('comb-viatura-fornecedor').value='';
   document.getElementById('comb-viatura-obs').value='';
@@ -944,7 +945,7 @@ async function _chatAskObra() {
   _chat.step = 'obra';
   await _chatAddBot('Para que obra?');
   _chatSetPlaceholder('');
-  const obras = (S.OBRAS || []).filter(o => o.ativa !== false);
+  const obras = (S.OBRAS || []).filter(obraEmCurso);
   if (obras.length > 0) {
     _chatShowChips(obras.map(o => ({
       label: o.nome,
@@ -1090,7 +1091,7 @@ async function chatSend() {
     _chatSetPrazo(val);
 
   } else if (_chat.step === 'obra') {
-    const obras = (typeof S.OBRAS !== 'undefined' ? S.OBRAS : []).filter(function(o) { return o.ativa !== false; });
+    const obras = (typeof S.OBRAS !== 'undefined' ? S.OBRAS : []).filter(function(o) { return obraEmCurso(o); });
     const match = obras.find(function(o) { return o.nome.toLowerCase().includes(val.toLowerCase()); });
     if (match) {
       _chatSelectObra(match.id, match.nome);

@@ -12,6 +12,7 @@ import { canAccessSection } from './permissions.js';
 import { mPrefs, mGravar } from './m-shell.js';
 import { showToast } from './navigation.js';
 import { setDeviceMode } from './auth.js';
+import { obraEmCurso } from '../config.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -48,7 +49,7 @@ function catalogo() {
 }
 const grpLabel = key => (document.querySelector(`.sidebar .nav-lbl[data-grp="${key}"] .nav-lbl-txt`)?.textContent || '').trim();
 
-const obrasAtivas = () => (S.OBRAS || []).filter(o => o.ativa !== false && !/^O099/.test(o.nome || ''));
+const obrasAtivas = () => (S.OBRAS || []).filter(o => obraEmCurso(o) && !/^O099/.test(o.nome || ''));
 const splitObra = nome => { const m = String(nome || '').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod: m[1], nome: m[2] } : { cod: '', nome: nome || '' }; };
 
 // ── Favoritos + atividade (mesmas preferências da app de telemóvel) ───────────────

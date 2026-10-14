@@ -23,7 +23,7 @@ export async function carregarDados() {
       const direxPorObra = {}, encexPorObra = {};
       (direxs||[]).forEach(r => { (direxPorObra[r.obra_id] ||= []).push(r.diretor_id); });
       (encexs||[]).forEach(r => { (encexPorObra[r.obra_id] ||= []).push(r.encarregado_id); });
-      S.OBRAS = obras.map(o => ({id:o.id, nome:o.nome, local:o.local||'', desc:o.descricao||'', ativa:o.ativa, prazo:o.prazo||null, encarregado_id:o.encarregado_id||null, diretor_id:o.diretor_id||null, diretores_extra:direxPorObra[o.id]||[], encarregados_extra:encexPorObra[o.id]||[]}));
+      S.OBRAS = obras.map(o => ({id:o.id, nome:o.nome, local:o.local||'', desc:o.descricao||'', ativa:o.ativa, estado:o.estado||'em_curso', prazo:o.prazo||null, encarregado_id:o.encarregado_id||null, diretor_id:o.diretor_id||null, diretores_extra:direxPorObra[o.id]||[], encarregados_extra:encexPorObra[o.id]||[]}));
     }
     // Empresas MOA e colaboradores
     await R.loadEmpresasMOA?.();

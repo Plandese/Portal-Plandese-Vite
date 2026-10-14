@@ -7,6 +7,7 @@ import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend, isNonWorkday } from '../
 import { podeAprovarObra, aprovCelulaHTML } from './ponto.js';
 import { showToast } from './navigation.js';
 import { abrirResumoMOA } from './resumo-colab.js';
+import { obraEmCurso } from '../config.js';
 
 // ── MOA — Estado ──────────────────────
 let encAlugEmpresaId='', encAlugEmpresaNome='', encAlugObraId='', encAlugData='', encAlugHoraIni='08:00', encAlugHoraFim='17:00';
@@ -1178,7 +1179,7 @@ async function initMOAFilters(){
   const os=document.getElementById('moa-f-obra');
   if(os){
     os.innerHTML='<option value="">Todas</option>';
-    S.OBRAS.filter(o=>o.ativa).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+    S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   }
 }
 
