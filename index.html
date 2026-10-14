@@ -3219,6 +3219,15 @@
           </select>
           <input type="text" id="lst-srch" placeholder="Pesquisar artigo pelo nome ou referência..." oninput="cmpLstRender()" style="flex:1;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)" autofocus/>
         </div>
+        <!-- Artigo avulso (só quando o seletor é usado pelas Existências) -->
+        <div id="lst-avulso" style="display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;flex-shrink:0">
+          <span style="font-size:12px;color:var(--gray-500)">ou artigo avulso:</span>
+          <input type="text" id="lst-av-n" placeholder="Nome do artigo avulso" style="flex:1;min-width:140px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)">
+          <input type="text" id="lst-av-q" inputmode="decimal" placeholder="Qtd" style="width:64px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)">
+          <input type="text" id="lst-av-u" placeholder="un" style="width:56px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)">
+          <input type="text" id="lst-av-p" inputmode="decimal" placeholder="Preço €" style="width:84px;border:1.5px solid var(--gray-200);border-radius:8px;padding:7px 10px;font-size:13px;font-family:var(--font)">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="lstAddAvulso()">+ Adicionar</button>
+        </div>
         <div id="lst-results" style="flex:1;overflow-y:auto;padding-right:4px">
           <div style="padding:40px;color:var(--gray-400);text-align:center;font-size:14px">Selecione uma categoria ou pesquise para encontrar artigos</div>
         </div>

@@ -1072,6 +1072,9 @@ function abrirListaMateriais(ext) {
       });
     }
   }
+  const avBox = document.getElementById('lst-avulso');
+  if (avBox) avBox.style.display = _lstOnConfirm ? 'flex' : 'none';
+  ['n','q','u','p'].forEach(k => { const e = document.getElementById('lst-av-' + k); if (e) e.value = ''; });
   const srch = document.getElementById('lst-srch');
   if (srch) srch.value = '';
   if (sel) sel.value = '';
@@ -1195,6 +1198,22 @@ function lstUpdateSelPanel() {
   }
   if (countTxt) countTxt.textContent = n === 0 ? 'Nenhum artigo selecionado' : `${n} artigo${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}`;
   if (badge) { badge.style.display = n > 0 ? '' : 'none'; badge.textContent = `${n} artigo${n !== 1 ? 's' : ''}`; }
+}
+
+// Artigo avulso dentro do seletor (usado pelas Existências): fica na seleção como qualquer outro
+function lstAddAvulso() {
+  const nome = (document.getElementById('lst-av-n')?.value || '').trim();
+  const num = v => { const n = parseFloat(String(v || '').replace(',', '.')); return isNaN(n) ? 0 : Math.abs(n); };
+  const qty = num(document.getElementById('lst-av-q')?.value);
+  const un  = (document.getElementById('lst-av-u')?.value || '').trim();
+  const p   = num(document.getElementById('lst-av-p')?.value);
+  if (!nome) { showToast('Indique o nome do artigo'); return; }
+  if (!qty)  { showToast('Indique a quantidade'); return; }
+  const ex = _lstTempArtigos.find(a => !a.ref && a.nome.toLowerCase() === nome.toLowerCase());
+  if (ex) { ex.qty += qty; if (p) ex.p = p; }
+  else _lstTempArtigos.push({ ref: '', nome, un, qty, p });
+  ['n','q','u','p'].forEach(k => { const e = document.getElementById('lst-av-' + k); if (e) e.value = ''; });
+  lstUpdateSelPanel();
 }
 
 function lstUpdateQty(i, val) {
@@ -1474,7 +1493,7 @@ export {
   cmpAddForn, cmpRemoveForn, cmpInitArtPicker,
   abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais,
   uploadListaExcel, uploadListaExcelFile,
-  cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, cmpUpdateArtBtnBadge,
+  cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, lstAddAvulso, cmpUpdateArtBtnBadge,
   abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker,
   openCompraModal, enviarEmailNotificacao, cmpPedirCotacao, cmpFornSug, cmpFornSugHide, cmpPickForn, initCompras,
   urgBadge, cmpEstadoBadge, cmpFornDisplay, cmpWorkflowBadges, dataLimiteBadge, atualizaKPIsCompras,

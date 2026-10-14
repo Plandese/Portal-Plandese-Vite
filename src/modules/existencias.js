@@ -154,13 +154,6 @@ function exRender(){
       .ex-obra{font-size:17px;font-weight:700;color:var(--gray-900);flex:1;min-width:140px}
       .ex-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
       .ex-search{flex:1;min-width:200px}
-      .ex-av{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 14px;font-size:12px;color:var(--gray-500)}
-      .ex-av input{padding:7px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white)}
-      .ex-av-n{flex:1;min-width:160px}
-      .ex-add{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:14px;margin-bottom:14px}
-      .ex-add label{font-size:11px;font-weight:600;color:var(--gray-500);display:flex;flex-direction:column;gap:4px}
-      .ex-add input{padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px}
-      .ex-add-a{flex:1;min-width:200px}
       .ex-bar label{font-size:11px;font-weight:600;color:var(--gray-500);display:flex;flex-direction:column;gap:4px}
       .ex-bar select,.ex-bar input{padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white)}
       .ex-tot{text-align:right}.ex-tot b{display:block;font-size:22px;color:var(--gray-900)}
@@ -185,14 +178,6 @@ function exRender(){
       <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
       <label class="ex-search">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
       <button class="btn btn-secondary" type="button" onclick="exAbrirAdd()">+ Adicionar artigo</button>
-    </div>
-    <div class="ex-av">
-      <span>ou adicione um artigo avulso:</span>
-      <input id="ex-av-n" type="text" placeholder="Nome do artigo avulso" class="ex-av-n">
-      <input id="ex-av-q" type="text" inputmode="decimal" placeholder="Qtd" style="width:70px">
-      <input id="ex-av-u" type="text" placeholder="un" style="width:60px">
-      <input id="ex-av-p" type="text" inputmode="decimal" placeholder="Preço €" style="width:90px">
-      <button class="btn btn-secondary btn-sm" type="button" onclick="exAddAvulso()">+ Adicionar</button>
     </div>
 
     ${ultima?`<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Para o controlo de custos conta a última existência gravada: <b>${mesLong(ultima.mes)}</b> — ${eur(ultima.total)}.</div>`:'<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Ainda não há nenhuma existência gravada para esta obra.</div>'}
@@ -269,7 +254,7 @@ export async function exGravar(){
 // "Adicionar artigo": abre a mesma lista de materiais (ecrã inteiro, catálogo CentralGest) do departamento de Compras.
 export function exAbrirAdd(){
   if(typeof window.abrirListaMateriais !== 'function'){ showToast('Lista de materiais indisponível'); return; }
-  const atuais = EX.linhas.filter(l=>l.manual && l.r).map(l=>({ ref:l.r, nome:l.a, un:l.un||'', qty:l.q||1 }));
+  const atuais = EX.linhas.filter(l=>l.manual).map(l=>({ ref:l.r||'', nome:l.a, un:l.un||'', qty:l.q||1, p:l.p||0 }));
   window.abrirListaMateriais({ artigos: atuais, onConfirm: exAplicarLista });
 }
 function exZerarRascunho(keys){
@@ -279,39 +264,23 @@ function exZerarRascunho(keys){
     localStorage.setItem(draftKey(), JSON.stringify(d));
   }catch(e){}
 }
-// Aplica a seleção: artigos do catálogo (com referência) passam a ser exatamente os escolhidos
+// Aplica a seleção: as linhas acrescentadas passam a ser exatamente as escolhidas (catálogo e avulsos)
+const mesmoArt = (l, a) => l.manual && (a.ref ? l.r===a.ref : (!l.r && l.a===a.nome));
 function exAplicarLista(sel){
-  const refs = new Set(sel.map(a=>a.ref));
-  const removidas = EX.linhas.filter(l=>l.manual && l.r && !refs.has(l.r));
+  const removidas = EX.linhas.filter(l=>l.manual && !sel.some(a=>mesmoArt(l,a)));
   EX.linhas = EX.linhas.filter(l=>!removidas.includes(l));
   sel.forEach(a=>{
-    const ex = EX.linhas.find(l=>l.manual && l.r===a.ref);
-    const q = Math.abs(+a.qty||0);
-    if(ex) ex.q = q;
-    else EX.linhas.push({ f:'', a:a.nome, r:a.ref, un:a.un, p:0, comprado:0, q, manual:true });
+    const ex = EX.linhas.find(l=>mesmoArt(l,a));
+    const q = Math.abs(+a.qty||0), p = Math.abs(+a.p||0);
+    if(ex){ ex.q = q; if(p) ex.p = p; }
+    else EX.linhas.push({ f:'', a:a.nome, r:a.ref||'', un:a.un, p, comprado:0, q, manual:true });
   });
   EX.linhas.sort((x,y)=>(x.a||'').localeCompare(y.a||'','pt'));
   EX.dirty = true;
   exGuardarRascunho();
   exZerarRascunho(removidas.map(keyOf));
   exRender();
-  showToast(sel.length ? `${sel.length} artigo${sel.length!==1?'s':''} na contagem — indique os preços unitários` : 'Seleção atualizada');
-}
-// Artigo avulso (fora do catálogo)
-export function exAddAvulso(){
-  const a = document.getElementById('ex-av-n').value.trim();
-  const q = Math.abs(num(document.getElementById('ex-av-q').value));
-  const un = document.getElementById('ex-av-u').value.trim();
-  const p = Math.abs(num(document.getElementById('ex-av-p').value));
-  if(!a){ showToast('Indique o nome do artigo'); return; }
-  if(!q){ showToast('Indique a quantidade'); return; }
-  const ex = EX.linhas.find(l=>keyOf(l)==='|'+a);
-  if(ex){ ex.q = (+ex.q||0)+q; if(p) ex.p = p; }
-  else EX.linhas.push({ f:'', a, r:'', un, p, comprado:0, q, manual:true });
-  EX.linhas.sort((x,y)=>(x.a||'').localeCompare(y.a||'','pt'));
-  EX.dirty = true; EX.q = '';
-  exGuardarRascunho();
-  exRender();
+  showToast(sel.length ? `${sel.length} artigo${sel.length!==1?'s':''} na contagem — confirme os preços unitários` : 'Seleção atualizada');
 }
 export function exSetPreco(i, inp){
   const l = EX.linhas[i]; if(!l) return;
