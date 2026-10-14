@@ -47,7 +47,7 @@ button:disabled{opacity:.5;cursor:default}
   </div>
   <div class="sp"></div>
   <span id="cnt" class="added"></span>
-  <button class="sec" type="button" onclick="location.href='/?open=existencias'">← Voltar às Existências</button>
+  <button class="sec" type="button" onclick="voltar()">← Voltar às Existências</button>
 </header>
 <main>
   <p style="color:var(--muted);font-size:12px;margin:0 0 12px">Artigos da lista do CentralGest (a mesma de Compras). Indique o preço unitário e a quantidade em stock e clique em Adicionar — o artigo fica na contagem desta obra. Pode acrescentar vários seguidos e depois voltar às Existências.</p>
@@ -82,6 +82,11 @@ button:disabled{opacity:.5;cursor:default}
   document.getElementById('ctx').textContent = (nome ? nome + ' · ' : '') + mesTxt;
   if(!obra || !mes){ document.querySelector('main').innerHTML = '<div class="empty">Abra esta página a partir de Existências, no portal.</div>'; return; }
 
+  window.voltar = function(){
+    if(P.get('embed') && window.parent && window.parent.exFecharAdd){ window.parent.exFecharAdd(); }
+    else location.href = '/?open=existencias';
+  };
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.voltar(); });
   var CAT = window.ARTIGOS_CATALOGO || {};
   var items = [];
   Object.keys(CAT).forEach(function(k){ CAT[k].items.forEach(function(it){ items.push({cat:k, ref:it[0], nome:it[1], un:it[2]}); }); });

@@ -37,12 +37,6 @@ function obrasVisiveis(){
 export async function initExistencias(){
   EX.obra = null; EX.view = '';
   if(!EX.mes) EX.mes = mesAtual();
-  // regresso da página "Adicionar artigo": reabre a mesma obra e mês
-  try{
-    const r = JSON.parse(sessionStorage.getItem('plandese_exist_ret') || 'null');
-    sessionStorage.removeItem('plandese_exist_ret');
-    if(r && obrasVisiveis().some(o=>o.id===r.obra)){ EX.obra = r.obra; EX.mes = r.mes || EX.mes; EX.q = ''; await exCarregar(); return; }
-  }catch(e){}
   await exCartoes();
 }
 
@@ -261,15 +255,26 @@ export async function exGravar(){
   exRender();
 }
 
-// "Adicionar artigo" leva para uma página à parte (/existencias-artigo/) com a lista de artigos do CentralGest.
-// Essa página escreve no rascunho local desta contagem e volta ao portal, que reabre a mesma obra e mês.
+// "Adicionar artigo": página nova por cima da contagem (ecrã inteiro) com a lista de artigos do CentralGest.
+// A página (/existencias-artigo/, embebida) escreve no rascunho local da contagem; ao fechar, esta página relê-o.
 export function exAbrirAdd(){
+  if(document.getElementById('ex-overlay')) return;
   const o = obrasVisiveis().find(x=>x.id===EX.obra);
   const sp = o ? split(o.nome) : null;
   const nome = sp ? (sp.cod ? sp.cod+' · ' : '') + sp.nome : '';
-  const url = '/existencias-artigo/?obra=' + encodeURIComponent(EX.obra) + '&mes=' + encodeURIComponent(EX.mes) + '&nome=' + encodeURIComponent(nome);
-  try{ sessionStorage.setItem('plandese_exist_ret', JSON.stringify({ obra:EX.obra, mes:EX.mes })); }catch(e){}
-  window.location.href = url;
+  const url = '/existencias-artigo/?embed=1&obra=' + encodeURIComponent(EX.obra) + '&mes=' + encodeURIComponent(EX.mes) + '&nome=' + encodeURIComponent(nome);
+  const ov = document.createElement('div');
+  ov.id = 'ex-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:var(--white,#fff);transform:translateY(24px);opacity:0;transition:transform .22s ease,opacity .22s ease';
+  ov.innerHTML = `<iframe src="${url}" title="Adicionar artigo" style="width:100%;height:100%;border:0;display:block"></iframe>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(()=>{ ov.style.transform = 'none'; ov.style.opacity = '1'; });
+}
+export function exFecharAdd(){
+  const ov = document.getElementById('ex-overlay');
+  if(!ov) return;
+  ov.remove();
+  if(EX.obra && EX.carregado) exAplicarMes();   // apanha os artigos acrescentados
 }
 
 export function exSetPreco(i, inp){
