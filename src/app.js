@@ -98,6 +98,7 @@ import { initPendentesTavira, ptAdicionar, ptAbrirRelatorio, ptFecharRelatorio, 
 import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave, lembretesApagar, lembretesSelectCor, lembretesDragStart, lembretesDragEnd, lembretesDragOver, lembretesDrop } from './modules/lembretes.js';
 
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
+import { initTelasFinaisLink, abrirTelasFinais } from './modules/telas-finais.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
@@ -117,7 +118,9 @@ Object.assign(R, {
   renderEncModsCheckboxes,
   renderAnalise, anlResetObras,
   initAgente, agenteStop,
+  initTelasFinaisLink,
 });
+window.abrirTelasFinais = abrirTelasFinais;
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
 window.fmt = fmt; window.fmtPT = fmtPT; window.calcH = calcH; window.fmtH = fmtH;
