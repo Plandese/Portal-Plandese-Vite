@@ -9,7 +9,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast } from './navigation.js';
 
-const EX = { addOpen:false, obra:null, mes:'', linhas:[], hist:[], q:'', carregado:false, dirty:false, gravadoMes:null };
+const EX = { view:'', addCat:'', addQ:'', addOpen:false, obra:null, mes:'', linhas:[], hist:[], q:'', carregado:false, dirty:false, gravadoMes:null };
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(v||0);
@@ -19,6 +19,10 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const mesLong = ym => { const [y,m] = ym.split('-'); return MESES[parseInt(m)-1]+' '+y; };
 const mesAtual = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
 const keyOf = l => (l.f||'')+'|'+(l.a||'');
+const catalogoItens = () => {
+  const c = window.ARTIGOS_CATALOGO || {};
+  return Object.entries(c).flatMap(([k,v]) => v.items.map(([ref,nome,un]) => ({ cat:k, ref, nome, un })));
+};
 const draftKey = () => `plandese_exist_${EX.obra}_${EX.mes}`;
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 
@@ -35,7 +39,7 @@ function obrasVisiveis(){
 
 // Entrada na página: começa sempre pela lista de obras em cartões
 export async function initExistencias(){
-  EX.obra = null;
+  EX.obra = null; EX.view = '';
   if(!EX.mes) EX.mes = mesAtual();
   await exCartoes();
 }
@@ -69,7 +73,7 @@ async function exCartoes(){
 }
 
 export async function exAbrirObra(id){
-  EX.obra = id; EX.q = ''; EX.mes = mesAtual();
+  EX.view = ''; EX.obra = id; EX.q = ''; EX.mes = mesAtual();
   await exCarregar();
 }
 export function exVoltar(){
@@ -127,8 +131,8 @@ function exAplicarMes(){
   const base = EX.base.map(l => ({ ...l, q:qtds[keyOf(l)]||0, p:(precos[keyOf(l)] ?? l.p) }));
   // linhas gravadas que já não estão na lista de custos mantêm-se
   // (e artigos acrescentados à mão: manual=true, com preço editável)
-  (gravado?.linhas||[]).forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l)) && rasc[keyOf(l)] !== 0) base.push({ f:l.f, a:l.a, p:l.p, comprado:0, q:qtds[keyOf(l)]??l.q, manual:true }); });
-  extras.forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l))) base.push({ f:l.f, a:l.a, p:l.p, comprado:0, q:qtds[keyOf(l)]||0, manual:true }); });
+  (gravado?.linhas||[]).forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l)) && rasc[keyOf(l)] !== 0) base.push({ f:l.f, a:l.a, r:l.r, un:l.u, p:l.p, comprado:0, q:qtds[keyOf(l)]??l.q, manual:true }); });
+  extras.forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l))) base.push({ f:l.f, a:l.a, r:l.r, un:l.un, p:l.p, comprado:0, q:qtds[keyOf(l)]||0, manual:true }); });
   EX.linhas = base;
   exRender();
 }
@@ -137,13 +141,14 @@ function exTotal(){ return EX.linhas.reduce((s,l)=>s+(+l.q||0)*(+l.p||0),0); }
 
 function exRender(){
   const root = document.getElementById('ex-root'); if(!root) return;
+  if(EX.view==='add'){ exRenderAdd(); return; }
   const obras = obrasVisiveis();
   const gravado = EX.hist.find(h=>h.mes===EX.mes);
   const ultima = EX.hist[0];
   const q = EX.q.trim().toLowerCase();
   const vis = EX.linhas.map((l,i)=>({l,i})).filter(({l}) => !q || (l.a+' '+l.f).toLowerCase().includes(q));
   const linhas = vis.map(({l,i}) => `<tr>
-      <td>${esc(l.a||'(sem artigo)')}${l.manual?' <span class="ex-pill">acrescentado</span>':''}<div style="font-size:11px;color:var(--gray-400)">${esc(l.f||'(sem fornecedor)')}</div></td>
+      <td>${esc(l.a||'(sem artigo)')}${l.manual?' <span class="ex-pill">acrescentado</span>':''}<div style="font-size:11px;color:var(--gray-400)">${esc(l.manual?(l.r||''):(l.f||'(sem fornecedor)'))}</div></td>
       <td class="r">${l.manual?`<input type="text" inputmode="decimal" class="ex-q" value="${l.p?String(l.p).replace('.',','):''}" placeholder="0" onchange="exSetPreco(${i},this)" style="width:84px;text-align:right">`:(l.p?eur(l.p):'—')}</td>
       <td class="r ex-hide-m">${l.comprado?nQ(l.comprado):'—'}</td>
       <td class="r"><input type="text" inputmode="decimal" class="ex-q" value="${l.q?String(l.q).replace('.',','):''}" placeholder="0" onchange="exSetQtd(${i},this)" style="width:84px;text-align:right"></td>
@@ -181,15 +186,9 @@ function exRender(){
     <div class="ex-bar">
       <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
       <label class="ex-search">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
-      <button class="btn btn-secondary" type="button" onclick="exToggleAdd()">${EX.addOpen?'Fechar':'+ Adicionar artigo'}</button>
+      <button class="btn btn-secondary" type="button" onclick="exAbrirAdd()">+ Adicionar artigo</button>
     </div>
-    ${EX.addOpen?`<div class="card ex-add">
-      <label class="ex-add-a">Artigo<input type="text" id="ex-n-a" placeholder="Descrição do material"></label>
-      <label>Fornecedor <small>(opcional)</small><input type="text" id="ex-n-f"></label>
-      <label>Preço unit. (€)<input type="text" inputmode="decimal" id="ex-n-p" placeholder="0,00" style="width:100px"></label>
-      <label>Quantidade<input type="text" inputmode="decimal" id="ex-n-q" placeholder="0" style="width:100px"></label>
-      <button class="btn btn-primary" type="button" onclick="exAdicionar()">Adicionar</button>
-    </div>`:''}
+
     ${ultima?`<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Para o controlo de custos conta a última existência gravada: <b>${mesLong(ultima.mes)}</b> — ${eur(ultima.total)}.</div>`:'<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Ainda não há nenhuma existência gravada para esta obra.</div>'}
     ${EX.linhas.length?`<div class="card" style="padding:0;overflow:auto;max-height:60vh"><table class="ex-tbl">
       <thead><tr><th>Material</th><th class="r">Preço unit.</th><th class="r ex-hide-m">Comprado</th><th class="r">Existência (qtd)</th><th class="r">Valor</th></tr></thead>
@@ -212,7 +211,7 @@ function exGuardarRascunho(){
     // linhas a zero também têm de ser lembradas para sobrepor o gravado
     const g = EX.hist.find(h=>h.mes===EX.mes);
     (g?.linhas||[]).forEach(l=>{ if(!(keyOf(l) in d)) d[keyOf(l)] = 0; });
-    d.__extra = EX.linhas.filter(l=>l.manual).map(l=>({ f:l.f, a:l.a, p:l.p }));
+    d.__extra = EX.linhas.filter(l=>l.manual).map(l=>({ f:l.f, a:l.a, r:l.r||'', un:l.un||'', p:l.p }));
     localStorage.setItem(draftKey(), JSON.stringify(d));
   }catch(e){}
 }
@@ -243,7 +242,7 @@ export function exDescartar(){
 
 export async function exGravar(){
   const mes = EX.mes;
-  const linhas = EX.linhas.filter(l=>l.q>0).map(l=>({ f:l.f, a:l.a, p:l.p, q:l.q }));
+  const linhas = EX.linhas.filter(l=>l.q>0).map(l=>({ f:l.f, a:l.a, r:l.r||'', u:l.un||'', p:l.p, q:l.q }));
   const total = Math.round(exTotal()*100)/100;
   const existe = EX.hist.some(h=>h.mes===mes);
   if(existe && !confirm(`Já existe uma existência gravada para ${mesLong(mes)}. Substituir?`)) return;
@@ -261,21 +260,85 @@ export async function exGravar(){
   exRender();
 }
 
-export function exToggleAdd(){ EX.addOpen = !EX.addOpen; exRender(); if(EX.addOpen) document.getElementById('ex-n-a')?.focus(); }
-export function exAdicionar(){
+let _addRes = [];
+export function exAbrirAdd(){ EX.view = 'add'; EX.addQ = ''; EX.addCat = ''; exRender(); window.scrollTo?.(0,0); }
+export function exFecharAdd(){ EX.view = ''; exRender(); }
+export function exAddFiltro(){
+  EX.addCat = document.getElementById('ex-add-cat')?.value || '';
+  EX.addQ = document.getElementById('ex-add-q')?.value || '';
+  exRenderAddLista();
+}
+function exRenderAdd(){
+  const root = document.getElementById('ex-root'); if(!root) return;
+  const cat = window.ARTIGOS_CATALOGO || {};
+  const o = obrasVisiveis().find(x=>x.id===EX.obra);
+  const sp = o ? split(o.nome) : null;
+  root.innerHTML = `
+    <div class="ex-head">
+      <button class="btn btn-secondary" type="button" onclick="exFecharAdd()">← Voltar à contagem</button>
+      <div class="ex-obra">Adicionar artigo${sp?' · '+esc((sp.cod?sp.cod+' · ':'')+sp.nome):''}</div>
+    </div>
+    <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">Escolha o artigo da lista de artigos do CentralGest (a mesma de Compras), indique o preço unitário e a quantidade em stock e clique em Adicionar. Pode acrescentar vários seguidos.</div>
+    <div class="ex-bar">
+      <label>Categoria<select id="ex-add-cat" onchange="exAddFiltro()"><option value="">Todas</option>${Object.entries(cat).map(([k,v])=>`<option value="${esc(k)}" ${k===EX.addCat?'selected':''}>${esc(v.label)}</option>`).join('')}</select></label>
+      <label class="ex-search">Pesquisar artigo<input type="search" id="ex-add-q" value="${esc(EX.addQ)}" placeholder="Referência ou designação…" oninput="exAddFiltro()"></label>
+    </div>
+    <div class="card" style="padding:0;overflow:auto;max-height:62vh"><table class="ex-tbl"><thead><tr><th>Artigo</th><th>Un.</th><th class="r">Preço unit. (€)</th><th class="r">Quantidade</th><th></th></tr></thead><tbody id="ex-add-body"></tbody></table></div>
+    <div class="card" style="padding:14px;margin-top:14px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px">Não encontra o artigo? Adicione-o livremente</div>
+      <div class="ex-add">
+        <label class="ex-add-a">Descrição<input type="text" id="ex-n-a" placeholder="Descrição do material"></label>
+        <label>Un.<input type="text" id="ex-n-u" style="width:70px"></label>
+        <label>Preço unit. (€)<input type="text" inputmode="decimal" id="ex-n-p" placeholder="0,00" style="width:100px"></label>
+        <label>Quantidade<input type="text" inputmode="decimal" id="ex-n-q" placeholder="0" style="width:100px"></label>
+        <button class="btn btn-primary" type="button" onclick="exAddLivre()">Adicionar</button>
+      </div>
+    </div>`;
+  exRenderAddLista();
+}
+function exRenderAddLista(){
+  const body = document.getElementById('ex-add-body'); if(!body) return;
+  const q = EX.addQ.trim().toLowerCase();
+  let it = catalogoItens();
+  if(!it.length){ body.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--gray-400)">Catálogo de artigos não carregado.</td></tr>'; return; }
+  if(EX.addCat) it = it.filter(x=>x.cat===EX.addCat);
+  if(q) it = it.filter(x=>x.nome.toLowerCase().includes(q) || (x.ref||'').toLowerCase().includes(q));
+  _addRes = it.slice(0, 80);
+  body.innerHTML = _addRes.map((x,i)=>`<tr>
+      <td>${esc(x.nome)}<div style="font-size:11px;color:var(--gray-400)">${esc(x.ref)}</div></td>
+      <td>${esc(x.un)}</td>
+      <td class="r"><input type="text" inputmode="decimal" class="ex-q" id="ex-ap-${i}" placeholder="0,00" style="width:90px;text-align:right"></td>
+      <td class="r"><input type="text" inputmode="decimal" class="ex-q" id="ex-aq-${i}" placeholder="0" style="width:84px;text-align:right"></td>
+      <td class="r"><button class="btn btn-secondary btn-sm" type="button" onclick="exAddItem(${i})">Adicionar</button></td></tr>`).join('')
+    + (it.length>80 ? `<tr><td colspan="5" style="padding:10px;text-align:center;font-size:12px;color:var(--gray-400)">+${it.length-80} artigos — refine a pesquisa para ver mais</td></tr>` : '')
+    + (!it.length ? '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--gray-400)">Nenhum artigo encontrado.</td></tr>' : '');
+}
+function exInserir(a, r, un, p, q){
+  const ex = EX.linhas.find(l=>keyOf(l)==='|'+a);
+  if(ex){ ex.q = (+ex.q||0) + q; if(p) ex.p = p; }
+  else EX.linhas.push({ f:'', a, r, un, p, comprado:0, q, manual:true });
+  EX.linhas.sort((x,y)=>(x.a||'').localeCompare(y.a||'','pt'));
+  EX.dirty = true;
+  exGuardarRascunho();
+  showToast('Artigo adicionado à contagem');
+}
+export function exAddItem(i){
+  const x = _addRes[i]; if(!x) return;
+  const p = Math.abs(num(document.getElementById('ex-ap-'+i).value));
+  const q = Math.abs(num(document.getElementById('ex-aq-'+i).value));
+  if(!q){ showToast('Indique a quantidade'); return; }
+  exInserir(x.nome, x.ref, x.un, p, q);
+  document.getElementById('ex-ap-'+i).value = ''; document.getElementById('ex-aq-'+i).value = '';
+}
+export function exAddLivre(){
   const a = document.getElementById('ex-n-a').value.trim();
-  const f = document.getElementById('ex-n-f').value.trim();
+  const un = document.getElementById('ex-n-u').value.trim();
   const p = Math.abs(num(document.getElementById('ex-n-p').value));
   const q = Math.abs(num(document.getElementById('ex-n-q').value));
-  if(!a){ showToast('Indique o artigo'); return; }
-  const ex = EX.linhas.find(l=>keyOf(l)===(f+'|'+a));
-  if(ex){ ex.q = (+ex.q||0) + q; if(!ex.p && p) ex.p = p; }
-  else EX.linhas.push({ f, a, p, comprado:0, q, manual:true });
-  EX.linhas.sort((x,y)=>(x.a||'').localeCompare(y.a||'','pt'));
-  EX.dirty = true; EX.addOpen = false; EX.q = '';
-  exGuardarRascunho();
-  exRender();
-  showToast('Artigo adicionado');
+  if(!a){ showToast('Indique a descrição'); return; }
+  if(!q){ showToast('Indique a quantidade'); return; }
+  exInserir(a, '', un, p, q);
+  ['a','u','p','q'].forEach(k=>{ document.getElementById('ex-n-'+k).value = ''; });
 }
 export function exSetPreco(i, inp){
   const l = EX.linhas[i]; if(!l) return;
