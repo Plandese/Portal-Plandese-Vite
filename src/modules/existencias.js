@@ -143,10 +143,13 @@ function exRender(){
       <td class="r" id="ex-v-${i}">${l.q&&l.p?eur(l.q*l.p):'—'}</td></tr>`).join('');
   root.innerHTML = `
     <style>
-      .ex-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px}
+      .ex-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-bottom:14px}
+      .ex-obra{font-size:17px;font-weight:700;color:var(--gray-900);flex:1;min-width:140px}
+      .ex-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+      .ex-search{flex:1;min-width:200px}
       .ex-bar label{font-size:11px;font-weight:600;color:var(--gray-500);display:flex;flex-direction:column;gap:4px}
       .ex-bar select,.ex-bar input{padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white)}
-      .ex-tot{margin-left:auto;text-align:right}.ex-tot b{display:block;font-size:22px;color:var(--gray-900)}
+      .ex-tot{text-align:right}.ex-tot b{display:block;font-size:22px;color:var(--gray-900)}
       .ex-tot span{font-size:11px;color:var(--gray-500)}
       .ex-tbl{width:100%;border-collapse:collapse;font-size:13px}
       .ex-tbl th{text-align:left;padding:9px 12px;background:var(--gray-50);border-bottom:2px solid var(--gray-200);font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);position:sticky;top:0}
@@ -156,15 +159,17 @@ function exRender(){
       .ex-hist tr{cursor:pointer}.ex-hist tr:hover td{background:var(--gray-50)}
       .ex-pill{display:inline-block;font-size:10.5px;font-weight:600;border-radius:10px;padding:2px 8px;background:var(--blue-50);color:var(--blue-500)}
       .ex-pill.warn{background:#fef3c7;color:#92400e}
-      @media(max-width:700px){.ex-hide-m{display:none}.ex-tot{margin-left:0;width:100%;text-align:left}}
+      @media(max-width:700px){.ex-hide-m{display:none}.ex-tot{width:100%;text-align:left}}
     </style>
-    <div class="ex-bar">
+    <div class="ex-head">
       <button class="btn btn-secondary" type="button" onclick="exVoltar()">← Obras</button>
-      <div style="font-size:15px;font-weight:700;color:var(--gray-900);align-self:center">${esc((()=>{const o=obras.find(x=>x.id===EX.obra);if(!o)return '';const s=split(o.nome);return (s.cod?s.cod+' · ':'')+s.nome;})())}</div>
-      <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
-      <label style="flex:1;min-width:160px">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
+      <div class="ex-obra">${esc((()=>{const o=obras.find(x=>x.id===EX.obra);if(!o)return '';const s=split(o.nome);return (s.cod?s.cod+' · ':'')+s.nome;})())}</div>
       <div class="ex-tot"><span>Total da existência de ${mesLong(EX.mes)}</span><b id="ex-total">${eur(exTotal())}</b>
         ${EX.dirty?'<span class="ex-pill warn">alterações por gravar</span>':(gravado?'<span class="ex-pill">gravada</span>':'')}</div>
+    </div>
+    <div class="ex-bar">
+      <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
+      <label class="ex-search">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
     </div>
     ${ultima?`<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Para o controlo de custos conta a última existência gravada: <b>${mesLong(ultima.mes)}</b> — ${eur(ultima.total)}.</div>`:'<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Ainda não há nenhuma existência gravada para esta obra.</div>'}
     ${EX.linhas.length?`<div class="card" style="padding:0;overflow:auto;max-height:60vh"><table class="ex-tbl">
