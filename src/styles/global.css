@@ -1677,35 +1677,34 @@ tbody tr:hover td{background:rgba(37,99,235,.035)}
 ───────────────────────────────────────────────────── */
 #device-choice{
   display:none;position:fixed;inset:0;z-index:10000;
-  background:linear-gradient(160deg,#0f2557,#0a1838);
-  align-items:center;justify-content:center;padding:24px;
+  height:100vh;height:100dvh;overflow-y:auto;background:#fff;flex-direction:row;
 }
 #device-choice.open{display:flex}
-.devc-box{width:100%;max-width:560px;text-align:center;color:#fff}
-.devc-title{font-size:clamp(20px,5vw,27px);font-weight:800;letter-spacing:-.4px}
-.devc-sub{font-size:13px;color:rgba(255,255,255,.55);margin:8px 0 28px;line-height:1.5}
-.devc-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:520px){.devc-cards{grid-template-columns:1fr}}
+.devc-cards{display:flex;flex-direction:column;gap:14px}
 .devc-card{
-  position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
-  padding:26px 18px 22px;border-radius:var(--radius-lg);cursor:pointer;
-  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);
-  color:#fff;font-family:var(--font);transition:transform .15s,background .15s,border-color .15s;
+  position:relative;display:flex;flex-direction:row;align-items:center;gap:16px;text-align:left;
+  padding:20px 22px;border-radius:18px;cursor:pointer;
+  background:#fff;border:1.5px solid var(--gray-200,#e5e7eb);
+  color:var(--gray-900);font-family:var(--font);transition:transform .15s,border-color .15s,box-shadow .15s;
 }
-.devc-card:hover,.devc-card:focus-visible{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.42);transform:translateY(-2px);outline:none}
+.devc-card:hover,.devc-card:focus-visible{border-color:#2a57c4;box-shadow:0 0 0 4px rgba(42,87,196,.12);transform:translateY(-1px);outline:none}
 .devc-card:active{transform:translateY(0)}
-.devc-card svg{width:38px;height:38px;margin-bottom:6px;color:#93c5fd}
+.devc-card svg{flex:none;width:52px;height:52px;padding:12px;border-radius:14px;background:rgba(23,63,159,.08);color:#173f9f}
+.devc-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
 .devc-card-t{font-size:16px;font-weight:800}
-.devc-card-s{font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.4;max-width:200px}
+.devc-card-s{font-size:13px;color:var(--gray-500);line-height:1.4}
 .devc-badge{
-  display:none;position:absolute;top:10px;right:10px;
-  font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
-  padding:3px 8px;border-radius:10px;background:rgba(147,197,253,.2);color:#bfdbfe;
+  display:none;margin-left:auto;flex:none;
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  padding:4px 10px;border-radius:99px;background:rgba(23,63,159,.1);color:#173f9f;
 }
 .devc-card.suggested .devc-badge{display:block}
-.devc-card.suggested{border-color:rgba(147,197,253,.55)}
-.devc-card.current .devc-badge{display:block;background:rgba(16,185,129,.22);color:#a7f3d0}
+.devc-card.suggested{border-color:#173f9f}
+.devc-card.current .devc-badge{display:block;background:rgba(16,185,129,.14);color:#047857}
 .devc-card.current .devc-badge::after{content:' (actual)'}
+@media(max-width:860px){
+  #device-choice{flex-direction:column}
+}
 
 /* ─────────────────────────────────────────────────────
    MODO TELEMÓVEL FORÇADO NUM ECRÃ GRANDE
