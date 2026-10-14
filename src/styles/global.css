@@ -2331,3 +2331,23 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 body.pr-resizing{cursor:ew-resize;user-select:none}
 body.pr-resizing #ag-panel,body.pr-resizing .d-drawer,body.pr-resizing .pt-det,body.pr-resizing #notif-panel{transition:none!important}
 body.device-mobile .pr-resize{display:none}
+
+/* PERMISSÕES — expansão por pessoa (linhas) e por sub-página (colunas) */
+.perm-matrix th.perm-th-chap{cursor:pointer;user-select:none}
+.perm-matrix th.perm-th-chap:hover{background:var(--blue-50);color:var(--blue-600,var(--blue-500))}
+.perm-matrix th.perm-th-chap.open{background:var(--blue-50)}
+.perm-matrix th.perm-th-sec{background:var(--blue-50);font-weight:600;min-width:84px;white-space:normal;font-size:10.5px}
+.perm-matrix td.perm-sec-cell{background:rgba(59,130,246,.04)}
+.perm-caret{display:inline-block;width:10px;font-size:10px;color:var(--gray-400)}
+.perm-matrix td.perm-role-name{cursor:pointer}
+.perm-count{display:block;margin-left:14px;font-size:11px;font-weight:400;color:var(--gray-400)}
+.perm-count b{color:var(--blue-500);font-weight:600}
+.perm-matrix tr.perm-user-row td{background:var(--gray-50);padding-top:7px;padding-bottom:7px}
+.perm-matrix tr.perm-user-row td:first-child{padding-left:32px;font-weight:500;white-space:nowrap}
+.perm-matrix tr.perm-user-row:hover td{background:var(--gray-100)}
+.perm-user-diff td:first-child{box-shadow:inset 3px 0 0 var(--blue-500)}
+.perm-badge{margin-left:8px;font-size:10px;font-weight:600;color:var(--blue-500);background:var(--blue-50);border-radius:10px;padding:2px 7px}
+.perm-reset{margin-left:6px;font-size:11px;border:0;background:none;color:var(--gray-500);cursor:pointer;text-decoration:underline}
+.perm-reset:hover{color:var(--gray-800)}
+.perm-empty{font-size:12px;color:var(--gray-400);font-weight:400}
+.perm-toggle.perm-diff .perm-slider{box-shadow:0 0 0 2px var(--blue-500)}

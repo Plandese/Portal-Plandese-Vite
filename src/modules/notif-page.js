@@ -190,7 +190,7 @@ export function renderNotifPrefs(){
     ? 'Como administrador recebe sempre as notificações de todas as secções.'
     : 'Escolha as secções de que quer ser avisado.';
 
-  const secs = Object.entries(NOTIF_SECTIONS).filter(([k])=>roleCanAccessSection(role, k));
+  const secs = Object.entries(NOTIF_SECTIONS).filter(([k])=>roleCanAccessSection(role, k, S.currentUser?.key));
   if(!secs.length){ box.innerHTML = '<div class="notif-empty">Sem secções disponíveis</div>'; return; }
 
   box.innerHTML = secs.map(([k,l])=>{

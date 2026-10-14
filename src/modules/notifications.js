@@ -93,7 +93,7 @@ export async function emitEvent({ acao, seccao, obra }){
     // Só notificar quem tem acesso à secção (subscrições antigas de perfis entretanto bloqueados)
     [...recipients].forEach(dest=>{
       const role = S.USERS?.[dest]?.role;
-      if(!roleCanAccessSection(role, seccao)) recipients.delete(dest);
+      if(!roleCanAccessSection(role, seccao, dest)) recipients.delete(dest);
     });
 
     if(recipients.size===0) return;

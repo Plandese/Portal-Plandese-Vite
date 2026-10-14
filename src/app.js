@@ -22,7 +22,7 @@ import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativo
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
-import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, switchUtilTab, applyStoredPermissions, applyRolePermissions, canAccessSection } from './modules/permissions.js';
+import { loadPermissions, loadPermissionsFromServer, savePermissions, resetPermissions, readPermMatrixState, renderPermMatrix, onPermChange, togglePermRole, togglePermChapter, resetPermUser, switchUtilTab, applyStoredPermissions, applyRolePermissions, canAccessSection } from './modules/permissions.js';
 
 // Notificações
 import { initNotifications, emitEvent, renderNotifPanel, notifClick, toggleNotifPanel, closeNotifPanel, markAllRead } from './modules/notifications.js';
@@ -192,7 +192,7 @@ Object.assign(window, {
   renderUsers, saveUser, editUser, switchUtilTab, onUserRoleChange,
 
   // Permissões
-  savePermissions, resetPermissions, onPermChange,
+  savePermissions, resetPermissions, onPermChange, togglePermRole, togglePermChapter, resetPermUser,
 
   // Faturas
   handleFatFiles, renderFaturas, limparFatFiltros,

@@ -38,7 +38,7 @@ export async function renderNotifSubs(){
   body.innerHTML = users.map(([username,u])=>{
     const cells = secEntries.map(([secKey])=>{
       // Sem acesso à secção → nunca recebe notificações dela (bloqueado na matriz)
-      const permitido = roleCanAccessSection(u.role, secKey);
+      const permitido = roleCanAccessSection(u.role, secKey, username);
       const on = permitido && _subs.has(username+'|'+secKey);
       return `<td>
         <label class="perm-toggle" title="${!permitido?'Perfil sem acesso a esta secção':on?'Recebe notificações':'Não recebe'}"${permitido?'':' style="opacity:.35"'}>
