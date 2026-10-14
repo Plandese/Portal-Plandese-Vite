@@ -8,6 +8,7 @@
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast } from './navigation.js';
+import { obraEmCurso } from '../config.js';
 
 const EX = { view:'', addCat:'', addQ:'', addOpen:false, obra:null, mes:'', linhas:[], hist:[], q:'', carregado:false, dirty:false, gravadoMes:null };
 
@@ -24,7 +25,7 @@ const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+
 
 // Obras visíveis: o diretor vê as suas (se não tiver nenhuma atribuída, vê todas); os restantes veem todas
 function obrasVisiveis(){
-  const todas = (S.OBRAS||[]).filter(o => o.ativa !== false && !/^O099/.test(o.nome||''));
+  const todas = (S.OBRAS||[]).filter(o => obraEmCurso(o) && !/^O099/.test(o.nome||''));
   const u = S.currentUser;
   if(u && u.role === 'diretor_obra'){
     const minhas = todas.filter(o => o.diretor_id === u.key || (o.diretores_extra||[]).includes(u.key));
