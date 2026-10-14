@@ -42,6 +42,11 @@ export function loadPermissions(){
 const OVR_CONFIG_KEY  = 'access_overrides';
 const OVR_STORAGE_KEY = 'plandese_access_overrides_v1';
 const emptyOvr = () => ({ roles:{}, users:{} });
+// Telas Finais não é uma secção do portal: o acesso é a lista de usernames em app_config/telas_finais_acesso
+// (decidida no servidor por fn_tf_acesso). Aparece como sub-página extra no capítulo Produção.
+const TF_CONFIG_KEY = 'telas_finais_acesso';
+const TF_DEFAULT = ['admin','david.mosca','rui.alves'];
+let _tf = null;
 let _ovr = loadOverridesLocal();
 
 function loadOverridesLocal(){
@@ -58,9 +63,10 @@ export async function loadPermissionsFromServer(){
   let result = null;
   try {
     const { data, error } = await sb.from('app_config')
-      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY]);
+      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY, TF_CONFIG_KEY]);
     if(error) throw error;
     (data||[]).forEach(row=>{
+      if(row.key === TF_CONFIG_KEY && Array.isArray(row.value)){ _tf = row.value; return; }
       if(!row.value || typeof row.value !== 'object') return;
       if(row.key === PERM_CONFIG_KEY){
         try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(row.value)); } catch(e){}
@@ -81,7 +87,7 @@ const _openChaps = new Set();   // capítulos expandidos (sub-páginas)
 
 function cloneJ(o){ return JSON.parse(JSON.stringify(o)); }
 function draft(){
-  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr) };
+  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr), tf: [...(_tf || TF_DEFAULT)] };
   return _draft;
 }
 const sameSet = (a,b)=>{ a=a||[]; b=b||[]; return a.length===b.length && a.every(x=>b.includes(x)); };
@@ -122,6 +128,9 @@ export async function savePermissions(){
   try {
     await upsertConfig(PERM_CONFIG_KEY, perms);
     await upsertConfig(OVR_CONFIG_KEY, ovr);
+    const tf = [...new Set(['admin', ...d.tf])];
+    await upsertConfig(TF_CONFIG_KEY, tf);
+    _tf = tf;
   } catch(e){ serverOk = false; }
   const msg = document.getElementById('perm-saved-msg');
   if(msg){ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'),2500); }
@@ -133,7 +142,7 @@ export async function resetPermissions(){
   if(!confirm('Repor todas as permissões para os valores predefinidos? Isto remove também as exceções por pessoa e por sub-página.')) return;
   try { localStorage.removeItem(PERM_STORAGE_KEY); localStorage.removeItem(OVR_STORAGE_KEY); } catch(e){}
   _ovr = emptyOvr();
-  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr() };
+  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr(), tf: [...TF_DEFAULT] };
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
       ROLE_ACCESS[r.key].chapters = [...(DEFAULT_PERMISSIONS[r.key]||[])];
@@ -143,6 +152,8 @@ export async function resetPermissions(){
   try {
     await upsertConfig(PERM_CONFIG_KEY, DEFAULT_PERMISSIONS);
     await upsertConfig(OVR_CONFIG_KEY, emptyOvr());
+    await upsertConfig(TF_CONFIG_KEY, TF_DEFAULT);
+    _tf = [...TF_DEFAULT];
   } catch(e){ /* servidor indisponível — reposição só local */ }
   renderPermMatrix();
   showToast('Permissões repostas ✓');
@@ -155,7 +166,7 @@ const SECTION_LABELS = {
   'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
-  'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores',
+  'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',
 };
 
 // Estado efetivo (no rascunho) de um capítulo/sub-página para um perfil (user=null) ou para uma pessoa
@@ -187,7 +198,10 @@ function visibleCols(){
   const cols = [];
   NAV_CHAPTERS.forEach(ch=>{
     cols.push({type:'chap', ch});
-    if(_openChaps.has(ch.id)) ch.sections.forEach(sec=>cols.push({type:'sec', ch, sec}));
+    if(_openChaps.has(ch.id)){
+      ch.sections.forEach(sec=>cols.push({type:'sec', ch, sec}));
+      if(ch.id==='prod') cols.push({type:'sec', ch, sec:'telas-finais', tf:true});
+    }
   });
   return cols;
 }
@@ -222,6 +236,10 @@ export function renderPermMatrix(){
         const on = chapEff(role.key, null, c.ch.id);
         return `<td>${toggleCell(on, `data-kind="chap" data-role="${role.key}" data-ch="${c.ch.id}"`, {title:on?'Acesso permitido':'Acesso bloqueado'})}</td>`;
       }
+      if(c.tf){
+        const on = users.length>0 && users.every(u=>d.tf.includes(u.username));
+        return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="tf" data-role="${role.key}"`, {disabled:!users.length, title:'Dar/retirar acesso às Telas Finais a todas as pessoas deste perfil'})}</td>`;
+      }
       const on = secEff(role.key, null, c.ch.id, c.sec);
       return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="sec" data-role="${role.key}" data-ch="${c.ch.id}" data-sec="${c.sec}"`, {disabled:secLocked(role.key,null,c.ch.id,c.sec), title:on?'Sub-página permitida':'Sub-página bloqueada'})}</td>`;
     }).join('');
@@ -237,6 +255,10 @@ export function renderPermMatrix(){
             const on = chapEff(role.key, u.username, c.ch.id);
             const diff = on !== chapEff(role.key, null, c.ch.id);
             return `<td>${toggleCell(on, `data-kind="chap" data-role="${role.key}" data-user="${u.username}" data-ch="${c.ch.id}"`, {diff, title:diff?'Difere do perfil':(on?'Acesso permitido':'Acesso bloqueado')})}</td>`;
+          }
+          if(c.tf){
+            const on = d.tf.includes(u.username);
+            return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="tf" data-role="${role.key}" data-user="${u.username}"`, {title:on?'Tem acesso às Telas Finais':'Sem acesso às Telas Finais'})}</td>`;
           }
           const on = secEff(role.key, u.username, c.ch.id, c.sec);
           const diff = on !== secEff(role.key, null, c.ch.id, c.sec);
@@ -268,7 +290,10 @@ export function onPermChange(chk){
   const d = draft();
   const {kind, role, user, ch, sec} = chk.dataset;
   const on = chk.checked;
-  if(kind==='chap'){
+  if(kind==='tf'){
+    const names = user ? [user] : cfgUsersOfRole(role).map(u=>u.username);
+    d.tf = on ? [...new Set([...d.tf, ...names])] : d.tf.filter(x=>!names.includes(x));
+  } else if(kind==='chap'){
     const roleList = d.perms[role] || [];
     if(!user){
       d.perms[role] = on ? [...new Set([...roleList, ch])] : roleList.filter(x=>x!==ch);
