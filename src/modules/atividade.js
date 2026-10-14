@@ -34,17 +34,39 @@ function detalhe(r){
     return (r.campos||[]).map(c => `<div class="ati-chg"><b>${esc(c)}</b>: <s>${esc(val(r.antes?.[c]))}</s> → <span>${esc(val(r.depois?.[c]))}</span></div>`).join('');
   }
   const obj = r.operacao === 'DELETE' ? r.antes : r.depois;
-  return Object.entries(obj||{}).filter(([,v]) => v != null && v !== '').slice(0,14)
+  return Object.entries(obj||{}).filter(([,v]) => v != null && v !== '')
     .map(([k,v]) => `<div class="ati-chg"><b>${esc(k)}</b>: ${esc(val(v))}</div>`).join('');
+}
+
+// Resumo curto para a tabela; o detalhe completo abre ao clicar na linha
+function resumo(r){
+  if(r.operacao === 'UPDATE') return (r.campos||[]).join(', ');
+  const n = Object.values((r.operacao === 'DELETE' ? r.antes : r.depois)||{}).filter(v => v != null && v !== '').length;
+  return n + ' campos';
+}
+
+function abrirDetalhe(r){
+  const [l,c] = OPS[r.operacao] || [r.operacao,'b-gray'];
+  const ov = document.createElement('div');
+  ov.className = 'modal-bg open'; ov.style.zIndex = '10000';
+  ov.innerHTML = `<div class="modal" style="max-width:560px"><div class="modal-header"><h3>${esc(TABELAS[r.tabela]||r.tabela)} · <span class="badge ${c}">${l}</span></h3></div>
+    <div class="modal-body"><div style="font-size:12.5px;color:var(--gray-500);margin-bottom:10px">${esc(fmt(r.criado_em))} · <b>${esc(r.utilizador||'—')}</b> · registo ${esc(r.registo_id||'—')}</div>
+    <div class="ati-det" style="max-width:none">${detalhe(r)}</div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" type="button">Fechar</button></div></div>`;
+  const fechar = () => ov.remove();
+  ov.addEventListener('mousedown', e => { if(e.target === ov) fechar(); });
+  ov.querySelector('.modal-footer button').addEventListener('click', fechar);
+  document.body.appendChild(ov);
 }
 
 function render(){
   const box = $('ati-lista'); if(!box) return;
   if(!_rows.length){ box.innerHTML = '<div class="d-empty">Sem registos para os filtros escolhidos.</div>'; return; }
-  box.innerHTML = `<div class="eq-tbl-wrap"><table class="eq-tbl ati-tbl"><thead><tr><th>Data e hora</th><th>Utilizador</th><th>Ação</th><th>Área</th><th>Registo</th><th>Detalhe</th></tr></thead><tbody>${
+  box.innerHTML = `<div class="eq-tbl-wrap"><table class="eq-tbl ati-tbl"><thead><tr><th>Data e hora</th><th>Utilizador</th><th>Ação</th><th>Área</th><th>Registo</th><th>Alterações</th></tr></thead><tbody>${
     _rows.map(r => { const [l,c] = OPS[r.operacao] || [r.operacao,'b-gray'];
-      return `<tr><td style="white-space:nowrap">${esc(fmt(r.criado_em))}</td><td><b>${esc(r.utilizador||'—')}</b></td><td><span class="badge ${c}">${l}</span></td><td>${esc(TABELAS[r.tabela]||r.tabela)}</td><td>${esc(r.registo_id||'—')}</td><td class="ati-det">${detalhe(r)}</td></tr>`; }).join('')
+      return `<tr class="ati-row" data-i="${_rows.indexOf(r)}" title="Clique para ver o detalhe"><td style="white-space:nowrap">${esc(fmt(r.criado_em))}</td><td><b>${esc(r.utilizador||'—')}</b></td><td><span class="badge ${c}">${l}</span></td><td>${esc(TABELAS[r.tabela]||r.tabela)}</td><td>${esc(r.registo_id||'—')}</td><td class="ati-res">${esc(resumo(r))}</td></tr>`; }).join('')
   }</tbody></table></div>${_fim ? '' : '<div style="text-align:center;margin-top:14px"><button class="btn btn-secondary" id="ati-mais">Carregar mais</button></div>'}`;
+  box.querySelectorAll('.ati-row').forEach(tr => tr.addEventListener('click', () => abrirDetalhe(_rows[+tr.dataset.i])));
   $('ati-mais')?.addEventListener('click', () => carregarAtividade(false));
 }
 
