@@ -9,7 +9,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast } from './navigation.js';
 
-const EX = { obra:null, mes:'', linhas:[], hist:[], q:'', carregado:false, dirty:false, gravadoMes:null };
+const EX = { addOpen:false, obra:null, mes:'', linhas:[], hist:[], q:'', carregado:false, dirty:false, gravadoMes:null };
 
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const eur = v => new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(v||0);
@@ -112,16 +112,23 @@ async function exCarregar(){
 // Constrói as linhas do mês: quantidades do gravado (ou do rascunho local) sobre a lista de materiais
 function exAplicarMes(){
   const gravado = EX.hist.find(h=>h.mes===EX.mes);
-  let qtds = {}, precos = {};
+  let qtds = {}, precos = {}, rasc = {}, extras = [];
   (gravado?.linhas||[]).forEach(l=>{ qtds[keyOf(l)] = l.q; precos[keyOf(l)] = l.p; });
   EX.dirty = false;
   try{
     const raw = localStorage.getItem(draftKey());
-    if(raw){ const d = JSON.parse(raw); qtds = { ...qtds, ...d }; EX.dirty = true; }
+    if(raw){
+      const d = JSON.parse(raw);
+      extras = Array.isArray(d.__extra) ? d.__extra : [];
+      delete d.__extra;
+      rasc = d; qtds = { ...qtds, ...d }; EX.dirty = true;
+    }
   }catch(e){}
   const base = EX.base.map(l => ({ ...l, q:qtds[keyOf(l)]||0, p:(precos[keyOf(l)] ?? l.p) }));
   // linhas gravadas que já não estão na lista de custos mantêm-se
-  (gravado?.linhas||[]).forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l))) base.push({ f:l.f, a:l.a, p:l.p, comprado:0, q:l.q }); });
+  // (e artigos acrescentados à mão: manual=true, com preço editável)
+  (gravado?.linhas||[]).forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l)) && rasc[keyOf(l)] !== 0) base.push({ f:l.f, a:l.a, p:l.p, comprado:0, q:qtds[keyOf(l)]??l.q, manual:true }); });
+  extras.forEach(l=>{ if(!base.some(b=>keyOf(b)===keyOf(l))) base.push({ f:l.f, a:l.a, p:l.p, comprado:0, q:qtds[keyOf(l)]||0, manual:true }); });
   EX.linhas = base;
   exRender();
 }
@@ -136,17 +143,21 @@ function exRender(){
   const q = EX.q.trim().toLowerCase();
   const vis = EX.linhas.map((l,i)=>({l,i})).filter(({l}) => !q || (l.a+' '+l.f).toLowerCase().includes(q));
   const linhas = vis.map(({l,i}) => `<tr>
-      <td>${esc(l.a||'(sem artigo)')}<div style="font-size:11px;color:var(--gray-400)">${esc(l.f||'(sem fornecedor)')}</div></td>
-      <td class="r">${l.p?eur(l.p):'—'}</td>
+      <td>${esc(l.a||'(sem artigo)')}${l.manual?' <span class="ex-pill">acrescentado</span>':''}<div style="font-size:11px;color:var(--gray-400)">${esc(l.f||'(sem fornecedor)')}</div></td>
+      <td class="r">${l.manual?`<input type="text" inputmode="decimal" class="ex-q" value="${l.p?String(l.p).replace('.',','):''}" placeholder="0" onchange="exSetPreco(${i},this)" style="width:84px;text-align:right">`:(l.p?eur(l.p):'—')}</td>
       <td class="r ex-hide-m">${l.comprado?nQ(l.comprado):'—'}</td>
       <td class="r"><input type="text" inputmode="decimal" class="ex-q" value="${l.q?String(l.q).replace('.',','):''}" placeholder="0" onchange="exSetQtd(${i},this)" style="width:84px;text-align:right"></td>
-      <td class="r" id="ex-v-${i}">${l.q&&l.p?eur(l.q*l.p):'—'}</td></tr>`).join('');
+      <td class="r" id="ex-v-${i}">${l.q&&l.p?eur(l.q*l.p):'—'}${l.manual?` <button type="button" class="perm-reset" title="Remover artigo" onclick="exRemover(${i})">✕</button>`:''}</td></tr>`).join('');
   root.innerHTML = `
     <style>
       .ex-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-bottom:14px}
       .ex-obra{font-size:17px;font-weight:700;color:var(--gray-900);flex:1;min-width:140px}
       .ex-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
       .ex-search{flex:1;min-width:200px}
+      .ex-add{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:14px;margin-bottom:14px}
+      .ex-add label{font-size:11px;font-weight:600;color:var(--gray-500);display:flex;flex-direction:column;gap:4px}
+      .ex-add input{padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px}
+      .ex-add-a{flex:1;min-width:200px}
       .ex-bar label{font-size:11px;font-weight:600;color:var(--gray-500);display:flex;flex-direction:column;gap:4px}
       .ex-bar select,.ex-bar input{padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white)}
       .ex-tot{text-align:right}.ex-tot b{display:block;font-size:22px;color:var(--gray-900)}
@@ -170,7 +181,15 @@ function exRender(){
     <div class="ex-bar">
       <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
       <label class="ex-search">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
+      <button class="btn btn-secondary" type="button" onclick="exToggleAdd()">${EX.addOpen?'Fechar':'+ Adicionar artigo'}</button>
     </div>
+    ${EX.addOpen?`<div class="card ex-add">
+      <label class="ex-add-a">Artigo<input type="text" id="ex-n-a" placeholder="Descrição do material"></label>
+      <label>Fornecedor <small>(opcional)</small><input type="text" id="ex-n-f"></label>
+      <label>Preço unit. (€)<input type="text" inputmode="decimal" id="ex-n-p" placeholder="0,00" style="width:100px"></label>
+      <label>Quantidade<input type="text" inputmode="decimal" id="ex-n-q" placeholder="0" style="width:100px"></label>
+      <button class="btn btn-primary" type="button" onclick="exAdicionar()">Adicionar</button>
+    </div>`:''}
     ${ultima?`<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Para o controlo de custos conta a última existência gravada: <b>${mesLong(ultima.mes)}</b> — ${eur(ultima.total)}.</div>`:'<div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Ainda não há nenhuma existência gravada para esta obra.</div>'}
     ${EX.linhas.length?`<div class="card" style="padding:0;overflow:auto;max-height:60vh"><table class="ex-tbl">
       <thead><tr><th>Material</th><th class="r">Preço unit.</th><th class="r ex-hide-m">Comprado</th><th class="r">Existência (qtd)</th><th class="r">Valor</th></tr></thead>
@@ -193,6 +212,7 @@ function exGuardarRascunho(){
     // linhas a zero também têm de ser lembradas para sobrepor o gravado
     const g = EX.hist.find(h=>h.mes===EX.mes);
     (g?.linhas||[]).forEach(l=>{ if(!(keyOf(l) in d)) d[keyOf(l)] = 0; });
+    d.__extra = EX.linhas.filter(l=>l.manual).map(l=>({ f:l.f, a:l.a, p:l.p }));
     localStorage.setItem(draftKey(), JSON.stringify(d));
   }catch(e){}
 }
@@ -238,5 +258,39 @@ export async function exGravar(){
   else showToast('Existência gravada ✓ — em vigor no controlo de custos: ' + mesLong(vigor.mes));
   try{ localStorage.removeItem(draftKey()); }catch(e){}
   EX.dirty = false;
+  exRender();
+}
+
+export function exToggleAdd(){ EX.addOpen = !EX.addOpen; exRender(); if(EX.addOpen) document.getElementById('ex-n-a')?.focus(); }
+export function exAdicionar(){
+  const a = document.getElementById('ex-n-a').value.trim();
+  const f = document.getElementById('ex-n-f').value.trim();
+  const p = Math.abs(num(document.getElementById('ex-n-p').value));
+  const q = Math.abs(num(document.getElementById('ex-n-q').value));
+  if(!a){ showToast('Indique o artigo'); return; }
+  const ex = EX.linhas.find(l=>keyOf(l)===(f+'|'+a));
+  if(ex){ ex.q = (+ex.q||0) + q; if(!ex.p && p) ex.p = p; }
+  else EX.linhas.push({ f, a, p, comprado:0, q, manual:true });
+  EX.linhas.sort((x,y)=>(x.a||'').localeCompare(y.a||'','pt'));
+  EX.dirty = true; EX.addOpen = false; EX.q = '';
+  exGuardarRascunho();
+  exRender();
+  showToast('Artigo adicionado');
+}
+export function exSetPreco(i, inp){
+  const l = EX.linhas[i]; if(!l) return;
+  l.p = Math.abs(num(inp.value));
+  inp.value = l.p ? String(l.p).replace('.',',') : '';
+  EX.dirty = true; exGuardarRascunho(); exRender();
+}
+export function exRemover(i){
+  const l = EX.linhas[i]; if(!l) return;
+  if(!confirm('Remover o artigo "'+l.a+'" desta existência?')) return;
+  // fica a 0 no rascunho para sobrepor o gravado
+  const k = keyOf(l);
+  EX.linhas.splice(i,1);
+  EX.dirty = true;
+  exGuardarRascunho();
+  try{ const d = JSON.parse(localStorage.getItem(draftKey())||'{}'); d[k] = 0; localStorage.setItem(draftKey(), JSON.stringify(d)); }catch(e){}
   exRender();
 }
