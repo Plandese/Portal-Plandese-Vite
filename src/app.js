@@ -99,7 +99,7 @@ import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave
 
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
 import { initTelasFinaisLink, abrirTelasFinais } from './modules/telas-finais.js';
-import { initExistencias, exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar } from './modules/existencias.js';
+import { initExistencias, exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar } from './modules/existencias.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
 Object.assign(R, {
@@ -122,7 +122,7 @@ Object.assign(R, {
   initTelasFinaisLink,
 });
 window.abrirTelasFinais = abrirTelasFinais;
-Object.assign(window, { exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar });
+Object.assign(window, { exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──
 window.fmt = fmt; window.fmtPT = fmtPT; window.calcH = calcH; window.fmtH = fmtH;

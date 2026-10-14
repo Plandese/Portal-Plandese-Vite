@@ -33,11 +33,49 @@ function obrasVisiveis(){
   return todas;
 }
 
+// Entrada na página: começa sempre pela lista de obras em cartões
 export async function initExistencias(){
-  const sel = obrasVisiveis();
-  if(!EX.obra || !sel.some(o=>o.id===EX.obra)) EX.obra = sel[0]?.id || null;
+  EX.obra = null;
   if(!EX.mes) EX.mes = mesAtual();
+  await exCartoes();
+}
+
+const nomesDiretores = o => [o.diretor_id, ...(o.diretores_extra||[])].filter(Boolean).map(u=>S.USERS?.[u]?.nome||u);
+
+async function exCartoes(){
+  const root = document.getElementById('ex-root'); if(!root) return;
+  const obras = obrasVisiveis();
+  if(!obras.length){ root.innerHTML = '<div class="co-empty" style="padding:30px">Sem obras disponíveis.</div>'; return; }
+  root.innerHTML = '<div class="co-empty" style="padding:30px">A carregar…</div>';
+  const ult = {};
+  try{
+    const { data, error } = await sb.from('co_existencia').select('obra_id,mes,total,atualizado')
+      .in('obra_id', obras.map(o=>o.id)).order('mes',{ascending:false});
+    if(error) throw error;
+    (data||[]).forEach(r=>{ if(!ult[r.obra_id]) ult[r.obra_id] = r; });
+  }catch(e){ root.innerHTML = `<div class="co-empty" style="padding:30px">Erro ao carregar: ${esc(e.message||e)}</div>`; return; }
+  const cartao = o => {
+    const sp = split(o.nome), u = ult[o.id], dirs = nomesDiretores(o);
+    return `<button class="co-ob" type="button" onclick="exAbrirObra('${esc(o.id)}')">
+      <div class="co-ob-top"><span class="co-ob-cod">${esc(sp.cod||'Obra')}</span></div>
+      <div class="co-ob-nome">${esc(sp.nome)}</div>
+      <div class="co-ob-saldo">${u?eur(u.total):'—'}</div>
+      <div class="co-ob-sub">${u?'Existência de '+mesLong(u.mes):'Sem existência registada'}</div>
+      <div class="co-ob-lin"><span>Diretor <b>${esc(dirs.join(', ')||'—')}</b></span></div>
+      <div class="co-ob-lin"><span>Última existência <b>${u&&u.atualizado?new Date(u.atualizado).toLocaleDateString('pt-PT'):'—'}</b></span></div>
+    </button>`;
+  };
+  root.innerHTML = `<div class="co-list">${obras.map(cartao).join('')}</div>`;
+}
+
+export async function exAbrirObra(id){
+  EX.obra = id; EX.q = ''; EX.mes = mesAtual();
   await exCarregar();
+}
+export function exVoltar(){
+  if(EX.dirty && !confirm('Há alterações por gravar. Sair mesmo assim? (ficam guardadas como rascunho neste browser)')) return;
+  EX.obra = null; EX.dirty = false;
+  exCartoes();
 }
 
 async function exCarregar(){
@@ -121,7 +159,8 @@ function exRender(){
       @media(max-width:700px){.ex-hide-m{display:none}.ex-tot{margin-left:0;width:100%;text-align:left}}
     </style>
     <div class="ex-bar">
-      <label>Obra<select onchange="exMudarObra(this.value)">${obras.map(o=>{const s=split(o.nome);return `<option value="${esc(o.id)}" ${o.id===EX.obra?'selected':''}>${esc((s.cod?s.cod+' · ':'')+s.nome)}</option>`;}).join('')}</select></label>
+      <button class="btn btn-secondary" type="button" onclick="exVoltar()">← Obras</button>
+      <div style="font-size:15px;font-weight:700;color:var(--gray-900);align-self:center">${esc((()=>{const o=obras.find(x=>x.id===EX.obra);if(!o)return '';const s=split(o.nome);return (s.cod?s.cod+' · ':'')+s.nome;})())}</div>
       <label>Mês<input type="month" value="${EX.mes}" onchange="exMudarMes(this.value)"></label>
       <label style="flex:1;min-width:160px">Pesquisar material<input type="search" value="${esc(EX.q)}" placeholder="Artigo ou fornecedor…" oninput="exPesquisa(this.value)"></label>
       <div class="ex-tot"><span>Total da existência de ${mesLong(EX.mes)}</span><b id="ex-total">${eur(exTotal())}</b>
