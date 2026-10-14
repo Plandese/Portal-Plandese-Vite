@@ -1055,9 +1055,12 @@ function cmpSelFornPicker(id) {
 // ── Lista de Materiais (modal fullscreen) ────────────────────────
 let _lstTempArtigos = [];
 let _lstPickerItems = [];
+let _lstOnConfirm = null;   // quando outro módulo (ex.: Existências) reutiliza este seletor
 
-function abrirListaMateriais() {
-  _lstTempArtigos = JSON.parse(JSON.stringify(_cmpArtigosEdit));
+// ext (opcional): { artigos:[{ref,nome,un,qty}], onConfirm(artigos) } — sem ext, trabalha sobre o pedido de compra
+function abrirListaMateriais(ext) {
+  _lstOnConfirm = ext && typeof ext.onConfirm === 'function' ? ext.onConfirm : null;
+  _lstTempArtigos = JSON.parse(JSON.stringify(_lstOnConfirm ? (ext.artigos || []) : _cmpArtigosEdit));
   const sel = document.getElementById('lst-cat');
   if (sel && sel.options.length <= 1) {
     const cat = window.ARTIGOS_CATALOGO;
@@ -1078,10 +1081,18 @@ function abrirListaMateriais() {
 }
 
 function fecharListaMateriais() {
+  _lstOnConfirm = null;
   closeModal('modal-lista-mat');
 }
 
 function confirmarListaMateriais() {
+  if (_lstOnConfirm) {
+    const cb = _lstOnConfirm;
+    const sel = JSON.parse(JSON.stringify(_lstTempArtigos));
+    fecharListaMateriais();
+    cb(sel);
+    return;
+  }
   _cmpArtigosEdit = JSON.parse(JSON.stringify(_lstTempArtigos));
   cmpRenderArtigosSelected();
   cmpUpdateArtBtnBadge();
