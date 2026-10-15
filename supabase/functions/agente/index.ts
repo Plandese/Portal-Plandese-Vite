@@ -391,18 +391,44 @@ Deno.serve(async (req: Request) => {
   const isAdmin = role === "admin";
   // Capítulos do perfil (matriz de Permissões em app_config). null = administrador (tudo).
   let caps: Set<string> | null = null;
+  let secOff = new Set<string>();
   if (!isAdmin) {
-    const { data: cfg } = await sb.from("app_config").select("value").eq("key", "role_permissions").maybeSingle();
-    const arr = cfg?.value?.[role];
+    // Mesma lógica de fn_cap(): exceção por utilizador (chapters) > matriz do perfil. Falha fechada.
+    const [{ data: cfg }, { data: ovr }] = await Promise.all([
+      sb.from("app_config").select("value").eq("key", "role_permissions").maybeSingle(),
+      sb.from("app_config").select("value").eq("key", "access_overrides").maybeSingle(),
+    ]);
+    const uo = ovr?.value?.users?.[username];
+    const arr = Array.isArray(uo?.chapters) ? uo.chapters : cfg?.value?.[role];
     caps = new Set(Array.isArray(arr) ? arr : []);
+    const offArr = Array.isArray(uo?.off) ? uo.off : ovr?.value?.roles?.[role]?.off;
+    secOff = new Set(Array.isArray(offArr) ? offArr : []);
   }
+  const secBloq = (s?: string | null) => !!s && secOff.has(s);
   const temCap = (c?: string | null) => !c || caps === null || caps.has(c);
-  const podeTabela = (t: Tab) => !t.cap || caps === null || t.cap.some((c) => caps!.has(c));
+  // Tabela → sub-páginas que a usam; fica bloqueada se TODAS estiverem bloqueadas para o utilizador.
+  const SEC_TABELA: Record<string, string[]> = {
+    co_mensal: ["producao"], co_custo_det: ["producao"], co_obra: ["producao"],
+    tavira_estado: ["pendentes-tavira"], tavira_topicos: ["pendentes-tavira"],
+    faturas: ["faturas", "faturas-aprovar", "tesouraria"], pedidos_compra: ["compras", "mapas-comparativos"],
+    equipamentos: ["equipamentos"], eq_manutencoes: ["equipamentos"], eq_movimentos: ["equipamentos"], registos_combustivel: ["combustivel"],
+    colaboradores: ["colaboradores", "historico"], registos_ponto: ["historico", "fecho-mes"], registos_ponto_moa: ["historico", "fecho-mes"],
+    aprovacoes_ponto: ["historico", "fecho-mes"], ferias_previstas: ["mapa-ferias"], advertencias: ["colaboradores"],
+    historico_atividade: ["atividade"], empresas_moa: ["empresas-moa"],
+  };
+  const podeTabelaNome = (k: string) => { const s = SEC_TABELA[k]; return !s || !s.every((x) => secBloq(x)); };
+  const podeTabela = (t: Tab, k?: string) => (!t.cap || caps === null || t.cap.some((c) => caps!.has(c))) && (!k || podeTabelaNome(k));
   const capAlerta = (sec: string) => (sec === "obras" ? null : CAP_SECCAO[sec] ?? null);
-  const filtrarAlertas = (a: any) => (Array.isArray(a) ? a.filter((x: any) => temCap(capAlerta(String(x?.seccao ?? "")))) : []);
-  const semAcesso = () => Object.keys(CAP_NOME).filter((c) => !temCap(c)).map((c) => CAP_NOME[c]);
+  const filtrarAlertas = (a: any) => (Array.isArray(a) ? a.filter((x: any) => {
+    const s = String(x?.seccao ?? "");
+    return temCap(capAlerta(s)) && !secBloq(s);
+  }) : []);
+  const semAcesso = () => [
+    ...Object.keys(CAP_NOME).filter((c) => !temCap(c)).map((c) => CAP_NOME[c]),
+    ...[...secOff].filter((s) => SECCOES[s] && temCap(CAP_SECCAO[s])).map((s) => SECCOES[s]),
+  ];
   const catalogoPara = () => "\n\nTABELAS CONSULTÁVEIS (usa exatamente estes nomes; não é preciso listá-las)\n" +
-    Object.entries(TABELAS).filter(([, t]) => podeTabela(t))
+    Object.entries(TABELAS).filter(([k, t]) => podeTabela(t, k))
       .map(([k, t]) => `- ${k}: ${t.desc} Colunas: ${[...t.cols, ...(t.virt ?? [])].join(", ")}`).join("\n");
 
   let body: any;
@@ -624,7 +650,7 @@ Deno.serve(async (req: Request) => {
               const tabela = String(input.tabela);
               const t = TABELAS[tabela];
               if (!t) throw new Error(`Tabela não permitida: ${tabela}. Consulta o catálogo de tabelas.`);
-              if (!podeTabela(t)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
+              if (!podeTabela(t, tabela)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
               const pedidas: string[] = (input.colunas?.length ? input.colunas : [...colsReais(t), ...(t.virt ?? [])]);
               for (const c of pedidas) if (!validarColuna(t, c)) throw new Error(`Coluna inválida em ${tabela}: ${c}`);
               const reais = colunasNecessarias(t, tabela, pedidas);
@@ -656,7 +682,7 @@ Deno.serve(async (req: Request) => {
               const tabela = String(input.tabela);
               const t = TABELAS[tabela];
               if (!t) throw new Error(`Tabela não permitida: ${tabela}.`);
-              if (!podeTabela(t)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
+              if (!podeTabela(t, tabela)) throw new Error(`Sem permissão: o perfil do utilizador não tem acesso a "${tabela}".`);
               const grupos: string[] = input.agrupar_por ?? [];
               const metricas: Array<{ coluna: string; fn: string }> = input.metricas ?? [];
               if (!metricas.length) throw new Error("Indica pelo menos uma métrica.");
@@ -738,7 +764,7 @@ Deno.serve(async (req: Request) => {
             }
 
             case "balanco_obras": {
-              if (!temCap("prod")) throw new Error("Sem permissão: o perfil do utilizador não tem acesso ao Controlo de Obras.");
+              if (!temCap("prod") || secBloq("producao")) throw new Error("Sem permissão: o perfil do utilizador não tem acesso ao Controlo de Obras.");
               let obraId: string | null = null;
               if (input.obra) {
                 const m = resolverObra(String(input.obra));
@@ -781,7 +807,7 @@ Deno.serve(async (req: Request) => {
             case "abrir_seccao": {
               const id = String(input.seccao);
               if (!SECCOES[id]) throw new Error(`Secção desconhecida: ${id}`);
-              if (!temCap(CAP_SECCAO[id])) throw new Error("Sem permissão para abrir esta secção.");
+              if (!temCap(CAP_SECCAO[id]) || secBloq(id)) throw new Error("Sem permissão para abrir esta secção.");
               emit({ type: "nav", seccao: id, rotulo: SECCOES[id] });
               return { ok: true, nota: "Botão de atalho mostrado ao utilizador." };
             }
