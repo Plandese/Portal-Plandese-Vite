@@ -182,6 +182,7 @@ a.btn{text-decoration:none;color:inherit}
   <div class="grow"></div>
   <div class="status" id="status"><i></i><span>A ligar…</span></div>
   <span class="status wide-only" id="who"></span>
+  <button class="btn wide-only" id="newSheet" title="Criar uma folha em branco, A1, com a mesma legenda no canto inferior direito">Folha nova</button>
   <button class="btn wide-only" id="upload" title="Juntar outra folha PDF">Juntar PDF</button>
   <input type="file" id="file" accept="application/pdf" hidden>
   <button class="btn" id="help" title="Atalhos">?</button>
@@ -1740,6 +1741,67 @@ $('#file').onchange=async e=>{
     buildSheetSelect(); openSheet('up_'+data.id+'_1'); toast(`“${name}” juntado (${pages} página${pages>1?'s':''}).`);
   }catch(err){ setStatus('err','Falhou o carregamento do PDF'); toast('Não foi possível juntar o PDF: '+(err&&err.message||err)) }
 };
+/* ---------- folha nova em branco (moldura + legenda copiadas de uma folha A1 existente) ---------- */
+const BLANK_TPL='R2B_B';            // A1 paisagem, 2384 x 1684 pt
+const MESES=['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+async function makeBlankSheet({t1,t2,des,data}){
+  const {PDFDocument,StandardFonts,rgb,pushGraphicsState,popGraphicsState,rectangle,clip,endPath}=PDFLib;
+  const tpl=await PDFDocument.load((await Files.bytes('sheets/'+BLANK_TPL+'.pdf')).slice(0),{ignoreEncryption:true});
+  const out=await PDFDocument.create();
+  const [emb]=await out.embedPdf(tpl,[0]);
+  const W=2384,H=1684, page=out.addPage([W,H]);
+  const font=await out.embedFont(StandardFonts.Helvetica), bold=await out.embedFont(StandardFonts.HelveticaBold);
+  // só ficam a moldura (faixas junto às margens) e a legenda do canto inferior direito; o miolo fica em branco
+  page.pushOperators(pushGraphicsState(), rectangle(0,H-19,W,19), rectangle(0,0,W,19), rectangle(0,0,77,H), rectangle(2363,0,W-2363,H), rectangle(1850,0,W-1850,309), clip(), endPath());
+  page.drawPage(emb,{x:0,y:0});
+  page.pushOperators(popGraphicsState());
+  // campos que variam de folha para folha: tapa-se o texto e escreve-se o novo (coordenadas medidas do topo)
+  const white=rgb(1,1,1), blk=rgb(0,0,0), wipe=(x0,x1,y0,y1)=>page.drawRectangle({x:x0,y:H-y1,width:x1-x0,height:y1-y0,color:white});
+  for(const [a,b] of [[1864.5,1898],[1900,1947.5],[1949.5,2306],[2308.5,2367]]){ wipe(a,b,1396,1408.4); wipe(a,b,1410.2,1422.4) }   // quadro de revisões
+  wipe(2020,2263,1599,1666);       // título
+  wipe(2307.6,2366.8,1642.5,1666); // Des. Nº
+  wipe(1907.5,2017,1654,1666.2);   // data
+  wipe(1907.5,2017,1640,1652.3);   // ficheiro
+  const safe=(t,f)=>String(t||'').split('').map(c=>{ try{ f.widthOfTextAtSize(c,10); return c }catch(e){ return '?' } }).join('');
+  const centered=(t,f,size,cx,yTop,maxW)=>{ t=safe(t,f); if(maxW && t) size=Math.min(size, size*maxW/f.widthOfTextAtSize(t,size)); if(t) page.drawText(t,{x:cx-f.widthOfTextAtSize(t,size)/2,y:H-yTop,size,font:f,color:blk}) };
+  centered(t1.toUpperCase(),font,11.3,2144.5,1623.4);
+  centered(t2.toUpperCase(),font,11.3,2144.5,1640.3);
+  centered(des,font,19.8,2337,1662,54);
+  centered(data.toUpperCase(),font,8.9,1962.3,1663.7);
+  out.setTitle('Folha nova '+des); out.setProducer('pdf-lib');
+  return out.save();
+}
+function newSheetDialog(){
+  const d=new Date();
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="card" role="dialog" aria-label="Folha nova"><h2>Folha nova</h2>
+    <p class="hint" style="margin:0">Folha A1 em branco, com a moldura e a legenda do canto inferior direito iguais às das outras folhas. Depois desenhe os nós com a ferramenta “Novo nó”.</p>
+    <label class="f">Des. Nº<input type="text" id="nsDes" placeholder="ex.: 19.20B" autocomplete="off"></label>
+    <label class="f">Título · linha 1<input type="text" id="nsT1" value="Esquema de nós" autocomplete="off"></label>
+    <label class="f">Título · linha 2<input type="text" id="nsT2" placeholder="ex.: Subsistema “Reservatório 18”" autocomplete="off"></label>
+    <label class="f">Data<input type="text" id="nsData" value="${MESES[d.getMonth()]} ${d.getFullYear()}" autocomplete="off"></label>
+    <div class="btnrow" style="justify-content:flex-end"><button class="btn" data-x="no">Cancelar</button><button class="btn primary" data-x="ok">Criar folha</button></div></div>`;
+  document.body.appendChild(m);
+  const q=s=>m.querySelector(s); q('#nsDes').focus();
+  m.onclick=async e=>{
+    if(e.target===m||e.target.dataset.x==='no'){ m.remove(); return }
+    if(e.target.dataset.x!=='ok') return;
+    const des=q('#nsDes').value.trim(); if(!des){ q('#nsDes').focus(); return }
+    const btn=e.target; btn.disabled=true; btn.textContent='A criar…';
+    try{
+      const bytes=await makeBlankSheet({t1:q('#nsT1').value.trim(),t2:q('#nsT2').value.trim(),des,data:q('#nsData').value.trim()});
+      const path='uploads/'+uid()+'.pdf';
+      const {error:ue}=await SB.storage.from(BUCKET).upload(path,new Blob([bytes],{type:'application/pdf'}),{contentType:'application/pdf',upsert:false});
+      if(ue) throw ue;
+      const name='Folha '+des;
+      const {data,error}=await SB.from('tf_folhas').insert({name,path,pages:1}).select('*').single();
+      if(error) throw error;
+      addUploaded(data); buildSheetSelect(); m.remove();
+      openSheet('up_'+data.id+'_1'); toast(`“${name}” criada.`);
+    }catch(err){ btn.disabled=false; btn.textContent='Criar folha'; toast('Não foi possível criar a folha: '+(err&&err.message||err)) }
+  };
+}
+$('#newSheet').onclick=newSheetDialog;
 function addUploaded(r){
   for(let k=1;k<=(r.pages||1);k++){
     const id='up_'+r.id+'_'+k;
