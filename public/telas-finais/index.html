@@ -526,7 +526,7 @@ function makeOrig(ids){
   const cx=b[0]+b[2]/2, cy=b[1]+b[3]/2;
   return {id:uid(),type:'orig',sheet:S.sheet.id,ents:ids.slice().sort((a,b)=>a-b),b,cx,cy,x:cx,y:cy,angle:0,scale:1,flip:false};
 }
-function isNoopOrig(o){ return o.type==='orig' && !o.copy && !o.erased && Math.abs(o.x-o.cx)<0.01 && Math.abs(o.y-o.cy)<0.01 && !(o.angle) && (o.scale||1)===1 && !o.flip }
+function isNoopOrig(o){ return o.type==='orig' && !o.copy && !o.erased && !o.keep && Math.abs(o.x-o.cx)<0.01 && Math.abs(o.y-o.cy)<0.01 && !(o.angle) && (o.scale||1)===1 && !o.flip }
 function drawEntPrims(parent, d, ids, mode){
   // mode: 'ink' (original), 'mask' (branco por cima do original), 'hover'
   for(const i of ids){
@@ -626,12 +626,29 @@ function effectiveDescs(node){
   const lg=node&&legendObj(node); if(lg) for(const n in (lg.desc||{})) if(lg.desc[n]) map[n]=lg.desc[n];
   return map;
 }
-function matchNumber(node, key){
+// diâmetro na designação: "DN100" (ou "DN__" por preencher); composto "DN150/100" não é editável aqui
+const DN_RE=/DN\s?(\d+|__)(?![\d\/])/i;
+const DN_LIST=[40,50,63,65,80,100,110,125,150,200,250,300,400,500];
+const hasDN = d => DN_RE.test(String(d||''));
+function descDN(d){ const m=String(d||'').match(DN_RE); return m&&m[1]!=='__'?m[1]:'' }
+function withDN(d, dn){ return DN_RE.test(d) ? d.replace(DN_RE,'DN'+dn) : d+', FF DN'+dn }
+const descKey = d => NRM(adaptNumber(String(d||''),1)).replace(/DN\s+/g,'DN').replace(/\s+/g,' ').trim();
+// número da legenda do nó cuja designação (tipologia + diâmetro) é esta; se não existir, atribui o seguinte
+function numberForDesc(node, desc){
+  const want=descKey(desc), descs=effectiveDescs(node);
+  for(const n of Object.keys(descs).sort((a,b)=>a-b)) if(descKey(descs[n])===want) return n;
+  const n=String(nextNumberIn(node));
+  const lg=legendObj(node)||generateLegend(node,true);
+  lg.desc=lg.desc||{}; lg.desc[n]=String(desc).toUpperCase();
+  return n;
+}
+function matchNumber(node, key, dn){
   const keys=SYM_KEYS[key]; if(!keys||!node) return null;
   const descs=effectiveDescs(node);
   for(const n of Object.keys(descs).sort((a,b)=>a-b)){
     const dd=NRM(adaptNumber(descs[n],1))+' ';
     if(key==='valv_cunha' && dd.includes('HASTE')) continue;
+    if(dn && descDN(descs[n])!==dn) continue;
     if(keys.some(k=>dd.startsWith(k))) return n;
   }
   return null;
@@ -640,11 +657,47 @@ function suggestDesc(node, n){
   for(const o of S.objects){ if(o.type==='balloon' && String(o.n)===n && o.att && inBox(o.x,o.y,node.b)){ const s=byId(o.att); if(s && s.type==='sym') return s.desc || symDefaultDesc(s.key,node) } }
   return '';
 }
+// mudar o diâmetro de um acessório novo: o balão passa para o número da legenda com essa tipologia + diâmetro
+function setSymDN(sym, dn){
+  const nd=nodeAt(sym.x,sym.y); sym.desc=withDN(sym.desc||symDefaultDesc(sym.key,nd), dn);
+  const bl=S.objects.find(b=>b.type==='balloon'&&b.att===sym.id);
+  if(nd&&bl) bl.n=numberForDesc(nd,sym.desc);
+}
+// acessório do desenho original: balão (vetorial) + nó + número atual
+function origCtx(o){
+  const d=ENTD.get(o.sheet); if(!d) return null;
+  const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id);
+  const ballIds=o.ents.filter(i=>{ const e=d.ents[i]; return e&&e.n&&!e.lg });
+  const at=i=>{ const c=entCenter(d.ents[i]); return M.ap(objMatrix(o),[c[0]-o.cx,c[1]-o.cy]) };
+  let node,cur;
+  if(bl){ node=nodeAt(bl.x,bl.y); cur=String(bl.n) }
+  else{
+    const ns=[...new Set(ballIds.map(i=>String(d.ents[i].n)))]; if(ns.length!==1) return null;
+    const w=at(ballIds[0]); node=nodeAt(w[0],w[1]); cur=ns[0];
+  }
+  if(!node) return null;
+  const desc=effectiveDescs(node)[cur]; if(!desc||!hasDN(desc)) return null;
+  return {d,bl,ballIds,at,node,cur,desc};
+}
+function setOrigDN(o, dn){
+  const c=origCtx(o); if(!c) return false;
+  const n=numberForDesc(c.node, withDN(c.desc,dn));
+  if(c.bl){ c.bl.n=n; return true }
+  // o desenho original traz o número "gravado": tapa-se esse balão e põe-se um balão novo ligado ao acessório
+  const nbs=c.ballIds.map(i=>{ const e=c.d.ents[i], w=c.at(i); return {id:uid(),type:'balloon',n,r:Math.max(e.b[2],e.b[3])/2,x:w[0],y:w[1],angle:0,scale:1,att:o.id} });
+  if(!o.copy){ const m=makeOrig(c.ballIds); m.erased=true; m.name='Balão original'; S.objects.push(m) }
+  o.ents=o.ents.filter(i=>!c.ballIds.includes(i)); o.keep=true;
+  S.objects.push(...nbs); return true;
+}
 function attachedTo(ids){ const set=new Set(ids); const out=[...ids]; for(const o of S.objects) if(o.type==='balloon' && o.att && set.has(o.att) && !set.has(o.id)) out.push(o.id); return out }
 function autoBalloonFor(sym){
   if(sym.key==='seta') return null;
   const node=nodeAt(sym.x,sym.y); if(!node) return null;
-  let n=matchNumber(node, sym.key); if(!n){ n=String(nextNumberIn(node)); sym.desc=symDefaultDesc(sym.key,node) }
+  // tipologia + diâmetro (o do nó, por omissão) decidem o número; se ainda não existe, ganha o seguinte
+  const desc=symDefaultDesc(sym.key,node), dn=descDN(desc);
+  let n=matchNumber(node, sym.key, dn);
+  if(!n){ sym.desc=desc; n = dn ? numberForDesc(node,desc) : String(nextNumberIn(node)) }
+  if(!legendObj(node)) generateLegend(node,true);
   const r=node.leg?.r||5;
   const up=M.ap(M.R(sym.angle||0),[0,-1]);
   return {id:uid(),type:'balloon',n:String(n),r,x:sym.x+up[0]*20+(up[0]===0?0:0),y:sym.y+up[1]*20,angle:0,scale:1,att:sym.id};
@@ -1462,6 +1515,7 @@ function renderProps(){
   if(o.type==='sym'){
     const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id); const nd=nodeAt(o.x,o.y);
     h+=`<div class="sec"><h3>Legenda</h3>${bl?`<p class="hint">Balão nº <b style="color:var(--fg)">${esc(bl.n)}</b>${nd?' no nó '+esc(nd.t):''}.</p>`:'<p class="hint">Sem balão. <button class="btn" data-act="addBalloon" style="margin-top:4px">Pôr balão</button></p>'}
+      ${dnField(descDN(o.desc||symDefaultDesc(o.key,nd)), hasDN(o.desc||symDefaultDesc(o.key,nd)))}
       <label class="f" style="margin-top:6px">Designação para a legenda<input type="text" data-f="desc" value="${esc(o.desc||symDefaultDesc(o.key,nd))}"></label></div>`;
   }
   if(o.type==='legend'){
@@ -1483,7 +1537,8 @@ function renderProps(){
       <p class="hint" style="margin-top:8px">${o.pts.length} vértices · arraste os quadrados para ajustar, duplo clique no traço junta um vértice, Alt+clique num vértice remove-o.</p></div>`;
   }
   if(o.type==='orig'){
-    const sh=sheetById(o.sheet);
+    const sh=sheetById(o.sheet); const oc=origCtx(o);
+    if(oc) h+=`<div class="sec"><h3>Legenda</h3><p class="hint">Balão nº <b style="color:var(--fg)">${esc(oc.bl?oc.bl.n:oc.cur)}</b> no nó ${esc(oc.node.t)}.</p>${dnField(descDN(oc.desc),true)}</div>`;
     h+=`<div class="sec"><h3>Desenho original</h3><p class="hint">${o.ents.length} elemento${o.ents.length>1?'s':''} do traço original da folha ${esc(sh?.des||o.sheet)}${o.copy?' (cópia)':''}. Sai em vetor no PDF exportado.</p>
       <div class="btnrow" style="margin-top:6px">${o.copy?'':'<button class="btn" data-act="resetOrig">Repor no sítio</button>'}</div>
       <label class="f" style="margin-top:8px">Nome na biblioteca<input type="text" id="libName" value="${esc(o.name||'')}" placeholder="ex.: Válvula de cunha DN80"></label>
@@ -1498,7 +1553,19 @@ function renderProps(){
   h+=`<div class="sec"><div class="btnrow"><button class="btn" data-act="dup">Duplicar</button><button class="btn" data-act="front">À frente</button><button class="btn" data-act="back">Atrás</button><button class="btn danger" data-act="del">Apagar</button></div></div>`;
   P.innerHTML=h; bindProps(P);
 }
+function dnField(dn, show){
+  if(!show) return '';
+  return `<label class="f" style="margin-top:6px">Diâmetro (DN)<input type="text" inputmode="numeric" list="dnList" data-dn value="${esc(dn)}" placeholder="ex.: 100"></label>
+    <datalist id="dnList">${DN_LIST.map(v=>`<option value="${v}">`).join('')}</datalist>
+    <p class="hint" style="margin-top:4px">Ao mudar o diâmetro, o balão passa para o número da legenda com esta tipologia e diâmetro (ou ganha um número novo) e a legenda atualiza-se sozinha.</p>`;
+}
 function bindProps(P){
+  P.querySelectorAll('[data-dn]').forEach(inp=>inp.addEventListener('change',()=>{
+    const o=selObjs()[0]; const dn=String(inp.value).replace(/\D/g,''); if(!o||!dn) return;
+    snap();
+    const ok = o.type==='sym' ? (setSymDN(o,dn),true) : (o.type==='orig' ? setOrigDN(o,dn) : false);
+    if(ok) changed(); else toast('Este acessório não tem diâmetro editável.');
+  }));
   P.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>{ const n=nodeByName(b.dataset.node); if(!n) return; const ex=legendObj(n); if(!ex){ snap(); generateLegend(n); changed() } else { S.sel=new Set([ex.id]); render(); renderProps() } const L=legendObj(n); if(L){ S.view.x=n.b[0]+n.b[2]/2-S.view.w/2; S.view.y=n.b[1]+n.b[3]/2-S.view.h/2; applyView() } });
   let legSnap=true;
   const lgo=()=>{ const o=selObjs()[0]; return o&&o.type==='legend'?o:null };
