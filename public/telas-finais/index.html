@@ -649,6 +649,11 @@ function effectiveDescs(node){
 const DN_RE=/DN\s?(\d+|__)(?![\d\/])/i;
 const DN_LIST=[40,50,63,65,80,100,110,125,150,200,250,300,400,500];
 const hasDN = d => DN_RE.test(String(d||''));
+// comprimento do troço na designação: "L=1.00m", "L*=1.90m" ou "L=__m" por preencher
+const L_RE=/L\*?\s?=\s*(__|\d+(?:[.,]\d+)?)\s*m/i;
+const hasL = d => L_RE.test(String(d||''));
+function descL(d){ const m=String(d||'').match(L_RE); return m&&m[1]!=='__'?m[1].replace(',','.'):'' }
+function withL(d, L){ const v=(Math.round(parseFloat(String(L).replace(',','.'))*100)/100).toFixed(2); return d.replace(L_RE, m=>m.replace(/(__|\d+(?:[.,]\d+)?)(?=\s*m)/i, v)) }
 function descDN(d){ const m=String(d||'').match(DN_RE); return m&&m[1]!=='__'?m[1]:'' }
 function withDN(d, dn){ return DN_RE.test(d) ? d.replace(DN_RE,'DN'+dn) : d+', FF DN'+dn }
 const descKey = d => NRM(adaptNumber(String(d||''),1)).replace(/DN\s+/g,'DN').replace(/\s+/g,' ').trim();
@@ -677,10 +682,22 @@ function suggestDesc(node, n){
   return '';
 }
 // mudar o diâmetro de um acessório novo: o balão passa para o número da legenda com essa tipologia + diâmetro
-function setSymDN(sym, dn){
-  const nd=nodeAt(sym.x,sym.y); sym.desc=withDN(sym.desc||symDefaultDesc(sym.key,nd), dn);
+function setSymDesc(sym, fn){
+  const nd=nodeAt(sym.x,sym.y); sym.desc=fn(sym.desc||symDefaultDesc(sym.key,nd));
   const bl=S.objects.find(b=>b.type==='balloon'&&b.att===sym.id);
   if(nd&&bl) bl.n=numberForDesc(nd,sym.desc);
+}
+const setSymDN = (sym,dn) => setSymDesc(sym, d=>withDN(d,dn));
+// o utilizador escreveu outra designação para este acessório: renomeia o número se for só dele, senão muda-o de número
+function setObjDesc(o, v){
+  const desc=String(v).trim().toUpperCase(); o.desc=desc; if(!desc) return;
+  const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id); if(!bl) return;
+  const nd=nodeAt(bl.x,bl.y)||nodeAt(o.x,o.y); if(!nd) return;
+  const cur=String(bl.n), descs=effectiveDescs(nd), want=descKey(desc);
+  const other=Object.keys(descs).find(n=>n!==cur && descKey(descs[n])===want);
+  if(other){ bl.n=other; return }
+  if((nodeCounts(nd)[cur]||0)<=1){ const lg=legendObj(nd)||generateLegend(nd,true); lg.desc=lg.desc||{}; lg.desc[cur]=desc; return }
+  bl.n=numberForDesc(nd,desc);
 }
 // acessório do desenho original: balão (vetorial) + nó + número atual
 function origCtx(o){
@@ -695,12 +712,12 @@ function origCtx(o){
     const w=at(ballIds[0]); node=nodeAt(w[0],w[1]); cur=ns[0];
   }
   if(!node) return null;
-  const desc=effectiveDescs(node)[cur]; if(!desc||!hasDN(desc)) return null;
+  const desc=effectiveDescs(node)[cur]; if(!desc||!(hasDN(desc)||hasL(desc))) return null;
   return {d,bl,ballIds,at,node,cur,desc};
 }
-function setOrigDN(o, dn){
+function setOrigDesc(o, fn){
   const c=origCtx(o); if(!c) return false;
-  const n=numberForDesc(c.node, withDN(c.desc,dn));
+  const n=numberForDesc(c.node, fn(c.desc));
   if(c.bl){ c.bl.n=n; return true }
   // o desenho original traz o número "gravado": tapa-se esse balão e põe-se um balão novo ligado ao acessório
   const nbs=c.ballIds.map(i=>{ const e=c.d.ents[i], w=c.at(i); return {id:uid(),type:'balloon',n,r:Math.max(e.b[2],e.b[3])/2,x:w[0],y:w[1],angle:0,scale:1,att:o.id} });
@@ -719,8 +736,11 @@ function autoBalloonFor(sym){
   else{
     // tipologia + diâmetro (o do nó, por omissão) decidem o número; se ainda não existe, ganha o seguinte
     const desc=symDefaultDesc(sym.key,node), dn=descDN(desc);
-    n=matchNumber(node, sym.key, dn);
-    if(!n){ sym.desc=desc; n = dn ? numberForDesc(node,desc) : String(nextNumberIn(node)) }
+    if(hasL(desc)){ sym.desc=desc; n=numberForDesc(node,desc) }   // troço: o comprimento faz parte da designação
+    else{
+      n=matchNumber(node, sym.key, dn);
+      if(!n){ sym.desc=desc; n = dn ? numberForDesc(node,desc) : String(nextNumberIn(node)) }
+    }
   }
   if(!legendObj(node)) generateLegend(node,true);
   const r=node.leg?.r||5;
@@ -1224,6 +1244,7 @@ function onDown(e){
     const o=makeObject(S.place.kind,S.place.key,p.x,p.y); if(!o) return;
     const sn=snapObjects([o],0,0,null); o.x+=sn.dx; o.y+=sn.dy;
     snap(); S.objects.push(o); S.sel=new Set([o.id]);
+    prevG.textContent=''; ghost=null;   // o fantasma da pré-visualização não fica por trás do acessório já colocado
     if((o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) && S.autoNum!==false){ const b=autoBalloonFor(o); if(b) S.objects.push(b) }
     if(o.type==='text'){ setTool('select'); changed(); focusText(); return }
     changed(); return;
@@ -1560,7 +1581,7 @@ function renderProps(){
   if(o.type==='sym'){
     const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id); const nd=nodeAt(o.x,o.y);
     h+=`<div class="sec"><h3>Legenda</h3>${bl?`<p class="hint">Balão nº <b style="color:var(--fg)">${esc(bl.n)}</b>${nd?' no nó '+esc(nd.t):''}.</p>`:'<p class="hint">Sem balão. <button class="btn" data-act="addBalloon" style="margin-top:4px">Pôr balão</button></p>'}
-      ${dnField(descDN(o.desc||symDefaultDesc(o.key,nd)), hasDN(o.desc||symDefaultDesc(o.key,nd)))}
+      ${dnField(descDN(o.desc||symDefaultDesc(o.key,nd)), hasDN(o.desc||symDefaultDesc(o.key,nd)))}${lField(descL(o.desc||symDefaultDesc(o.key,nd)), hasL(o.desc||symDefaultDesc(o.key,nd)))}
       <label class="f" style="margin-top:6px">Designação para a legenda<input type="text" data-f="desc" value="${esc(o.desc||symDefaultDesc(o.key,nd))}"></label></div>`;
   }
   if(o.type==='legend'){
@@ -1585,7 +1606,7 @@ function renderProps(){
   if(o.type==='orig'){
     const sh=sheetById(o.sheet); const oc=o.desc?null:origCtx(o);
     if(o.desc) h+=libLegendSection(o);
-    if(oc) h+=`<div class="sec"><h3>Legenda</h3><p class="hint">Balão nº <b style="color:var(--fg)">${esc(oc.bl?oc.bl.n:oc.cur)}</b> no nó ${esc(oc.node.t)}.</p>${dnField(descDN(oc.desc),true)}</div>`;
+    if(oc) h+=`<div class="sec"><h3>Legenda</h3><p class="hint">Balão nº <b style="color:var(--fg)">${esc(oc.bl?oc.bl.n:oc.cur)}</b> no nó ${esc(oc.node.t)}.</p>${dnField(descDN(oc.desc),hasDN(oc.desc))}${lField(descL(oc.desc),hasL(oc.desc))}</div>`;
     h+=`<div class="sec"><h3>Desenho original</h3><p class="hint">${o.ents.length} elemento${o.ents.length>1?'s':''} do traço original da folha ${esc(sh?.des||o.sheet)}${o.copy?' (cópia)':''}. Sai em vetor no PDF exportado.</p>
       <div class="btnrow" style="margin-top:6px">${o.copy?'':'<button class="btn" data-act="resetOrig">Repor no sítio</button>'}</div>
       <label class="f" style="margin-top:8px">Nome na biblioteca<input type="text" id="libName" value="${esc(o.name||'')}" placeholder="ex.: Válvula de cunha DN80"></label>
@@ -1607,8 +1628,13 @@ function renderProps(){
 function libLegendSection(o){
   const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id), nd=nodeAt(o.x,o.y);
   return `<div class="sec"><h3>Legenda</h3>${bl?`<p class="hint">Balão nº <b style="color:var(--fg)">${esc(bl.n)}</b>${nd?' no nó '+esc(nd.t):''}.</p>`:'<p class="hint">Sem balão. <button class="btn" data-act="addBalloon" style="margin-top:4px">Pôr balão</button></p>'}
-    ${dnField(descDN(o.desc), hasDN(o.desc))}
+    ${dnField(descDN(o.desc), hasDN(o.desc))}${lField(descL(o.desc), hasL(o.desc))}
     <label class="f" style="margin-top:6px">Designação para a legenda<input type="text" data-f="desc" value="${esc(o.desc)}"></label></div>`;
+}
+function lField(L, show){
+  if(!show) return '';
+  return `<label class="f" style="margin-top:6px">Comprimento L (m)<input type="text" inputmode="decimal" data-l value="${esc(L)}" placeholder="ex.: 1.00"></label>
+    <p class="hint" style="margin-top:4px">Cada comprimento diferente tem a sua linha na legenda (“COM L=1.00m”).</p>`;
 }
 function dnField(dn, show){
   if(!show) return '';
@@ -1628,8 +1654,14 @@ function bindProps(P){
   P.querySelectorAll('[data-dn]').forEach(inp=>inp.addEventListener('change',()=>{
     const o=selObjs()[0]; const dn=String(inp.value).replace(/\D/g,''); if(!o||!dn) return;
     snap();
-    const ok = (o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) ? (setSymDN(o,dn),true) : (o.type==='orig' ? setOrigDN(o,dn) : false);
+    const ok = (o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) ? (setSymDN(o,dn),true) : (o.type==='orig' ? setOrigDesc(o,d=>withDN(d,dn)) : false);
     if(ok) changed(); else toast('Este acessório não tem diâmetro editável.');
+  }));
+  P.querySelectorAll('[data-l]').forEach(inp=>inp.addEventListener('change',()=>{
+    const o=selObjs()[0]; const v=parseFloat(String(inp.value).replace(',','.')); if(!o||!(v>0)) return;
+    snap();
+    const ok = (o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) ? (setSymDesc(o,d=>withL(d,v)),true) : (o.type==='orig' ? setOrigDesc(o,d=>withL(d,v)) : false);
+    if(ok) changed(); else toast('Este acessório não tem comprimento editável.');
   }));
   P.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>{ const n=nodeByName(b.dataset.node); if(!n) return; const ex=legendObj(n); if(!ex){ snap(); generateLegend(n); changed() } else { S.sel=new Set([ex.id]); render(); renderProps() } const L=legendObj(n); if(L){ S.view.x=n.b[0]+n.b[2]/2-S.view.w/2; S.view.y=n.b[1]+n.b[3]/2-S.view.h/2; applyView() } });
   let legSnap=true;
@@ -1642,7 +1674,7 @@ function bindProps(P){
   P.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,b));
   let pendingSnap=true;
   P.querySelectorAll('[data-f]').forEach(inp=>{
-    const ev = (inp.tagName==='TEXTAREA'||inp.type==='text'||inp.type==='number') ? 'input' : 'change';
+    const ev = inp.dataset.f==='desc' ? 'change' : (inp.tagName==='TEXTAREA'||inp.type==='text'||inp.type==='number') ? 'input' : 'change';
     inp.addEventListener('focus',()=>{pendingSnap=true});
     inp.addEventListener(ev,()=>{
       const o=selObjs()[0]; if(!o) return;
@@ -1656,12 +1688,12 @@ function bindProps(P){
       else if(f==='color' && o.type==='line'){ o.color=v; o.preset='custom' }
       else if((f==='x'||f==='y') && o.type==='legend'){ o[f]=v; o.fit=false }
       else if(f.startsWith('st.')){ o.st[f.slice(3)]=Math.max(f==='st.rows'?0:0.5,v); if(f==='st.rows') o.st.hgt=0; o._w=null }
-      else if(f==='desc'){ o.desc=String(v).toUpperCase() }
+      else if(f==='desc'){ setObjDesc(o,v) }
       else if(f==='angle'){ o.angle=norm(v) }
       else if(f==='scale'){ o.scale=Math.max(0.05,v) }
       else o[f]=v;
       render(); dirty=true; setStatus('busy','Por guardar…'); clearTimeout(saveTimer); saveTimer=setTimeout(flush,900); updUndo();
-      if(ev==='change' && inp.tagName==='SELECT') renderProps();
+      if(ev==='change' && (inp.tagName==='SELECT' || f==='desc')) renderProps();
     });
   });
 }
