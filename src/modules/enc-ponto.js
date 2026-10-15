@@ -333,9 +333,9 @@ function _encShowExistentesBanner(regs){
 }
 
 async function carregarEquipaAnterior(){
-  // Procurar o registo mais recente anterior à data selecionada,
+  // Procurar os últimos 7 dias com registo anteriores à data selecionada,
   // limitado a esta obra e a este encarregado — não misturar equipas
-  // de outras obras/encarregados na sugestão "Equipa de [data]".
+  // de outras obras/encarregados na sugestão. Sem duplicados.
   const dk=S.encDataSel;
   const obraId=S.encObraId;
   const encId=S.currentUser?.key||null;
@@ -346,14 +346,14 @@ async function carregarEquipaAnterior(){
       .lt('data', dk)
       .eq('obra_id', obraId)
       .order('data',{ascending:false})
-      .limit(50);
+      .limit(1000);
     q = encId!=null ? q.eq('encarregado_id',encId) : q.is('encarregado_id',null);
     const {data:regs}=await q;
     if(!regs||regs.length===0){document.getElementById('ontem-box').style.display='none';return;}
-    // Encontrar a data mais recente
-    const dataAnterior=regs[0].data;
-    document.getElementById('ontem-label').textContent=`Equipa de ${fmtPT(dataAnterior)}`;
-    const numsAnteriores=[...new Set(regs.filter(r=>r.data===dataAnterior).map(r=>r.colab_numero))];
+    // Os 7 registos (dias) mais recentes; a ordem dos trabalhadores segue o dia mais recente primeiro
+    const dias=[...new Set(regs.map(r=>r.data))].slice(0,7);
+    document.getElementById('ontem-label').textContent=dias.length===1?`Equipa de ${fmtPT(dias[0])}`:`Equipa dos últimos ${dias.length} registos`;
+    const numsAnteriores=[...new Set(regs.filter(r=>dias.includes(r.data)).map(r=>r.colab_numero))];
     const paraAdicionar=numsAnteriores.filter(n=>!jaAdicionados.includes(n));
     if(!paraAdicionar.length){document.getElementById('ontem-box').style.display='none';return;}
     document.getElementById('ontem-box').style.display='block';
