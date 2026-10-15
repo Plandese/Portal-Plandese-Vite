@@ -700,7 +700,7 @@ function setObjDesc(o, v){
   bl.n=numberForDesc(nd,desc);
 }
 // acessório do desenho original: balão (vetorial) + nó + número atual
-function origCtx(o){
+function origCtx(o, any){
   const d=ENTD.get(o.sheet); if(!d) return null;
   const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id);
   const ballIds=o.ents.filter(i=>{ const e=d.ents[i]; return e&&e.n&&!e.lg });
@@ -712,7 +712,7 @@ function origCtx(o){
     const w=at(ballIds[0]); node=nodeAt(w[0],w[1]); cur=ns[0];
   }
   if(!node) return null;
-  const desc=effectiveDescs(node)[cur]; if(!desc||!(hasDN(desc)||hasL(desc))) return null;
+  const desc=effectiveDescs(node)[cur]; if(!any && (!desc||!(hasDN(desc)||hasL(desc)))) return null;
   return {d,bl,ballIds,at,node,cur,desc};
 }
 function setOrigDesc(o, fn){
@@ -735,7 +735,7 @@ function autoBalloonFor(sym){
   if(lib) n=numberForDesc(node, sym.desc);
   else{
     // tipologia + diâmetro (o do nó, por omissão) decidem o número; se ainda não existe, ganha o seguinte
-    const desc=symDefaultDesc(sym.key,node), dn=descDN(desc);
+    const desc=sym.desc||symDefaultDesc(sym.key,node), dn=descDN(desc);
     if(hasL(desc)){ sym.desc=desc; n=numberForDesc(node,desc) }   // troço: o comprimento faz parte da designação
     else{
       n=matchNumber(node, sym.key, dn);
@@ -1137,7 +1137,17 @@ function renderLibCrops(){
     const b=document.createElement('div'); b.className='lib-item'; b.tabIndex=0; b.dataset.saved='1'; b.dataset.key='lib:'+it.id; b.title=it.name+' · '+(sheetById(it.sheet)?.des||'')+(it.desc?' · Legenda: '+it.desc:'');
     b.innerHTML=`<span class="x" role="button" aria-label="Remover da biblioteca" title="Remover">×</span><img alt=""><span>${esc(it.name)}</span>`;
     const img=b.querySelector('img');
-    if(it.kind==='orig'){
+    if(it.kind==='group'){
+      const sheets=[...new Set(it.items.filter(o=>o.type==='orig').map(o=>o.sheet))];
+      Promise.all(sheets.map(entsFor)).then(()=>{ try{
+        const pad=6, box=it.b, tmp=document.createElementNS(NS,'svg'); tmp.setAttribute('xmlns',NS);
+        tmp.setAttribute('viewBox',`${box[0]-pad} ${box[1]-pad} ${box[2]+pad*2} ${box[3]+pad*2}`);
+        for(const s0 of it.items){ const o=clone(s0);
+          if(o.type==='crop'){ el('rect',{x:o.x-o.sw/2,y:o.y-o.sh/2,width:o.sw,height:o.sh,fill:'#eee',stroke:'#999','stroke-width':1},tmp); continue }
+          if(o.type==='orig' && !ENTD.get(o.sheet)) continue;
+          drawObj(o,tmp) }
+        img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(tmp)) }catch(e){} });
+    }else if(it.kind==='orig'){
       entsFor(it.sheet).then(d=>{ if(!d) return; const pad=3; const box=it.b;
         const tmp=document.createElementNS(NS,'svg'); tmp.setAttribute('xmlns',NS); tmp.setAttribute('viewBox',`${box[0]-pad} ${box[1]-pad} ${box[2]+pad*2} ${box[3]+pad*2}`);
         drawEntPrims(tmp,d,it.ents,'ink'); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(tmp)) });
@@ -1174,15 +1184,46 @@ function makeObject(kind,key,x,y){
   return null;
 }
 let placeRot=0, placeFlip=false, ghost=null;
+// conjunto guardado: devolve cópias novas dos objetos, com o centro do conjunto em (x,y)
+function groupObjects(it, x, y){
+  const cx=it.b[0]+it.b[2]/2, cy=it.b[1]+it.b[3]/2;
+  const T=M.chain(M.T(x,y), M.R(placeRot), M.T(-cx,-cy)), out=[];
+  for(const s0 of it.items){
+    const o=clone(s0); o.id=uid();
+    if(o.type==='line') o.pts=o.pts.map(q=>M.ap(T,q));
+    else{ const w=M.ap(T,[o.x,o.y]); o.x=w[0]; o.y=w[1]; o.angle=norm((o.angle||0)+placeRot) }
+    if(o.type==='orig'){
+      const d=ENTD.get(o.sheet); if(!d){ entsFor(o.sheet); return null }
+      // os números do desenho original não servem aqui: os balões novos vêm da legenda do nó
+      // sem designação conhecida (ex.: vários acessórios agrupados) mantém-se o balão original
+      const ents=o.desc ? o.ents.filter(i=>{ const e=d.ents[i]; return e && !(e.n&&!e.lg) }) : o.ents;
+      if(ents.length && ents.length!==o.ents.length){ o.ents=ents; o.b=entsBox(d,ents) }
+      o.copy=true; delete o.erased; delete o.keep; delete o.nmap;
+    }
+    out.push(o);
+  }
+  return out;
+}
+function placeGroup(it, p){
+  const os=groupObjects(it,p.x,p.y); if(!os) return;
+  snap(); S.objects.push(...os); prevG.textContent=''; ghost=null;
+  const bs=[];
+  if(S.autoNum!==false) for(const o of os) if(o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)){ const b=autoBalloonFor(o); if(b) bs.push(b) }
+  S.objects.push(...bs);
+  S.sel=new Set(os.map(o=>o.id)); changed();
+  toast(`Conjunto aplicado (${os.length} objeto${os.length>1?'s':''}).`);
+}
 function startPlace(kind,key){
   placeRot=0; placeFlip=false;
-  if(kind==='lib'){ const it=LIB.find(l=>l.id===key); if(it && it.kind==='orig') entsFor(it.sheet) }
+  if(kind==='lib'){ const it=LIB.find(l=>l.id===key); if(it && it.kind==='orig') entsFor(it.sheet); if(it && it.kind==='group') it.items.forEach(o=>{ if(o.type==='orig') entsFor(o.sheet) }) }
   setTool('place',{kind,key});
 }
 function nextBalloon(){ let n=0; for(const o of S.objects) if(o.type==='balloon'){const v=parseInt(o.n,10); if(v>n) n=v} return n+1 }
 function updateGhost(p){
   prevG.textContent='';
   if(S.tool!=='place' || !S.place || S.place.kind==='line') return;
+  if(S.place.kind==='lib'){ const it=LIB.find(l=>l.id===S.place.key);
+    if(it && it.kind==='group'){ const os=groupObjects(it,p.x,p.y); if(!os) return; const g=el('g',{opacity:.55,'pointer-events':'none'},prevG); os.forEach(o=>drawObj(o,g)); return } }
   const o=makeObject(S.place.kind,S.place.key,p.x,p.y); if(!o) return;
   const sn=snapObjects([o],0,0,null); o.x+=sn.dx; o.y+=sn.dy;
   ghost={o, snap:sn};
@@ -1241,6 +1282,7 @@ function onDown(e){
   const t=S.tool;
   if(t==='place'){
     if(S.place.kind==='line'){ lineClick(p,e); return }
+    if(S.place.kind==='lib'){ const it=LIB.find(l=>l.id===S.place.key); if(it && it.kind==='group'){ placeGroup(it,p); return } }
     const o=makeObject(S.place.kind,S.place.key,p.x,p.y); if(!o) return;
     const sn=snapObjects([o],0,0,null); o.x+=sn.dx; o.y+=sn.dy;
     snap(); S.objects.push(o); S.sel=new Set([o.id]);
@@ -1545,6 +1587,10 @@ function renderProps(){
     P.innerHTML=h; bindProps(P); return;
   }
   if(os.length>1){
+    const okSave=os.filter(x=>['orig','crop','sym','line','text','rect'].includes(x.type) && !x.mask && !x.node).length>=2;
+    if(okSave) h+=`<div class="sec"><h3>Guardar como conjunto</h3><label class="f">Nome na biblioteca<input type="text" id="libName" placeholder="ex.: Caixa de válvulas tipo 1"></label>
+      <div class="btnrow" style="margin-top:6px"><button class="btn" data-act="saveGroup">Guardar conjunto na biblioteca</button></div>
+      <p class="hint" style="margin-top:6px">Guarda os acessórios, tubagens e textos selecionados, com as posições relativas. Ao aplicar, cada acessório ganha balão e legenda.</p></div>`;
     h+=`<div class="sec"><h3>${os.length} objetos</h3><div class="btnrow">
       <button class="btn" data-act="rot-90">↺ 90°</button><button class="btn" data-act="rot90">↻ 90°</button>
       <button class="btn" data-act="rot-15">↺ 15°</button><button class="btn" data-act="rot15">↻ 15°</button>
@@ -1712,6 +1758,22 @@ async function act(a,btn){
   else if(a==='detach'){ const o=selObjs()[0]; if(!o) return; snap(); delete o.att; changed() }
   else if(a==='addBalloon'){ const o=selObjs()[0]; if(!o||(o.type!=='sym'&&!o.desc)) return; snap(); const b=autoBalloonFor(o)||{id:uid(),type:'balloon',n:String(nextNumberIn(null)),r:5,x:o.x,y:o.y-20,angle:0,scale:1,att:o.id}; S.objects.push(b); changed() }
   else if(a==='resetOrig'){ const o=selObjs()[0]; if(!o||o.type!=='orig') return; snap(); o.x=o.cx; o.y=o.cy; o.angle=0; o.scale=1; o.flip=false; changed() }
+  else if(a==='saveGroup'){
+    const items=selObjs().filter(o=>['orig','crop','sym','line','text','rect'].includes(o.type) && !o.mask && !o.node);
+    if(items.length<2){ toast('Selecione pelo menos dois objetos.'); return }
+    const name=(($('#libName')?.value)||'').trim()||'Conjunto '+(LIB.length+1);
+    const recItems=items.map(o=>{
+      const c=clone(o); delete c._w; delete c._h; delete c.att;
+      let desc=o.desc||'';
+      if(!desc && o.type==='orig'){ const cx=origCtx(o,true); desc=cx&&cx.desc||'' }
+      if(desc) c.desc=String(desc).toUpperCase();
+      return c;
+    });
+    const ps=[]; items.forEach(o=>ps.push(...corners(o))); const bb=ptsBox(ps);
+    const rec={kind:'group',name,sheet:S.sheet.id,items:recItems,b:[bb.x,bb.y,bb.w,bb.h],createdAt:new Date().toISOString()};
+    try{ const it=await Store.addLib(rec); LIB.push(it); renderLibCrops(); toast(`Conjunto “${name}” guardado (${items.length} objetos).`) }
+    catch(e){ toast('Não foi possível guardar o conjunto.') }
+  }
   else if(a==='saveLib'){
     const o=selObjs()[0]; if(!o||(o.type!=='crop'&&o.type!=='orig')) return;
     const name=($('#libName').value||'').trim()||'Acessório '+(LIB.length+1);
