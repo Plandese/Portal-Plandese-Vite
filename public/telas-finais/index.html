@@ -1061,7 +1061,7 @@ const ICON = {
   node:'<rect x="3" y="3" width="18" height="18" stroke-dasharray="4 2.5"/><path d="M8 9h8M8 13h8M8 17h5"/>',
 };
 const TOOLS = [
-  ['select','Selecionar e editar','V','Clique num acessório da folha e arraste para o mover; R roda, Delete apaga. Arraste uma caixa à volta de um nó para o mover inteiro. Alt+arrastar duplica.'],
+  ['select','Selecionar e editar','V','Clique num acessório da folha e arraste para o mover; Ctrl+clique (ou Shift) junta vários à seleção; R roda, Delete apaga. Arraste uma caixa à volta de um nó para o mover inteiro. Alt+arrastar duplica.'],
   ['pan','Mover a vista','H','Arraste para deslocar a folha. Roda do rato para zoom.'],
   null,
   ['cut','Mover do original','M','Arraste um retângulo à volta do que quer mover na folha original. Fica um objeto editável e a zona antiga é tapada.'],
@@ -1317,7 +1317,7 @@ function onDown(e){
   const hit=e.target.closest('[data-id]');
   if(hit && hit.parentNode===objsG){
     const id=hit.getAttribute('data-id');
-    if(e.shiftKey){ if(S.sel.has(id)) S.sel.delete(id); else S.sel.add(id); renderProps(); drawUI(); return }
+    if(e.shiftKey||e.ctrlKey||e.metaKey){ if(S.sel.has(id)) S.sel.delete(id); else S.sel.add(id); renderProps(); drawUI(); return }
     if(!S.sel.has(id)){ S.sel=new Set([id]); renderProps(); drawUI() }
     let ids=[...S.sel];
     if(e.altKey){ // duplicar
@@ -1330,7 +1330,7 @@ function onDown(e){
   const ei=entAt(p);
   if(ei>=0){
     const o=makeOrig(withBalloons(ENTD.get(S.sheet.id), ei, usedEnts())); S.objects.push(o);
-    if(e.shiftKey) S.sel.add(o.id); else S.sel=new Set([o.id]);
+    if(e.shiftKey||e.ctrlKey||e.metaKey) S.sel.add(o.id); else S.sel=new Set([o.id]);
     let ids=[...S.sel].filter(id=>byId(id));
     if(e.altKey){ snap(); const c=clone(o); c.id=uid(); c.copy=true; S.objects.push(c); S.sel=new Set([c.id]); ids=[c.id] }
     showHover(-1); render(); renderProps();
@@ -1338,8 +1338,9 @@ function onDown(e){
     return;
   }
   // marquee
-  drag={kind:'marquee',p0:p,p1:p,add:e.shiftKey};
-  if(!e.shiftKey){ S.sel.clear(); renderProps(); drawUI() }
+  const addSel=e.shiftKey||e.ctrlKey||e.metaKey;
+  drag={kind:'marquee',p0:p,p1:p,add:addSel};
+  if(!addSel){ S.sel.clear(); renderProps(); drawUI() }
 }
 function onMove(e){
   if(pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -2106,6 +2107,7 @@ function showHelp(){
   <kbd>F</kbd><span>Espelhar</span>
   <kbd>Setas</kbd><span>Deslocar 1 pt (Shift: 10 pt)</span>
   <kbd>Alt+arrastar</kbd><span>Duplicar e mover</span>
+  <kbd>Ctrl+clique</kbd><span>Juntar / tirar um objeto da seleção (também Shift)</span>
   <kbd>Ctrl ao arrastar</kbd><span>Sem encaixe / rotação livre</span>
   <kbd>Ctrl+C / Ctrl+V</kbd><span>Copiar e colar (também entre folhas)</span>
   <kbd>Ctrl+Z / Ctrl+Shift+Z</kbd><span>Anular / refazer</span>
