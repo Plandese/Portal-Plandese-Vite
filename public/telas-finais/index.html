@@ -197,11 +197,7 @@ a.btn{text-decoration:none;color:inherit}
     <div class="sec">
       <h3>Acessórios</h3>
       <div class="grid" id="libSym"></div>
-    </div>
-    <div class="sec">
-      <h3>Da folha <span class="hint" id="libCount"></span></h3>
-      <div class="grid" id="libCrop"></div>
-      <p class="hint" id="libCropHint">Recorte um acessório da folha (ferramenta Copiar ou Mover) e use “Guardar na biblioteca” para o reutilizar com o traço original.</p>
+      <p class="hint" id="libCropHint" style="margin-top:6px">Recorte um acessório da folha (ferramenta Copiar ou Mover) e use “Guardar na biblioteca”: fica aqui, com o traço original, e ao aplicá-lo ganha balão, número e legenda.</p>
     </div>
     <div class="sec">
       <h3>Tubagens</h3>
@@ -715,15 +711,22 @@ function setOrigDN(o, dn){
 function attachedTo(ids){ const set=new Set(ids); const out=[...ids]; for(const o of S.objects) if(o.type==='balloon' && o.att && set.has(o.att) && !set.has(o.id)) out.push(o.id); return out }
 function autoBalloonFor(sym){
   if(sym.key==='seta') return null;
+  const lib = sym.type!=='sym';      // acessório guardado na biblioteca: a designação (com o DN) decide o número
+  if(lib && !sym.desc) return null;
   const node=nodeAt(sym.x,sym.y); if(!node) return null;
-  // tipologia + diâmetro (o do nó, por omissão) decidem o número; se ainda não existe, ganha o seguinte
-  const desc=symDefaultDesc(sym.key,node), dn=descDN(desc);
-  let n=matchNumber(node, sym.key, dn);
-  if(!n){ sym.desc=desc; n = dn ? numberForDesc(node,desc) : String(nextNumberIn(node)) }
+  let n;
+  if(lib) n=numberForDesc(node, sym.desc);
+  else{
+    // tipologia + diâmetro (o do nó, por omissão) decidem o número; se ainda não existe, ganha o seguinte
+    const desc=symDefaultDesc(sym.key,node), dn=descDN(desc);
+    n=matchNumber(node, sym.key, dn);
+    if(!n){ sym.desc=desc; n = dn ? numberForDesc(node,desc) : String(nextNumberIn(node)) }
+  }
   if(!legendObj(node)) generateLegend(node,true);
   const r=node.leg?.r||5;
+  if(lib){ const b=worldBox(sym); return {id:uid(),type:'balloon',n:String(n),r,x:b.x+b.w/2,y:b.y-r-6,angle:0,scale:1,att:sym.id} }
   const up=M.ap(M.R(sym.angle||0),[0,-1]);
-  return {id:uid(),type:'balloon',n:String(n),r,x:sym.x+up[0]*20+(up[0]===0?0:0),y:sym.y+up[1]*20,angle:0,scale:1,att:sym.id};
+  return {id:uid(),type:'balloon',n:String(n),r,x:sym.x+up[0]*20,y:sym.y+up[1]*20,angle:0,scale:1,att:sym.id};
 }
 function legendItems(o){
   const node=nodeByName(o.node); if(!node) return [];
@@ -1108,11 +1111,10 @@ function buildLibrary(){
 let LIB=[];
 async function loadLib(){ try{ LIB = await Store.listLib() }catch(e){ LIB=[] } renderLibCrops() }
 function renderLibCrops(){
-  const g=$('#libCrop'); g.textContent='';
-  $('#libCount').textContent = LIB.length?String(LIB.length):'';
+  const g=$('#libSym'); g.querySelectorAll('[data-saved]').forEach(x=>x.remove());
   $('#libCropHint').hidden = LIB.length>0;
   for(const it of LIB){
-    const b=document.createElement('div'); b.className='lib-item'; b.tabIndex=0; b.dataset.key='lib:'+it.id; b.title=it.name+' · '+(sheetById(it.sheet)?.des||'');
+    const b=document.createElement('div'); b.className='lib-item'; b.tabIndex=0; b.dataset.saved='1'; b.dataset.key='lib:'+it.id; b.title=it.name+' · '+(sheetById(it.sheet)?.des||'')+(it.desc?' · Legenda: '+it.desc:'');
     b.innerHTML=`<span class="x" role="button" aria-label="Remover da biblioteca" title="Remover">×</span><img alt=""><span>${esc(it.name)}</span>`;
     const img=b.querySelector('img');
     if(it.kind==='orig'){
@@ -1135,8 +1137,13 @@ function cropImageEntry(o){ cropImage(o); const e=IMGCACHE.get(cropKey(o)); retu
 function makeObject(kind,key,x,y){
   if(kind==='sym') return {id:uid(),type:'sym',key,x,y,angle:placeRot,scale:1,flip:placeFlip};
   if(kind==='lib'){ const it=LIB.find(l=>l.id===key); if(!it) return null;
-    if(it.kind==='orig'){ if(!ENTD.get(it.sheet)){ entsFor(it.sheet); return null } const cx=it.b[0]+it.b[2]/2, cy=it.b[1]+it.b[3]/2; return {id:uid(),type:'orig',sheet:it.sheet,ents:it.ents.slice(),b:it.b.slice(),cx,cy,x,y,angle:placeRot,scale:1,flip:placeFlip,copy:true,name:it.name} }
-    return {id:uid(),type:'crop',sheet:it.sheet,sx:it.sx,sy:it.sy,sw:it.sw,sh:it.sh,x,y,angle:placeRot,scale:1,flip:placeFlip,name:it.name} }
+    const desc=String(it.desc||it.name||'').toUpperCase();   // designação que vai para a legenda
+    if(it.kind==='orig'){ const d=ENTD.get(it.sheet); if(!d){ entsFor(it.sheet); return null }
+      // o número do desenho original não serve aqui: o balão novo é atribuído pela legenda do nó
+      let ents=it.ents.filter(i=>{ const e=d.ents[i]; return e && !(e.n&&!e.lg) }); if(!ents.length) ents=it.ents.slice();
+      const b=entsBox(d,ents), cx=b[0]+b[2]/2, cy=b[1]+b[3]/2;
+      return {id:uid(),type:'orig',sheet:it.sheet,ents,b,cx,cy,x,y,angle:placeRot,scale:1,flip:placeFlip,copy:true,name:it.name,desc} }
+    return {id:uid(),type:'crop',sheet:it.sheet,sx:it.sx,sy:it.sy,sw:it.sw,sh:it.sh,x,y,angle:placeRot,scale:1,flip:placeFlip,name:it.name,desc} }
   if(kind==='anno'){
     const a=ANNO.find(q=>q.k===key);
     if(key==='balloon'){ const nd=nodeAt(x,y); return {id:uid(),type:'balloon',n:String(nextNumberIn(nd)),r:nd?.leg?.r||5,x,y,angle:0,scale:1} }
@@ -1217,7 +1224,7 @@ function onDown(e){
     const o=makeObject(S.place.kind,S.place.key,p.x,p.y); if(!o) return;
     const sn=snapObjects([o],0,0,null); o.x+=sn.dx; o.y+=sn.dy;
     snap(); S.objects.push(o); S.sel=new Set([o.id]);
-    if(o.type==='sym' && S.autoNum!==false){ const b=autoBalloonFor(o); if(b) S.objects.push(b) }
+    if((o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) && S.autoNum!==false){ const b=autoBalloonFor(o); if(b) S.objects.push(b) }
     if(o.type==='text'){ setTool('select'); changed(); focusText(); return }
     changed(); return;
   }
@@ -1576,21 +1583,32 @@ function renderProps(){
       <p class="hint" style="margin-top:8px">${o.pts.length} vértices · arraste os quadrados para ajustar, duplo clique no traço junta um vértice, Alt+clique num vértice remove-o.</p></div>`;
   }
   if(o.type==='orig'){
-    const sh=sheetById(o.sheet); const oc=origCtx(o);
+    const sh=sheetById(o.sheet); const oc=o.desc?null:origCtx(o);
+    if(o.desc) h+=libLegendSection(o);
     if(oc) h+=`<div class="sec"><h3>Legenda</h3><p class="hint">Balão nº <b style="color:var(--fg)">${esc(oc.bl?oc.bl.n:oc.cur)}</b> no nó ${esc(oc.node.t)}.</p>${dnField(descDN(oc.desc),true)}</div>`;
     h+=`<div class="sec"><h3>Desenho original</h3><p class="hint">${o.ents.length} elemento${o.ents.length>1?'s':''} do traço original da folha ${esc(sh?.des||o.sheet)}${o.copy?' (cópia)':''}. Sai em vetor no PDF exportado.</p>
       <div class="btnrow" style="margin-top:6px">${o.copy?'':'<button class="btn" data-act="resetOrig">Repor no sítio</button>'}</div>
       <label class="f" style="margin-top:8px">Nome na biblioteca<input type="text" id="libName" value="${esc(o.name||'')}" placeholder="ex.: Válvula de cunha DN80"></label>
+      <label class="f" style="margin-top:6px">Designação na legenda<input type="text" id="libDesc" value="${esc(o.libDesc||'')}" placeholder="ex.: VÁLVULA DE CUNHA, FF DN80 (em branco = o nome)"></label>
       <div class="btnrow" style="margin-top:6px"><button class="btn" data-act="saveLib">Guardar na biblioteca</button></div></div>`;
   }
   if(o.type==='crop'){
     const sh=sheetById(o.sheet);
+    if(o.desc) h+=libLegendSection(o);
     h+=`<div class="sec"><h3>Recorte</h3><p class="hint">Traço vetorial original da folha ${esc(sh?.des||o.sheet)} (${Math.round(o.sw)} × ${Math.round(o.sh)} pt). Sai em vetor no PDF exportado.</p>
       <label class="f" style="margin-top:6px">Nome na biblioteca<input type="text" id="libName" value="${esc(o.name||'')}" placeholder="ex.: Válvula de cunha DN80"></label>
+      <label class="f" style="margin-top:6px">Designação na legenda<input type="text" id="libDesc" value="${esc(o.libDesc||'')}" placeholder="ex.: VÁLVULA DE CUNHA, FF DN80 (em branco = o nome)"></label>
       <div class="btnrow" style="margin-top:6px"><button class="btn" data-act="saveLib">Guardar na biblioteca</button></div></div>`;
   }
   h+=`<div class="sec"><div class="btnrow"><button class="btn" data-act="dup">Duplicar</button><button class="btn" data-act="front">À frente</button><button class="btn" data-act="back">Atrás</button><button class="btn danger" data-act="del">Apagar</button></div></div>`;
   P.innerHTML=h; bindProps(P);
+}
+// painel "Legenda" dos acessórios guardados na biblioteca (têm designação própria)
+function libLegendSection(o){
+  const bl=S.objects.find(b=>b.type==='balloon'&&b.att===o.id), nd=nodeAt(o.x,o.y);
+  return `<div class="sec"><h3>Legenda</h3>${bl?`<p class="hint">Balão nº <b style="color:var(--fg)">${esc(bl.n)}</b>${nd?' no nó '+esc(nd.t):''}.</p>`:'<p class="hint">Sem balão. <button class="btn" data-act="addBalloon" style="margin-top:4px">Pôr balão</button></p>'}
+    ${dnField(descDN(o.desc), hasDN(o.desc))}
+    <label class="f" style="margin-top:6px">Designação para a legenda<input type="text" data-f="desc" value="${esc(o.desc)}"></label></div>`;
 }
 function dnField(dn, show){
   if(!show) return '';
@@ -1610,7 +1628,7 @@ function bindProps(P){
   P.querySelectorAll('[data-dn]').forEach(inp=>inp.addEventListener('change',()=>{
     const o=selObjs()[0]; const dn=String(inp.value).replace(/\D/g,''); if(!o||!dn) return;
     snap();
-    const ok = o.type==='sym' ? (setSymDN(o,dn),true) : (o.type==='orig' ? setOrigDN(o,dn) : false);
+    const ok = (o.type==='sym' || ((o.type==='orig'||o.type==='crop') && o.desc)) ? (setSymDN(o,dn),true) : (o.type==='orig' ? setOrigDN(o,dn) : false);
     if(ok) changed(); else toast('Este acessório não tem diâmetro editável.');
   }));
   P.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>{ const n=nodeByName(b.dataset.node); if(!n) return; const ex=legendObj(n); if(!ex){ snap(); generateLegend(n); changed() } else { S.sel=new Set([ex.id]); render(); renderProps() } const L=legendObj(n); if(L){ S.view.x=n.b[0]+n.b[2]/2-S.view.w/2; S.view.y=n.b[1]+n.b[3]/2-S.view.h/2; applyView() } });
@@ -1660,13 +1678,14 @@ async function act(a,btn){
   else if(a==='legAll'){ snap(); let k=0; for(const n of nodesOf()){ if(!legendObj(n) && (n.leg || Object.keys(nodeCounts(n)).length)){ generateLegend(n,true); k++ } } changed(); toast(k?`${k} legenda${k>1?'s':''} gerada${k>1?'s':''}.`:'Todos os nós já têm legenda automática.') }
   else if(a==='legShowAll'){ const o=selObjs()[0]; if(!o) return; snap(); o.hide={}; changed() }
   else if(a==='detach'){ const o=selObjs()[0]; if(!o) return; snap(); delete o.att; changed() }
-  else if(a==='addBalloon'){ const o=selObjs()[0]; if(!o||o.type!=='sym') return; snap(); const b=autoBalloonFor(o)||{id:uid(),type:'balloon',n:String(nextNumberIn(null)),r:5,x:o.x,y:o.y-20,angle:0,scale:1,att:o.id}; S.objects.push(b); changed() }
+  else if(a==='addBalloon'){ const o=selObjs()[0]; if(!o||(o.type!=='sym'&&!o.desc)) return; snap(); const b=autoBalloonFor(o)||{id:uid(),type:'balloon',n:String(nextNumberIn(null)),r:5,x:o.x,y:o.y-20,angle:0,scale:1,att:o.id}; S.objects.push(b); changed() }
   else if(a==='resetOrig'){ const o=selObjs()[0]; if(!o||o.type!=='orig') return; snap(); o.x=o.cx; o.y=o.cy; o.angle=0; o.scale=1; o.flip=false; changed() }
   else if(a==='saveLib'){
     const o=selObjs()[0]; if(!o||(o.type!=='crop'&&o.type!=='orig')) return;
     const name=($('#libName').value||'').trim()||'Acessório '+(LIB.length+1);
     o.name=name;
-    const rec = o.type==='orig' ? {kind:'orig',name,sheet:o.sheet,ents:o.ents,b:o.b,createdAt:new Date().toISOString()} : {name,sheet:o.sheet,sx:o.sx,sy:o.sy,sw:o.sw,sh:o.sh,createdAt:new Date().toISOString()};
+    const desc=(($('#libDesc')?.value||'').trim()||name).toUpperCase(); o.libDesc=desc;
+    const rec = o.type==='orig' ? {kind:'orig',name,desc,sheet:o.sheet,ents:o.ents,b:o.b,createdAt:new Date().toISOString()} : {name,desc,sheet:o.sheet,sx:o.sx,sy:o.sy,sw:o.sw,sh:o.sh,createdAt:new Date().toISOString()};
     try{ const it=await Store.addLib(rec); LIB.push(it); renderLibCrops(); toast(`“${name}” guardado na biblioteca.`); changed() }
     catch(e){ toast('Não foi possível guardar na biblioteca.') }
   }
