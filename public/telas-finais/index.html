@@ -573,6 +573,22 @@ function nodesOf(){
   for(const o of S.objects){ if(o.type!=='rect'||!o.node||seen.has(o.node)) continue; seen.add(o.node); const b=worldBox(o); mine.push({t:o.node,b:[b.x,b.y,b.w,b.h],custom:true,id:o.id}) }
   return mine.concat(base);
 }
+// apaga um nó por completo: moldura, legenda e tudo o que está dentro; num nó do desenho original tapa também o traço
+function deleteNode(t){
+  const n=nodeByName(t); if(!n) return 0;
+  const [x,y,w,h]=n.b, ids=new Set();
+  for(const o of S.objects){
+    if(o.id===n.id || (o.type==='legend'&&o.node===t) || (o.type==='orig'&&o.erased&&o.name==='Legenda original '+t)){ ids.add(o.id); continue }
+    if(o.mask || o.erased) continue;
+    const b=worldBox(o), cx=b.x+b.w/2, cy=b.y+b.h/2;
+    if(cx>=x && cx<=x+w && cy>=y && cy<=y+h) ids.add(o.id);
+  }
+  for(const id of attachedTo([...ids])) ids.add(id);
+  S.objects=S.objects.filter(o=>!ids.has(o.id));
+  if(!n.custom) S.objects.push({id:uid(),type:'rect',x:x+w/2,y:y+h/2,w,h,fill:'#ffffff',stroke:null,angle:0,scale:1,mask:true});
+  S.sel.clear();
+  return ids.size;
+}
 function freeNodeTitle(){ const used=new Set(nodesOf().map(n=>n.t)); let i=1; while(used.has('Nó '+i)) i++; return 'Nó '+i }
 const inBox = (x,y,b) => x>=b[0] && x<=b[0]+b[2] && y>=b[1] && y<=b[1]+b[3];
 function nodeAt(x,y){ return nodesOf().find(n=>inBox(x,y,n.b)) }
@@ -1517,7 +1533,7 @@ function renderProps(){
   if(o.type==='rect' && o.node){
     h+=`<div class="sec"><h3>Nó</h3><label class="f">Título do nó<input type="text" data-nodet value="${esc(o.node)}"></label>
       <div class="kv" style="margin-top:6px">${numField('Largura',o.w,1,null,'w')}${numField('Altura',o.h,1,null,'h')}</div>
-      <div class="btnrow" style="margin-top:8px"><button class="btn" data-node="${esc(o.node)}">Legenda deste nó</button></div>
+      <div class="btnrow" style="margin-top:8px"><button class="btn" data-node="${esc(o.node)}">Legenda deste nó</button><button class="btn danger" data-act="delNodeAsk" data-nodename="${esc(o.node)}">Apagar nó</button></div>
       <p class="hint" style="margin-top:6px">Tudo o que estiver dentro desta moldura pertence ao nó: os acessórios novos ganham balão e a legenda automática conta-os.</p></div>`;
   }else if(o.type==='rect'){
     h+=`<div class="sec"><h3>Caixa</h3><div class="kv">${numField('Largura',o.w,1,null,'w')}${numField('Altura',o.h,1,null,'h')}</div>
@@ -1549,6 +1565,7 @@ function renderProps(){
         <textarea class="legd" rows="2" data-ld="${esc(it.n)}" placeholder="${esc(it.orig||it.base||'Designação')}" aria-label="Designação do ${esc(it.n)}">${esc(o.desc?.[it.n]||'')}</textarea>
       </div>`).join('')+`</div>
       ${Object.keys(o.hide||{}).some(k=>o.hide[k])?'<div class="btnrow" style="margin-top:6px"><button class="btn" data-act="legShowAll">Mostrar números escondidos</button></div>':''}
+      <div class="btnrow" style="margin-top:6px"><button class="btn danger" data-act="delNodeAsk" data-nodename="${esc(o.node)}">Apagar nó ${esc(o.node)} por completo</button></div>
       <div class="kv" style="margin-top:10px">${numField('Itens por coluna (0 = uma coluna)',o.st.rows,1,null,'st.rows')}${numField('Largura coluna',o.st.colw,5,null,'st.colw')}${numField('Texto (pt)',o.st.fs,0.5,null,'st.fs')}${numField('Entrelinha',o.st.pitch,0.5,null,'st.pitch')}</div></div>`;
   }
   if(o.type==='line'){
@@ -1636,6 +1653,8 @@ async function act(a,btn){
   else if(a==='front') orderSel(true); else if(a==='back') orderSel(false);
   else if(a==='del') deleteSel();
   else if(a==='clearAsk'){ btn.textContent='Confirmar: apagar todas as alterações'; btn.dataset.act='clear' }
+  else if(a==='delNodeAsk'){ btn.textContent='Confirmar: apagar o nó e tudo o que tem dentro'; btn.dataset.act='delNode' }
+  else if(a==='delNode'){ snap(); const k=deleteNode(btn.dataset.nodename); changed(); toast(k?`Nó apagado (${k} objeto${k>1?'s':''}). Ctrl+Z desfaz.`:'Nó apagado. Ctrl+Z desfaz.') }
   else if(a==='clear'){ snap(); S.objects=[]; S.sel.clear(); changed(); toast('Folha reposta. Ctrl+Z desfaz.') }
   else if(a==='legAll'){ snap(); let k=0; for(const n of nodesOf()){ if(!legendObj(n) && (n.leg || Object.keys(nodeCounts(n)).length)){ generateLegend(n,true); k++ } } changed(); toast(k?`${k} legenda${k>1?'s':''} gerada${k>1?'s':''}.`:'Todos os nós já têm legenda automática.') }
   else if(a==='legShowAll'){ const o=selObjs()[0]; if(!o) return; snap(); o.hide={}; changed() }
