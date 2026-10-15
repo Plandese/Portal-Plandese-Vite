@@ -567,7 +567,13 @@ function withBalloons(d, ei, used){ const ids=[ei]; const e=d.ents[ei]; if(e && 
 // transformação local que mantém um balão na vertical e sem escala dentro de um objeto rodado
 function uprightK(o, bc){ const m=objMatrix(o); const w=M.ap(m,[bc[0]-o.cx, bc[1]-o.cy]); return M.mul(invM(m), M.T(w[0]-bc[0], w[1]-bc[1])) }
 function uprightWorld(o, bc){ const w=M.ap(objMatrix(o),[bc[0]-o.cx, bc[1]-o.cy]); return M.T(w[0]-bc[0], w[1]-bc[1]) }
-function nodesOf(){ const d=S.sheet&&ENTD.get(S.sheet.id); return (d&&d.nodes)||[] }
+// nós do desenho original + nós criados no editor (caixas com título); os criados ganham em caso de sobreposição
+function nodesOf(){
+  const d=S.sheet&&ENTD.get(S.sheet.id), base=(d&&d.nodes)||[], seen=new Set(base.map(n=>n.t)), mine=[];
+  for(const o of S.objects){ if(o.type!=='rect'||!o.node||seen.has(o.node)) continue; seen.add(o.node); const b=worldBox(o); mine.push({t:o.node,b:[b.x,b.y,b.w,b.h],custom:true,id:o.id}) }
+  return mine.concat(base);
+}
+function freeNodeTitle(){ const used=new Set(nodesOf().map(n=>n.t)); let i=1; while(used.has('Nó '+i)) i++; return 'Nó '+i }
 const inBox = (x,y,b) => x>=b[0] && x<=b[0]+b[2] && y>=b[1] && y<=b[1]+b[3];
 function nodeAt(x,y){ return nodesOf().find(n=>inBox(x,y,n.b)) }
 function nodeByName(t){ return nodesOf().find(n=>n.t===t) }
@@ -855,7 +861,11 @@ function drawObj(o, parent){
     else el('rect',{x:-o.sw/2,y:-o.sh/2,width:o.sw,height:o.sh,fill:'url(#hatch)'},g);
     el('rect',{x:-o.sw/2,y:-o.sh/2,width:o.sw,height:o.sh,fill:'transparent'},g);
   }else if(o.type==='rect'){
-    el('rect',{x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:o.fill||'none',stroke:o.stroke||'none','stroke-width':o.sw||0.8,'stroke-dasharray':o.dash?o.dash.join(' '):null,'pointer-events':'all'},g);
+    el('rect',{x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:o.fill||'none',stroke:o.stroke||'none','stroke-width':o.sw||0.8,'stroke-dasharray':o.dash?o.dash.join(' '):null,'pointer-events':o.node?'stroke':'all'},g);
+    if(o.node){ // nó criado no editor: só a moldura e o título são clicáveis, para não tapar os acessórios lá dentro
+      el('rect',{x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,fill:'none',stroke:'transparent','stroke-width':10,'vector-effect':'non-scaling-stroke','pointer-events':'stroke'},g);
+      const t=el('text',{x:-o.w/2+5,y:-o.h/2+15,'font-size':13,'font-family':'Helvetica, Arial, sans-serif','font-weight':'700',fill:'#000'},g); t.textContent=o.node;
+    }
   }else if(o.type==='sym'){
     const sym = SYM[o.key]; if(sym) symPrims(g,sym);
     const bb = symBBox(o.key);
@@ -1008,6 +1018,7 @@ const ICON = {
   text:'<path d="M5 5h14M12 5v15M9 20h6"/>',
   balloon:'<circle cx="12" cy="12" r="8"/><path d="M11 9l2-1.5V16" />',
   rect:'<rect x="3" y="5" width="18" height="14" stroke-dasharray="4 2.5"/>',
+  node:'<rect x="3" y="3" width="18" height="18" stroke-dasharray="4 2.5"/><path d="M8 9h8M8 13h8M8 17h5"/>',
 };
 const TOOLS = [
   ['select','Selecionar e editar','V','Clique num acessório da folha e arraste para o mover; R roda, Delete apaga. Arraste uma caixa à volta de um nó para o mover inteiro. Alt+arrastar duplica.'],
@@ -1021,6 +1032,7 @@ const TOOLS = [
   ['text','Texto','T','Clique onde quer o texto e escreva no painel de propriedades.'],
   ['balloon','Balão numerado','B','Clique para pôr um balão com o número seguinte.'],
   ['rect','Caixa','K','Arraste para desenhar uma caixa (contorno tracejado por defeito).'],
+  ['node','Novo nó','N','Arraste para desenhar a moldura de um nó novo; dê-lhe o título no painel. Os acessórios postos lá dentro ganham balão e legenda automática.'],
 ];
 function buildRail(){
   const r=$('#rail'); r.textContent='';
@@ -1036,7 +1048,7 @@ function setTool(t, place=null){
   document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
   document.querySelectorAll('.lib-item').forEach(b=>b.classList.toggle('on', !!place && b.dataset.key===place.kind+':'+place.key));
   svg.classList.toggle('pan', t==='pan');
-  svg.classList.toggle('cross', ['cut','copy','erase','line','text','balloon','rect','place'].includes(t));
+  svg.classList.toggle('cross', ['cut','copy','erase','line','text','balloon','rect','node','place'].includes(t));
   const info=TOOLS.find(x=>x&&x[0]===t);
   if(t==='place') setHint(place.kind==='line' ? `Desenhar ${LINE_PRESETS.find(l=>l.k===place.key).n.toLowerCase()}: clique em cada vértice, duplo clique termina.` : 'Clique na folha para colocar. R roda 90°, [ ] rodam 15°, F espelha. Esc termina.');
   else setHint(info?info[3]:'');
@@ -1201,7 +1213,7 @@ function onDown(e){
     const nd=nodeAt(p.x,p.y); const o={id:uid(),type:'balloon',n:String(nextNumberIn(nd)),r:nd?.leg?.r||5,x:p.x,y:p.y,angle:0,scale:1};
     snap(); S.objects.push(o); S.sel=new Set([o.id]); changed(); return;
   }
-  if(['cut','copy','erase','rect'].includes(t)){ drag={kind:'band',tool:t,p0:p,p1:p}; return }
+  if(['cut','copy','erase','rect','node'].includes(t)){ drag={kind:'band',tool:t,p0:p,p1:p}; return }
   // select tool
   const h=e.target.closest('[data-h]');
   if(h){
@@ -1261,7 +1273,7 @@ function onMove(e){
   if(drag.kind==='band'||drag.kind==='marquee'){
     drag.p1=p; prevG.textContent='';
     const x=Math.min(drag.p0.x,p.x), y=Math.min(drag.p0.y,p.y), w=Math.abs(p.x-drag.p0.x), h=Math.abs(p.y-drag.p0.y);
-    const col = drag.kind==='marquee' ? '#0d8f82' : (drag.tool==='erase'?'#c92a2a':drag.tool==='rect'?'#000':'#e8590c');
+    const col = drag.kind==='marquee' ? '#0d8f82' : (drag.tool==='erase'?'#c92a2a':(drag.tool==='rect'||drag.tool==='node')?'#000':'#e8590c');
     el('rect',{x,y,width:w,height:h,fill:drag.tool==='erase'?'rgba(201,42,42,.08)':'rgba(13,143,130,.06)',stroke:col,'stroke-width':1.2/zoom,'stroke-dasharray':`${5/zoom} ${3/zoom}`,'pointer-events':'none'},prevG);
     return;
   }
@@ -1336,6 +1348,10 @@ function onUp(e){
     }else if(d.tool==='rect'){
       const r={id:uid(),type:'rect',x:cx,y:cy,w,h,fill:'none',stroke:'#000',sw:0.8,dash:[12,6],angle:0,scale:1};
       S.objects.push(r); S.sel=new Set([r.id]);
+    }else if(d.tool==='node'){
+      const r={id:uid(),type:'rect',x:cx,y:cy,w,h,fill:'none',stroke:'#000',sw:0.8,dash:[12,6],angle:0,scale:1,node:freeNodeTitle()};
+      S.objects.push(r); S.sel=new Set([r.id]); setTool('select');
+      toast('Nó criado. Dê-lhe o título no painel e ponha lá dentro os acessórios.');
     }
     changed(); return;
   }
@@ -1446,7 +1462,7 @@ function objLabel(o){
   if(o.type==='legend') return 'Legenda '+o.node;
   if(o.type==='orig'){ if(o.erased) return o.name?o.name+' (apagada)':'Original apagado'; if(o.name) return 'Original · '+o.name; return o.ents.length>1?`Original · ${o.ents.length} elementos`:'Elemento original'+(o.copy?' (cópia)':'') }
   if(o.type==='sym') return SYM[o.key]?.n||'Acessório';
-  if(o.type==='rect') return o.mask?'Máscara (zona apagada)':'Caixa';
+  if(o.type==='rect') return o.node?'Nó '+o.node:(o.mask?'Máscara (zona apagada)':'Caixa');
   if(o.type==='crop') return o.name ? 'Recorte · '+o.name : 'Recorte da folha';
   if(o.type==='text') return 'Texto · '+String(o.text).split('\n')[0].slice(0,24);
   if(o.type==='balloon') return 'Balão '+o.n;
@@ -1498,7 +1514,12 @@ function renderProps(){
     h+=`<div class="btnrow" style="margin-top:8px"><button class="btn" data-act="rot-90">↺ 90°</button><button class="btn" data-act="rot90">↻ 90°</button><button class="btn" data-act="rot-15">↺ 15°</button><button class="btn" data-act="rot15">↻ 15°</button>${['crop','sym','text'].includes(o.type)?'<button class="btn" data-act="flip">Espelhar</button>':''}</div>`;
   }
   h+='</div>';
-  if(o.type==='rect'){
+  if(o.type==='rect' && o.node){
+    h+=`<div class="sec"><h3>Nó</h3><label class="f">Título do nó<input type="text" data-nodet value="${esc(o.node)}"></label>
+      <div class="kv" style="margin-top:6px">${numField('Largura',o.w,1,null,'w')}${numField('Altura',o.h,1,null,'h')}</div>
+      <div class="btnrow" style="margin-top:8px"><button class="btn" data-node="${esc(o.node)}">Legenda deste nó</button></div>
+      <p class="hint" style="margin-top:6px">Tudo o que estiver dentro desta moldura pertence ao nó: os acessórios novos ganham balão e a legenda automática conta-os.</p></div>`;
+  }else if(o.type==='rect'){
     h+=`<div class="sec"><h3>Caixa</h3><div class="kv">${numField('Largura',o.w,1,null,'w')}${numField('Altura',o.h,1,null,'h')}</div>
       <div class="kv" style="margin-top:6px"><label class="f">Preenchimento<select data-f="fill"><option value="#ffffff" ${o.fill==='#ffffff'?'selected':''}>Branco (tapa)</option><option value="none" ${o.fill==='none'?'selected':''}>Nenhum</option></select></label>
       <label class="f">Contorno<select data-f="strokeMode"><option value="none" ${!o.stroke?'selected':''}>Nenhum</option><option value="solid" ${o.stroke&&!o.dash?'selected':''}>Contínuo</option><option value="dash" ${o.stroke&&o.dash?'selected':''}>Tracejado</option></select></label></div></div>`;
@@ -1560,6 +1581,14 @@ function dnField(dn, show){
     <p class="hint" style="margin-top:4px">Ao mudar o diâmetro, o balão passa para o número da legenda com esta tipologia e diâmetro (ou ganha um número novo) e a legenda atualiza-se sozinha.</p>`;
 }
 function bindProps(P){
+  P.querySelectorAll('[data-nodet]').forEach(inp=>inp.addEventListener('change',()=>{
+    const o=selObjs()[0]; const t=inp.value.trim(); if(!o||!o.node||!t||t===o.node) return;
+    const dup=(S.sheet&&ENTD.get(S.sheet.id)?.nodes||[]).some(n=>n.t===t) || S.objects.some(x=>x!==o&&x.node===t);
+    if(dup){ toast('Já existe um nó com esse título nesta folha.'); inp.value=o.node; return }
+    snap(); const old=o.node; o.node=t;
+    for(const x of S.objects){ if(x.type==='legend'&&x.node===old) x.node=t; if(x.type==='orig'&&x.name==='Legenda original '+old) x.name='Legenda original '+t }
+    changed();
+  }));
   P.querySelectorAll('[data-dn]').forEach(inp=>inp.addEventListener('change',()=>{
     const o=selObjs()[0]; const dn=String(inp.value).replace(/\D/g,''); if(!o||!dn) return;
     snap();
@@ -1769,6 +1798,7 @@ async function buildPdf(sheetIds, onProgress){
         const r=srcRect(cg,o.sx,o.sy,o.sw,o.sh);
         withM(m,()=>{ page.pushOperators(rectangle(...r),clip(),endPath()); page.drawPage(e,{x:0,y:0}) });
       }else if(o.type==='rect'){
+        if(o.node) withM(M.chain(Mo,Mobj,M.S(1,-1)),()=>page.drawText(safe(o.node,fonts.b),{x:-o.w/2+5,y:o.h/2-15,size:13,font:fonts.b,color:rgb(0,0,0)}));
         if((!o.fill||o.fill==='none') && !o.stroke) continue;
         withM(M.mul(Mo,Mobj),()=>page.drawRectangle({x:-o.w/2,y:-o.h/2,width:o.w,height:o.h,color:hex(o.fill)||undefined,borderColor:o.stroke?hex(o.stroke):undefined,borderWidth:o.stroke?(o.sw||0.8):0,borderDashArray:o.stroke&&o.dash?o.dash:undefined}));
       }else if(o.type==='sym'){
@@ -1848,7 +1878,7 @@ window.addEventListener('keydown', e=>{
     if(k==='ArrowLeft'){ e.preventDefault(); nudge(-st,0); return } if(k==='ArrowRight'){ e.preventDefault(); nudge(st,0); return }
     if(k==='ArrowUp'){ e.preventDefault(); nudge(0,-st); return } if(k==='ArrowDown'){ e.preventDefault(); nudge(0,st); return }
   }
-  const map={v:'select',h:'pan',m:'cut',c:'copy',e:'erase',l:'line',t:'text',b:'balloon',k:'rect'};
+  const map={v:'select',h:'pan',m:'cut',c:'copy',e:'erase',l:'line',t:'text',b:'balloon',k:'rect',n:'node'};
   if(map[k.toLowerCase()]){ if(k.toLowerCase()==='l'){ S.linePreset=S.linePreset||'nova' } setTool(map[k.toLowerCase()]); return }
   if(k==='o'||k==='O'){ toggleCompare(); return }
   if(k==='0'){ fit(); return } if(k==='+'||k==='='){ zoomAt(1.25); return } if(k==='-'){ zoomAt(0.8); return }
