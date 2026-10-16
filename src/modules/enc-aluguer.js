@@ -7,7 +7,7 @@ import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend, isNonWorkday } from '../
 import { podeAprovarObra, aprovCelulaHTML } from './ponto.js';
 import { showToast } from './navigation.js';
 import { abrirResumoMOA } from './resumo-colab.js';
-import { obraEmCurso } from '../config.js';
+import { obraEmCurso, MESES_PT } from '../config.js';
 
 // ── MOA — Estado ──────────────────────
 let encAlugEmpresaId='', encAlugEmpresaNome='', encAlugObraId='', encAlugData='', encAlugHoraIni='08:00', encAlugHoraFim='17:00';
@@ -104,6 +104,7 @@ document.addEventListener('click',e=>{
 function renderEmpresasMOA(){
   const cont=document.getElementById('empresas-moa-list');
   if(!cont) return;
+  moaFechoInit();
   cont.innerHTML='';
   if(!EMPRESAS_MOA.length){
     cont.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:32px">Nenhuma empresa criada. Clique em "Nova empresa".</div>';
@@ -1045,6 +1046,141 @@ function renderMOAResultado(){ _moaDraw(); }
 
 function exportMOAExcel(){showToast('Exportação Excel MOA em breve!');}
 
+// ── MOA Admin — Folha de fecho mensal (dia 1 ao último dia do mês) ──────────
+let _moaFecho=null; // dados do mês carregado, usados pelo Excel
+const _fEsc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const _fNum=h=>Math.round(h*100)/100;
+const _fFmt=h=>h?(_fNum(h)+'').replace('.',','):'';
+
+function moaFechoInit(){
+  const inp=document.getElementById('moa-fecho-mes');
+  if(!inp) return;
+  if(!inp.value){ const h=new Date(); inp.value=`${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`; }
+  const sel=document.getElementById('moa-fecho-emp');
+  if(sel){ const v=sel.value; sel.innerHTML='<option value="">Todas as empresas</option>'+EMPRESAS_MOA.map(e=>`<option value="${_fEsc(e.id)}">${_fEsc(e.nome)}</option>`).join(''); sel.value=v; }
+}
+
+async function moaFechoCarregar(){
+  const inp=document.getElementById('moa-fecho-mes'), res=document.getElementById('moa-fecho-res');
+  if(!inp||!res) return;
+  if(!inp.value){ showToast('Escolha o mês'); return; }
+  const [ano,mes]=inp.value.split('-').map(Number);
+  const nDias=new Date(ano,mes,0).getDate();
+  const p2=n=>String(n).padStart(2,'0');
+  const dIni=`${ano}-${p2(mes)}-01`, dFim=`${ano}-${p2(mes)}-${p2(nDias)}`;
+  const empFil=document.getElementById('moa-fecho-emp')?.value||'';
+  res.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
+  _moaFecho=null;
+  try{
+    // Paginado: o Supabase devolve no máximo 1000 linhas por pedido
+    const rows=[];
+    for(let from=0;;from+=1000){
+      let q=sb.from('registos_ponto_moa').select('*').gte('data',dIni).lte('data',dFim).order('data').range(from,from+999);
+      if(empFil) q=q.eq('empresa_moa_id',empFil);
+      const {data,error}=await q;
+      if(error) throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<1000) break;
+    }
+    const {data:aprs}=await sb.from('aprovacoes_ponto_moa').select('obra_id,data').gte('data',dIni).lte('data',dFim);
+    const aprSet=new Set((aprs||[]).map(a=>`${a.obra_id}|${a.data}`));
+    const porAprovar=new Set(rows.filter(r=>!aprSet.has(`${r.obra_id||'_sem'}|${r.data}`)).map(r=>`${r.obra_id||'_sem'}|${r.data}`)).size;
+
+    // empresa → trabalhador → dia → horas. Registos repetidos (mesma entrada/saída,
+    // lançados por encarregados diferentes) contam uma só vez.
+    const emps=new Map(), vistos=new Set();
+    rows.forEach(r=>{
+      const dia=+r.data.slice(8,10);
+      const ent=(r.entrada||'').slice(0,5), sai=(r.saida||'').slice(0,5);
+      const tKey=r.colab_moa_id||`${(r.trabalhador_nome||'').trim().toLowerCase()}`;
+      const eKey=r.empresa_moa_id||r.empresa_moa_nome||'_sem';
+      const dk=`${eKey}|${tKey}|${r.data}|${ent}|${sai}`;
+      if(vistos.has(dk)) return; vistos.add(dk);
+      if(!emps.has(eKey)) emps.set(eKey,{nome:r.empresa_moa_nome||'Sem empresa',trab:new Map()});
+      const E=emps.get(eKey);
+      if(!E.trab.has(tKey)) E.trab.set(tKey,{nome:r.trabalhador_nome||'—',funcao:r.trabalhador_funcao||'',dias:Array(nDias+1).fill(0),n:0,e:0});
+      const T=E.trab.get(tKey);
+      const h=calcH(ent,sai,new Date(r.data+'T12:00:00'));
+      T.dias[dia]+=h.t; T.n+=h.n; T.e+=h.e;
+    });
+    const empresas=[...emps.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).map(E=>({
+      nome:E.nome, trab:[...E.trab.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+    }));
+    _moaFecho={ano,mes,nDias,empresas,porAprovar};
+    _moaFechoDesenhar();
+  }catch(e){
+    res.innerHTML=`<div class="card" style="text-align:center;color:var(--red);padding:24px;font-size:13px">⚠️ Erro ao carregar: ${_fEsc(e.message||e)}</div>`;
+  }
+}
+
+function _moaFechoDesenhar(){
+  const res=document.getElementById('moa-fecho-res'), F=_moaFecho;
+  if(!res||!F) return;
+  if(!F.empresas.length){ res.innerHTML='<div class="card" style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Sem registos de mão de obra aluguer neste mês.</div>'; return; }
+  const dias=Array.from({length:F.nDias},(_,i)=>i+1);
+  const nw=d=>isNonWorkday(new Date(F.ano,F.mes-1,d,12));
+  const th=dias.map(d=>`<th class="c"${nw(d)?' style="background:#eef1f7"':''}>${d}</th>`).join('');
+  let totN=0,totE=0,nTrab=0;
+  const corpo=F.empresas.map(E=>{
+    const sN=E.trab.reduce((s,t)=>s+t.n,0), sE=E.trab.reduce((s,t)=>s+t.e,0);
+    totN+=sN; totE+=sE; nTrab+=E.trab.length;
+    const linhas=E.trab.map(t=>`<tr><td style="white-space:nowrap;padding-left:20px"><b>${_fEsc(t.nome)}</b>${t.funcao?`<small style="display:block;color:var(--gray-400)">${_fEsc(t.funcao)}</small>`:''}</td>`
+      +dias.map(d=>`<td class="c"${nw(d)?' style="background:#f6f8fc"':''}>${_fFmt(t.dias[d])}</td>`).join('')
+      +`<td class="r">${_fFmt(t.n)}</td><td class="r">${_fFmt(t.e)}</td><td class="r"><b>${_fFmt(t.n+t.e)}</b></td></tr>`).join('');
+    return `<tr><td colspan="${F.nDias+4}" style="background:var(--d-tint,#eaf0fc);font-weight:700;padding:9px 20px">${_fEsc(E.nome)} · ${E.trab.length} trabalhador${E.trab.length!==1?'es':''} · ${_fFmt(sN+sE)||'0'} h</td></tr>${linhas}`;
+  }).join('');
+  res.innerHTML=`<div style="margin:10px 2px;font-size:13px;color:var(--gray-500)">${nTrab} trabalhador${nTrab!==1?'es':''} · Normais ${_fFmt(totN)||'0'} h · Extra ${_fFmt(totE)||'0'} h · <b>Total ${_fFmt(totN+totE)||'0'} h</b>`
+    +(F.porAprovar?` · <span style="color:var(--orange,#ea580c)">⚠ ${F.porAprovar} dia(s) de obra por aprovar</span>`:'')+`</div>
+    <div class="tbl-wrap" style="overflow:auto"><table class="fm-t" style="min-width:${F.nDias*34+360}px;width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr><th style="text-align:left;padding-left:20px">Trabalhador</th>${th}<th class="r">Normais</th><th class="r">Extra</th><th class="r">Total</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+}
+
+async function moaFechoExport(){
+  if(!_moaFecho||!_moaFecho.empresas.length){ showToast('Carregue primeiro a folha do mês'); return; }
+  const {ano,mes,nDias,empresas}=_moaFecho;
+  const mesNome=MESES_PT[mes-1];
+  showToast('A gerar ficheiro Excel…');
+  const wb=new ExcelJS.Workbook(); wb.creator='Plandese SA';
+  const nCols=nDias+5;
+  const azul={type:'pattern',pattern:'solid',fgColor:{argb:'FF002060'}};
+  const claro={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E1F2'}};
+  const usados=new Set();
+  empresas.forEach(E=>{
+    let nome=E.nome.replace(/[\\/*?:\[\]]/g,' ').slice(0,28)||'Empresa', k=nome, i=2;
+    while(usados.has(k.toLowerCase())) k=nome.slice(0,26)+' '+(i++);
+    usados.add(k.toLowerCase());
+    const ws=wb.addWorksheet(k);
+    ws.columns=[{width:30},{width:18},...Array(nDias).fill({width:5}),{width:10},{width:10},{width:10}];
+    ws.mergeCells(1,1,1,nCols);
+    const t=ws.getCell(1,1); t.value=`Folha de Fecho MOA — ${E.nome} — ${mesNome} ${ano} (01 a ${String(nDias).padStart(2,'0')})`;
+    t.font={bold:true,size:13,color:{argb:'FF002060'}}; t.alignment={horizontal:'center',vertical:'middle'}; t.fill=claro;
+    ws.getRow(1).height=22;
+    const hdr=ws.getRow(2);
+    hdr.values=['Trabalhador','Função',...Array.from({length:nDias},(_,i)=>i+1),'H. Normais','H. Extra','Total'];
+    hdr.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill=azul;c.alignment={horizontal:'center',vertical:'middle'};});
+    E.trab.forEach((tr,i)=>{
+      const row=ws.getRow(i+3);
+      row.values=[tr.nome,tr.funcao,...Array.from({length:nDias},(_,d)=>tr.dias[d+1]?_fNum(tr.dias[d+1]):null),_fNum(tr.n),_fNum(tr.e),_fNum(tr.n+tr.e)];
+      row.eachCell({includeEmpty:true},(c,col)=>{
+        if(col>2) c.alignment={horizontal:'center'};
+        if(col>2&&col<=nDias+2&&isNonWorkday(new Date(ano,mes-1,col-2,12))) c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEEF1F7'}};
+      });
+      row.getCell(nCols).font={bold:true};
+    });
+    const tot=ws.getRow(E.trab.length+3), r0=3, r1=E.trab.length+2;
+    const colL=n=>ws.getColumn(n).letter;
+    tot.getCell(1).value=`TOTAL (${E.trab.length} trabalhadores)`;
+    for(let c=3;c<=nCols;c++) tot.getCell(c).value={formula:`SUM(${colL(c)}${r0}:${colL(c)}${r1})`};
+    tot.eachCell({includeEmpty:true},(c,col)=>{ if(col<=nCols){c.font={bold:true,color:{argb:'FF002060'}};c.fill=claro;c.alignment={horizontal:col>2?'center':'left'};} });
+    ws.views=[{state:'frozen',xSplit:2,ySplit:2}];
+  });
+  const buf=await wb.xlsx.writeBuffer();
+  const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  const a=document.createElement('a'); a.href=url; a.download=`Folha_Fecho_MOA_${mesNome}_${ano}.xlsx`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Ficheiro exportado!');
+}
+
 // ── MOA Admin — edição/anulação de um registo (popover) ─────────────────────
 let _moaCurrent=null;   // {id, row} do registo aberto no popover
 let _moaRowsIndex={};   // id → row, repovoado a cada render
@@ -1190,6 +1326,7 @@ export {
   encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador,
   buildAlugList, adicionarTodosAnteriorAlug, carregarEquipaAnteriorAlug, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
   applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters,
+  moaFechoInit, moaFechoCarregar, moaFechoExport,
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
   moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, aprovarDiaMOA, retirarAprovacaoMOA
 };

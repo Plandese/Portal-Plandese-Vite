@@ -1719,6 +1719,17 @@
           </button>
         </div>
         <div class="alert alert-ok" id="empresamoa-alert">Empresa guardada.</div>
+        <div class="card" style="margin-bottom:18px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:2px">Folha de fecho mensal</div>
+          <div style="font-size:13px;color:var(--gray-400);margin-bottom:12px">Horas de todos os trabalhadores aluguer, do dia 1 ao último dia do mês.</div>
+          <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+            <div class="field" style="margin:0"><label>Mês</label><input type="month" id="moa-fecho-mes" onchange="moaFechoCarregar()"></div>
+            <div class="field" style="margin:0"><label>Empresa</label><select id="moa-fecho-emp" onchange="moaFechoCarregar()"><option value="">Todas as empresas</option></select></div>
+            <button class="btn btn-primary" onclick="moaFechoCarregar()">Gerar folha</button>
+            <button class="btn btn-secondary" onclick="moaFechoExport()">Exportar Excel</button>
+          </div>
+          <div id="moa-fecho-res" style="margin-top:6px"></div>
+        </div>
         <div id="empresas-moa-list"></div>
       </section>
 
