@@ -1242,12 +1242,16 @@ async function apagarFatura(){
     showToast('Não foi possível apagar a fatura (sem permissão ou erro de ligação)');
     return;
   }
-  if(fat) await carregarPastasFaturas().then(() => apagarFicheiroDropbox(fat));
   FATURAS = FATURAS.filter(f=>f.id!==id);
   closeModal('modal-fat');
   renderFaturas();
   setTimeout(_refrescarTesouraria, 400);
-  showToast('Fatura apagada' + (fat?.dropboxPath ? ' (e o ficheiro da Dropbox)' : ''));
+  showToast('Fatura apagada' + (fat?.dropboxPath ? ' (a apagar o ficheiro da Dropbox…)' : ''));
+  // A Dropbox é apagada em segundo plano: se falhar ou demorar, não bloqueia nem esconde que a fatura já foi apagada
+  if(fat?.dropboxPath){
+    try{ await carregarPastasFaturas(); await apagarFicheiroDropbox(fat); }
+    catch(e){ console.warn('Dropbox: apagar ficheiro da fatura falhou', e); showToast('Fatura apagada, mas o ficheiro na Dropbox não foi apagado'); }
+  }
 }
 
 // ═══════════════════════════════════════
