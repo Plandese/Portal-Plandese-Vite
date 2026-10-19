@@ -470,6 +470,7 @@ function abrirEqDetalhe(id){
       ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${sub}</div>`:''}
       <div style="font-size:12px;color:var(--gray-400);margin-top:3px">${eqEsc(eq.ultimoLocal||'Sem localização registada')}</div>
     </div>
+    ${eq.propriedade==='aluguer'?`<div id="meqd-aluguer" class="eq-alu-box"></div>`:''}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>`,'QR Code','Ver e imprimir o código do equipamento',`showQrCode('${eq.id}')`)}
       ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,'Manutenção','Pedidos e registos de manutenção',`openEqManut('${eq.id}')`,pend?`<span class="eq-pend-dot">${pend}</span>`:'')}
@@ -478,7 +479,61 @@ function abrirEqDetalhe(id){
       ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,'Localização',(eq.ultimoLat&&eq.ultimoLng?'<span id="meqd-cidade">A obter cidade…</span>':'Sem localização GPS registada'),`eqVerLocalizacao('${eq.id}')`)}
     </div>`;
   openModal('modal-eq-det');
+  if(eq.propriedade==='aluguer') eqAluguerCarregar(eq.id);
   if(eq.ultimoLat&&eq.ultimoLng) eqCidade(eq.ultimoLat,eq.ultimoLng).then(c=>{ const el=document.getElementById('meqd-cidade'); if(el) el.textContent=c||'Ver no mapa onde está o equipamento'; });
+}
+
+// ── Equipamentos de aluguer: pedido de recolha e histórico de entregas/recolhas em obra ──
+const _eqHoje = ()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const _eqFd = iso => iso ? iso.slice(0,10).split('-').reverse().join('/') : '—';
+const _eqDias = (a,b)=>{ const t=x=>Date.UTC(+x.slice(0,4),+x.slice(5,7)-1,+x.slice(8,10)); return Math.max(1,Math.round((t(b)-t(a))/86400000)); };
+const EQ_ALUGUERES = {};
+async function eqAluguerCarregar(id){
+  try{
+    const {data,error}=await sb.from('eq_alugueres').select('*').eq('equip_id',id).order('entrega_em',{ascending:false}).order('id',{ascending:false});
+    if(error) throw error;
+    EQ_ALUGUERES[id]=data||[];
+  }catch(e){ console.warn('eqAluguerCarregar:',e); EQ_ALUGUERES[id]=EQ_ALUGUERES[id]||[]; }
+  eqAluguerRender(id);
+}
+function eqAluguerRender(id){
+  const box=document.getElementById('meqd-aluguer'); if(!box) return;
+  const rows=EQ_ALUGUERES[id]||[], hoje=_eqHoje();
+  const atual=rows.find(r=>!r.recolhido_em);
+  let cls,tit,sub;
+  if(atual&&atual.pedido_recolha_em){ cls='eq-alu-btn eq-alu-amarelo'; tit='Recolha pedida em '+_eqFd(atual.pedido_recolha_em); sub='Volta a clicar quando a recolha já tiver sido feita'; }
+  else if(!atual&&rows.length){ cls='eq-alu-btn eq-alu-vermelho'; tit='Equipamento já recolhido'; sub='Volta a clicar se o equipamento for entregue de novo em obra'; }
+  else { cls='eq-alu-btn eq-alu-azul'; tit='Pedido de recolha'; sub='Clica para pedir ao fornecedor a recolha do equipamento'; }
+  const linhas=rows.map(r=>{
+    const fim=r.recolhido_em||hoje, dias=_eqDias(r.entrega_em,fim);
+    return `<tr><td>${eqEsc(r.obra_nome||'—')}</td><td>${_eqFd(r.entrega_em)}</td><td>${r.recolhido_em?_eqFd(r.recolhido_em):'<span class="eq-alu-em">Em obra</span>'}</td><td class="r">${dias} ${dias===1?'dia':'dias'}</td></tr>`;
+  }).join('');
+  const total=rows.reduce((t,r)=>t+_eqDias(r.entrega_em,r.recolhido_em||hoje),0);
+  box.innerHTML=`<button type="button" class="${cls}" onclick="eqAluguerClick('${id}')"><b>${tit}</b><small>${sub}</small></button>
+    ${rows.length?`<div class="eq-alu-hist"><div class="eq-alu-h">Histórico em obra</div><table><thead><tr><th>Obra</th><th>Entregue</th><th>Recolhido</th><th class="r">Dias</th></tr></thead><tbody>${linhas}</tbody><tfoot><tr><td colspan="3">Total em obra</td><td class="r">${total} ${total===1?'dia':'dias'}</td></tr></tfoot></table></div>`:''}`;
+}
+async function eqAluguerClick(id){
+  const eq=EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
+  const rows=EQ_ALUGUERES[id]||[], hoje=_eqHoje(), atual=rows.find(r=>!r.recolhido_em);
+  let r;
+  if(atual&&atual.pedido_recolha_em){
+    r=await sb.from('eq_alugueres').update({recolhido_em:hoje}).eq('id',atual.id);
+  } else if(atual){
+    r=await sb.from('eq_alugueres').update({pedido_recolha_em:hoje}).eq('id',atual.id);
+  } else {
+    // novo ciclo: a entrega é o primeiro movimento registado depois da última recolha (ou hoje, se não houver)
+    let entrega=hoje;
+    try{
+      const ultima=rows.length?rows[0].recolhido_em:null;
+      let q=sb.from('eq_movimentos').select('criado_em').eq('equip_id',id).order('criado_em',{ascending:true}).limit(1);
+      if(ultima) q=q.gt('criado_em',ultima+'T23:59:59');
+      const {data}=await q;
+      if(data&&data[0]&&!ultima) entrega=data[0].criado_em.slice(0,10);
+    }catch(e){}
+    r=await sb.from('eq_alugueres').insert(rows.length?{equip_id:id,obra_nome:eq.ultimoLocal||null,entrega_em:hoje}:{equip_id:id,obra_nome:eq.ultimoLocal||null,entrega_em:entrega,pedido_recolha_em:hoje});
+  }
+  if(r&&r.error){ console.warn('eqAluguerClick:',r.error); showToast('Não foi possível guardar o pedido de recolha'); return; }
+  eqAluguerCarregar(id);
 }
 
 // Morada a partir das coordenadas (geocodificação inversa OpenStreetMap, com cache em memória)
@@ -1013,7 +1068,7 @@ export {
   renderEquipamentos, updateEqKPIs, renderEqBusca, eqVerListaCompleta,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
-  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX,
+  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick,
   openEqManut, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,

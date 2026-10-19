@@ -2354,3 +2354,19 @@ body.device-mobile .pr-resize{display:none}
 .perm-reset:hover{color:var(--gray-800)}
 .perm-empty{font-size:12px;color:var(--gray-400);font-weight:400}
 .perm-toggle.perm-diff .perm-slider{box-shadow:0 0 0 2px var(--blue-500)}
+
+/* Equipamentos de aluguer: pedido de recolha */
+.eq-alu-box{margin:0 0 14px}
+.eq-alu-btn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;padding:14px 18px;border-radius:16px;border:1.5px solid;cursor:pointer;text-align:left;font-family:inherit}
+.eq-alu-btn b{font-size:15px}.eq-alu-btn small{font-size:12px;opacity:.85}
+.eq-alu-azul{background:#fff;border-color:#c7d6f5;color:#1d4ed8}
+.eq-alu-amarelo{background:#fef3c7;border-color:#f5c542;color:#854d0e}
+.eq-alu-vermelho{background:#fde8e8;border-color:#f0a8a3;color:#b3261e}
+.eq-alu-hist{margin-top:12px;border:1px solid #e3e7ee;border-radius:14px;overflow:hidden;background:#fff}
+.eq-alu-h{padding:10px 14px;font-size:12px;font-weight:700;color:#5d6678;background:#f6f8fb}
+.eq-alu-hist table{width:100%;border-collapse:collapse;font-size:13px}
+.eq-alu-hist th{text-align:left;padding:8px 14px;font-size:11px;color:#5d6678;font-weight:600}
+.eq-alu-hist td{padding:8px 14px;border-top:1px solid #eef1f6}
+.eq-alu-hist .r{text-align:right}
+.eq-alu-hist tfoot td{font-weight:700;background:#f6f8fb}
+.eq-alu-em{color:#6d28d9;font-weight:600}
