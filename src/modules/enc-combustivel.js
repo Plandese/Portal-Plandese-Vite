@@ -204,6 +204,19 @@ function depSetMovimento(tipo){
 }
 
 // ── Equipamento associado à saída do depósito (QR ou lista) ──
+// Obra onde o equipamento está registado (obra associada, ou pelo nome do último local)
+function _obraDoEquip(equipId){
+  const eq=EQUIPAMENTOS.find(e=>e.id===equipId); if(!eq) return '';
+  if(eq.obraId) return eq.obraId;
+  const o=S.OBRAS.find(x=>x.nome===eq.ultimoLocal);
+  return o?o.id:'';
+}
+// Pré-seleciona a obra do equipamento num <select> (se estiver vazio e a obra constar da lista)
+function _preObraEquip(selId, equipId){
+  const sel=document.getElementById(selId); if(!sel||sel.value) return;
+  const id=_obraDoEquip(equipId);
+  if(id && [...sel.options].some(o=>o.value===id)) sel.value=id;
+}
 function _depRenderEquipEscolhido(){
   const chosen=document.getElementById('dep-equip-chosen');
   const choice=document.getElementById('dep-equip-choice');
@@ -217,6 +230,7 @@ function _depRenderEquipEscolhido(){
     choice.style.display='flex';
   }
   _cntAplicar('dep', !!_depEquip, _depEquip?(EQUIPAMENTOS.find(e=>e.id===_depEquip.id)||null):null);
+  if(_depEquip&&_depEquip.id) _preObraEquip('dep-obra',_depEquip.id);
 }
 function depTrocarEquip(){ _depEquip=null; _depRenderEquipEscolhido(); }
 
@@ -516,6 +530,7 @@ function encCombViaturaComEquip(eq){
   document.getElementById('comb-viatura-nome').textContent=eq.nome;
   document.getElementById('comb-viatura-cat').textContent=real?(EQ_CATS[eqCatNorm(real.categoria)].label):'Equipamento';
   _combPreencherFormViatura();
+  _preObraEquip('comb-viatura-obra',eq.id);
   _cntSyncViatura();
 }
 
@@ -647,6 +662,7 @@ async function onCombQrScanned(text){
   document.getElementById('comb-viatura-nome').textContent=eq?eq.nome:`Equipamento ${equipId}`;
   document.getElementById('comb-viatura-cat').textContent=eq?(EQ_CATS[eqCatNorm(eq.categoria)].label):'Equipamento';
   _combPreencherFormViatura();
+  _preObraEquip('comb-viatura-obra',equipId);
   _cntSyncViatura();
 }
 
