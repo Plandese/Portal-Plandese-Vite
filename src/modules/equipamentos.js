@@ -262,8 +262,9 @@ function renderEqPorObra(){
   if(!grid) return;
   const map = {};
   EQUIPAMENTOS.forEach(eq=>{
-    const key = eq.ultimoLocal || '__sem_local__';
-    if(!map[key]) map[key] = { nome: eq.ultimoLocal || 'Sem localização registada', items: [] };
+    // agrupa pela obra associada (assim 0065/O065 ficam juntos); sem obra, pelo texto do último local
+    const key = eq.obraId || eq.ultimoLocal || '__sem_local__';
+    if(!map[key]) map[key] = { nome: eqObraNome(eq) || 'Sem localização registada', items: [] };
     map[key].items.push(eq);
   });
   const semLocal = map['__sem_local__'];
@@ -304,7 +305,7 @@ function _eqObraRowHtml(eq){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--gray-100)">
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${eqEsc(eq.nome)}</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[eqCatBadge(eq.categoria),eqEstadoBadge(eq.estado)].join(' ')}</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[eqCatBadge(eq.categoria),eqEstadoBadge(eq.estado),eqPropBadge(eq)].join(' ')}</div>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="openEqManut('${eq.id}')" title="Manutenção">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>${pend?`<span class="eq-pend-dot">${pend}</span>`:''}
