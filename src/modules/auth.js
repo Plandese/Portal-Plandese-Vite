@@ -302,7 +302,7 @@ export function doLogout() {
   document.body.classList.remove('enc-mode');
   S.encObraId = ''; S.encDataSel = '';
   ['enc-screen0','enc-screen1','enc-screen2',
-   'enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
+   'enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });

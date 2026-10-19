@@ -139,7 +139,7 @@ let _chat = {
 };
 
 function _encHideAll(){
-  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos',
+  ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
    'enc-screen-compras-chat'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
@@ -154,6 +154,7 @@ function _encObrasComb(){
 }
 
 async function encUpdateFuelWidget(){
+  encCombAtualizarBadgeApr();
   const litrosEl=document.getElementById('enc-fuel-litros');
   const labelEl=document.getElementById('enc-fuel-label');
   if(!litrosEl||!labelEl) return;
@@ -164,6 +165,7 @@ async function encUpdateFuelWidget(){
   try{
     const {data,error}=await sb.from('registos_combustivel')
       .select('litros,movimento,tipo_registo')
+      .eq('aprovacao','aprovado')
       .in('obra_id',obras.map(o=>o.id))
       .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null');
     if(error) throw error;
@@ -315,6 +317,7 @@ async function encOpenFuelModal(){
   try{
     const {data,error}=await sb.from('registos_combustivel')
       .select('data,litros,movimento,tipo_registo,equipamento_nome,obra_nome,encarregado_nome')
+      .eq('aprovacao','aprovado')
       .in('obra_id',obras.map(o=>o.id))
       .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null')
       .order('data',{ascending:false}).order('criado_em',{ascending:false})
@@ -399,6 +402,7 @@ async function encGoCombUltimos(){
   try{
     const _q=cols=>sb.from('registos_combustivel').select(cols)
       .in('obra_id',_encUltObras.map(o=>o.id))
+      .eq('aprovacao','aprovado')
       .gte('data',_cregLimite())
       .order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(100);
     const base='id,data,litros,movimento,tipo_registo,tipo_combustivel,equipamento_nome,obra_id,obra_nome,encarregado_nome,obs,fornecedor';
@@ -487,6 +491,75 @@ async function encCombRegGuardar(){
 function encCombRegFechar(){
   const m=document.getElementById('enc-creg-modal'); if(m) m.style.display='none';
   _encCregId=null;
+}
+
+// ── Registos de gasóleo feitos por QR (fora da app): o encarregado da obra aprova ou rejeita ──
+let _encAprRows = [];
+async function _encAprBuscar(){
+  const obras = _encObrasComb();
+  if(!obras.length) return [];
+  const {data,error} = await sb.from('registos_combustivel')
+    .select('id,data,litros,tipo_registo,tipo_combustivel,equipamento_nome,obra_nome,encarregado_nome,obs,fornecedor')
+    .in('obra_id', obras.map(o=>o.id)).eq('aprovacao','pendente')
+    .order('criado_em',{ascending:false}).limit(100);
+  if(error) throw error;
+  return data || [];
+}
+async function encCombAtualizarBadgeApr(){
+  const b = document.getElementById('enc-comb-apr-badge'); if(!b) return;
+  try{
+    const n = (await _encAprBuscar()).length;
+    b.textContent = n; b.hidden = !n; b.style.display = n ? 'inline-flex' : 'none';
+  }catch(e){ b.style.display = 'none'; }
+}
+function _renderCombAprovar(){
+  const lista = document.getElementById('enc-comb-apr-lista');
+  if(!_encAprRows.length){
+    lista.innerHTML = '<div style="text-align:center;padding:48px 16px;color:var(--gray-400);font-size:14px">Não há registos por aprovar.</div>';
+    return;
+  }
+  lista.innerHTML = _encAprRows.map(r=>{
+    const origem = r.tipo_registo==='deposito' ? 'Depósito de obra' : 'Bomba' + (r.fornecedor ? ' · '+r.fornecedor : '');
+    const sub = [r.data?fmtPT(r.data):'', r.obra_nome||'', origem, r.tipo_combustivel||'', r.encarregado_nome||''].filter(Boolean).map(_escH).join(' · ');
+    return `<div class="e-apr">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900);line-height:1.3">${_escH(r.equipamento_nome||'Equipamento')}</div>
+          <div style="font-size:12.5px;color:var(--gray-500);margin-top:3px">${sub}</div>
+          ${r.obs?`<div style="font-size:12.5px;color:var(--gray-600);margin-top:4px">“${_escH(r.obs)}”</div>`:''}
+        </div>
+        <div style="font-size:16px;font-weight:800;color:#dc2626;white-space:nowrap">−${_cregNum(r.litros)} L</div>
+      </div>
+      <div class="e-apr-btns">
+        <button type="button" class="e-apr-rej" onclick="encCombDecidir('${_escH(r.id)}',false)">Rejeitar</button>
+        <button type="button" class="e-apr-ok" onclick="encCombDecidir('${_escH(r.id)}',true)">Aprovar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function encGoCombAprovar(){
+  stopCombQrScanner();
+  _encHideAll();
+  const s = document.getElementById('enc-screen-comb-aprovar');
+  s.style.display = 'flex'; s.style.flexDirection = 'column';
+  const lista = document.getElementById('enc-comb-apr-lista');
+  lista.innerHTML = '<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
+  try{ _encAprRows = await _encAprBuscar(); _renderCombAprovar(); }
+  catch(e){ console.warn('por aprovar:',e); lista.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#b91c1c;font-size:14px">Não foi possível carregar os registos.</div>'; }
+}
+async function encCombDecidir(id, aprovar){
+  if(!aprovar && !confirm('Rejeitar este registo? Não contará para o stock nem para os custos.')) return;
+  try{
+    const {data,error} = await sb.rpc('fn_comb_decidir',{p_id:Number(id),p_aprovar:!!aprovar});
+    if(error) throw error;
+    if(!data || !data.ok){ showToast(data?.motivo==='sem_permissao' ? 'Só o encarregado da obra pode decidir' : 'Este registo já foi tratado'); }
+    else {
+      showToast(aprovar ? 'Registo aprovado ✓' : 'Registo rejeitado');
+      R.emitEvent?.({ acao:'Combustível · registo por QR '+(aprovar?'aprovado':'rejeitado'), seccao:'combustivel' });
+      encUpdateFuelWidget();
+    }
+  }catch(e){ showToast('Erro: '+(e.message||e)); }
+  try{ _encAprRows = await _encAprBuscar(); _renderCombAprovar(); }catch(e){}
 }
 
 function encGoCombDeposito(){
@@ -1148,7 +1221,7 @@ window.chatSend         = chatSend;
 window.chatOnInput      = chatOnInput;
 
 export {
-  encCombDepositoComEquip, encCombViaturaComEquip,
+  encCombDepositoComEquip, encCombViaturaComEquip, encGoCombAprovar, encCombDecidir, encCombAtualizarBadgeApr,
   encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip,
   encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, startCombQrScanner, stopCombQrScanner, onCombQrScanned,

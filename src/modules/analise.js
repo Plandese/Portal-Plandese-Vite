@@ -244,7 +244,7 @@ async function _carregar(){
     push('faturas', sb.from('faturas').select('id,fornecedor,total,data,status,centro_custo').gte('data', de).lte('data', ate), 'faturas');
   }
   if(_pode('log')){
-    let q = sb.from('registos_combustivel').select('data,litros,tipo_registo,movimento,obra_id').gte('data', de).lte('data', ate);
+    let q = sb.from('registos_combustivel').select('data,litros,tipo_registo,movimento,obra_id').eq('aprovacao','aprovado').gte('data', de).lte('data', ate);
     if(_obra) q = q.eq('obra_id', _obra);
     push('combustível', q, 'comb');
   }

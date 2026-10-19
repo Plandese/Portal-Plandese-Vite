@@ -45,7 +45,7 @@ let _combDetAnchor=new Date();
 let _combDetEquip='';
 
 async function _fetchCombRows(){
-  const {data,error}=await sb.from('registos_combustivel').select('*').order('data',{ascending:false}).order('criado_em',{ascending:false});
+  const {data,error}=await sb.from('registos_combustivel').select('*').eq('aprovacao','aprovado').order('data',{ascending:false}).order('criado_em',{ascending:false});
   if(error) throw error;
   _combAllRows=data||[];
 }

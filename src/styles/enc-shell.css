@@ -48,6 +48,7 @@ body.enc-mode{background:#fff!important}
 #enc-app #enc-screen-combustivel > .enc-hdr,
 #enc-app #enc-screen-comb-deposito > .enc-hdr,
 #enc-app #enc-screen-comb-ultimos > .enc-hdr,
+#enc-app #enc-screen-comb-aprovar > .enc-hdr,
 #enc-app .enc-equip-body > .enc-hdr,
 #enc-app .chat-header{display:none}
 #enc-app .enc-equip-body{background:#fff}
@@ -303,3 +304,10 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 #qr-reg-screen .q-ok{text-align:center;padding:10px 0}
 #qr-reg-screen .q-ok-ic{width:64px;height:64px;border-radius:50%;background:#dff5e7;color:#166534;display:grid;place-items:center;margin:0 auto 16px}
 #qr-reg-screen .q-ok-ic svg{width:32px;height:32px}
+
+/* Registos de gasóleo por aprovar (app dos encarregados) */
+.e-apr{padding:16px;border:1.5px solid var(--e-line,#dde2ea);border-radius:18px;margin-bottom:12px;background:#fff}
+.e-apr-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.e-apr-btns button{min-height:46px;border-radius:99px;font-family:inherit;font-size:15.5px;font-weight:600;cursor:pointer;border:1.5px solid var(--m-brand);-webkit-tap-highlight-color:transparent}
+.e-apr-ok{background:var(--m-brand);color:#fff}
+.e-apr-rej{background:#fff;color:var(--m-brand)}
