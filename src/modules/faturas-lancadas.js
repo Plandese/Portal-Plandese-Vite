@@ -11,7 +11,7 @@ const APROVADAS = ['aprovada', 'validada', 'paga'];
 let _rows = [];
 let _obra = '';
 let _q = '';
-let _tab = 'artigos';        // artigos | pendentes
+let _tab = 'faturas';        // faturas | artigos | pendentes
 const _abertos = new Set();  // chaves de artigos expandidos
 let _ligado = false;
 
@@ -64,11 +64,27 @@ function desenhar() {
   const ok = todas.filter(x => x.l.estado === 'auto' || x.l.estado === 'manual');
 
   const chips = document.getElementById('flan-chips');
-  if (chips) chips.innerHTML = [['artigos', 'Valor por artigo', ok.length], ['pendentes', 'Por associar', pend.length]]
+  const nFat = new Set(todas.map(x => x.f.id)).size;
+  if (chips) chips.innerHTML = [['faturas', 'Faturas', nFat], ['artigos', 'Valor por artigo', ok.length], ['pendentes', 'Por associar', pend.length]]
     .map(([k, l, n]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}${k === 'pendentes' && n ? ' warn' : ''}" data-flan-tab="${k}">${l}<b>${n}</b></button>`).join('');
 
   if (!todas.length) { box.innerHTML = '<div class="d-empty" style="border:0">Ainda não há faturas aprovadas com artigos lidos.</div>'; return; }
-  box.innerHTML = _tab === 'pendentes' ? htmlPendentes(pend) : htmlArtigos(ok, pend.length, ign);
+  box.innerHTML = _tab === 'pendentes' ? htmlPendentes(pend) : _tab === 'artigos' ? htmlArtigos(ok, pend.length, ign) : htmlFaturas(todas);
+}
+
+// Lista das faturas aprovadas: clicar numa fatura abre a associação dos artigos
+function htmlFaturas(todas) {
+  const porFatura = new Map();
+  todas.forEach(x => { if (!porFatura.has(x.f.id)) porFatura.set(x.f.id, { f: x.f, ls: [] }); porFatura.get(x.f.id).ls.push(x.l); });
+  const corpo = [...porFatura.values()].map(({ f, ls }) => {
+    const nPend = ls.filter(l => l.estado === 'pendente').length;
+    const est = nPend ? `<span class="eq-est-badge eq-est-man">${nPend} por associar</span>` : '<span class="eq-est-badge eq-est-ok">Associada</span>';
+    const total = ls.reduce((s, l) => s + valorLinha(l), 0);
+    return `<tr class="flan-fat" data-flan-assoc="${f.id}" style="cursor:pointer" title="Associar os artigos desta fatura">
+      <td>${esc(f.fornecedor || '')}</td><td><b>${esc(f.numero || '')}</b></td><td>${esc(f.centro_custo || 'Sem centro de custo')}</td>
+      <td>${f.data ? esc(fmtPT(f.data)) : '—'}</td><td class="r">${ls.length}</td><td class="r">${eur(total)}</td><td>${est}</td></tr>`;
+  }).join('');
+  return `<div class="tbl-wrap"><table class="cmp-t tes-t"><thead><tr><th>Fornecedor</th><th>Fatura</th><th>Obra</th><th>Data</th><th class="r">Linhas</th><th class="r">Valor (s/ IVA)</th><th>Artigos</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
 }
 
 function htmlArtigos(ok, nPend, nIgn) {
@@ -126,7 +142,9 @@ async function associar(id) {
   const f = _rows.find(r => r.id === id); if (!f) return;
   const obj = { _dbId: f.id, fornecedor: f.fornecedor, numero: f.numero, nif: f.nif, linhas: f.linhas.map(l => ({ ...l })) };
   await associarAuto(obj);
+  const semPendentes = !obj.linhas.some(l => l.estado === 'pendente');
   await perguntarArtigos(obj, {
+    todas: semPendentes,
     onSave: async x => {
       const lin = x.linhas.map(({ _cands, _via, ...l }) => l);   // sem dados temporários de sugestão
       const { error } = await sb.from('faturas').update({ linhas: lin }).eq('id', f.id);

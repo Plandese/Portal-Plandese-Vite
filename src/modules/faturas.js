@@ -115,12 +115,10 @@ async function processQueueItem(item){
       try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${item.name}`); }
       catch(e){ console.warn('Upload Dropbox falhou:', e); showToast('Fatura lida, mas não foi possível guardar o ficheiro na Dropbox: ' + e.message); }
     } else showToast('Dropbox desligada — a fatura fica sem ficheiro e não poderá ser carimbada ao aprovar');
-    const porAssociar = await associarAuto(fat);
     await registarFaturaLida(fat, dbxPath);
     item.status='done'; item.progress=100; renderQueue();
     showToast(`Fatura ${fat.numero||''} de ${fat.fornecedor||'fornecedor'} lida e pendente de aprovação`);
-    // Linhas que o portal não conseguiu associar a um artigo: pergunta
-    if(porAssociar) perguntarArtigos(fat, { onSave: sbSaveFatura });
+    // Os artigos só se associam depois de o diretor aprovar a fatura (em Faturas Lançadas)
   } catch(e){
     console.error('Erro processamento fatura:', e);
     item.status='error'; item.error = e.message || 'Erro ao processar';
