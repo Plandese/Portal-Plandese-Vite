@@ -967,8 +967,7 @@ body.device-desktop:not(.enc-mode) #modal-eq-det .dr-h > div:not(:first-child),
 body.device-desktop:not(.enc-mode) #modal-eq-manut .dr-h > div:not(:first-child),
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe .dr-h > div:not(:first-child){color:rgba(255,255,255,.84)!important;font-size:14px!important}
 body.device-desktop:not(.enc-mode) #modal-eq-det .modal-footer,
-body.device-desktop:not(.enc-mode) #modal-eq-manut .modal-footer,
-body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe .modal-footer{position:sticky;bottom:-24px;margin:20px -28px -24px;padding:14px 28px;background:#fff;border-top:1px solid var(--d-line);z-index:3}
+body.device-desktop:not(.enc-mode) #modal-eq-manut .modal-footer{position:sticky;bottom:-24px;margin:20px -28px -24px;padding:14px 28px;background:#fff;border-top:1px solid var(--d-line);z-index:3}
 body.device-desktop:not(.enc-mode) #meqd-body > div:last-child{grid-template-columns:1fr 1fr!important;gap:14px!important}
 body.device-desktop:not(.enc-mode) #meqd-body > div:last-child > button{padding:20px!important;border:1.5px solid var(--d-line)!important;border-radius:22px!important;background:#fff!important;transition:border-color .15s,box-shadow .15s}
 body.device-desktop:not(.enc-mode) #meqd-body > div:last-child > button:hover{border-color:#c0cde9!important;box-shadow:0 10px 26px rgba(23,63,159,.09)}
@@ -1317,3 +1316,8 @@ body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .d-chip-f b{font-size:
 body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg{flex:none}
 body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button{height:33px;padding:0 10px}
 body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button span{display:none}
+
+/* Equipamentos de uma obra: lista a deslizar, botão Fechar fixo na zona inferior */
+body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal{display:flex;flex-direction:column;max-height:88vh;overflow:hidden;padding-bottom:0}
+body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe #meqo-list{flex:1 1 auto;min-height:0;max-height:none!important;overflow-y:auto}
+body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal > .modal-footer{flex:none;position:static;margin:12px -28px 0;padding:14px 28px;background:#fff;border-top:1px solid var(--d-line)}
