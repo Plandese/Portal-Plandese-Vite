@@ -158,7 +158,7 @@ function desenhar(){
     el.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(10,18,38,.55);display:flex;align-items:center;justify-content:center;padding:12px';
     document.body.appendChild(el);
   }
-  const idxs = d.linhas.map((l, i) => i).filter(i => d.todas || d.linhas[i].estado === 'pendente' || d.linhas[i]._aberta);
+  const idxs = d.linhas.map((l, i) => i).filter(i => d.todas || d.linhas[i].estado === 'pendente' || d.linhas[i]._aberta || d.linhas[i]._tocada);
   const pend = d.linhas.filter(l => l.estado === 'pendente').length;
   const cartao = i => {
     const l = d.linhas[i];
@@ -203,7 +203,7 @@ function escolher(i, id){
   const l = _dlg?.linhas[i]; if(!l) return;
   const { items } = indice();
   const it = items[id]; if(!it) return;
-  Object.assign(l, { art_ref: it.ref, art_nome: it.nome, estado: 'manual', _aberta: false });
+  Object.assign(l, { art_ref: it.ref, art_nome: it.nome, estado: 'manual', _aberta: false, _tocada: true });
   d_q(i, '');
   redesenhar();
 }
@@ -212,7 +212,7 @@ const d_q = (i, v) => { if(_dlg) _dlg.q[i] = v; };
 async function guardar(){
   const d = _dlg; if(!d) return;
   const lembrar = document.getElementById('fat-art-lembrar')?.checked;
-  d.linhas.forEach(l => { delete l._aberta; });
+  d.linhas.forEach(l => { delete l._aberta; delete l._tocada; });
   // grava no objeto da fatura (preserva as sugestões das ainda pendentes)
   d.fat.linhas = d.linhas;
   if(lembrar) for(const l of d.linhas) if(l.estado === 'manual') await guardarAlias(d.fat.nif, l);
@@ -225,7 +225,7 @@ async function guardar(){
 export const handlersArtigos = {
   faArtEscolher: escolher,
   faArtPesq: (i, v) => { d_q(i, v); redesenhar(); },
-  faArtIgnorar: i => { const l = _dlg?.linhas[i]; if(l){ Object.assign(l, { estado: 'ignorado', art_ref: '', art_nome: '', _aberta: false }); redesenhar(); } },
+  faArtIgnorar: i => { const l = _dlg?.linhas[i]; if(l){ Object.assign(l, { estado: 'ignorado', art_ref: '', art_nome: '', _aberta: false, _tocada: true }); redesenhar(); } },
   faArtReabrir: i => { const l = _dlg?.linhas[i]; if(l){ l._aberta = true; if(l.estado === 'ignorado') l.estado = 'pendente'; redesenhar(); } },
   faArtTodas: () => { if(_dlg){ _dlg.todas = true; redesenhar(); } },
   faArtFechar: () => { const d = _dlg; if(d) d.fat.linhas = d.fat.linhas || []; fechar(false); },
