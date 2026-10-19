@@ -174,15 +174,55 @@ function encEqGasoleoOrigem(origem){
 }
 
 // Alternativa à câmara ao vivo: fotografar o QR code
+// Lê o QR de uma imagem: BarcodeDetector (se o telemóvel tiver) e depois html5-qrcode, a vários tamanhos
+// (as fotografias de telemóvel são enormes e o QR pequeno, o que falha muitas vezes à escala original)
+async function _encLerQrDeFicheiro(file){
+  const bmp = await createImageBitmap(file).catch(()=>null);
+  if(bmp && 'BarcodeDetector' in window){
+    try{
+      const r = await new window.BarcodeDetector({formats:['qr_code']}).detect(bmp);
+      if(r && r[0] && r[0].rawValue) return r[0].rawValue;
+    }catch(e){}
+  }
+  const el = document.getElementById('enc-qr-reader');
+  const tmp = document.createElement('div'); tmp.id='enc-qr-tmp'; tmp.style.display='none'; document.body.appendChild(tmp);
+  try{
+    for(const max of [1000, 1600, 640, 0]){
+      let f = file;
+      if(max && bmp){
+        const k = Math.min(1, max/Math.max(bmp.width, bmp.height));
+        if(k<1 || max===1000){
+          const c = document.createElement('canvas');
+          c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+          c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+          f = await new Promise(res=>c.toBlob(b=>res(b ? new File([b],'qr.png',{type:'image/png'}) : file),'image/png'));
+        }
+      }
+      try{
+        const q = new Html5Qrcode('enc-qr-tmp');
+        const txt = await q.scanFile(f, false);
+        try{ q.clear(); }catch(e){}
+        if(txt) return txt;
+      }catch(e){}
+    }
+  } finally { tmp.remove(); }
+  return null;
+}
 async function encEqQrFoto(inp){
   const f=inp.files&&inp.files[0]; inp.value=''; if(!f) return;
   stopEncQrScanner();
-  try{
-    const q=new Html5Qrcode('enc-qr-reader');
-    const txt=await q.scanFile(f,false);
-    try{ q.clear(); }catch(e){}
-    onEncQrScanned(txt);
-  }catch(e){ showToast('Não foi possível ler o QR code. Tente outra fotografia, mais perto e com boa luz.'); }
+  const hint=document.querySelector('#enc-eq-state-scanner .enc-qr-hint');
+  const dizer=t=>{ if(hint) hint.textContent=t; };
+  dizer('A ler a fotografia…');
+  let txt=null;
+  try{ txt=await _encLerQrDeFicheiro(f); }catch(e){ console.warn('encEqQrFoto:',e); }
+  if(!txt){
+    dizer('Não foi possível ler o QR code. Tente outra fotografia: mais perto, com boa luz e o QR inteiro e direito.');
+    showToast('Não foi possível ler o QR code');
+    return;
+  }
+  dizer('QR code lido…');
+  onEncQrScanned(txt);
 }
 
 // ── Formulário: registar localização ────
