@@ -248,13 +248,19 @@ const rowAcao = (ic, label, onclick, extra = '', cls = '') =>
   `<div class="m-row ${cls}" onclick="${onclick}"><span class="m-row-ic ${cls === 'red' ? 'red' : ''}">${ic}</span><span class="m-row-tx"><b>${esc(label)}</b></span>${extra}<span class="m-row-chev">${I.chev}</span></div>`;
 
 // ── Módulos ───────────────────────────────────────────────────────────────────
+// Capítulos fechados; ao abrir um fecha o anterior
+let _capAberto = null;
+export function mCap(label) {
+  _capAberto = _capAberto === label ? null : label;
+  renderModulos();
+}
 function renderModulos() {
   const box = $('m-mods'); if (!box) return;
   let h = segHtml('mod', SEG.mod, OPS);
   if (SEG.mod === 'mods') {
     const gs = modulosPorCapitulo();
     h += gs.length
-      ? gs.map(g => `<div class="m-grp">${esc(g.ch.label)}</div>${g.itens.map(m => rowMod(m)).join('')}`).join('')
+      ? gs.map(g => `<button type="button" class="m-grp m-grp-t${_capAberto === g.ch.label ? ' on' : ''}" onclick="mCap(this.dataset.c)" data-c="${esc(g.ch.label)}"><span>${esc(g.ch.label)}</span><span class="m-grp-chev">${I.chev}</span></button>${_capAberto === g.ch.label ? g.itens.map(m => rowMod(m)).join('') : ''}`).join('')
       : emptyHtml('Sem módulos disponíveis', 'O seu perfil ainda não tem acesso a nenhum módulo.');
   } else {
     const os = obrasAtivas();
@@ -475,7 +481,7 @@ window.addEventListener('resize', () => setTimeout(() => {
 }, 60));
 
 Object.assign(window, {
-  mTab, mBack, mLeft, mRight, mDrawer, mModo, mSeg, mAbrir, mAbrirObra, mAbrirObraModulo, mResumoLista, mResumoVoltar, mAbrirPessoa, mResumoCompleto, mAbrirNotificacoes,
+  mTab, mBack, mLeft, mRight, mDrawer, mModo, mSeg, mCap, mAbrir, mAbrirObra, mAbrirObraModulo, mResumoLista, mResumoVoltar, mAbrirPessoa, mResumoCompleto, mAbrirNotificacoes,
   mFavToggle, mFavAdd, mSheetClose, mAjuda, mPesquisa, mPesquisaLimpar, mNtfSeg, irParaInicio,
   mSyncBell,
 });
