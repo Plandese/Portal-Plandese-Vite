@@ -99,7 +99,7 @@ function eqToRow(eq){
   return {
     id:eq.id, nome:eq.nome, categoria:eq.categoria,
     serie:eq.serie||null, descricao:eq.descricao||null, criado_em:eq.criadoEm,
-    ultimo_local:eq.ultimoLocal||null, ultimo_lat:eq.ultimoLat||null,
+    obra_id:eq.obraId||null, ultimo_local:eq.ultimoLocal||null, ultimo_lat:eq.ultimoLat||null,
     ultimo_lng:eq.ultimoLng||null, ultimo_registo:eq.ultimoRegisto||null,
     codigo:eq.codigo||null, matricula:eq.matricula||null, marca_modelo:eq.marcaModelo||null,
     ano:eqNum(eq.ano), combustivel:eq.combustivel||null,
@@ -694,9 +694,20 @@ function openEqModal(eq=null){
   eqSet('meq-seguro',d.seguroValidade); eqSet('meq-ipo',d.ipoValidade);
   eqSet('meq-forn',d.fornecedor); eqSet('meq-aquis',d.dataAquisicao);
   eqSet('meq-valor',d.valorAquisicao); eqSet('meq-garantia',d.garantiaAte);
+  eqPreencherObras(d);
   const del=document.getElementById('meq-del-btn'); if(del) del.style.display=eq?'':'none';
   openModal('modal-equip');
   document.querySelectorAll('#modal-equip .modal > div').forEach(d=>{ d.scrollTop=0; });
+}
+// Lista de obras em curso; a obra atual do equipamento aparece sempre, mesmo que entretanto tenha acabado
+function eqPreencherObras(eq){
+  const sel=document.getElementById('meq-obra'); if(!sel) return;
+  const obras=(S.OBRAS||[]).filter(o=>obraEmCurso(o)||o.id===eq.obraId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  const atual=eq.obraId&&obras.some(o=>o.id===eq.obraId)?eq.obraId:'';
+  sel.innerHTML='<option value="">— Sem obra —</option>'+obras.map(o=>`<option value="${eqEsc(o.id)}">${eqEsc(o.nome)}</option>`).join('');
+  sel.value=atual;
+  // equipamento com local que não é uma obra (ex.: SEDE): mantém-se se não for alterado
+  sel.dataset.orig=atual;
 }
 function editEquipamento(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); if(eq) openEqModal(eq); }
 function saveEquipamento(){
@@ -716,9 +727,15 @@ function saveEquipamento(){
     fornecedor:  g('meq-forn'), dataAquisicao: g('meq-aquis'),
     valorAquisicao: g('meq-valor'), garantiaAte: g('meq-garantia'),
     criadoEm:    ex?ex.criadoEm:new Date().toISOString(),
+    obraId:      ex?ex.obraId:null,
     ultimoLocal: ex?ex.ultimoLocal:null, ultimoLat:ex?ex.ultimoLat:null,
     ultimoLng:   ex?ex.ultimoLng:null,   ultimoRegisto:ex?ex.ultimoRegisto:null
   };
+  const selObra=document.getElementById('meq-obra');
+  if(selObra && selObra.value!==(selObra.dataset.orig||'')){
+    const o=(S.OBRAS||[]).find(x=>x.id===selObra.value);
+    obj.obraId=o?o.id:null; obj.ultimoLocal=o?o.nome:null; obj.ultimoRegisto=new Date().toISOString();
+  }
   if(_editingEqId){ const i=EQUIPAMENTOS.findIndex(e=>e.id===_editingEqId); if(i>=0)EQUIPAMENTOS[i]=obj; else EQUIPAMENTOS.push(obj); }
   else EQUIPAMENTOS.push(obj);
   saveEqLocal(); closeModal('modal-equip'); renderEquipamentos(); refreshEqMap();
