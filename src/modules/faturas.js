@@ -5,6 +5,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
+import { normalizarLinhas, associarAuto, perguntarArtigos, resumoArtigos } from './faturas-artigos.js';
 import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxLinkTeam } from './dropbox.js';
 
 let FATURAS = [];
@@ -114,9 +115,12 @@ async function processQueueItem(item){
       try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${item.name}`); }
       catch(e){ console.warn('Upload Dropbox falhou:', e); showToast('Fatura lida, mas não foi possível guardar o ficheiro na Dropbox: ' + e.message); }
     } else showToast('Dropbox desligada — a fatura fica sem ficheiro e não poderá ser carimbada ao aprovar');
+    const porAssociar = await associarAuto(fat);
     await registarFaturaLida(fat, dbxPath);
     item.status='done'; item.progress=100; renderQueue();
     showToast(`Fatura ${fat.numero||''} de ${fat.fornecedor||'fornecedor'} lida e pendente de aprovação`);
+    // Linhas que o portal não conseguiu associar a um artigo: pergunta
+    if(porAssociar) perguntarArtigos(fat, { onSave: sbSaveFatura });
   } catch(e){
     console.error('Erro processamento fatura:', e);
     item.status='error'; item.error = e.message || 'Erro ao processar';
@@ -186,6 +190,7 @@ async function lerFaturaComClaude(item){
     centroCusto: (S.OBRAS||[]).some(o => o.nome === c.centro_custo) ? c.centro_custo : '',
     _ccMotivo: c.centro_custo_motivo || '',
     _flags, _fonte: 'claude', _exemplos: 0, _rawText: '',
+    linhas: normalizarLinhas(c.linhas),
   };
 }
 
@@ -663,6 +668,7 @@ function _fatToRow(f){
     ficheiro_url: f.ficheiroUrl || null,
     aprovado_por: f.aprovadoPor || null,
     aprovado_em:  f.aprovadoEm  || null,
+    linhas:       f.linhas || [],
     criado_por:   S.currentUser?.key || null,
   };
 }
@@ -692,6 +698,7 @@ function _rowToFat(r){
     aprovadoPor:  r.aprovado_por || '',
     aprovadoEm:   r.aprovado_em  || '',
     criadoEm:     r.criado_em || '',
+    linhas:       Array.isArray(r.linhas) ? r.linhas : [],
     _rawText:   '',
   };
 }
@@ -740,6 +747,19 @@ async function verificarFicheirosDropbox(){
 }
 
 // Abre o detalhe de uma fatura a partir do id da base de dados (usado pela Tesouraria)
+// Abre o diálogo de artigos de uma fatura já registada (botão na ficha)
+async function abrirArtigosFatura(id){
+  const f = FATURAS.find(x => x.id === (id ?? _editFatId)); if(!f) return;
+  if(!(f.linhas||[]).length){ showToast('Esta fatura não tem linhas de artigos lidas'); return; }
+  await associarAuto(f);
+  await perguntarArtigos(f, { todas: true, onSave: async x => { await sbSaveFatura(x); atualizaArtigosModal(x); } });
+}
+function atualizaArtigosModal(f){
+  const el = document.getElementById('mf-artigos-info'); if(!el) return;
+  const r = resumoArtigos(f);
+  el.textContent = r.n ? `${r.n} linha${r.n!==1?'s':''}${r.pend ? ' · ' + r.pend + ' por associar' : ' · todas associadas'}` : 'sem linhas lidas';
+}
+
 async function abrirFaturaPorDbId(dbId){
   let f = FATURAS.find(x => x._dbId === dbId);
   if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
@@ -1101,6 +1121,7 @@ function editarFatura(id){
     aproBar.style.display = (pode1 || pode2) ? 'flex' : 'none';
   }
 
+  atualizaArtigosModal(f);
   validaCamposModal();
   document.getElementById('modal-fat').classList.add('open');
   ['mf-nif','mf-base','mf-iva','mf-total'].forEach(id=>{
@@ -1999,6 +2020,6 @@ export {
   openFatSel, fssClose, fssSetActive, fssTextClick, fssSave,
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
-  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas,
+  importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas, abrirArtigosFatura,
   carregarAprovadoresFaturas, ehAprovadorFaturas,
 };

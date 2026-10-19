@@ -34,7 +34,8 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 // Faturas
 import { renderTesouraria } from './modules/tesouraria.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
-import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela } from './modules/faturas.js';
+import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirArtigosFatura } from './modules/faturas.js';
+import { handlersArtigos } from './modules/faturas-artigos.js';
 
 // Compras
 import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, lstAddAvulso, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal, cmpPedirCotacao, cmpFornSug, cmpFornSugHide, cmpPickForn } from './modules/compras.js';
@@ -122,6 +123,7 @@ Object.assign(R, {
   initTelasFinaisLink,
 });
 window.abrirTelasFinais = abrirTelasFinais;
+Object.assign(window, handlersArtigos, { abrirArtigosFatura });
 Object.assign(window, { exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar, exAbrirAdd, exSetPreco, exRemover });
 
 // ── Polyfill: expõe helpers globalmente para compatibilidade com HTML inline ──

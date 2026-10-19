@@ -30,6 +30,22 @@ const TOOL = {
       centro_custo_motivo: { type: "string", description: "Em poucas palavras, o indício usado (ex.: 'descarga em Queluz de Baixo', 'código 9300065 = O065')." },
       moeda: { type: "string", description: "Código ISO, normalmente EUR." },
       descricao: { type: "string", description: "Resumo curto (máx. 120 caracteres) do que foi comprado." },
+      linhas: {
+        type: "array",
+        description: "Linhas de artigos/materiais da fatura, uma por artigo, pela ordem do documento. Só produtos/serviços faturados (não incluas totais, IVA, portes de resumo nem linhas de texto). Vazio se o documento não tiver linhas legíveis.",
+        items: {
+          type: "object",
+          properties: {
+            descricao: { type: "string", description: "Designação do artigo tal como impressa (sem o código)." },
+            ref_fornecedor: { type: "string", description: "Código/referência do artigo do fornecedor, se existir. Vazio se não existir." },
+            qtd: { type: "number", description: "Quantidade." },
+            un: { type: "string", description: "Unidade tal como impressa (un, m, m2, m3, kg, saco, h...). Vazio se não existir." },
+            preco_unit: { type: "number", description: "Preço unitário sem IVA, em euros (já com descontos, se o documento os mostrar por linha)." },
+            total_linha: { type: "number", description: "Valor da linha sem IVA, em euros." },
+          },
+          required: ["descricao", "qtd", "total_linha"],
+        },
+      },
       confianca: { type: "number", description: "0 a 1: confiança global na extração." },
       avisos: { type: "array", items: { type: "string" }, description: "Dúvidas ou inconsistências (ex.: totais não batem, NIF ilegível, documento ilegível)." },
     },
@@ -51,6 +67,7 @@ Regras:
 - "descricao": resume o que foi fornecido/prestado e o período (ex.: 'Aluguer de 3 contentores LC20 (01 a 31/08)').
 - Se o total impresso não bater com base + iva, devolve os valores impressos e regista o desvio em "avisos"; nunca ajustes valores para os fazer bater.
 - Centro de custo: quando receberes uma lista de obras, escolhe a mais provável. Indícios, por ordem de força: (1) código de obra no documento — os códigos 93000NN correspondem à obra ONN (ex.: 9300065 = O065, 9300064 = O064, 9300062 = O062); (2) local de entrega/descarga/obra indicado (ex.: 'Queluz de Baixo', 'Estrada Consiglieri Pedroso 90' = Queluz de Baixo; 'Faro/Montenegro' = Faro; 'Póvoa de Santa Iria' = Praceta dos Caniços; 'Algés/Miraflores' = SIMAS Algés; 'Alfragide' = Mercadona Alfragide); (3) notas/descrição do documento. A morada da sede da Plandese (Estrada da Portela, Carnaxide) NÃO é uma obra. Se a fatura abranger várias obras ou não houver indícios, deixa centro_custo vazio e explica em centro_custo_motivo. Nunca inventes nomes fora da lista.
+- Linhas: devolve em "linhas" cada artigo faturado (descrição, referência do fornecedor, quantidade, unidade, preço unitário e valor da linha sem IVA). Copia a descrição fielmente, sem a interpretar nem a traduzir. Em notas de crédito os valores das linhas são negativos. Não inventes linhas; se o documento for só um total (ex.: portagens, renda), devolve uma única linha ou nenhuma.
 - Usa sempre a ferramenta registar_fatura.`;
 
 function json(body: unknown, status = 200) {
@@ -81,7 +98,7 @@ Deno.serve(async (req: Request) => {
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1500,
+        max_tokens: 6000,
         system: SYSTEM,
         tools: [TOOL],
         messages: [{ role: "user", content: [bloco, { type: "text", text: textoPedido }] }],
