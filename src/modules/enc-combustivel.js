@@ -5,7 +5,7 @@ import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
-import { EQUIPAMENTOS, EQ_CATS, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
+import { EQUIPAMENTOS, EQ_CATS, eqCatNorm, eqCatIsVeiculo, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
 import { obraEmCurso } from '../config.js';
 
 let _combEqOpts = new Map();

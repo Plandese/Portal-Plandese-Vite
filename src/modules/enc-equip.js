@@ -4,7 +4,7 @@
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { showToast } from './navigation.js';
-import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
+import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqCatNorm, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
 import { obraEmCurso } from '../config.js';
 
 let _encHtml5Qr = null;

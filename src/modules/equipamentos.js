@@ -1158,7 +1158,7 @@ function submitQrRegistration(){
 
 export {
   EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_MANUT,
-  EQ_CATS, eqFmtDt, eqDatePT, saveEqLocal,
+  EQ_CATS, eqCatNorm, eqCatIsVeiculo, eqFmtDt, eqDatePT, saveEqLocal,
   renderEquipamentos, updateEqKPIs, renderEqBusca, eqVerListaCompleta,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
