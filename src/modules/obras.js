@@ -19,6 +19,7 @@ export function novaObra(){
   document.getElementById('mo-desc').value='';
   document.getElementById('mo-prazo').value='';
   document.getElementById('mo-estado').value='em_curso';
+  const _mc=document.getElementById('mo-codigo'); if(_mc) _mc.value='';
   _moDiretoresExtra=[];
   _moEncarregadosExtra=[];
   _populateEncSelect('');
@@ -133,6 +134,7 @@ export function editObra(id){
   document.getElementById('mo-desc').value=o.desc||'';
   document.getElementById('mo-prazo').value=o.prazo||'';
   document.getElementById('mo-estado').value=o.estado||'em_curso';
+  const _mc=document.getElementById('mo-codigo'); if(_mc){ _mc.value=''; _mc.dataset.orig=''; sb.from('obra_codigos').select('codigo').eq('obra_id',id).maybeSingle().then(({data})=>{ if(data){ _mc.value=data.codigo; _mc.dataset.orig=data.codigo; } }); }
   _moDiretoresExtra=[...(o.diretores_extra||[])];
   _moEncarregadosExtra=[...(o.encarregados_extra||[])];
   _populateEncSelect(o.encarregado_id||'');
@@ -254,6 +256,13 @@ export async function saveObra(){
     if(error) throw error;
     const antigoDir=existing>=0?(S.OBRAS[existing].diretores_extra||[]):[];
     const antigoEnc=existing>=0?(S.OBRAS[existing].encarregados_extra||[]):[];
+    // Código de acesso da obra (QR do gasóleo): o servidor gera um ao criar a obra; aqui só se altera
+    const _mc=document.getElementById('mo-codigo'), _cod=(_mc?.value||'').trim().toUpperCase();
+    if(_cod && _cod!==(_mc.dataset.orig||'')){
+      if(!/^[A-Z0-9]{4,12}$/.test(_cod)) throw new Error('O código de acesso deve ter 4 a 12 letras/números.');
+      const {error:ec}=await sb.from('obra_codigos').upsert({obra_id:id,codigo:_cod});
+      if(ec) throw new Error(ec.code==='23505'?'Esse código já está a ser usado por outra obra.':ec.message);
+    }
     await _syncObraExtra('obra_diretores_extra','diretor_id',id,diretores_extra,antigoDir);
     await _syncObraExtra('obra_encarregados_extra','encarregado_id',id,encarregados_extra,antigoEnc);
     if(existing>=0)S.OBRAS[existing]={...S.OBRAS[existing],...rec};else S.OBRAS.push(rec);

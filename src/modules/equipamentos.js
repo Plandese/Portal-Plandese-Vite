@@ -1061,57 +1061,84 @@ async function initQrRegistration(){
   const regId=params.get('reg');
   if(!regId) return false;
   _qrEquipId=regId;
-  document.getElementById('qr-reg-screen').style.display='flex';
+  const sc=document.getElementById('qr-reg-screen');
+  sc.style.display='flex';
+  // por cima de tudo, mesmo que haja uma sessão guardada que abra a app por trás
+  sc.style.cssText+=';position:fixed;inset:0;z-index:99999;overflow:auto';
   document.getElementById('login-screen').style.display='none';
-  // Página pública (pode não haver login): equipamento e obras vêm de fn_qr_info, não das tabelas
-  document.getElementById('qr-equip-nome').textContent='A carregar…';
-  document.getElementById('qr-equip-cat').textContent='';
-  let info=null;
-  try{ const {data}=await sb.rpc('fn_qr_info',{p_equip_id:regId}); info=data; }catch(e){}
-  const eq=EQUIPAMENTOS.find(e=>e.id===regId)||info?.equipamento||null;
-  document.getElementById('qr-equip-nome').textContent=eq?eq.nome:`Equipamento ${regId}`;
-  document.getElementById('qr-equip-cat').textContent=eq?(EQ_CATS[eqCatNorm(eq.categoria)].label):'';
-  const sel=document.getElementById('qr-obra-sel');
-  sel.innerHTML='<option value="">Selecionar obra…</option>';
-  const obras=info?.obras?.length?info.obras:S.OBRAS.filter(obraEmCurso);
-  obras.forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
-  // Sessão guardada — pré-preencher nome se o encarregado já está logado
-  let _qrSession = null;
-  try { _qrSession = JSON.parse(localStorage.getItem('plandese_session')||'null'); } catch(e){}
-  const nameInput = document.getElementById('qr-enc-nome');
-  const sessionBanner = document.getElementById('qr-session-banner');
-  const nameField = document.getElementById('qr-enc-nome-field');
-  if(_qrSession?.nome){
-    nameInput.value = _qrSession.nome;
-    nameInput.readOnly = true;
-    nameInput.style.background='var(--gray-50)';
-    nameInput.style.color='var(--gray-500)';
-    if(sessionBanner){ sessionBanner.style.display='flex'; document.getElementById('qr-session-nome').textContent=_qrSession.nome; }
-    if(nameField) nameField.style.display='none';
-  } else {
-    nameInput.readOnly = false;
-    nameInput.style.background='';
-    nameInput.style.color='';
-    if(sessionBanner) sessionBanner.style.display='none';
-    if(nameField) nameField.style.display='';
-  }
-  // GPS
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      _qrGpsLat=pos.coords.latitude; _qrGpsLng=pos.coords.longitude;
-      document.getElementById('qr-loc-dot').className='qr-loc-dot ok';
-      document.getElementById('qr-loc-txt').textContent=`GPS: ${_qrGpsLat.toFixed(5)}, ${_qrGpsLng.toFixed(5)}`;
-    },()=>{
-      document.getElementById('qr-loc-dot').className='qr-loc-dot err';
-      document.getElementById('qr-loc-txt').textContent='GPS não disponível — registo sem coordenadas';
-      document.getElementById('qr-use-gps').checked=false;
-    },{timeout:8000,enableHighAccuracy:true});
-  } else {
-    document.getElementById('qr-loc-dot').className='qr-loc-dot err';
-    document.getElementById('qr-loc-txt').textContent='GPS não suportado neste dispositivo';
-    document.getElementById('qr-use-gps').checked=false;
-  }
+  qrGasNovo();
   return true;
+}
+
+// ── QR lido fora da app: pede o código de acesso da obra e depois regista o gasóleo ──
+let _qrGas = null;   // { codigo, obra, equipamento } depois de validado
+const _qrGasMostra = passo => {
+  ['gate','form','ok'].forEach(p=>{ const el=document.getElementById('qr-gas-'+p); if(el) el.style.display = p===passo ? '' : 'none'; });
+};
+function qrGasNovo(){
+  _qrGas = null;
+  const cod=document.getElementById('qr-gas-codigo'); if(cod) cod.value='';
+  const m=document.getElementById('qr-gas-gate-msg'); if(m) m.textContent='';
+  _qrGasMostra('gate');
+  setTimeout(()=>cod&&cod.focus(),100);
+}
+async function qrGasValidar(){
+  const cod=document.getElementById('qr-gas-codigo').value.trim().toUpperCase();
+  const msg=document.getElementById('qr-gas-gate-msg'), btn=document.getElementById('qr-gas-gate-btn');
+  if(!cod){ msg.textContent='Introduza o código.'; return; }
+  btn.disabled=true; msg.textContent='';
+  try{
+    const {data,error}=await sb.rpc('fn_qr_gas_info',{p_equip_id:_qrEquipId,p_codigo:cod});
+    if(error) throw error;
+    if(!data||!data.ok){
+      msg.textContent = data?.motivo==='bloqueado' ? 'Demasiadas tentativas. Tente daqui a alguns minutos.'
+        : data?.motivo==='equipamento' ? 'Equipamento não encontrado.' : 'Código inválido.';
+      return;
+    }
+    _qrGas={ codigo:cod, obra:data.obra, equipamento:data.equipamento };
+    document.getElementById('qr-gas-eq-nome').textContent=data.equipamento.nome;
+    document.getElementById('qr-gas-obra-nome').textContent=data.obra.nome;
+    document.getElementById('qr-gas-origem').value='deposito'; qrGasOrigem();
+    document.getElementById('qr-gas-litros').value='';
+    document.getElementById('qr-gas-data').value=fmt(new Date());
+    document.getElementById('qr-gas-tipo').value='Gasóleo';
+    document.getElementById('qr-gas-forn').value='';
+    document.getElementById('qr-gas-obs').value='';
+    document.getElementById('qr-gas-msg').textContent='';
+    let nome=''; try{ nome=JSON.parse(localStorage.getItem('plandese_enc_nome')||'""'); }catch(e){}
+    document.getElementById('qr-gas-nome').value=nome||'';
+    _qrGasMostra('form');
+  }catch(e){ console.warn('qrGasValidar:',e); msg.textContent='Não foi possível verificar o código. Tente novamente.'; }
+  finally{ btn.disabled=false; }
+}
+function qrGasOrigem(){
+  const w=document.getElementById('qr-gas-forn-wrap');
+  if(w) w.style.display = document.getElementById('qr-gas-origem').value==='bomba' ? '' : 'none';
+}
+async function qrGasSubmeter(){
+  if(!_qrGas) return qrGasNovo();
+  const g=id=>document.getElementById(id).value.trim();
+  const msg=document.getElementById('qr-gas-msg'), btn=document.getElementById('qr-gas-btn');
+  const litros=parseFloat(g('qr-gas-litros').replace(',','.'));
+  const nome=g('qr-gas-nome');
+  if(!litros||litros<=0){ msg.textContent='Indique os litros.'; return; }
+  if(!nome){ msg.textContent='Indique o seu nome.'; return; }
+  btn.disabled=true; msg.textContent='';
+  try{
+    const origem=g('qr-gas-origem');
+    const {data,error}=await sb.rpc('fn_qr_gas_registar',{
+      p_equip_id:_qrEquipId, p_codigo:_qrGas.codigo, p_origem:origem, p_litros:litros, p_tipo:g('qr-gas-tipo'),
+      p_data:g('qr-gas-data')||null, p_obs:g('qr-gas-obs')||null, p_encarregado:nome, p_fornecedor:origem==='bomba'?(g('qr-gas-forn')||null):null
+    });
+    if(error) throw error;
+    if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
+    try{ localStorage.setItem('plandese_enc_nome',JSON.stringify(nome)); }catch(e){}
+    document.getElementById('qr-gas-ok-txt').innerHTML=
+      `<strong>${eqEsc(nome)}</strong> registou<br><strong>${litros} L de ${eqEsc(g('qr-gas-tipo'))}</strong><br>em <strong>${eqEsc(_qrGas.equipamento.nome)}</strong><br>Obra: <strong>${eqEsc(_qrGas.obra.nome)}</strong>`+
+      `<br><span style="font-size:11px;color:var(--gray-400);display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
+    _qrGasMostra('ok');
+  }catch(e){ console.warn('qrGasSubmeter:',e); msg.textContent='Erro ao guardar. Verifique a ligação e tente novamente.'; }
+  finally{ btn.disabled=false; }
 }
 
 function submitQrRegistration(){
@@ -1167,5 +1194,6 @@ export {
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
-  initEquipamentos, initQrRegistration, submitQrRegistration
+  initEquipamentos, initQrRegistration, submitQrRegistration,
+  qrGasValidar, qrGasOrigem, qrGasSubmeter, qrGasNovo
 };
