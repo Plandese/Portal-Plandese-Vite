@@ -57,6 +57,9 @@ function eqEsc(s){
 function eqSet(id,v){ const el=document.getElementById(id); if(el) el.value=v==null?'':v; }
 function eqNum(v){ return (v===''||v==null)?null:Number(v); }
 function eqDatePT(iso){ return iso?iso.split('-').reverse().join('/'):''; }
+function eqPropBadge(eq){
+  return eq.propriedade==='aluguer' ? '<span class="eq-prop-tag eq-prop-alu">Aluguer</span>' : '<span class="eq-prop-tag eq-prop-pla">Plandese</span>';
+}
 function eqEstadoBadge(e){
   const c = EQ_ESTADOS[e]||EQ_ESTADOS.operacional;
   return `<span class="eq-est-badge ${c.cls}">${c.label}</span>`;
@@ -184,12 +187,13 @@ function _eqRowDesk(eq){
     <td><span class="eq-t-nome"><span class="d-ic sm">${_EQ_IC[eqCatNorm(eq.categoria)]}</span><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b></span></td>
     <td>${eqEsc(EQ_CATS[eqCatNorm(eq.categoria)].label)}</td>
     <td>${ident}</td>
+    <td>${eqPropBadge(eq)}</td>
     <td>${eqEstadoBadge(eq.estado)}</td>
     <td>${eqEsc(eq.ultimoLocal||'—')}${quando?` <small class="eq-t-quando">${eqEsc(quando)}</small>`:''}</td>
     <td>${fd(feitas[feitas.length-1])}</td><td>${fd(pend[0])}</td></tr>`;
 }
 function _eqTabelaDesk(lista){
-  return `<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Categoria</th><th>Código / Matrícula</th><th>Estado</th><th>Localização</th><th>Últ. manutenção</th><th>Próxima</th></tr></thead><tbody>${lista.map(_eqRowDesk).join('')}</tbody></table></div>`;
+  return `<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Categoria</th><th>Código / Matrícula</th><th>Propriedade</th><th>Estado</th><th>Localização</th><th>Últ. manutenção</th><th>Próxima</th></tr></thead><tbody>${lista.map(_eqRowDesk).join('')}</tbody></table></div>`;
 }
 function _eqCardDesk(eq){
   const ult = eq.ultimoLocal || 'Sem localização registada';

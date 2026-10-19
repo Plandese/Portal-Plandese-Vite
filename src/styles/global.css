@@ -617,6 +617,9 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 .eq-est-badge,.eq-prop-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-est-ok{background:#DCFCE7;color:#15803D}.eq-est-man{background:#FEF3C7;color:#B45309}.eq-est-par{background:#FEE2E2;color:#B91C1C}
 .eq-prop-badge{background:#FEF9C3;color:#854D0E;margin-left:4px}
+.eq-prop-tag{display:inline-flex;align-items:center;padding:3px 11px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
+.eq-prop-pla{background:#dbeafe;color:#1d4ed8}
+.eq-prop-alu{background:#ede4fb;color:#6d28d9}
 .eq-val-chip{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:600;margin:1px 4px 1px 0;white-space:nowrap}
 .eq-val-chip.ok{background:var(--gray-100);color:var(--gray-600)}.eq-val-chip.warn{background:#FEF3C7;color:#B45309}.eq-val-chip.bad{background:#FEE2E2;color:#B91C1C}
 .eq-pend-dot{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:#DC2626;color:#fff;font-size:10px;font-weight:700}
