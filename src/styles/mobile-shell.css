@@ -653,3 +653,7 @@ body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(5),
 body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(7),
 body.device-mobile #modal-comb-equip #mcoe-tbody td:nth-child(8){display:none}
 body.device-mobile #modal-comb-equip .modal-footer{flex:none;padding-top:10px}
+
+/* Equipamentos: Novo equipamento e Ler QR Code com a mesma largura, a ocupar a linha toda */
+body.device-mobile .eq-hdr-btns{flex-wrap:nowrap!important;width:100%}
+body.device-mobile .eq-hdr-btns > .btn{flex:1 1 0;min-width:0;justify-content:center;white-space:nowrap;padding-left:10px;padding-right:10px}
