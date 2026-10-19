@@ -57,6 +57,11 @@ function eqEsc(s){
 function eqSet(id,v){ const el=document.getElementById(id); if(el) el.value=v==null?'':v; }
 function eqNum(v){ return (v===''||v==null)?null:Number(v); }
 function eqDatePT(iso){ return iso?iso.split('-').reverse().join('/'):''; }
+// Obra / centro de custo associado (da tabela de obras); se não houver, o texto do último local
+function eqObraNome(eq){
+  const o = eq.obraId && (S.OBRAS||[]).find(x=>x.id===eq.obraId);
+  return o ? o.nome : (eq.ultimoLocal||'');
+}
 function eqPropBadge(eq){
   return eq.propriedade==='aluguer' ? '<span class="eq-prop-tag eq-prop-alu">Aluguer</span>' : '<span class="eq-prop-tag eq-prop-pla">Plandese</span>';
 }
@@ -79,7 +84,7 @@ function eqFromRow(row){
     id:row.id, nome:row.nome, categoria:eqCatNorm(row.categoria),
     serie:row.serie||'', descricao:row.descricao||'',
     criadoEm:row.criado_em||new Date().toISOString(),
-    ultimoLocal:row.ultimo_local||null, ultimoLat:row.ultimo_lat||null,
+    obraId:row.obra_id||null, ultimoLocal:row.ultimo_local||null, ultimoLat:row.ultimo_lat||null,
     ultimoLng:row.ultimo_lng||null, ultimoRegisto:row.ultimo_registo||null,
     codigo:row.codigo||'', matricula:row.matricula||'', marcaModelo:row.marca_modelo||'',
     ano:row.ano==null?'':row.ano, combustivel:row.combustivel||'',
@@ -189,11 +194,11 @@ function _eqRowDesk(eq){
     <td>${ident}</td>
     <td>${eqPropBadge(eq)}</td>
     <td>${eqEstadoBadge(eq.estado)}</td>
-    <td>${eqEsc(eq.ultimoLocal||'—')}${quando?` <small class="eq-t-quando">${eqEsc(quando)}</small>`:''}</td>
+    <td>${eqEsc(eqObraNome(eq)||'—')}${quando?` <small class="eq-t-quando">${eqEsc(quando)}</small>`:''}</td>
     <td>${fd(feitas[feitas.length-1])}</td><td>${fd(pend[0])}</td></tr>`;
 }
 function _eqTabelaDesk(lista){
-  return `<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Categoria</th><th>Código / Matrícula</th><th>Propriedade</th><th>Estado</th><th>Localização</th><th>Últ. manutenção</th><th>Próxima</th></tr></thead><tbody>${lista.map(_eqRowDesk).join('')}</tbody></table></div>`;
+  return `<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Categoria</th><th>Código / Matrícula</th><th>Propriedade</th><th>Estado</th><th>Obra / Centro de custo</th><th>Últ. manutenção</th><th>Próxima</th></tr></thead><tbody>${lista.map(_eqRowDesk).join('')}</tbody></table></div>`;
 }
 function _eqCardDesk(eq){
   const ult = eq.ultimoLocal || 'Sem localização registada';
