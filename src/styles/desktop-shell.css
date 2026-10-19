@@ -1318,6 +1318,6 @@ body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button{he
 body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button span{display:none}
 
 /* Equipamentos de uma obra: lista a deslizar, botão Fechar fixo na zona inferior */
-body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal{display:flex;flex-direction:column;max-height:88vh;overflow:hidden;padding-bottom:0}
+body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal{display:flex;flex-direction:column;height:100%;max-height:none;overflow:hidden;padding-bottom:0}
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe #meqo-list{flex:1 1 auto;min-height:0;max-height:none!important;overflow-y:auto}
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal > .modal-footer{flex:none;position:static;margin:12px -28px 0;padding:14px 28px;background:#fff;border-top:1px solid var(--d-line)}
