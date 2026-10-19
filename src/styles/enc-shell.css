@@ -258,3 +258,48 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 #enc-app #enc-creg-modal .field input:focus,
 #enc-app #enc-creg-modal .field select:focus,
 #enc-app #enc-creg-modal .field textarea:focus{border-color:var(--m-brand);box-shadow:0 0 0 4px rgba(23,63,159,.14)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PÁGINA PÚBLICA DO QR (registo de gasóleo, fora da app) — mesmo design da app:
+   cabeçalho azul Plandese com círculos, folha branca arredondada, campos de 14px
+   de raio e botões em pílula (ver o resto deste ficheiro e mobile-shell.css).
+═══════════════════════════════════════════════════════════════════════════ */
+#qr-reg-screen{background:var(--m-brand)!important;font-family:inherit}
+#qr-reg-screen::before{width:98%;height:auto;aspect-ratio:1;left:-36%;top:-40%;right:auto;background:rgba(255,255,255,.07)}
+#qr-reg-screen::after{content:'';position:absolute;right:-34%;top:-4%;width:86%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.045);pointer-events:none}
+#qr-reg-screen .qr-reg-top{text-align:left;padding:calc(var(--m-safe-t) + 26px) 22px 46px;color:#fff}
+#qr-reg-screen .q-hdr-logo{display:flex;align-items:center;gap:7px;margin-bottom:22px}
+#qr-reg-screen .q-hdr-logo i{display:block;width:28px;height:28px;background:currentColor;-webkit-mask:var(--m-logo-mask) center/contain no-repeat;mask:var(--m-logo-mask) center/contain no-repeat}
+#qr-reg-screen .q-hdr-logo b{font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1}
+#qr-reg-screen .q-hdr-title{font-size:27px;font-weight:800;letter-spacing:-.5px;line-height:1.15}
+#qr-reg-screen .q-hdr-sub{margin-top:5px;font-size:14px;font-weight:500;color:rgba(255,255,255,.82);line-height:1.3}
+#qr-reg-screen .qr-reg-card{margin-top:-26px;border-radius:24px 24px 0 0;padding:26px 22px 40px;box-shadow:none}
+@media(min-width:640px){
+  #qr-reg-screen .qr-reg-card{margin-top:0;border-radius:24px;max-width:460px}
+  #qr-reg-screen .qr-reg-top{width:100%;max-width:460px}
+}
+#qr-reg-screen .q-h{font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--m-ink);margin-bottom:6px}
+#qr-reg-screen .q-p{font-size:14.5px;color:var(--m-mute);line-height:1.5;margin-bottom:20px}
+#qr-reg-screen .q-field{margin-bottom:16px}
+#qr-reg-screen .q-field label{display:block;font-size:12px;font-weight:700;color:#5d6678;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+#qr-reg-screen .q-field label span{font-weight:500;text-transform:none;letter-spacing:0;color:#8a92a2}
+#qr-reg-screen .q-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#qr-reg-screen .q-input{width:100%;min-height:50px;padding:12px 16px;border:1.5px solid #b9c1ce;border-radius:14px;background:#fff;font-family:inherit;font-size:16px;color:var(--m-ink);-webkit-appearance:none;appearance:none}
+#qr-reg-screen select.q-input{padding-right:38px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d6678' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") right 14px center/18px no-repeat}
+#qr-reg-screen textarea.q-input{min-height:84px;resize:vertical}
+#qr-reg-screen .q-input:focus{border-color:var(--m-brand);box-shadow:0 0 0 3px rgba(23,63,159,.13);outline:none}
+#qr-reg-screen .q-code{text-align:center;font-size:22px;font-weight:700;letter-spacing:.25em;text-transform:uppercase}
+#qr-reg-screen .q-code::placeholder{font-size:16px;font-weight:500;letter-spacing:0;text-transform:none;color:#8a92a2}
+#qr-reg-screen .q-msg{min-height:20px;margin:6px 0 12px;font-size:13.5px;font-weight:600;color:#b3261e}
+#qr-reg-screen .q-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:12px 20px;border:0;border-radius:99px;background:var(--m-brand);color:#fff;font-family:inherit;font-size:16.5px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#qr-reg-screen .q-btn:active{background:var(--m-brand-d)}
+#qr-reg-screen .q-btn:disabled{opacity:.55}
+#qr-reg-screen .q-btn-sec{margin-top:18px;background:#fff;border:1.5px solid var(--m-brand);color:var(--m-brand)}
+#qr-reg-screen .qr-equip-info{background:#eaf0fc;border:0;border-radius:18px;padding:14px 16px;margin-bottom:22px}
+#qr-reg-screen .qr-equip-icon{width:44px;height:44px;border-radius:14px;background:var(--m-brand)}
+#qr-reg-screen .qr-equip-icon svg{width:24px;height:24px}
+#qr-reg-screen .qr-equip-name{font-size:16.5px;font-weight:700;color:var(--m-ink);line-height:1.25}
+#qr-reg-screen .qr-equip-obra{font-size:13px;color:var(--m-mute);margin-top:3px}
+#qr-reg-screen .q-ok{text-align:center;padding:10px 0}
+#qr-reg-screen .q-ok-ic{width:64px;height:64px;border-radius:50%;background:#dff5e7;color:#166534;display:grid;place-items:center;margin:0 auto 16px}
+#qr-reg-screen .q-ok-ic svg{width:32px;height:32px}

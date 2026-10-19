@@ -3496,70 +3496,64 @@
 <!-- QR REGISTRATION SCREEN (opens via ?reg=EQUIPID) -->
 <div id="qr-reg-screen">
   <div class="qr-reg-top">
-    <div class="login-logo" style="margin:0 auto 14px">
-      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" rx="8" fill="#635BFF"/><text x="20" y="28" text-anchor="middle" font-size="20" font-weight="bold" fill="white" font-family="Inter,sans-serif">P</text></svg>
-    </div>
-    <div style="font-size:16px;font-weight:700;color:white;letter-spacing:-.2px">Registo de gasóleo</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:4px">Plandese · Logística</div>
+    <div class="q-hdr-logo"><i></i><b>Plandese</b></div>
+    <div class="q-hdr-title">Registo de gasóleo</div>
+    <div class="q-hdr-sub">Registo rápido a partir do QR do equipamento</div>
   </div>
   <div class="qr-reg-card">
     <!-- Registo de gasóleo por QR: 1) código de acesso da obra  2) formulário  3) sucesso -->
     <div id="qr-gas-gate">
-      <div style="font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:6px">Código de acesso</div>
-      <div style="font-size:13px;color:var(--gray-500);line-height:1.5;margin-bottom:16px">Introduza o código da obra para registar gasóleo neste equipamento.</div>
-      <div class="field" style="margin-bottom:12px">
-        <input type="text" id="qr-gas-codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="Código da obra" style="width:100%;padding:14px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:20px;letter-spacing:.2em;text-align:center;text-transform:uppercase;color:var(--gray-900)" onkeydown="if(event.key==='Enter')qrGasValidar()"/>
-      </div>
-      <div id="qr-gas-gate-msg" style="min-height:18px;font-size:13px;color:#b3261e;margin-bottom:10px;text-align:center"></div>
-      <button class="btn-login" id="qr-gas-gate-btn" onclick="qrGasValidar()">Continuar</button>
+      <div class="q-h">Código de acesso</div>
+      <div class="q-p">Introduza o código da obra para registar gasóleo neste equipamento.</div>
+      <input type="text" id="qr-gas-codigo" class="q-input q-code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="Código da obra" onkeydown="if(event.key==='Enter')qrGasValidar()"/>
+      <div id="qr-gas-gate-msg" class="q-msg" style="text-align:center"></div>
+      <button class="q-btn" id="qr-gas-gate-btn" onclick="qrGasValidar()">Continuar</button>
     </div>
     <div id="qr-gas-form" style="display:none">
       <div class="qr-equip-info">
         <div class="qr-equip-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M3 22h11"/><path d="M14 10h2a2 2 0 0 1 2 2v3a1.5 1.5 0 0 0 3 0V8l-3-3"/><rect x="6" y="8" width="5" height="4"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M3 22h11"/><path d="M14 10h2a2 2 0 0 1 2 2v3a1.5 1.5 0 0 0 3 0V8l-3-3"/><rect x="6" y="8" width="5" height="4"/></svg>
         </div>
         <div>
           <div class="qr-equip-name" id="qr-gas-eq-nome">—</div>
-          <div class="qr-equip-cat" id="qr-gas-obra-nome" style="font-size:12px;color:var(--gray-500);margin-top:2px">—</div>
+          <div class="qr-equip-obra" id="qr-gas-obra-nome">—</div>
         </div>
       </div>
-      <div class="field" style="margin-bottom:14px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">De onde sai o gasóleo?</label>
-        <select id="qr-gas-origem" onchange="qrGasOrigem()" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)">
+      <div class="q-field">
+        <label>De onde sai o gasóleo?</label>
+        <select id="qr-gas-origem" class="q-input" onchange="qrGasOrigem()">
           <option value="deposito">Depósito de obra</option>
           <option value="bomba">Bomba / posto</option>
         </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-        <div class="field"><label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Litros *</label><input type="number" inputmode="decimal" step="0.1" min="0" id="qr-gas-litros" placeholder="0" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)"/></div>
-        <div class="field"><label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Data</label><input type="date" id="qr-gas-data" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)"/></div>
+      <div class="q-row">
+        <div class="q-field"><label>Litros *</label><input type="number" inputmode="decimal" step="0.1" min="0" id="qr-gas-litros" class="q-input" placeholder="0"/></div>
+        <div class="q-field"><label>Data</label><input type="date" id="qr-gas-data" class="q-input"/></div>
       </div>
-      <div class="field" style="margin-bottom:14px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Combustível</label>
-        <select id="qr-gas-tipo" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)"><option>Gasóleo</option><option>Gasolina</option><option>AdBlue</option><option>Elétrico</option><option>Outro</option></select>
+      <div class="q-field">
+        <label>Combustível</label>
+        <select id="qr-gas-tipo" class="q-input"><option>Gasóleo</option><option>Gasolina</option><option>AdBlue</option><option>Elétrico</option><option>Outro</option></select>
       </div>
-      <div class="field" id="qr-gas-forn-wrap" style="margin-bottom:14px;display:none">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Posto / fornecedor <span style="font-weight:400;color:var(--gray-400)">(opcional)</span></label>
-        <input type="text" id="qr-gas-forn" placeholder="Ex: Galp Setúbal" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)"/>
+      <div class="q-field" id="qr-gas-forn-wrap" style="display:none">
+        <label>Posto / fornecedor <span>(opcional)</span></label>
+        <input type="text" id="qr-gas-forn" class="q-input" placeholder="Ex: Galp Setúbal"/>
       </div>
-      <div class="field" style="margin-bottom:14px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Encarregado *</label>
-        <input type="text" id="qr-gas-nome" placeholder="O seu nome" style="width:100%;padding:12px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:15px;color:var(--gray-900)"/>
+      <div class="q-field">
+        <label>Encarregado *</label>
+        <input type="text" id="qr-gas-nome" class="q-input" placeholder="O seu nome"/>
       </div>
-      <div class="field" style="margin-bottom:16px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Observações <span style="font-weight:400;color:var(--gray-400)">(opcional)</span></label>
-        <textarea id="qr-gas-obs" rows="2" style="width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font);font-size:14px;resize:vertical"></textarea>
+      <div class="q-field">
+        <label>Observações <span>(opcional)</span></label>
+        <textarea id="qr-gas-obs" class="q-input" rows="2"></textarea>
       </div>
-      <div id="qr-gas-msg" style="min-height:18px;font-size:13px;color:#b3261e;margin-bottom:10px"></div>
-      <button class="btn-login" id="qr-gas-btn" onclick="qrGasSubmeter()">Registar gasóleo</button>
+      <div id="qr-gas-msg" class="q-msg"></div>
+      <button class="q-btn" id="qr-gas-btn" onclick="qrGasSubmeter()">Registar gasóleo</button>
     </div>
-    <div id="qr-gas-ok" style="display:none;text-align:center;padding:20px 0">
-      <div style="width:60px;height:60px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:30px;height:30px;color:var(--green)"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <div style="font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:8px">Gasóleo registado!</div>
-      <div style="font-size:13px;color:var(--gray-500);line-height:1.6" id="qr-gas-ok-txt"></div>
-      <button class="btn-login" style="margin-top:18px" onclick="qrGasNovo()">Novo registo</button>
+    <div id="qr-gas-ok" style="display:none" class="q-ok">
+      <div class="q-ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="q-h" style="text-align:center">Gasóleo registado!</div>
+      <div class="q-p" id="qr-gas-ok-txt" style="text-align:center"></div>
+      <button class="q-btn q-btn-sec" onclick="qrGasNovo()">Novo registo</button>
     </div>
     <div id="qr-reg-form" style="display:none">
       <div class="qr-equip-info">
