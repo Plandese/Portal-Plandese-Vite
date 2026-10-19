@@ -42,7 +42,7 @@ import { handlersArtigos } from './modules/faturas-artigos.js';
 import { renderCompras, editarCompra, saveCompra, apagarCompra, exportComprasXLSX, abrirMapaPicker, fecharMapaPicker, geocodeSearch, confirmarLocalizacao, limparLocalizacao, cmpRenderArtPicker, cmpAddArtigo, cmpRemoveArtigo, cmpUpdateArtigoQty, cmpAddArtigoRapido, cmpAddForn, cmpRemoveForn, initCompras, atualizaKPIsCompras, populaCmpObras, cmpSetView, abrirListaMateriais, fecharListaMateriais, confirmarListaMateriais, uploadListaExcel, uploadListaExcelFile, cmpVerListaCompleta, abrirCmpObraDetalhe, cmpLstRender, cmpLstToggle, cmpLstRemoveSel, lstUpdateQty, lstAddAvulso, cmpUpdateArtBtnBadge, abrirFornPicker, cmpFornPickerRender, cmpSelFornPicker, openCompraModal, cmpPedirCotacao, cmpFornSug, cmpFornSugHide, cmpPickForn } from './modules/compras.js';
 
 // Equipamentos
-import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, eqAluguerClick, exportEquipamentosXLSX, openEqManut, abrirEqDetalhe, eqVerLocalizacao, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
+import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento, saveEquipamento, apagarEquipamento, refreshEqMap, showQrCode, printQrCode, showEqHistorico, eqAluguerClick, eqObrasPickerFiltra, eqObrasPickerEscolher, exportEquipamentosXLSX, openEqManut, abrirEqDetalhe, eqVerLocalizacao, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut, submitQrRegistration, initEquipamentos, initQrRegistration, switchEqView, renderEqPorObra, abrirEqObraDetalhe, renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra } from './modules/equipamentos.js';
 
 // Combustível admin
 import { combBuscaRender, combVerListaCompleta, combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards, loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip, abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
@@ -225,7 +225,7 @@ Object.assign(window, {
   // Equipamentos
   renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, editEquipamento,
   saveEquipamento, apagarEquipamento, refreshEqMap,
-  showQrCode, printQrCode, showEqHistorico, eqAluguerClick, exportEquipamentosXLSX,
+  showQrCode, printQrCode, showEqHistorico, eqAluguerClick, eqObrasPickerFiltra, eqObrasPickerEscolher, exportEquipamentosXLSX,
   openEqManut, abrirEqDetalhe, eqVerLocalizacao, eqManutFotoAbrir, addEqManut, toggleEqManut, removeEqManut,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,

@@ -704,10 +704,34 @@ function eqPreencherObras(eq){
   const sel=document.getElementById('meq-obra'); if(!sel) return;
   const obras=(S.OBRAS||[]).filter(o=>obraEmCurso(o)||o.id===eq.obraId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
   const atual=eq.obraId&&obras.some(o=>o.id===eq.obraId)?eq.obraId:'';
-  sel.innerHTML='<option value="">— Sem obra —</option>'+obras.map(o=>`<option value="${eqEsc(o.id)}">${eqEsc(o.nome)}</option>`).join('');
+  sel.innerHTML='<option value="">— Sem obra —</option>'+obras.map(o=>`<option value="${eqEsc(o.id)}">${eqEsc(o.nome)}</option>`).join('')+'<option value="__outras__">Outras obras…</option>';
   sel.value=atual;
+  sel.onchange=()=>{ if(sel.value==='__outras__'){ sel.value=sel.dataset.prev||''; eqObrasPickerAbrir(); } else sel.dataset.prev=sel.value; };
+  sel.dataset.prev=atual;
   // equipamento com local que não é uma obra (ex.: SEDE): mantém-se se não for alterado
   sel.dataset.orig=atual;
+}
+// Seletor com todas as obras (ativas e inativas) para quando a obra não está na lista curta
+function eqObrasPickerAbrir(){
+  document.getElementById('meqo-q').value='';
+  eqObrasPickerFiltra();
+  openModal('modal-eq-obras');
+  setTimeout(()=>document.getElementById('meqo-q')?.focus(),50);
+}
+function eqObrasPickerFiltra(){
+  const t=(document.getElementById('meqo-q').value||'').toLowerCase();
+  const obras=(S.OBRAS||[]).filter(o=>!t||o.nome.toLowerCase().includes(t)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  const tag=o=>obraEmCurso(o)?'<span class="eq-est-badge eq-est-ok">Em curso</span>':(o.estado==='concluida'?'<span class="eq-est-badge eq-est-par">Concluída</span>':'<span class="eq-est-badge eq-est-man">Inativa</span>');
+  document.getElementById('meqo-lista').innerHTML=obras.map(o=>`<div onclick="eqObrasPickerEscolher('${eqEsc(o.id)}')" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #eef1f6;cursor:pointer;font-size:13.5px"><span>${eqEsc(o.nome)}</span>${tag(o)}</div>`).join('')||'<div style="padding:14px;color:var(--gray-500)">Nenhuma obra encontrada</div>';
+}
+function eqObrasPickerEscolher(id){
+  const o=(S.OBRAS||[]).find(x=>x.id===id), sel=document.getElementById('meq-obra'); if(!o||!sel) return;
+  if(![...sel.options].some(op=>op.value===id)){
+    const op=document.createElement('option'); op.value=id; op.textContent=o.nome;
+    sel.insertBefore(op, sel.querySelector('option[value="__outras__"]'));
+  }
+  sel.value=id; sel.dataset.prev=id;
+  closeModal('modal-eq-obras');
 }
 function editEquipamento(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); if(eq) openEqModal(eq); }
 function saveEquipamento(){
@@ -1090,7 +1114,7 @@ export {
   renderEquipamentos, updateEqKPIs, renderEqBusca, eqVerListaCompleta,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
-  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick,
+  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqObrasPickerFiltra, eqObrasPickerEscolher,
   openEqManut, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,

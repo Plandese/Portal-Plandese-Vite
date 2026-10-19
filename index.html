@@ -3905,4 +3905,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="/artigos-data.js"></script>
     <script type="module" src="/src/main.js"></script>
+<div class="modal-bg" id="modal-eq-obras">
+  <div class="modal" style="width:560px">
+    <h3 style="margin:0 0 12px">Escolher obra</h3>
+    <input type="text" id="meqo-q" class="eq-sel" placeholder="Pesquisar por código ou nome…" oninput="eqObrasPickerFiltra()" style="width:100%;margin-bottom:10px"/>
+    <div id="meqo-lista" style="max-height:55vh;overflow:auto"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-eq-obras')">Cancelar</button></div>
+  </div>
+</div>
 </body>
