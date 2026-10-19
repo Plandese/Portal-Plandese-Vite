@@ -231,7 +231,7 @@ function _encEqPrepFormRegisto(){
   document.getElementById('enc-eq-nome').textContent=eq.nome;
   document.getElementById('enc-eq-cat').textContent=EQ_CATS[eqCatNorm(eq.categoria)].label;
   const sel=document.getElementById('enc-eq-obra-sel');
-  sel.innerHTML='<option value="">Selecionar obra…</option>';
+  sel.innerHTML='<option value="">Selecionar obra…</option><option value="__sem__">Sem obra</option>';
   S.OBRAS.filter(obraEmCurso).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
   document.getElementById('enc-eq-obs').value='';
   document.getElementById('enc-eq-use-gps').checked=true;
@@ -258,7 +258,9 @@ function _encEqPrepFormRegisto(){
 function submitEncEquipamento(){
   if(!_encEqEquip){ showToast('Nenhum equipamento seleccionado'); return; }
   const equipId =_encEqEquip.id;
-  const obraId  =document.getElementById('enc-eq-obra-sel').value;
+  const obraSel=document.getElementById('enc-eq-obra-sel').value;
+  if(!obraSel){ showToast('Escolha a obra ou "Sem obra"'); return; }
+  const obraId  =obraSel==='__sem__'?'':obraSel;
   const obs     =document.getElementById('enc-eq-obs').value.trim();
   const useGps  =document.getElementById('enc-eq-use-gps').checked;
   const encNome =S.currentUser?.nome || 'Encarregado';
