@@ -273,7 +273,7 @@ async function onDepQrScanned(text){
   stopDepQrScanner();
   let equipId=null;
   try{ const u=new URL(text); equipId=u.searchParams.get('reg'); }catch(e){}
-  if(!equipId && /^EQ[A-Z0-9]+$/.test(text)) equipId=text;
+  if(!equipId && /^[A-Za-z0-9_-]{6,}$/.test(String(text||'').trim())) equipId=String(text).trim();
   if(!equipId){
     showToast('QR code não reconhecido como equipamento Plandese');
     setTimeout(()=>startDepQrScanner(), 2500);
@@ -494,6 +494,31 @@ function encGoCombDeposito(){
   depSetMovimento('entrada');
 }
 
+// Vindo do QR do equipamento: saída do depósito já para este equipamento
+function encCombDepositoComEquip(eq){
+  encGoCombDeposito();
+  depSetMovimento('saida');
+  _depEquip={id:eq.id,nome:eq.nome};
+  _depRenderEquipEscolhido();
+}
+// Vindo do QR do equipamento: abastecimento (bomba) já para este equipamento
+function encCombViaturaComEquip(eq){
+  _encHideAll();
+  const s=document.getElementById('enc-screen-comb-viatura');
+  s.style.display='flex'; s.style.flexDirection='column';
+  stopCombQrScanner();
+  _combQrEquipId=eq.id; _combModoManual=false;
+  _combViaturaShowState('form');
+  document.getElementById('comb-viatura-info-box').style.display='flex';
+  document.getElementById('comb-viatura-nome-field').style.display='none';
+  document.getElementById('comb-viatura-scan-btn').style.display='inline-flex';
+  const real=EQUIPAMENTOS.find(e=>e.id===eq.id);
+  document.getElementById('comb-viatura-nome').textContent=eq.nome;
+  document.getElementById('comb-viatura-cat').textContent=real?(EQ_CATS[eqCatNorm(real.categoria)].label):'Equipamento';
+  _combPreencherFormViatura();
+  _cntSyncViatura();
+}
+
 async function encSubmeterCombDeposito(){
   const data=document.getElementById('dep-data').value;
   const obraEl=document.getElementById('dep-obra');
@@ -599,7 +624,7 @@ async function onCombQrScanned(text){
   stopCombQrScanner();
   let equipId=null;
   try{const u=new URL(text); equipId=u.searchParams.get('reg');}catch(e){}
-  if(!equipId && /^EQ[A-Z0-9]+$/.test(text)) equipId=text;
+  if(!equipId && /^[A-Za-z0-9_-]{6,}$/.test(String(text||'').trim())) equipId=String(text).trim();
   if(!equipId){
     showToast('QR code não reconhecido como equipamento Plandese');
     setTimeout(()=>startCombQrScanner(), 2500);
@@ -1107,6 +1132,7 @@ window.chatSend         = chatSend;
 window.chatOnInput      = chatOnInput;
 
 export {
+  encCombDepositoComEquip, encCombViaturaComEquip,
   encUpdateFuelWidget, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito,
   depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip,
   encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, startCombQrScanner, stopCombQrScanner, onCombQrScanned,

@@ -17,7 +17,7 @@ function _encEsc(s){
   return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-const _ENC_EQ_STATES = ['metodo','scanner','lista','acao','form-reg','form-man','sucesso'];
+const _ENC_EQ_STATES = ['metodo','scanner','lista','acao','gasoleo','form-reg','form-man','sucesso'];
 function _encEqShowState(state){
   _ENC_EQ_STATES.forEach(s=>{
     const el = document.getElementById('enc-eq-state-'+s);
@@ -85,7 +85,7 @@ async function onEncQrScanned(text){
   // Extrair equipId da URL ou texto directo
   let equipId=null;
   try{ const u=new URL(text); equipId=u.searchParams.get('reg'); }catch(e){}
-  if(!equipId && /^EQ[A-Z0-9]+$/.test(text)) equipId=text;
+  if(!equipId && /^[A-Za-z0-9_-]{6,}$/.test(String(text||'').trim())) equipId=String(text).trim();
   if(!equipId){
     showToast('QR code não reconhecido como equipamento Plandese');
     setTimeout(()=>startEncQrScanner(), 2500);
@@ -153,13 +153,36 @@ function encEqVoltarAcao(){
 function encEqEscolherAcao(acao){
   if(!_encEqEquip) return;
   _encEqAction = acao;
-  if(acao==='registo'){
+  if(acao==='gasoleo'){
+    document.getElementById('enc-eq-gas-nome').textContent=_encEqEquip.nome;
+    _encEqShowState('gasoleo');
+  } else if(acao==='registo'){
     _encEqPrepFormRegisto();
     _encEqShowState('form-reg');
   } else {
     _encEqPrepFormManut();
     _encEqShowState('form-man');
   }
+}
+
+// ── Gasóleo: escolhe de onde sai e continua nos ecrãs de combustível, já com o equipamento ──
+function encEqGasoleoOrigem(origem){
+  if(!_encEqEquip) return;
+  const eq={id:_encEqEquip.id, nome:_encEqEquip.nome};
+  if(origem==='deposito') window.encCombDepositoComEquip?.(eq);
+  else window.encCombViaturaComEquip?.(eq);
+}
+
+// Alternativa à câmara ao vivo: fotografar o QR code
+async function encEqQrFoto(inp){
+  const f=inp.files&&inp.files[0]; inp.value=''; if(!f) return;
+  stopEncQrScanner();
+  try{
+    const q=new Html5Qrcode('enc-qr-reader');
+    const txt=await q.scanFile(f,false);
+    try{ q.clear(); }catch(e){}
+    onEncQrScanned(txt);
+  }catch(e){ showToast('Não foi possível ler o QR code. Tente outra fotografia, mais perto e com boa luz.'); }
 }
 
 // ── Formulário: registar localização ────
@@ -345,6 +368,6 @@ export {
   encEqAbrir, encEqVoltarMetodo,
   encEqEscolherMetodoQR, startEncQrScanner, stopEncQrScanner, onEncQrScanned,
   encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher,
-  encEqVoltarAcao, encEqEscolherAcao,
+  encEqVoltarAcao, encEqEscolherAcao, encEqGasoleoOrigem, encEqQrFoto,
   submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover
 };

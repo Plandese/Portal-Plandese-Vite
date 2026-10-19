@@ -240,6 +240,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;opacity:.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01"/><path d="M18 14h.01"/><path d="M21 14h.01"/><path d="M14 18h.01"/><path d="M18 18h.01"/><path d="M21 18h.01"/><path d="M14 21h.01"/><path d="M18 21h.01"/><path d="M21 21h.01"/></svg>
             Aponte a câmara para o QR code do equipamento
           </div>
+          <input type="file" id="enc-qr-file" accept="image/*" capture="environment" style="display:none" onchange="encEqQrFoto(this)"/>
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('enc-qr-file').click()" style="margin-top:14px">Tirar fotografia ao QR code</button>
         </div>
       </div>
 
@@ -287,6 +289,16 @@
             </div>
             <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
           </button>
+          <button class="enc-mode-card" onclick="encEqEscolherAcao('gasoleo')" style="margin-bottom:14px">
+            <div class="enc-mode-icon" style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M3 22h11"/><path d="M14 10h2a2 2 0 0 1 2 2v3a1.5 1.5 0 0 0 3 0V8l-3-3"/><rect x="6" y="8" width="5" height="4"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="enc-mode-title">Registar gasóleo</div>
+              <div class="enc-mode-desc">Abastecimento a partir do depósito da obra ou de uma bomba</div>
+            </div>
+            <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </button>
           <button class="enc-mode-card" onclick="encEqEscolherAcao('manut')">
             <div class="enc-mode-icon orange">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -294,6 +306,39 @@
             <div style="flex:1;min-width:0">
               <div class="enc-mode-title">Pedir manutenção</div>
               <div class="enc-mode-desc">Reportar uma avaria ou necessidade de manutenção</div>
+            </div>
+            <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado 3b: ORIGEM DO GASÓLEO -->
+      <div id="enc-eq-state-gasoleo" style="display:none;flex:1;flex-direction:column">
+        <div style="padding:6px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <button onclick="encEqVoltarAcao()" style="display:inline-flex;align-items:center;gap:5px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;color:var(--gray-700);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;font-family:var(--font)">Voltar</button>
+        </div>
+        <div style="padding:12px clamp(16px,4vw,24px) 0;flex-shrink:0">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900)" id="enc-eq-gas-nome">—</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:3px">De onde sai o gasóleo?</div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px clamp(14px,4vw,22px) 24px">
+          <button class="enc-mode-card" onclick="encEqGasoleoOrigem('deposito')" style="margin-bottom:14px">
+            <div class="enc-mode-icon" style="background:linear-gradient(135deg,#b45309,#d97706);color:white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M3 22h11"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="enc-mode-title">Depósito de obra</div>
+              <div class="enc-mode-desc">Saída do depósito da obra para este equipamento</div>
+            </div>
+            <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </button>
+          <button class="enc-mode-card" onclick="encEqGasoleoOrigem('bomba')">
+            <div class="enc-mode-icon" style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 10h2a2 2 0 0 1 2 2v3a1.5 1.5 0 0 0 3 0V8l-3-3"/><path d="M3 22V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><rect x="6" y="8" width="5" height="4"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="enc-mode-title">Bomba</div>
+              <div class="enc-mode-desc">Abastecimento num posto / bomba</div>
             </div>
             <div class="enc-mode-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
           </button>

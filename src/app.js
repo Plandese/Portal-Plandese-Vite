@@ -51,10 +51,10 @@ import { combBuscaRender, combVerListaCompleta, combSwitchView, abrirCombEquipDe
 import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal, encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit } from './modules/enc-ponto.js';
 
 // Enc-equip
-import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
+import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, encEqGasoleoOrigem, encEqQrFoto, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
 
 // Enc-combustivel + assistente de compras
-import { encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
+import { encCombDepositoComEquip, encCombViaturaComEquip, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, moaFechoCarregar, moaFechoExport, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
@@ -255,7 +255,7 @@ Object.assign(window, {
 
   // Encarregado — equipamentos (QR ou lista → registo/manutenção)
   encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista,
-  encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao,
+  encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, encEqGasoleoOrigem, encEqQrFoto, encCombDepositoComEquip, encCombViaturaComEquip,
   submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover,
 
   // Encarregado — combustível

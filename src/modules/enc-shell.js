@@ -34,7 +34,7 @@ const ECRAS = {
   'enc-screen-aluguer':      { t: 'MO Aluguer', s: 'Mão de obra cedida', i: IC.users, back: 'encVoltarHome', nav: 'ponto' },
   'enc-screen-equip':        { t: 'Equipamentos', s: 'Localização e manutenção', i: IC.qr, back: 'encVoltarHome', nav: 'equip', estados: {
     'enc-eq-state-scanner': 'encEqVoltarMetodo', 'enc-eq-state-lista': 'encEqVoltarMetodo', 'enc-eq-state-acao': 'encEqVoltarMetodo',
-    'enc-eq-state-form-reg': 'encEqVoltarAcao', 'enc-eq-state-form-man': 'encEqVoltarAcao' } },
+    'enc-eq-state-gasoleo': 'encEqVoltarAcao', 'enc-eq-state-form-reg': 'encEqVoltarAcao', 'enc-eq-state-form-man': 'encEqVoltarAcao' } },
   'enc-screen-combustivel':  { t: 'Combustível', s: 'Escolha o tipo de registo', i: IC.fuel, back: 'encVoltarHome', nav: 'comb' },
   'enc-screen-comb-deposito':{ t: 'Depósito de obra', s: 'Entrada e saída de gasóleo', i: IC.drop, back: 'encGoCombustivel', nav: 'comb' },
   'enc-screen-comb-viatura': { t: 'Abastecimento bombas', s: 'Viaturas e máquinas', i: IC.fuel, back: 'encGoCombustivel', nav: 'comb', estados: {
