@@ -1331,6 +1331,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           <span class="nav-label">Faturas Por Aprovar</span>
         </button>
+        <button class="nav-btn" onclick="goTo('faturas-lancadas',this)" id="nav-flan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="nav-label">Faturas Lançadas</span>
+        </button>
         <button class="nav-btn" onclick="goTo('tesouraria',this)" id="nav-tes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
           <span class="nav-label">Tesouraria</span>
@@ -1746,6 +1750,23 @@
           <select id="far-cc" style="min-width:240px"><option value="">Todas as obras</option></select>
         </div>
         <div class="card" id="far-mapa" style="padding:0;overflow:hidden"></div>
+      </section>
+
+      <!-- FATURAS LANÇADAS (valor por artigo, por obra) -->
+      <section id="sec-faturas-lancadas" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Faturas Lançadas</div>
+            <div class="pg-sub">Valor por artigo das faturas lidas, por obra — só entram depois de aprovadas pelo diretor de obra</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center"><button type="button" class="btn btn-secondary btn-sm" data-flan-exp>Exportar Excel</button></div>
+        </div>
+        <div id="flan-chips" class="d-chips"></div>
+        <div class="filter-bar">
+          <input type="text" id="flan-q" placeholder="Pesquisar artigo, fornecedor ou fatura…" style="flex:1;min-width:220px"/>
+          <select id="flan-obra" style="min-width:240px"><option value="">Todas as obras</option></select>
+        </div>
+        <div class="card" id="flan-mapa" style="padding:0;overflow:hidden"></div>
       </section>
 
       <!-- TESOURARIA -->

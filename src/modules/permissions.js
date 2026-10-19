@@ -163,7 +163,7 @@ export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
 const SECTION_LABELS = {
   'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','colaboradores':'Colaboradores',
-  'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria',
+  'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','faturas-lancadas':'Faturas Lançadas','tesouraria':'Tesouraria',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
   'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',
@@ -357,6 +357,7 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos
 const SECTION_ROLES = {
   'faturas':         ['admin','financeiro'],
   'tesouraria':      ['admin','financeiro'],
+  'faturas-lancadas': ['admin','financeiro'],
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };
 
