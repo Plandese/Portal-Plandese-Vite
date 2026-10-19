@@ -2174,6 +2174,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Novo equipamento
             </button>
+            <button class="btn btn-secondary eq-qr-btn" onclick="eqQrAbrir()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>
+              Ler QR Code
+            </button>
           </div>
         </div>
         <div class="alert alert-ok" id="eq-alert">Equipamento guardado.</div>
@@ -3911,6 +3915,19 @@
     <input type="text" id="meqo-q" class="eq-sel" placeholder="Pesquisar por código ou nome…" oninput="eqObrasPickerFiltra()" style="width:100%;margin-bottom:10px"/>
     <div id="meqo-lista" style="max-height:55vh;overflow:auto"></div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-eq-obras')">Cancelar</button></div>
+  </div>
+</div>
+<div class="modal-bg" id="modal-eq-qr">
+  <div class="modal" style="width:480px">
+    <h3 style="margin:0 0 4px">Ler QR Code</h3>
+    <div style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Aponte a câmara ao QR code do equipamento.</div>
+    <div id="eq-qr-reader" style="width:100%;min-height:260px;border-radius:14px;overflow:hidden;background:#0b1220"></div>
+    <div id="eq-qr-msg" style="font-size:13px;color:var(--gray-500);margin-top:10px;min-height:18px"></div>
+    <input type="file" id="eq-qr-file" accept="image/*" capture="environment" style="display:none" onchange="eqQrFoto(this)"/>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary" onclick="document.getElementById('eq-qr-file').click()">Tirar fotografia</button>
+      <button class="btn btn-secondary" onclick="eqQrFechar()">Cancelar</button>
+    </div>
   </div>
 </div>
 </body>

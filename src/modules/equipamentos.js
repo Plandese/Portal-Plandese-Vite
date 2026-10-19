@@ -544,6 +544,51 @@ async function eqAluguerClick(id){
   eqAluguerCarregar(id);
 }
 
+// ── Ler o QR code de um equipamento (câmara ao vivo ou fotografia) e abrir as suas opções ──
+let _eqQr = null;
+async function eqQrParar(){
+  const q=_eqQr; _eqQr=null;
+  if(q){ try{ await q.stop(); }catch(e){} try{ q.clear(); }catch(e){} }
+}
+function eqQrMsg(t){ const el=document.getElementById('eq-qr-msg'); if(el) el.textContent=t||''; }
+function eqQrAbrir(){
+  eqQrMsg('');
+  document.getElementById('eq-qr-reader').innerHTML='';
+  openModal('modal-eq-qr');
+  setTimeout(async ()=>{
+    if(typeof Html5Qrcode==='undefined'){ eqQrMsg('Leitor indisponível — use "Tirar fotografia".'); return; }
+    await eqQrParar();
+    _eqQr=new Html5Qrcode('eq-qr-reader');
+    _eqQr.start({facingMode:'environment'},{fps:10,qrbox:{width:230,height:230}},txt=>eqQrLido(txt),()=>{})
+      .catch(err=>{ console.warn('eqQrAbrir:',err); _eqQr=null; eqQrMsg('Câmara não acessível — use "Tirar fotografia".'); });
+  },250);
+}
+async function eqQrFechar(){ await eqQrParar(); closeModal('modal-eq-qr'); }
+async function eqQrFoto(inp){
+  const f=inp.files&&inp.files[0]; inp.value=''; if(!f) return;
+  await eqQrParar();
+  eqQrMsg('A ler a fotografia…');
+  try{
+    const q=new Html5Qrcode('eq-qr-reader');
+    const txt=await q.scanFile(f,false);
+    try{ q.clear(); }catch(e){}
+    eqQrLido(txt);
+  }catch(e){ eqQrMsg('Não foi possível ler o QR code. Tente outra fotografia, mais perto e com boa luz.'); }
+}
+async function eqQrLido(texto){
+  let id=null;
+  try{ id=new URL(texto).searchParams.get('reg'); }catch(e){}
+  if(!id) id=String(texto||'').trim();
+  let eq=EQUIPAMENTOS.find(e=>e.id===id);
+  if(!eq){
+    eq=await sbFetchEquipamentoById(id);
+    if(eq){ EQUIPAMENTOS.push(eq); saveEqLocal(); }
+  }
+  if(!eq){ eqQrMsg('QR code não reconhecido como equipamento Plandese.'); return; }
+  await eqQrFechar();
+  abrirEqDetalhe(eq.id);
+}
+
 // Morada a partir das coordenadas (geocodificação inversa OpenStreetMap, com cache em memória)
 const _eqMoradaCache = {};
 async function eqMorada(lat,lng){
@@ -1117,7 +1162,7 @@ export {
   renderEquipamentos, updateEqKPIs, renderEqBusca, eqVerListaCompleta,
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
-  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqObrasPickerFiltra, eqObrasPickerEscolher,
+  showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqQrAbrir, eqQrFechar, eqQrFoto, eqObrasPickerFiltra, eqObrasPickerEscolher,
   openEqManut, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,

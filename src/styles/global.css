@@ -2370,3 +2370,4 @@ body.device-mobile .pr-resize{display:none}
 .eq-alu-hist .r{text-align:right}
 .eq-alu-hist tfoot td{font-weight:700;background:#f6f8fb}
 .eq-alu-em{color:#6d28d9;font-weight:600}
+.eq-qr-btn svg{width:16px;height:16px;flex:none}
