@@ -316,12 +316,14 @@ function _eqObraRowHtml(eq){
   </div>`;
 }
 
+// Parados e em manutenção/oficina primeiro; depois os operacionais
+const _eqOrdemEstado = eq => ({parada:0, manutencao:1, oficina:1})[eq.estado] ?? 2;
 function abrirEqObraDetalhe(i){
   const ob = _eqObraGroups[i]; if(!ob) return;
   document.getElementById('meqo-title').textContent = ob.nome;
   document.getElementById('meqo-sub').textContent = `${ob.items.length} equipamento${ob.items.length!==1?'s':''}`;
   document.getElementById('meqo-list').innerHTML = ob.items
-    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+    .sort((a,b)=>_eqOrdemEstado(a)-_eqOrdemEstado(b)||a.nome.localeCompare(b.nome,'pt'))
     .map(_eqObraRowHtml).join('');
   openModal('modal-eq-obra-detalhe');
 }
