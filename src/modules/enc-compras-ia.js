@@ -19,7 +19,7 @@ const SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const STOP = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
 const SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>';
 
-const SUGESTOES = ['Preciso de material para uma obra', 'Quero pedir cimento e areia', 'Em que estado estão os meus pedidos?'];
+const SUGESTOES = ['Pedido de tout-venant', 'Pedido de areia', 'Pedido de cimento', 'Pedido de capacetes', 'Pedido de botas'];
 const MAX_HIST = 14;
 
 let msgs = [];          // {role, content, acoes?, erro?}
