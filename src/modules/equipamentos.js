@@ -1100,7 +1100,7 @@ async function qrGasValidar(){
     document.getElementById('qr-gas-obra-nome').textContent=data.obra.nome;
     document.getElementById('qr-gas-origem').value='deposito'; qrGasOrigem();
     document.getElementById('qr-gas-litros').value='';
-    // Km/Horas (opcional): o servidor decide a unidade pela categoria do equipamento
+    // Km/Horas (obrigatório): o servidor decide a unidade pela categoria do equipamento
     document.getElementById('qr-gas-cnt').value='';
     document.getElementById('qr-gas-data').value=fmt(new Date());
     document.getElementById('qr-gas-tipo').value='Gasóleo';
@@ -1124,6 +1124,8 @@ async function qrGasSubmeter(){
   const litros=parseFloat(g('qr-gas-litros').replace(',','.'));
   const nome=g('qr-gas-nome');
   if(!litros||litros<=0){ msg.textContent='Indique os litros.'; return; }
+  const cnt=parseFloat(g('qr-gas-cnt').replace(',','.'));
+  if(!Number.isFinite(cnt)||cnt<0){ msg.textContent='Indique os Km/Horas do equipamento.'; return; }
   if(!nome){ msg.textContent='Indique o nome de quem está a registar.'; return; }
   btn.disabled=true; msg.textContent='';
   try{
@@ -1131,7 +1133,7 @@ async function qrGasSubmeter(){
     const {data,error}=await sb.rpc('fn_qr_gas_registar',{
       p_equip_id:_qrEquipId, p_codigo:_qrGas.codigo, p_origem:origem, p_litros:litros, p_tipo:g('qr-gas-tipo'),
       p_data:g('qr-gas-data')||null, p_obs:g('qr-gas-obs')||null, p_encarregado:nome, p_fornecedor:origem==='bomba'?(g('qr-gas-forn')||null):null,
-      p_contador:(()=>{ const v=parseFloat(g('qr-gas-cnt').replace(',','.')); return Number.isFinite(v)&&v>=0?v:null; })()
+      p_contador:cnt
     });
     if(error) throw error;
     if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : data?.motivo==='contador' ? 'Valor de horas/quilómetros inválido.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
