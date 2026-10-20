@@ -9,6 +9,8 @@
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { md } from './agente.js';
+import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition as SRNativo } from '@capacitor-community/speech-recognition';
 
 const BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/`;
 const ANON = import.meta.env.VITE_SUPABASE_KEY;
@@ -25,6 +27,8 @@ const MAX_HIST = 14;
 // ── Voz (partilhada pelos agentes) ───────────────────────────────
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const TTS = 'speechSynthesis' in window;
+// Na app instalada (Android) o reconhecimento de voz do Chrome não existe: usa-se o plugin nativo
+const NATIVO = Capacitor.isNativePlatform();
 let lerVoz = (() => { try { return localStorage.getItem('plandese_enc_voz') !== '0'; } catch (e) { return true; } })();
 
 // Os telemóveis não dizem o género da voz: escolhe-se pelo nome (vozes femininas conhecidas de pt-PT
@@ -123,8 +127,39 @@ function criarChat(cfg) {
   };
   let aguardaInicio = 0;
 
+  // Fim da escuta (comum ao plugin nativo): envia o que foi ouvido
+  function terminarEscuta() {
+    ouvindo = false; marcarVoz();
+    const inp = $('in'); if (inp) inp.placeholder = cfg.placeholder;
+    const txt = textoOuvido.trim();
+    textoOuvido = ''; $('live')?.remove();
+    if (txt) tratarFala(txt); else modoVoz = false;
+  }
+
+  async function ouvirNativo() {
+    if (!Capacitor.isPluginAvailable('SpeechRecognition')) return avisoVoz('Esta versão da app Plandese ainda não tem voz. Instale a versão mais recente em instalar.html.');
+    try {
+      const av = await SRNativo.available();
+      if (!av.available) return avisoVoz('Este tablet não tem reconhecimento de voz. Instale ou ative a app "Google" nas definições.');
+      const perm = await SRNativo.requestPermissions();
+      if (perm.speechRecognition !== 'granted') return avisoVoz('O microfone está bloqueado. Ative a permissão do microfone para a app Plandese nas definições do tablet.');
+    } catch (e) { return avisoVoz('Não foi possível preparar o microfone (' + (e?.message || 'erro') + ').'); }
+    pararFalar();
+    textoOuvido = '';
+    await SRNativo.removeAllListeners();
+    await SRNativo.addListener('partialResults', d => { textoOuvido = (d.matches && d.matches[0]) || textoOuvido; desenharOuvido(); });
+    await SRNativo.addListener('listeningState', d => {
+      if (d.status === 'started') { ouvindo = true; marcarVoz(); const inp = $('in'); if (inp) inp.placeholder = 'A ouvir… fale agora'; }
+      else if (d.status === 'stopped' && ouvindo) { terminarEscuta(); }
+    });
+    try { await SRNativo.start({ language: 'pt-PT', maxResults: 1, partialResults: true, popup: false }); }
+    catch (e) { ouvindo = false; marcarVoz(); modoVoz = false; avisoVoz('Não foi possível ligar o microfone (' + (e?.message || 'erro') + ').'); }
+  }
+
   function iniciarOuvir() {
-    if (!SR || busy || ouvindo) return;
+    if (busy || ouvindo) return;
+    if (NATIVO) return ouvirNativo();
+    if (!SR) return;
     pararFalar();
     const inp = $('in');
     erroVoz = ''; textoOuvido = '';
@@ -162,7 +197,9 @@ function criarChat(cfg) {
     };
     try { rec.start(); } catch (e) { clearTimeout(aguardaInicio); ouvindo = false; marcarVoz(); avisoVoz('Não foi possível ligar o microfone (' + (e?.name || 'erro') + ').'); }
   }
-  function pararOuvir() { if (rec && ouvindo) { try { rec.stop(); } catch (e) { /* já parado */ } } }
+  function pararOuvir() {
+    if (NATIVO) { if (ouvindo) SRNativo.stop().catch(() => {}); return; }
+    if (rec && ouvindo) { try { rec.stop(); } catch (e) { /* já parado */ } } }
   function avisoVoz(t) { msgs.push({ role: 'assistant', content: '', erro: t, acoes: [] }); render(true); }
 
   // Responder "confirmar"/"cancelar" por voz ao cartão pendente; o resto segue como mensagem normal
@@ -184,8 +221,8 @@ function criarChat(cfg) {
   function abrir() {
     const ecra = document.getElementById(cfg.tela);
     if (!ecra) return;
-    if ($('mic')) $('mic').hidden = !SR;
-    if ($('voz')) $('voz').hidden = !(SR && TTS);
+    if ($('mic')) $('mic').hidden = !(SR || NATIVO);
+    if ($('voz')) $('voz').hidden = !((SR || NATIVO) && TTS);
     marcarVoz();
     if (!ligado) {
       ligado = true;
