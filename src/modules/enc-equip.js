@@ -233,6 +233,9 @@ function _encEqPrepFormRegisto(){
   const sel=document.getElementById('enc-eq-obra-sel');
   sel.innerHTML='<option value="">Selecionar obra…</option><option value="__sem__">Sem obra</option>';
   S.OBRAS.filter(obraEmCurso).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.nome; sel.appendChild(op); });
+  // Obra onde o equipamento está neste momento, pré-selecionada (o encarregado só muda se o mover)
+  if(eq.obraId && [...sel.options].some(op=>op.value===eq.obraId)) sel.value=eq.obraId;
+  else if(!eq.obraId && /^sem obra/i.test(eq.ultimoLocal||'')) sel.value='__sem__';
   document.getElementById('enc-eq-obs').value='';
   document.getElementById('enc-eq-use-gps').checked=true;
   document.getElementById('enc-eq-loc-dot').className='qr-loc-dot loading';
