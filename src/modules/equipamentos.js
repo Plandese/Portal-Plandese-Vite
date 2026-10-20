@@ -1100,6 +1100,9 @@ async function qrGasValidar(){
     document.getElementById('qr-gas-obra-nome').textContent=data.obra.nome;
     document.getElementById('qr-gas-origem').value='deposito'; qrGasOrigem();
     document.getElementById('qr-gas-litros').value='';
+    // Veículo → quilómetros; máquina e restantes → horas de trabalho (opcional)
+    document.getElementById('qr-gas-cnt').value='';
+    document.getElementById('qr-gas-cnt-label').innerHTML=(eqCatIsVeiculo(data.equipamento.categoria)?'Quilómetros':'Horas de trabalho')+' <span>(opcional)</span>';
     document.getElementById('qr-gas-data').value=fmt(new Date());
     document.getElementById('qr-gas-tipo').value='Gasóleo';
     document.getElementById('qr-gas-forn').value='';
@@ -1128,10 +1131,11 @@ async function qrGasSubmeter(){
     const origem=g('qr-gas-origem');
     const {data,error}=await sb.rpc('fn_qr_gas_registar',{
       p_equip_id:_qrEquipId, p_codigo:_qrGas.codigo, p_origem:origem, p_litros:litros, p_tipo:g('qr-gas-tipo'),
-      p_data:g('qr-gas-data')||null, p_obs:g('qr-gas-obs')||null, p_encarregado:nome, p_fornecedor:origem==='bomba'?(g('qr-gas-forn')||null):null
+      p_data:g('qr-gas-data')||null, p_obs:g('qr-gas-obs')||null, p_encarregado:nome, p_fornecedor:origem==='bomba'?(g('qr-gas-forn')||null):null,
+      p_contador:(()=>{ const v=parseFloat(g('qr-gas-cnt').replace(',','.')); return Number.isFinite(v)&&v>=0?v:null; })()
     });
     if(error) throw error;
-    if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
+    if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : data?.motivo==='contador' ? 'Valor de horas/quilómetros inválido.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
     try{ localStorage.setItem('plandese_enc_nome',JSON.stringify(nome)); }catch(e){}
     document.getElementById('qr-gas-ok-txt').innerHTML=
       `<strong>${eqEsc(nome)}</strong> registou<br><strong>${litros} L de ${eqEsc(g('qr-gas-tipo'))}</strong><br>em <strong>${eqEsc(_qrGas.equipamento.nome)}</strong><br>Obra: <strong>${eqEsc(_qrGas.obra.nome)}</strong>`+
