@@ -1100,9 +1100,8 @@ async function qrGasValidar(){
     document.getElementById('qr-gas-obra-nome').textContent=data.obra.nome;
     document.getElementById('qr-gas-origem').value='deposito'; qrGasOrigem();
     document.getElementById('qr-gas-litros').value='';
-    // Veículo → quilómetros; máquina e restantes → horas de trabalho (opcional)
+    // Km/Horas (opcional): o servidor decide a unidade pela categoria do equipamento
     document.getElementById('qr-gas-cnt').value='';
-    document.getElementById('qr-gas-cnt-label').innerHTML=(eqCatIsVeiculo(data.equipamento.categoria)?'Quilómetros':'Horas de trabalho')+' <span>(opcional)</span>';
     document.getElementById('qr-gas-data').value=fmt(new Date());
     document.getElementById('qr-gas-tipo').value='Gasóleo';
     document.getElementById('qr-gas-forn').value='';
