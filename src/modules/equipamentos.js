@@ -1122,7 +1122,7 @@ async function qrGasSubmeter(){
   const litros=parseFloat(g('qr-gas-litros').replace(',','.'));
   const nome=g('qr-gas-nome');
   if(!litros||litros<=0){ msg.textContent='Indique os litros.'; return; }
-  if(!nome){ msg.textContent='Indique o seu nome.'; return; }
+  if(!nome){ msg.textContent='Indique o nome de quem está a registar.'; return; }
   btn.disabled=true; msg.textContent='';
   try{
     const origem=g('qr-gas-origem');
