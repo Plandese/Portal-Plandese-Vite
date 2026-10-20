@@ -29,12 +29,12 @@ export function novaObra(){
 }
 
 let _obrHideInativas=true;
-let _obrVista=null;   // 'cartoes' | 'lista'
+let _obrVista=null;   // 'lista' (por defeito) | 'cartoes'
 
 const _obrDesk=()=>document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
 function _obrVistaAtual(){
   if(!_obrDesk()) return 'lista';
-  if(!_obrVista){ try{ _obrVista=localStorage.getItem('obr_vista')==='lista'?'lista':'cartoes'; }catch(e){ _obrVista='cartoes'; } }
+  if(!_obrVista){ try{ _obrVista=localStorage.getItem('obr_vista')==='cartoes'?'cartoes':'lista'; }catch(e){ _obrVista='lista'; } }
   return _obrVista;
 }
 export function obrSetVista(v){
