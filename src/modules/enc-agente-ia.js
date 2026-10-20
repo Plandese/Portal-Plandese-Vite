@@ -113,33 +113,54 @@ function criarChat(cfg) {
     return t.trim();
   }
 
+  // Mensagem por tipo de erro do reconhecimento de fala (código no fim, para diagnóstico)
+  const MSG_VOZ = {
+    'not-allowed': 'O microfone está bloqueado. Ative a permissão do microfone para esta página/app nas definições do tablet.',
+    'service-not-allowed': 'Este navegador não deixa usar o reconhecimento de voz. Abra o portal no Chrome.',
+    'audio-capture': 'Não encontrei o microfone neste dispositivo.',
+    'network': 'Sem ligação ao serviço de voz do Google. Verifique a internet.',
+    'language-not-supported': 'O português não está disponível para ditado neste dispositivo.',
+  };
+  let aguardaInicio = 0;
+
   function iniciarOuvir() {
     if (!SR || busy || ouvindo) return;
     pararFalar();
     const inp = $('in');
     erroVoz = ''; textoOuvido = '';
-    rec = new SR();
+    try { rec = new SR(); } catch (e) { return avisoVoz('Este dispositivo não permite o reconhecimento de voz. Abra o portal no Chrome.'); }
     rec.lang = 'pt-PT'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-    rec.onstart = () => { ouvindo = true; marcarVoz(); if (inp) inp.placeholder = 'A ouvir… fale agora'; };
+    // Se em 3 s o microfone não arrancou (alguns tablets/WebViews aceitam o pedido e ficam calados), avisa
+    clearTimeout(aguardaInicio);
+    aguardaInicio = setTimeout(() => {
+      if (!ouvindo) { try { rec.abort(); } catch (e) { /* nada */ } modoVoz = false; avisoVoz('O microfone não arrancou neste dispositivo. Abra o portal no Chrome e permita o microfone, ou escreva.'); }
+    }, 3000);
+    rec.onstart = () => { clearTimeout(aguardaInicio); ouvindo = true; marcarVoz(); if (inp) inp.placeholder = 'A ouvir… fale agora'; };
     rec.onresult = e => {
       let t = '';
       for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
       textoOuvido = t;
       desenharOuvido();
     };
-    rec.onerror = e => { erroVoz = e.error || 'erro'; };
+    rec.onerror = e => { clearTimeout(aguardaInicio); erroVoz = e.error || 'erro'; };
     rec.onend = () => {
+      clearTimeout(aguardaInicio);
+      const estavaAOuvir = ouvindo;
       ouvindo = false; marcarVoz();
       if (inp) inp.placeholder = cfg.placeholder;
       const txt = textoOuvido.trim();
       textoOuvido = ''; $('live')?.remove();
-      if (erroVoz === 'not-allowed' || erroVoz === 'service-not-allowed') {
-        avisoVoz('Não tenho permissão para usar o microfone. Ative-a nas definições do telemóvel.');
+      if (erroVoz && erroVoz !== 'no-speech' && erroVoz !== 'aborted') {
+        modoVoz = false;
+        avisoVoz((MSG_VOZ[erroVoz] || 'Não consegui ouvir bem. Tente outra vez ou escreva.') + ' (' + erroVoz + ')');
       } else if (txt && !erroVoz) {
         tratarFala(txt);
-      } else { modoVoz = false; if (erroVoz && erroVoz !== 'no-speech' && erroVoz !== 'aborted') avisoVoz('Não consegui ouvir bem. Tente outra vez ou escreva.'); }
+      } else {
+        modoVoz = false;
+        if (estavaAOuvir && erroVoz === 'no-speech') avisoVoz('Não ouvi nada. Carregue no microfone e fale logo a seguir.');
+      }
     };
-    try { rec.start(); } catch (e) { ouvindo = false; marcarVoz(); }
+    try { rec.start(); } catch (e) { clearTimeout(aguardaInicio); ouvindo = false; marcarVoz(); avisoVoz('Não foi possível ligar o microfone (' + (e?.name || 'erro') + ').'); }
   }
   function pararOuvir() { if (rec && ouvindo) { try { rec.stop(); } catch (e) { /* já parado */ } } }
   function avisoVoz(t) { msgs.push({ role: 'assistant', content: '', erro: t, acoes: [] }); render(true); }
