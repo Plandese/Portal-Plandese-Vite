@@ -60,10 +60,103 @@ async function chamar(body, signal) {
   });
 }
 
+// ── Voz: ditar (reconhecimento de fala) e ler as respostas (síntese de voz) ──
+// Usa a API do próprio telemóvel/navegador; sem suporte, os botões de voz ficam escondidos.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const TTS = 'speechSynthesis' in window;
+let rec = null, ouvindo = false, modoVoz = false, erroVoz = '';
+let lerVoz = (() => { try { return localStorage.getItem('plandese_enc_voz') !== '0'; } catch (e) { return true; } })();
+
+function marcarVoz() {
+  $('ci-mic')?.classList.toggle('on', ouvindo);
+  const v = $('ci-voz'); if (v) v.classList.toggle('off', !lerVoz);
+}
+
+function pararFalar() { if (TTS) speechSynthesis.cancel(); }
+
+function falar(texto, aoFim) {
+  if (!TTS || !texto) return aoFim?.();
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-PT';
+  const vozes = speechSynthesis.getVoices();
+  const v = vozes.find(x => /^pt[-_]PT/i.test(x.lang)) || vozes.find(x => /^pt/i.test(x.lang));
+  if (v) u.voice = v;
+  let feito = false;
+  const fim = () => { if (!feito) { feito = true; aoFim?.(); } };
+  u.onend = fim; u.onerror = fim;
+  speechSynthesis.speak(u);
+}
+
+// Texto a ler: resposta sem markdown + resumo falado do pedido pendente
+function textoParaFalar(m) {
+  let t = String(m.content || '').replace(/[*_`#|>]/g, ' ').replace(/^\s*[-•]\s+/gm, '').replace(/\s+/g, ' ').trim();
+  for (const a of (m.acoes || []).filter(x => x.estado === 'pendente')) {
+    const p = a.params || {};
+    const lista = (p.artigos || []).map(x => `${x.quantidade} ${x.unidade && x.unidade !== 'un' ? x.unidade + ' de ' : ''}${x.descricao}`).join('; ');
+    t += ` Pedido para ${p.obra_nome || 'a obra'}: ${lista}${p.data_limite ? ', para ' + String(p.data_limite).split('-').reverse().join('/') : ''}. Diga confirmar para enviar, ou cancelar.`;
+  }
+  return t.trim();
+}
+
+function iniciarOuvir() {
+  if (!SR || busy || ouvindo) return;
+  pararFalar();
+  const inp = $('ci-in');
+  erroVoz = '';
+  rec = new SR();
+  rec.lang = 'pt-PT'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  rec.onstart = () => { ouvindo = true; marcarVoz(); if (inp) inp.placeholder = 'A ouvir… fale agora'; };
+  rec.onresult = e => {
+    let t = '';
+    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+    if (inp) inp.value = t;
+  };
+  rec.onerror = e => { erroVoz = e.error || 'erro'; };
+  rec.onend = () => {
+    ouvindo = false; marcarVoz();
+    if (inp) inp.placeholder = 'Escreva o que precisa…';
+    const txt = (inp?.value || '').trim();
+    if (erroVoz === 'not-allowed' || erroVoz === 'service-not-allowed') {
+      avisoVoz('Não tenho permissão para usar o microfone. Ative-a nas definições do telemóvel.');
+    } else if (txt && !erroVoz) {
+      inp.value = ''; inp.style.height = 'auto';
+      tratarFala(txt);
+    } else { modoVoz = false; if (erroVoz && erroVoz !== 'no-speech' && erroVoz !== 'aborted') avisoVoz('Não consegui ouvir bem. Tente outra vez ou escreva.'); }
+  };
+  try { rec.start(); } catch (e) { ouvindo = false; marcarVoz(); }
+}
+
+function pararOuvir() { if (rec && ouvindo) { try { rec.stop(); } catch (e) { /* já parado */ } } }
+
+function avisoVoz(t) {
+  msgs.push({ role: 'assistant', content: '', erro: t, acoes: [] });
+  render(true);
+}
+
+// Responder "confirmar"/"cancelar" por voz ao cartão pendente; o resto segue como mensagem normal
+function tratarFala(txt) {
+  const pend = msgs.flatMap(m => m.acoes || []).filter(a => a.estado === 'pendente').pop();
+  const n = norm(txt).replace(/[^a-z ]/g, '').trim();
+  if (pend && /^(sim|confirm\w*|pode ser|pode enviar|envia\w*|esta bem|ok|certo)\b/.test(n)) { modoVoz = true; return decidirAcao(pend.id, 'confirmar'); }
+  if (pend && /^(nao|cancel\w*|deixa|esquece)\b/.test(n)) { modoVoz = true; return decidirAcao(pend.id, 'cancelar'); }
+  enviar(txt, true);
+}
+
+function falarResposta(m) {
+  if (!modoVoz || !lerVoz) { if (modoVoz && !lerVoz) modoVoz = false; return; }
+  const pendente = (m.acoes || []).some(a => a.estado === 'pendente');
+  const pergunta = /\?\s*$/.test(String(m.content || '').trim());
+  falar(textoParaFalar(m), () => { if (modoVoz && (pendente || pergunta)) iniciarOuvir(); else modoVoz = false; });
+}
+
 // ── Abrir o ecrã ─────────────────────────────────────────────────
 export function comprasIAAbrir() {
-  const ecra = $('enc-screen-compras-chat');
+  const ecra = $('ci-body')?.closest('#enc-screen-compras-chat');
   if (!ecra) return;
+  if ($('ci-mic')) $('ci-mic').hidden = !SR;
+  if ($('ci-voz')) $('ci-voz').hidden = !(SR && TTS);
+  marcarVoz();
   if (!ligado) {
     ligado = true;
     ecra.addEventListener('click', onClick);
@@ -78,14 +171,21 @@ function onClick(e) {
   const t = e.target.closest('[data-ci]');
   if (!t) return;
   const a = t.dataset.ci;
-  if (a === 'enviar') return busy ? ctrl?.abort() : enviarDoInput();
-  if (a === 'chip') return enviar(t.dataset.q);
-  if (a === 'acao') return decidirAcao(t.dataset.id, t.dataset.d);
+  if (a === 'mic') { if (ouvindo) return pararOuvir(); if (busy) return; return iniciarOuvir(); }
+  if (a === 'voz') {
+    lerVoz = !lerVoz; if (!lerVoz) pararFalar();
+    try { localStorage.setItem('plandese_enc_voz', lerVoz ? '1' : '0'); } catch (e) { /* sem armazenamento */ }
+    return marcarVoz();
+  }
+  if (a === 'enviar') { pararFalar(); modoVoz = false; return busy ? ctrl?.abort() : enviarDoInput(); }
+  if (a === 'chip') { modoVoz = false; return enviar(t.dataset.q); }
+  if (a === 'acao') { modoVoz = false; pararFalar(); return decidirAcao(t.dataset.id, t.dataset.d); }
   if (a === 'novo') return novaConversa();
   if (a === 'retry') return ultimo && enviar(ultimo);
 }
 
 function novaConversa() {
+  pararFalar(); pararOuvir(); modoVoz = false;
   if (busy) ctrl?.abort();
   msgs = []; corrente = null; render();
 }
@@ -99,8 +199,9 @@ function enviarDoInput() {
 }
 
 // ── Envio e leitura do stream ────────────────────────────────────
-async function enviar(texto) {
+async function enviar(texto, porVoz = false) {
   if (busy || !texto) return;
+  modoVoz = porVoz;
   ultimo = texto;
   msgs.push({ role: 'user', content: texto });
   corrente = { role: 'assistant', content: '', acoes: [], estado: '' };
@@ -140,8 +241,10 @@ async function enviar(texto) {
   } finally {
     if (!fim && !corrente.content && !corrente.erro && !corrente.acoes.length) corrente.erro = 'Sem resposta do assistente.';
     corrente.estado = '';
+    const feita = corrente;
     corrente = null; setBusy(false); ctrl = null;
     render(true);
+    if (modoVoz && !feita.erro) falarResposta(feita); else modoVoz = false;
   }
 }
 
@@ -175,6 +278,10 @@ async function decidirAcao(id, decisao) {
     else alvo.estado = 'cancelada';
   } catch (e) { alvo.estado = 'erro'; alvo.msg = String(e.message || e); }
   render();
+  if (modoVoz && lerVoz) {
+    const frase = alvo.estado === 'feita' ? alvo.msg : alvo.estado === 'cancelada' ? 'Pedido cancelado.' : 'Não foi possível enviar o pedido. ' + (alvo.msg || '');
+    falar(frase, () => { modoVoz = false; });
+  } else modoVoz = false;
 }
 
 // ── Desenho ──────────────────────────────────────────────────────

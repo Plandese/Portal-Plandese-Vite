@@ -348,3 +348,12 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 .ci-compose textarea:focus{border-color:var(--m-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
 .ci-compose button{flex:none;width:50px;height:50px;border-radius:50%;border:0;background:var(--m-brand);color:#fff;display:grid;place-items:center;cursor:pointer}
 .ci-compose button svg{width:21px;height:21px}
+.ci-voz{position:absolute;left:14px;top:10px;z-index:2;display:flex;align-items:center;gap:6px;border:0;background:var(--e-tint);color:var(--m-brand);font-family:inherit;font-weight:600;font-size:12px;line-height:1;padding:8px 12px;border-radius:99px;cursor:pointer}
+.ci-voz[hidden]{display:none}
+.ci-voz svg{width:15px;height:15px}
+.ci-voz.off{background:#eef0f4;color:#8b94a5}
+.ci-compose .ci-mic{background:#fff;color:var(--m-brand);border:1.5px solid var(--m-brand)}
+.ci-compose .ci-mic[hidden]{display:none}
+.ci-compose .ci-mic.on{background:#c0392b;border-color:#c0392b;color:#fff;animation:ci-mic 1.1s infinite}
+@keyframes ci-mic{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}100%{box-shadow:0 0 0 14px rgba(192,57,43,0)}}
+.ci-ouvir{padding:6px 18px 0;font-size:13px;color:var(--m-mute);text-align:center}
