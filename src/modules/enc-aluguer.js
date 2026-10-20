@@ -1052,6 +1052,32 @@ const _fEsc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const _fNum=h=>Math.round(h*100)/100;
 const _fFmt=h=>h?(_fNum(h)+'').replace('.',','):'';
 
+// Preço/hora por categoria (legenda do Excel do subempreiteiro); editável no ecrã e guardado neste browser
+const _TAXAS_BASE={servente:9,pedreiro:10,manobrador:12.5};
+let _moaTaxas={};
+try{ _moaTaxas=JSON.parse(localStorage.getItem('moa_fecho_taxas')||'{}')||{}; }catch(e){ _moaTaxas={}; }
+const _fCat=f=>String(f||'Sem categoria').trim().toUpperCase();
+const _fTaxa=f=>{ const k=String(f||'').trim().toLowerCase(); return k in _moaTaxas?_moaTaxas[k]:(_TAXAS_BASE[k]??0); };
+const _fEur=v=>(Math.round(v*100)/100).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const _fObraNome=id=>id==='_sem'?'Sem obra':(S.OBRAS.find(o=>String(o.id)===String(id))?.nome||String(id));
+
+// Linhas de fecho (trabalhador × obra, com valor) e total por obra de uma empresa
+function _fFechoEmpresa(E){
+  const linhas=E.lin.map(l=>({...l,valor:l.h*_fTaxa(l.funcao)}))
+    .sort((a,b)=>_fObraNome(a.obraId).localeCompare(_fObraNome(b.obraId),'pt')||a.nome.localeCompare(b.nome,'pt'));
+  const obras=new Map();
+  linhas.forEach(l=>{ const o=obras.get(l.obraId)||{nome:_fObraNome(l.obraId),valor:0,h:0}; o.valor+=l.valor; o.h+=l.h; obras.set(l.obraId,o); });
+  const resumo=[...obras.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  return {linhas,resumo,totH:linhas.reduce((x,l)=>x+l.h,0),totV:linhas.reduce((x,l)=>x+l.valor,0)};
+}
+
+function moaFechoTaxa(fn,v){
+  const n=parseFloat(String(v).replace(',','.'));
+  _moaTaxas[fn]=isNaN(n)||n<0?0:n;
+  try{ localStorage.setItem('moa_fecho_taxas',JSON.stringify(_moaTaxas)); }catch(e){}
+  _moaFechoDesenhar();
+}
+
 function moaFechoInit(){
   const inp=document.getElementById('moa-fecho-mes');
   if(!inp) return;
@@ -1096,15 +1122,18 @@ async function moaFechoCarregar(){
       const eKey=r.empresa_moa_id||r.empresa_moa_nome||'_sem';
       const dk=`${eKey}|${tKey}|${r.data}|${ent}|${sai}`;
       if(vistos.has(dk)) return; vistos.add(dk);
-      if(!emps.has(eKey)) emps.set(eKey,{nome:r.empresa_moa_nome||'Sem empresa',trab:new Map()});
+      if(!emps.has(eKey)) emps.set(eKey,{nome:r.empresa_moa_nome||'Sem empresa',trab:new Map(),lin:new Map()});
       const E=emps.get(eKey);
       if(!E.trab.has(tKey)) E.trab.set(tKey,{nome:r.trabalhador_nome||'—',funcao:r.trabalhador_funcao||'',dias:Array(nDias+1).fill(0),n:0,e:0});
       const T=E.trab.get(tKey);
       const h=calcH(ent,sai,new Date(r.data+'T12:00:00'));
       T.dias[dia]+=h.t; T.n+=h.n; T.e+=h.e;
+      const oId=r.obra_id||'_sem', lKey=`${tKey}|${oId}`;
+      if(!E.lin.has(lKey)) E.lin.set(lKey,{nome:T.nome,funcao:T.funcao,obraId:oId,h:0});
+      E.lin.get(lKey).h+=h.t;
     });
     const empresas=[...emps.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).map(E=>({
-      nome:E.nome, trab:[...E.trab.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+      nome:E.nome, trab:[...E.trab.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt')), lin:[...E.lin.values()]
     }));
     _moaFecho={ano,mes,nDias,empresas,porAprovar};
     _moaFechoDesenhar();
@@ -1129,10 +1158,24 @@ function _moaFechoDesenhar(){
       +`<td class="r">${_fFmt(t.n)}</td><td class="r">${_fFmt(t.e)}</td><td class="r"><b>${_fFmt(t.n+t.e)}</b></td></tr>`).join('');
     return `<tr><td colspan="${F.nDias+4}" style="background:var(--d-tint,#eaf0fc);font-weight:700;padding:9px 20px">${_fEsc(E.nome)} · ${E.trab.length} trabalhador${E.trab.length!==1?'es':''} · ${_fFmt(sN+sE)||'0'} h</td></tr>${linhas}`;
   }).join('');
-  res.innerHTML=`<div style="margin:10px 2px;font-size:13px;color:var(--gray-500)">${nTrab} trabalhador${nTrab!==1?'es':''} · Normais ${_fFmt(totN)||'0'} h · Extra ${_fFmt(totE)||'0'} h · <b>Total ${_fFmt(totN+totE)||'0'} h</b>`
+  const cats=[...new Set([...Object.keys(_TAXAS_BASE),...F.empresas.flatMap(E=>E.trab.map(t=>String(t.funcao||'').trim().toLowerCase())).filter(Boolean)])];
+  const taxasHTML=`<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:12px 2px 6px"><b style="font-size:13px">Preço/hora</b>${cats.map(c=>`<label style="font-size:12px;color:var(--gray-500);display:flex;align-items:center;gap:6px;text-transform:capitalize">${_fEsc(c)}<input type="number" step="0.5" min="0" value="${_fTaxa(c)}" onchange="moaFechoTaxa('${_fEsc(c).replace(/'/g,"\\'")}',this.value)" style="width:70px;padding:5px 8px;border:1.5px solid #b9c1ce;border-radius:10px;font-size:13px"> €</label>`).join('')}</div>`;
+  const fechoHTML=F.empresas.map(E=>{
+    const X=_fFechoEmpresa(E);
+    return `<div style="margin:18px 0 6px;font-weight:700;font-size:14px">Fecho de valores · ${_fEsc(E.nome)}</div>
+    <div class="tbl-wrap" style="overflow:auto"><table class="fm-t" style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr><th style="text-align:left;padding-left:20px">Nome</th><th style="text-align:left">Categoria</th><th style="text-align:left">Obra</th><th class="r">Horas</th><th class="r">Valor</th></tr></thead><tbody>${
+      X.linhas.map(l=>`<tr><td style="padding-left:20px"><b>${_fEsc(l.nome)}</b></td><td>${_fEsc(_fCat(l.funcao))}</td><td>${_fEsc(_fObraNome(l.obraId))}</td><td class="r">${_fFmt(l.h)}</td><td class="r">${_fEur(l.valor)}</td></tr>`).join('')
+    }<tr style="font-weight:700;background:var(--d-tint,#eaf0fc)"><td colspan="3" style="padding-left:20px">Totais</td><td class="r">${_fFmt(X.totH)}</td><td class="r">${_fEur(X.totV)}</td></tr></tbody></table></div>
+    <div class="tbl-wrap" style="overflow:auto;margin-top:10px"><table class="fm-t" style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr><th style="text-align:left;padding-left:20px">Obra</th><th class="r">Total valor</th><th class="r">Percentagem</th></tr></thead><tbody>${
+      X.resumo.map(o=>`<tr><td style="padding-left:20px">${_fEsc(o.nome)}</td><td class="r">${_fEur(o.valor)}</td><td class="r">${X.totV?(o.valor/X.totV*100).toFixed(2).replace('.',','):'0,00'}%</td></tr>`).join('')
+    }<tr style="font-weight:700"><td style="padding-left:20px">Total</td><td class="r">${_fEur(X.totV)}</td><td class="r">100,00%</td></tr></tbody></table></div>`;
+  }).join('');
+  res.innerHTML=taxasHTML+`<div style="margin:10px 2px;font-size:13px;color:var(--gray-500)">${nTrab} trabalhador${nTrab!==1?'es':''} · Normais ${_fFmt(totN)||'0'} h · Extra ${_fFmt(totE)||'0'} h · <b>Total ${_fFmt(totN+totE)||'0'} h</b>`
     +(F.porAprovar?` · <span style="color:var(--orange,#ea580c)">⚠ ${F.porAprovar} dia(s) de obra por aprovar</span>`:'')+`</div>
     <div class="tbl-wrap" style="overflow:auto"><table class="fm-t" style="min-width:${F.nDias*34+360}px;width:100%;border-collapse:collapse;font-size:12.5px">
-    <thead><tr><th style="text-align:left;padding-left:20px">Trabalhador</th>${th}<th class="r">Normais</th><th class="r">Extra</th><th class="r">Total</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+    <thead><tr><th style="text-align:left;padding-left:20px">Trabalhador</th>${th}<th class="r">Normais</th><th class="r">Extra</th><th class="r">Total</th></tr></thead><tbody>${corpo}</tbody></table></div>`+fechoHTML;
 }
 
 async function moaFechoExport(){
@@ -1149,6 +1192,32 @@ async function moaFechoExport(){
     let nome=E.nome.replace(/[\\/*?:\[\]]/g,' ').slice(0,28)||'Empresa', k=nome, i=2;
     while(usados.has(k.toLowerCase())) k=nome.slice(0,26)+' '+(i++);
     usados.add(k.toLowerCase());
+    // Folha de fecho com valores (formato do Excel do subempreiteiro)
+    {
+      const X=_fFechoEmpresa(E), wf=wb.addWorksheet(('Fecho '+k).slice(0,31));
+      wf.columns=[{width:3},{width:3},{width:3},{width:30},{width:16},{width:34},{width:12},{width:16},{width:14}];
+      wf.getCell('G4').value='MÊS'; wf.getCell('H4').value=`${MESES_PT[mes-1].slice(0,3).toLowerCase()}/${String(ano).slice(2)}`;
+      wf.getCell('E5').value='Folha Horas Colaboradores'; wf.getCell('E5').font={bold:true,size:14};
+      wf.getCell('D9').value='Subempreiteiro:'; wf.getCell('E9').value=E.nome;
+      const hr=wf.getRow(11); ['NOME','CATEGORIA','OBRA','HORAS','VALOR'].forEach((t,i)=>{const c=hr.getCell(4+i);c.value=t;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill=azul;c.alignment={horizontal:'center'};});
+      const eur='#,##0.00 "€"';
+      X.linhas.forEach((l,i)=>{ const r=wf.getRow(12+i);
+        r.getCell(4).value=l.nome; r.getCell(5).value=_fCat(l.funcao); r.getCell(6).value=_fObraNome(l.obraId);
+        r.getCell(7).value=_fNum(l.h); r.getCell(8).value=_fNum(l.valor); r.getCell(8).numFmt=eur; });
+      const rt=12+X.linhas.length, a=12, b=rt-1;
+      wf.getCell(rt,6).value='Totais'; wf.getCell(rt,7).value={formula:`SUM(G${a}:G${b})`}; wf.getCell(rt,8).value={formula:`SUM(H${a}:H${b})`}; wf.getCell(rt,8).numFmt=eur;
+      [6,7,8].forEach(c=>{wf.getCell(rt,c).font={bold:true};wf.getCell(rt,c).fill=claro;});
+      const lg=rt+2;
+      ['Legenda','','OBRAS','TOTAL VALOR','PERCENTAGEM'].forEach((t,i)=>{ if(t){const c=wf.getCell(lg,4+i);c.value=t;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill=azul;} });
+      const leg=Object.keys(_TAXAS_BASE).map(c=>`${c[0].toUpperCase()+c.slice(1)} = ${String(_fTaxa(c)).replace('.',',')}€/Hora`);
+      X.resumo.forEach((o,i)=>{ const r=lg+1+i;
+        if(leg[i]) wf.getCell(r,4).value=leg[i];
+        wf.getCell(r,6).value=o.nome; wf.getCell(r,7).value=_fNum(o.valor); wf.getCell(r,7).numFmt=eur;
+        wf.getCell(r,8).value={formula:`G${r}/H${rt}`}; wf.getCell(r,8).numFmt='0.00%'; });
+      const rs=lg+1+X.resumo.length;
+      wf.getCell(rs,7).value={formula:`SUM(G${lg+1}:G${rs-1})`}; wf.getCell(rs,7).numFmt=eur; wf.getCell(rs,7).font={bold:true};
+      wf.getCell(rs,8).value=1; wf.getCell(rs,8).numFmt='0.00%'; wf.getCell(rs,8).font={bold:true};
+    }
     const ws=wb.addWorksheet(k);
     ws.columns=[{width:30},{width:18},...Array(nDias).fill({width:5}),{width:10},{width:10},{width:10}];
     ws.mergeCells(1,1,1,nCols);
@@ -1326,7 +1395,7 @@ export {
   encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador,
   buildAlugList, adicionarTodosAnteriorAlug, carregarEquipaAnteriorAlug, encAlugSetHora, encAlugRemover, encAlugUpdateStats, encAlugSubmeter,
   applyMOAFilter, navMOASemana, loadMOAWeek, renderMOAResultado, exportMOAExcel, initMOAFilters,
-  moaFechoInit, moaFechoCarregar, moaFechoExport,
+  moaFechoInit, moaFechoCarregar, moaFechoExport, moaFechoTaxa,
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover,
   moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, aprovarDiaMOA, retirarAprovacaoMOA
 };
