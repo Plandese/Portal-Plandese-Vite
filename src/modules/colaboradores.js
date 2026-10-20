@@ -7,12 +7,29 @@ import { closeModal, flashAlert } from './navigation.js';
 
 let _colabHideInativos=true;
 
+let _colabVista=null;   // 'lista' (por defeito) | 'cartoes'
+function _colabVistaAtual(){
+  if(!_colabVista){ try{ _colabVista=localStorage.getItem('colab_vista')==='cartoes'?'cartoes':'lista'; }catch(e){ _colabVista='lista'; } }
+  return _colabVista;
+}
+function _colabAplicaVista(){
+  const v=_colabVistaAtual();
+  document.getElementById('sec-colaboradores')?.classList.toggle('colab-v-cartoes',v==='cartoes');
+  document.querySelectorAll('#colab-vista button[data-v]').forEach(b=>{ const on=b.dataset.v===v; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
+}
+export function colabSetVista(v){
+  _colabVista=v==='cartoes'?'cartoes':'lista';
+  try{ localStorage.setItem('colab_vista',_colabVista); }catch(e){}
+  _colabAplicaVista();
+}
+
 export function colabToggleHideInativos(){
   _colabHideInativos=document.getElementById('colab-hide-inativos').checked;
   renderColabs();
 }
 
 export async function renderColabs(){
+  _colabAplicaVista();
   const tbody=document.getElementById('colab-tbody');tbody.innerHTML='';
   const ativos=S.COLABORADORES.filter(c=>c.ativo).length;
   document.getElementById('nb-colab').textContent=ativos;

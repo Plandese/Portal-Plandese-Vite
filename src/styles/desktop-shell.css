@@ -609,7 +609,8 @@ body.device-desktop:not(.enc-mode) #admin-app .d-b-warn{background:#fff0d9;color
 body.device-desktop:not(.enc-mode) #admin-app .d-b-off{background:#eef1f6;color:#5d6678;border:0}
 body.device-desktop:not(.enc-mode) #admin-app .d-b-on{background:#dff5e7;color:#166534;border:0}
 body.device-desktop:not(.enc-mode) #admin-app .d-empty{grid-column:1 / -1;padding:44px 20px;text-align:center;color:var(--d-mute);border:1.5px dashed var(--d-line);border-radius:22px}
-body.device-desktop:not(.enc-mode) #admin-app #sec-colaboradores .card:has(#colab-tbody){display:none}
+body.device-desktop:not(.enc-mode) #admin-app #sec-colaboradores.colab-v-cartoes .card:has(#colab-tbody){display:none}
+body.device-desktop:not(.enc-mode) #admin-app #sec-colaboradores:not(.colab-v-cartoes) .d-cards{display:none}
 
 /* ───────── Indicadores (KPI) dos módulos ───────── */
 body.device-desktop:not(.enc-mode) #admin-app .fat-kpis,body.device-desktop:not(.enc-mode) #admin-app .cmp-kpis,body.device-desktop:not(.enc-mode) #admin-app .prod-kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}

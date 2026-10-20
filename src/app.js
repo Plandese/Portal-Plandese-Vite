@@ -18,7 +18,7 @@ import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSeman
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
-import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos } from './modules/colaboradores.js';
+import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos, colabSetVista } from './modules/colaboradores.js';
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
@@ -188,7 +188,7 @@ Object.assign(window, {
   moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra,
 
   // Colaboradores
-  renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos,
+  renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos, colabSetVista,
 
   // Advertências
   openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF,

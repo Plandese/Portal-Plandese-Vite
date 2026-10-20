@@ -1710,10 +1710,20 @@
       <section id="sec-colaboradores" class="section">
         <div class="pg-hdr">
           <div><div class="pg-title">Colaboradores</div><div class="pg-sub" id="colab-count-sub"></div></div>
-          <button class="btn btn-primary" onclick="openModal('modal-colab')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo colaborador
-          </button>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="obr-seg" id="colab-vista" role="group" aria-label="Vista">
+              <button type="button" data-v="cartoes" aria-pressed="false" onclick="colabSetVista('cartoes')" title="Cartões">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Cartões
+              </button>
+              <button type="button" data-v="lista" class="on" aria-pressed="true" onclick="colabSetVista('lista')" title="Lista">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>Lista
+              </button>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modal-colab')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo colaborador
+            </button>
+          </div>
         </div>
         <div class="alert alert-ok" id="colab-alert">Colaborador guardado.</div>
         <div class="filter-bar">
