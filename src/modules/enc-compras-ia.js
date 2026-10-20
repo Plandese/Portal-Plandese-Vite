@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
 //  COMPRAS COM O AGENTE PLANDESE — ecrã do encarregado
-//  · Conversa com a Edge Function "agente" (modo encarregado: só pedidos de compra)
+//  · Conversa com a Edge Function "agente-compras" (só encarregados; só pedidos de compra)
 //  · O catálogo de artigos vive no cliente: a cada mensagem enviam-se as melhores correspondências
 //  · O pedido só é criado quando o encarregado confirma o cartão (ação "criar_pedido_compra")
 // ═══════════════════════════════════════
@@ -8,7 +8,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { md } from './agente.js';
 
-const URL_FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agente`;
+const URL_FN = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agente-compras`;
 const ANON = import.meta.env.VITE_SUPABASE_KEY;
 const $ = id => document.getElementById(id);
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
