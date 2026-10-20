@@ -147,7 +147,33 @@ function _encObrasComb(){
   return S.OBRAS.filter(o=>obraEmCurso(o)&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)));
 }
 
+// Código de acesso do QR (registo de gasóleo fora da app) das obras deste encarregado, no início
+async function encUpdateCodigosWidget(){
+  const box=document.getElementById('enc-qr-cod'); if(!box) return;
+  const obras=_encObrasComb();
+  if(!obras.length){ box.hidden=true; return; }
+  try{
+    const {data,error}=await sb.from('obra_codigos').select('obra_id,codigo').in('obra_id',obras.map(o=>o.id));
+    if(error) throw error;
+    const porObra=new Map((data||[]).map(r=>[r.obra_id,r.codigo]));
+    const lista=obras.filter(o=>porObra.has(o.id));
+    if(!lista.length){ box.hidden=true; return; }
+    box.innerHTML='<span class="e-cod-k">Código de acesso do QR · gasóleo</span>'+lista.map(o=>
+      `<button type="button" class="e-cod-r" data-cod="${_escH(porObra.get(o.id))}" onclick="encCopiarCodigo(this)">
+        <span class="e-cod-o">${_escH(o.nome)}</span><b class="e-cod-c">${_escH(porObra.get(o.id))}</b><span class="e-cod-t">Copiar</span>
+      </button>`).join('')+'<small class="e-cod-h">Quem ler o QR de um equipamento fora da app precisa deste código.</small>';
+    box.hidden=false;
+  }catch(e){ console.warn('codigos QR:',e); box.hidden=true; }
+}
+function encCopiarCodigo(btn){
+  const cod=btn.dataset.cod, t=btn.querySelector('.e-cod-t');
+  const ok=()=>{ if(t){ t.textContent='Copiado ✓'; setTimeout(()=>{t.textContent='Copiar';},1500); } };
+  try{ navigator.clipboard.writeText(cod).then(ok,()=>{ if(t) t.textContent=cod; }); }catch(e){ if(t) t.textContent=cod; }
+}
+window.encCopiarCodigo=encCopiarCodigo;
+
 async function encUpdateFuelWidget(){
+  encUpdateCodigosWidget();
   encCombAtualizarBadgeApr();
   const litrosEl=document.getElementById('enc-fuel-litros');
   const labelEl=document.getElementById('enc-fuel-label');
