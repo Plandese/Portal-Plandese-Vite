@@ -42,6 +42,7 @@ const ECRAS = {
   'enc-screen-comb-ultimos': { t: 'Últimos registos', s: 'Últimos 7 dias nas suas obras', i: IC.clock, back: 'encGoCombustivel', nav: 'comb' },
   'enc-screen-comb-aprovar': { t: 'Por aprovar', s: 'Registos de gasóleo feitos por QR', i: IC.fuel, back: 'encGoCombustivel', nav: 'comb' },
   'enc-screen-historico-enc':{ t: 'Histórico', s: 'Registos anteriores', i: IC.clock, back: 'encVoltarHome', nav: 'hist' },
+  'enc-screen-ponto-ia':     { t: 'Folha de ponto', s: 'Por conversa · MO Plandese', i: IC.user, back: 'encGoFolhaPontoPlandese', nav: 'ponto' },
   'enc-screen-compras-chat': { t: 'Compras', s: 'Assistente de compras', i: IC.cart, back: 'encVoltarHome', nav: 'home' },
 };
 const IDS = Object.keys(ECRAS);

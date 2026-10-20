@@ -7,7 +7,7 @@ import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast } from './navigation.js';
 import { EQUIPAMENTOS, EQ_CATS, eqCatNorm, eqCatIsVeiculo, sbFetchEquipamentoById, sbLoadEquipamentos, saveEqLocal, eqFmtDt } from './equipamentos.js';
 import { obraEmCurso } from '../config.js';
-import { comprasIAAbrir } from './enc-compras-ia.js';
+import { comprasIAAbrir } from './enc-agente-ia.js';
 
 let _combEqOpts = new Map();
 let _combPickerCat = '';
@@ -134,7 +134,7 @@ let _combModoManual = false;
 
 function _encHideAll(){
   ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
-   'enc-screen-compras-chat'].forEach(id=>{
+   'enc-screen-compras-chat','enc-screen-ponto-ia'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }

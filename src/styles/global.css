@@ -2134,11 +2134,11 @@ td>.pl-load{padding:24px 20px}
    Os ecrãs usavam justify-content:flex-end (cartão colado ao fundo) e alguns não
    centravam o conteúdo. Aqui todos passam a coluna de 580px centrada, a começar no topo. */
 @media(min-width:640px){
-  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat){
+  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat):not(#enc-screen-ponto-ia){
     align-items:center!important;
     justify-content:flex-start!important;
   }
-  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat) > *{
+  #enc-app > [id^="enc-screen"]:not(#enc-screen0):not(#enc-screen-compras-chat):not(#enc-screen-ponto-ia) > *{
     width:100%;max-width:580px;margin-left:auto;margin-right:auto;
   }
   .enc-body,.enc-equip-body{justify-content:flex-start}

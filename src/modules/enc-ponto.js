@@ -9,6 +9,7 @@ import { showToast } from './navigation.js';
 import { loadEmpresasMOA, loadColaboradoresMOA, EMPRESAS_MOA } from './enc-aluguer.js';
 import { encEqAbrir, stopEncQrScanner } from './enc-equip.js';
 import { stopCombQrScanner, encUpdateFuelWidget } from './enc-combustivel.js';
+import { pontoIAAbrir } from './enc-agente-ia.js';
 
 // ═══════════════════════════════════════
 //  ENCARREGADO
@@ -230,7 +231,7 @@ async function initEnc(){
   _applyEncModulePermissions();
   ['enc-screen1','enc-screen2','enc-screen-equip',
    'enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
-   'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat']
+   'enc-screen-historico-enc','enc-screen-aluguer','enc-screen-compras-chat','enc-screen-ponto-ia']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   const _nav=document.getElementById('enc-nav');
   if(_nav) _nav.style.display='flex';
@@ -622,6 +623,15 @@ function _encMarkDoneToday(type){
 // Mantido para compatibilidade — navega directamente para o home
 function encGoMenuPonto(){ encVoltarHome(); }
 
+// Folha de ponto por conversa (agente Plandese)
+function encGoPontoIA(){
+  _encHideAll();
+  const s=document.getElementById('enc-screen-ponto-ia');
+  if(s){ s.style.display='flex'; s.style.flexDirection='column'; }
+  _encSetNav('ponto');
+  pontoIAAbrir();
+}
+
 function encGoFolhaPontoPlandese(){
   _encHideAll();
   document.getElementById('enc-screen1').style.display='flex';
@@ -888,13 +898,13 @@ function _encSetNav(key){
 
 function _encHideAll(){
   ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
-   'enc-screen-compras-chat'].forEach(id=>{
+   'enc-screen-compras-chat','enc-screen-ponto-ia'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }
 
 export {
-  initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior,
+  encGoPontoIA, initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior,
   adicionarTodosOntem, buildEncColabSel, encAddColabN, sbSaveRegistoEnc,
   encAddColab, buildEncList, encTimeChange, encTipoChange, encAutoSave,
   encRemColab, encRecalcStats, encUpdateStats, encSubmeterRegisto, encSaveDay,

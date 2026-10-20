@@ -48,7 +48,7 @@ import { renderEquipamentos, renderEqBusca, eqVerListaCompleta, openEqModal, edi
 import { combBuscaRender, combVerListaCompleta, combSwitchView, abrirCombEquipDetalhe, renderCombEquipCards, loadCombustivelAdmin, abrirCombObraDetalhe, combAdicionarRegistoDaObra, combDetSetPeriodo, combDetNav, combDetSetEquip, abrirCombFormRegisto, combFormTipoChange, guardarRegistoCombustivel, apagarRegistoCombustivel, renderCombObraCards, exportCombustivelXLSX, _initCombustivelAdmin } from './modules/combustivel.js';
 
 // Enc-ponto
-import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal, encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit } from './modules/enc-ponto.js';
+import { encGoPontoIA, initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnterior, adicionarTodosOntem, encAddColab, encRemColab, encSubmeterRegisto, encTimeChange, encTipoChange, encGoMenuPonto, encGoFolhaPontoPlandese, encGoFolhaPonto, encGoHistoricoEnc, encLoadHistorico, encGoFolhaPontoAluguer, encGoEquipamentos, encGoCombustivel, encVoltarHome, encOpenWeatherModal, encCloseWeatherModal, encOpenPrazoModal, encClosePrazoModal, encHistOpenEdit, encHistTipoChangeEdit, encHistCloseEdit, encHistSaveEdit } from './modules/enc-ponto.js';
 
 // Enc-equip
 import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, encEqGasoleoOrigem, encEqQrFoto, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
@@ -240,7 +240,7 @@ Object.assign(window, {
   renderCombObraCards,
 
   // Encarregado — navegação
-  encVoltarHome, encGoMenuPonto, encGoFolhaPontoPlandese,
+  encVoltarHome, encGoMenuPonto, encGoFolhaPontoPlandese, encGoPontoIA,
   encOpenWeatherModal, encCloseWeatherModal,
   encOpenPrazoModal, encClosePrazoModal,
   encGoFolhaPontoAluguer, encGoHistoricoEnc,

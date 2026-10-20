@@ -304,7 +304,7 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 .e-apr-rej{background:#fff;color:var(--m-brand)}
 
 /* Compras com o agente Plandese (enc-compras-ia.js) */
-#enc-app #enc-screen-compras-chat{background:#fff!important;position:relative}
+#enc-app #enc-screen-compras-chat,#enc-app #enc-screen-ponto-ia{background:#fff!important;position:relative}
 .ci-novo{position:absolute;right:14px;top:10px;z-index:2;border:0;background:var(--e-tint);color:var(--m-brand);font-family:inherit;font-weight:600;font-size:12px;line-height:1;padding:8px 12px;border-radius:99px;cursor:pointer}
 .ci-novo[hidden]{display:none}
 .ci-body{flex:1;overflow-y:auto;padding:14px 14px 8px;background:#f4f6fa;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -358,3 +358,12 @@ body.e-kb #enc-app #enc-nav{display:none!important}
 @keyframes ci-mic{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}100%{box-shadow:0 0 0 14px rgba(192,57,43,0)}}
 .ci-ouvir{padding:6px 18px 0;font-size:13px;color:var(--m-mute);text-align:center}
 .ci-m.live .ci-b{opacity:.8;border-style:dashed}
+.ci-entrada{display:flex;align-items:center;gap:12px;width:100%;margin:6px 0 14px;padding:14px 18px;border:0;border-radius:99px;background:var(--m-brand);color:#fff;font-family:inherit;text-align:left;cursor:pointer}
+.ci-entrada svg{width:24px;height:24px;flex:none}
+.ci-entrada span{display:flex;flex-direction:column;gap:2px}
+.ci-entrada b{font-size:16px;font-weight:700}.ci-entrada small{font-size:12.5px;opacity:.85}
+.ci-pt{list-style:none;margin:0 0 8px;padding:0}
+.ci-pt li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #d9e2f6;font-size:14px}
+.ci-pt li:last-child{border-bottom:0}
+.ci-pt em{font-style:normal;font-size:11px;color:#8a5a00}
+.ci-aus{color:#b42318}
