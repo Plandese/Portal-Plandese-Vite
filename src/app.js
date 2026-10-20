@@ -54,7 +54,7 @@ import { initEnc, encPassarColaboradores, encVoltarScreen1, carregarEquipaAnteri
 import { encEqAbrir, encEqVoltarMetodo, encEqEscolherMetodoQR, encEqEscolherMetodoLista, encEqListaFiltra, encEqListaEscolher, encEqVoltarAcao, encEqEscolherAcao, encEqGasoleoOrigem, encEqQrFoto, submitEncEquipamento, submitEncManutencao, encManutFotoAdd, encManutFotoRemover } from './modules/enc-equip.js';
 
 // Enc-combustivel + assistente de compras
-import { encCombDepositoComEquip, encCombViaturaComEquip, encGoCombAprovar, encCombDecidir, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, chatOnInput, chatSend, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
+import { encCombDepositoComEquip, encCombViaturaComEquip, encGoCombAprovar, encCombDecidir, encOpenFuelModal, encCloseFuelModal, depSetMovimento, encGoCombDeposito, encSubmeterCombDeposito, depAbrirPickerEquip, depAbrirScannerEquip, depFecharScannerEquip, depTrocarEquip, encGoCombViatura, encGoCombUltimos, encCombRegAbrir, encCombRegEditar, encCombRegGuardar, encCombRegFechar, combViaturaManual, combViaturaVoltarScanner, encSubmeterCombViatura, encGoComprasChat, combAbrirPicker, combFecharPicker, combPickerRender, combPickerSetCat, combPickerUsarTexto } from './modules/enc-combustivel.js';
 
 // Enc-aluguer + MOA
 import { loadEmpresasMOA, loadColaboradoresMOA, removeColabMOA, moaTrabAbrir, moaTrabEmpresaChange, moaTrabFuncaoChange, moaTrabFotoChange, moaTrabFotoRemover, moaTrabGuardar, renderEmpresasMOA, editEmpresaMOA, saveEmpresaMOA, toggleEmpresaMOA, encAlugPassarTrabalhadores, encAlugVoltarA, encAlugAddTrabalhador, encAlugSubmeter, encAlugSetHora, encAlugRemover, applyMOAFilter, navMOASemana, exportMOAExcel, moaFechoCarregar, moaFechoExport, initMOAFilters, moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA } from './modules/enc-aluguer.js';
@@ -299,7 +299,7 @@ Object.assign(window, {
   fornPag, editarFornecedor,
 
   // Chat compras
-  encGoComprasChat, chatSend, chatOnInput,
+  encGoComprasChat,
 
   // Férias
   renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs,

@@ -48,7 +48,7 @@ function inline(t){
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
 }
-function md(src){
+export function md(src){
   const L = esc(src).split('\n');
   const out = [];
   for(let i = 0; i < L.length;){

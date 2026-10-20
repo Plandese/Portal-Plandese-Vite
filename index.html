@@ -157,32 +157,13 @@
     </div>
   </div>
 
-  <!-- ECRÃ: ASSISTENTE DE COMPRAS (CHAT) -->
-  <div id="enc-screen-compras-chat" style="display:none;flex:1;flex-direction:column;background:#f0f4f8;overflow:hidden">
-    <!-- Header -->
-    <div class="chat-header">
-      <button onclick="encVoltarHome()" class="chat-back-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      </button>
-      <div class="chat-header-avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;color:white"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-      </div>
-      <div class="chat-header-info">
-        <div class="chat-header-title">Assistente de Compras</div>
-        <div class="chat-header-sub">Plandese · online</div>
-      </div>
-    </div>
-    <!-- Área de mensagens -->
-    <div id="chat-msgs" class="chat-msgs"></div>
-    <!-- Sugestões de materiais / botões rápidos -->
-    <div id="chat-suggestions" class="chat-suggestions"></div>
-    <!-- Barra de input -->
-    <div class="chat-input-bar">
-      <input type="text" id="chat-input" class="chat-input" placeholder="Escreve aqui..." autocomplete="off"
-        oninput="chatOnInput(this.value)" onkeypress="if(event.key==='Enter')chatSend()">
-      <button onclick="chatSend()" class="chat-send-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
+  <!-- ECRÃ: COMPRAS COM O AGENTE PLANDESE (enc-compras-ia.js) -->
+  <div id="enc-screen-compras-chat" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+    <button type="button" id="ci-novo" class="ci-novo" data-ci="novo" hidden>Nova conversa</button>
+    <div id="ci-body" class="ci-body"></div>
+    <div class="ci-compose">
+      <textarea id="ci-in" rows="1" placeholder="Escreva o que precisa…" aria-label="Mensagem para o assistente"></textarea>
+      <button type="button" id="ci-send" data-ci="enviar" title="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
     </div>
   </div>
 
