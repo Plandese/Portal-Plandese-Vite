@@ -147,9 +147,9 @@ function _encObrasComb(){
   return S.OBRAS.filter(o=>obraEmCurso(o)&&(o.encarregado_id===username||(o.encarregados_extra||[]).includes(username)));
 }
 
-// Código de acesso do QR (registo de gasóleo fora da app) das obras deste encarregado, no início
+// Código de acesso do QR (registo de gasóleo fora da app) das obras deste encarregado, no cabeçalho do início
 async function encUpdateCodigosWidget(){
-  const box=document.getElementById('enc-qr-cod'); if(!box) return;
+  const box=document.getElementById('e-hdr-cod'); if(!box) return;
   const obras=_encObrasComb();
   if(!obras.length){ box.hidden=true; return; }
   try{
@@ -158,17 +158,20 @@ async function encUpdateCodigosWidget(){
     const porObra=new Map((data||[]).map(r=>[r.obra_id,r.codigo]));
     const lista=obras.filter(o=>porObra.has(o.id));
     if(!lista.length){ box.hidden=true; return; }
-    box.innerHTML='<span class="e-cod-k">Código de acesso do QR · gasóleo</span>'+lista.map(o=>
-      `<button type="button" class="e-cod-r" data-cod="${_escH(porObra.get(o.id))}" onclick="encCopiarCodigo(this)">
-        <span class="e-cod-o">${_escH(o.nome)}</span><b class="e-cod-c">${_escH(porObra.get(o.id))}</b><span class="e-cod-t">Copiar</span>
-      </button>`).join('')+'<small class="e-cod-h">Quem ler o QR de um equipamento fora da app precisa deste código.</small>';
+    // Uma obra: só o código. Várias: cada código com o nº da obra (ex.: "O064 K7M2QX")
+    box.dataset.cod=lista.map(o=>porObra.get(o.id)).join(' ');
+    box.innerHTML='<small>Código QR Code</small>'+lista.map(o=>{
+      const n=(String(o.nome).match(/^O\d+/)||[''])[0];
+      return `<b>${lista.length>1&&n?_escH(n)+' ':''}${_escH(porObra.get(o.id))}</b>`;
+    }).join('');
     box.hidden=false;
   }catch(e){ console.warn('codigos QR:',e); box.hidden=true; }
 }
 function encCopiarCodigo(btn){
-  const cod=btn.dataset.cod, t=btn.querySelector('.e-cod-t');
-  const ok=()=>{ if(t){ t.textContent='Copiado ✓'; setTimeout(()=>{t.textContent='Copiar';},1500); } };
-  try{ navigator.clipboard.writeText(cod).then(ok,()=>{ if(t) t.textContent=cod; }); }catch(e){ if(t) t.textContent=cod; }
+  const cod=btn.dataset.cod||'';
+  const s=btn.querySelector('small'), antes=s?.textContent;
+  const ok=()=>{ if(s){ s.textContent='Copiado ✓'; setTimeout(()=>{s.textContent=antes;},1500); } };
+  try{ navigator.clipboard.writeText(cod).then(ok,()=>{}); }catch(e){ /* sem clipboard */ }
 }
 window.encCopiarCodigo=encCopiarCodigo;
 
