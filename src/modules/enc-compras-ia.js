@@ -64,12 +64,23 @@ async function chamar(body, signal) {
 // Usa a API do próprio telemóvel/navegador; sem suporte, os botões de voz ficam escondidos.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const TTS = 'speechSynthesis' in window;
-let rec = null, ouvindo = false, modoVoz = false, erroVoz = '';
+let rec = null, ouvindo = false, modoVoz = false, erroVoz = '', textoOuvido = '';
 let lerVoz = (() => { try { return localStorage.getItem('plandese_enc_voz') !== '0'; } catch (e) { return true; } })();
 
 function marcarVoz() {
   $('ci-mic')?.classList.toggle('on', ouvindo);
   const v = $('ci-voz'); if (v) v.classList.toggle('off', !lerVoz);
+}
+
+// Balão provisório com o que vai sendo ouvido; vira a mensagem normal quando a frase acaba
+function desenharOuvido() {
+  const body = $('ci-body'); if (!body) return;
+  let el = $('ci-live');
+  if (!textoOuvido) { el?.remove(); return; }
+  if (!msgs.length) body.innerHTML = '';
+  if (!el) { el = document.createElement('div'); el.id = 'ci-live'; el.className = 'ci-m user live'; body.appendChild(el); }
+  el.innerHTML = '<div class="ci-b">' + esc(textoOuvido) + '</div>';
+  body.scrollTop = body.scrollHeight;
 }
 
 function pararFalar() { if (TTS) speechSynthesis.cancel(); }
@@ -114,24 +125,25 @@ function iniciarOuvir() {
   if (!SR || busy || ouvindo) return;
   pararFalar();
   const inp = $('ci-in');
-  erroVoz = '';
+  erroVoz = ''; textoOuvido = '';
   rec = new SR();
   rec.lang = 'pt-PT'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
   rec.onstart = () => { ouvindo = true; marcarVoz(); if (inp) inp.placeholder = 'A ouvir… fale agora'; };
   rec.onresult = e => {
     let t = '';
     for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-    if (inp) inp.value = t;
+    textoOuvido = t;
+    desenharOuvido();
   };
   rec.onerror = e => { erroVoz = e.error || 'erro'; };
   rec.onend = () => {
     ouvindo = false; marcarVoz();
     if (inp) inp.placeholder = 'Escreva o que precisa…';
-    const txt = (inp?.value || '').trim();
+    const txt = textoOuvido.trim();
+    textoOuvido = ''; $('ci-live')?.remove();
     if (erroVoz === 'not-allowed' || erroVoz === 'service-not-allowed') {
       avisoVoz('Não tenho permissão para usar o microfone. Ative-a nas definições do telemóvel.');
     } else if (txt && !erroVoz) {
-      inp.value = ''; inp.style.height = 'auto';
       tratarFala(txt);
     } else { modoVoz = false; if (erroVoz && erroVoz !== 'no-speech' && erroVoz !== 'aborted') avisoVoz('Não consegui ouvir bem. Tente outra vez ou escreva.'); }
   };
@@ -338,9 +350,10 @@ function htmlMsg(m) {
 function render(descer) {
   const body = $('ci-body'); if (!body) return;
   const novo = $('ci-novo'); if (novo) novo.hidden = !msgs.length;
-  if (!msgs.length) { body.innerHTML = htmlVazio(); return; }
+  if (!msgs.length) { body.innerHTML = textoOuvido ? '' : htmlVazio(); desenharOuvido(); return; }
   const perto = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
   body.innerHTML = msgs.map(htmlMsg).join('');
+  desenharOuvido();
   if (descer || perto) body.scrollTop = body.scrollHeight;
 }
 
