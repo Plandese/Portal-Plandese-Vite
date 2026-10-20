@@ -74,14 +74,25 @@ function marcarVoz() {
 
 function pararFalar() { if (TTS) speechSynthesis.cancel(); }
 
+// Os telemóveis não dizem o género da voz: escolhe-se pelo nome (vozes femininas conhecidas de pt-PT
+// no Windows, iOS/macOS e Android) e afastam-se as masculinas. Sem correspondência, usa a 1.ª voz pt-PT.
+const VOZ_F = /helia|hélia|raquel|joana|catarina|fernanda|female|feminin|maria|google portugu/i;
+const VOZ_M = /duarte|cosimo|diogo|male\b|masculin|-jmn-|-pmj-/i;
+function vozFeminina() {
+  const todas = speechSynthesis.getVoices();
+  const pt = todas.filter(x => /^pt[-_]PT/i.test(x.lang));
+  const lista = pt.length ? pt : todas.filter(x => /^pt/i.test(x.lang));
+  return lista.find(x => VOZ_F.test(x.name) && !VOZ_M.test(x.name)) || lista.find(x => !VOZ_M.test(x.name)) || lista[0] || null;
+}
+
 function falar(texto, aoFim) {
   if (!TTS || !texto) return aoFim?.();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto);
   u.lang = 'pt-PT';
-  const vozes = speechSynthesis.getVoices();
-  const v = vozes.find(x => /^pt[-_]PT/i.test(x.lang)) || vozes.find(x => /^pt/i.test(x.lang));
-  if (v) u.voice = v;
+  const v = vozFeminina();
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.pitch = 1.05;
   let feito = false;
   const fim = () => { if (!feito) { feito = true; aoFim?.(); } };
   u.onend = fim; u.onerror = fim;
