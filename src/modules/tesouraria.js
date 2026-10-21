@@ -93,7 +93,7 @@ function desenhar() {
   const hdr = document.getElementById('tes-hdr-act');
   if (hdr) {
     hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button>' : '')
-      + (_podePropor || ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar propostas</button>' : '');
+      + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar Excel</button>';
   }
 
   // opções do filtro de centro de custo (mantém a seleção atual)
@@ -206,18 +206,19 @@ async function marcarPago() {
 function exportar(linhas, nome) {
   const X = window.XLSX;
   if (!X) { toast('Exportação indisponível'); return; }
-  if (!linhas.length) { toast('Sem propostas para exportar'); return; }
+  if (!linhas.length) { toast('Sem faturas para exportar'); return; }
   const dados = linhas
     .slice().sort((a, b) => (a.centro_custo || '').localeCompare(b.centro_custo || '', 'pt') || (a.data_pag || '').localeCompare(b.data_pag || ''))
     .map(r => ({
       'Centro de custo': r.centro_custo || '', 'Fornecedor': r.fornecedor || '', 'NIF': r.nif || '', 'Fatura': r.numero || '',
       'Data': r.data || '', 'Vencimento': r.data_pag || '', 'Total (€)': Number(r.total) || 0,
+      'Estado': r.status === 'paga' ? 'Paga' : proposta(r) ? 'Proposta de pagamento' : 'Por pagar',
       'Proposta por': nomeDe(r.proposta_por), 'Proposta em': r.proposta_em ? new Date(r.proposta_em).toLocaleDateString('pt-PT') : '',
     }));
   dados.push({ 'Centro de custo': 'TOTAL', 'Total (€)': Math.round(dados.reduce((s, d) => s + d['Total (€)'], 0) * 100) / 100 });
   const ws = X.utils.json_to_sheet(dados);
   const wb = X.utils.book_new();
-  X.utils.book_append_sheet(wb, ws, 'Propostas');
+  X.utils.book_append_sheet(wb, ws, 'Tesouraria');
   X.writeFile(wb, `${nome}_${hoje()}.xlsx`);
 }
 
@@ -260,7 +261,7 @@ document.addEventListener('click', e => {
     else if (act === 'pago') marcarPago();
     else if (act === 'limpar') { _sel.clear(); desenhar(); }
     else if (act === 'exportar') exportar(_rows.filter(r => _sel.has(r.id)), 'faturas_selecionadas');
-    else if (act === 'exportar-prop') exportar(_rows.filter(proposta), 'propostas_pagamento');
+    else if (act === 'exportar-prop') exportar(_rows, 'tesouraria');
     else if (act === 'quem') abrirQuemPropoe();
     return;
   }
