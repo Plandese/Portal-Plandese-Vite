@@ -13,12 +13,24 @@ const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agos
 
 // Entrada no depósito: tipo_registo='deposito' com movimento='entrada' (ou sem movimento)
 // Depósito de onde saiu/entrou o combustível (registos antigos: a própria obra do registo)
-const depObraId=r=>r.tipo_registo==='deposito'?(r.deposito_obra_id||r.obra_id||null):null;
+const isTransfRow=r=>r.tipo_registo==='transferencia';
+const depObraId=r=>(r.tipo_registo==='deposito'||isTransfRow(r))?(r.deposito_obra_id||r.obra_id||null):null;
 const depObraNome=r=>r.deposito_obra_nome||r.obra_nome||S.OBRAS.find(o=>o.id===depObraId(r))?.nome||'—';
 const isEntDepRow=r=>r.tipo_registo==='deposito'&&(r.movimento==='entrada'||!r.movimento);
 // Saída: saída de depósito OU abastecimento directo de viatura
 const isSaidaRow=r=>(r.tipo_registo==='deposito'&&r.movimento==='saida')||r.tipo_registo==='viatura';
 const _sumL=(arr,filterFn)=>arr.filter(filterFn).reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
+// Stock do depósito de uma obra: entradas − saídas do depósito − abastecimentos da obra + transferências recebidas − transferências enviadas
+function _stockObra(rows,obraId){
+  let st=0;
+  rows.forEach(r=>{
+    const l=parseFloat(r.litros)||0;
+    if(isTransfRow(r)){ if(r.obra_id===obraId) st+=l; if(r.deposito_obra_id===obraId) st-=l; return; }
+    if(r.tipo_registo==='deposito'&&depObraId(r)===obraId) st+=isEntDepRow(r)?l:-l;
+    else if(r.tipo_registo==='viatura'&&r.obra_id===obraId) st-=l;
+  });
+  return st;
+}
 
 function periodRange(tipo,anchor){
   const ref=anchor||new Date();
@@ -164,6 +176,7 @@ function renderCombObraCards(rows){
     obraE(id,r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||(r.obra_id?r.obra_id:'Sem obra')).rows.push(r);
     const dId=depObraId(r);
     if(dId) obraE(dId,depObraNome(r)).depRows.push(r);
+    if(isTransfRow(r)&&r.obra_id&&r.obra_id!==dId) obraE(r.obra_id,r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||r.obra_id).depRows.push(r);
   });
   const obras=Object.values(map).sort((a,b)=>a.nome.localeCompare(b.nome));
   if(!obras.length){grid.innerHTML='';emptyEl.style.display='';return;}
@@ -177,9 +190,7 @@ function renderCombObraCards(rows){
     let box;
     if(hasDep){
       // Stock do depósito: entradas − saídas do depósito (mesmo que o gasóleo tenha ido para outra obra) − abastecimentos de viaturas da obra
-      const ent=_sumL(ob.depRows,isEntDepRow);
-      const sai=_sumL(ob.depRows,isSaidaRow)+_sumL(ob.rows.filter(r=>r.tipo_registo==='viatura'),isSaidaRow);
-      const stock=ent-sai;
+      const stock=_stockObra(_combAllRows,ob.id);
       const stockColor=stock>=0?'var(--blue-700)':'#b91c1c';
       const stockBg=stock>=0?'var(--blue-50)':'#fef2f2';
       const stockBorder=stock>=0?'var(--blue-200)':'#fecaca';
@@ -330,14 +341,15 @@ function _combAbrirRegDetalhe(id){
   const box=document.getElementById('mcor-corpo');
   if(!r||!box) return;
   const isEnt=r.tipo_registo==='deposito'&&(r.movimento==='entrada'||!r.movimento);
+  const isTr=isTransfRow(r);
   const l=parseFloat(r.litros)||0;
   const obra=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
-  const mov=r.tipo_registo==='deposito'?(isEnt?'Entrada em depósito':'Saída de depósito'):'Abastecimento de viatura';
+  const mov=isTr?'Transferência entre obras':r.tipo_registo==='deposito'?(isEnt?'Entrada em depósito':'Saída de depósito'):'Abastecimento de viatura';
   const kv=(k,v,full)=>`<div class="${full?'full':''}"><span>${k}</span><b>${v}</b></div>`;
   document.getElementById('mcor-title').textContent=r.equipamento_nome||'Depósito de obra';
   document.getElementById('mcor-sub').textContent=`${fmtPT(r.data)} · ${obra}`;
   box.innerHTML=`<div class="cbr-big ${isEnt?'in':'out'}">${isEnt?'+':'−'}${_fmtL(l)}<small>${mov}</small></div>
-    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${depObraId(r)?kv('Depósito (de onde sai)',_escHtml(depObraNome(r)),1):''}${kv(r.tipo_registo==='deposito'&&!isEnt?'Obra de destino (centro de custo)':'Obra',_escHtml(obra),1)}${kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_fmtL(r.contador_valor).replace(/\s*L$/,'')+(r.contador_tipo==='km'?' km':' h')):''}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
+    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${depObraId(r)?kv(isTr?'Obra de origem':'Depósito (de onde sai)',_escHtml(depObraNome(r)),1):''}${kv(isTr?'Obra de destino':r.tipo_registo==='deposito'&&!isEnt?'Obra de destino (centro de custo)':'Obra',_escHtml(obra),1)}${isTr?'':kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_fmtL(r.contador_valor).replace(/\s*L$/,'')+(r.contador_tipo==='km'?' km':' h')):''}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
   document.getElementById('mcor-editar').onclick=()=>abrirCombFormRegisto(null,String(r.id));
   openModal('modal-comb-reg');
 }
@@ -358,18 +370,16 @@ function combAdicionarRegistoDaObra(){
 }
 
 function _renderCombDetalheHeader(){
-  const rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId);
+  const rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId||(isTransfRow(r)&&r.deposito_obra_id===_combDetObraId));
   const nome=rows[0]?.obra_nome||S.OBRAS.find(o=>o.id===_combDetObraId)?.nome||(_combDetObraId==='__sem_obra__'?'Sem obra':_combDetObraId);
   document.getElementById('mcob-title').textContent=nome;
 
-  const hasDep=rows.some(r=>r.tipo_registo==='deposito');
+  const hasDep=rows.some(r=>r.tipo_registo==='deposito'||isTransfRow(r));
   document.getElementById('mcob-sub').textContent=`${rows.length} registo${rows.length!==1?'s':''} no total${hasDep?'':' · sem depósito associado'}`;
 
   const stockBox=document.getElementById('mcob-stock-box');
   if(hasDep){
-    const ent=_sumL(rows,isEntDepRow);
-    const sai=_sumL(rows,isSaidaRow);
-    const stock=ent-sai;
+    const stock=_stockObra(_combAllRows,_combDetObraId);
     const stockColor=stock>=0?'var(--blue-700)':'#b91c1c';
     const stockBg=stock>=0?'var(--blue-50)':'#fef2f2';
     const stockBorder=stock>=0?'var(--blue-200)':'#fecaca';
@@ -434,7 +444,7 @@ function _renderCombDetalhe(){
     else label.textContent=`${MESES[_combDetAnchor.getMonth()]} ${_combDetAnchor.getFullYear()}`;
   }
 
-  let rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId);
+  let rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId||(isTransfRow(r)&&r.deposito_obra_id===_combDetObraId));
   if(_combDetEquip) rows=rows.filter(r=>r.equipamento_id===_combDetEquip);
   const periodRows=de?rows.filter(r=>r.data&&r.data>=de&&r.data<=ate):rows;
 
@@ -461,14 +471,17 @@ function _renderCombDetalhe(){
   }
   emptyEl.style.display='none';
   tbody.innerHTML=periodRows.map(r=>{
-    const isEnt=r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
+    const isTr=isTransfRow(r);
+    const isEnt=isTr?r.obra_id===_combDetObraId:r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
     const litrosVal=parseFloat(r.litros)||0;
     const litrosFormatado=r.litros!=null
       ?(isEnt
         ?`<span style="font-weight:700;color:#16a34a">+${litrosVal.toFixed(1)}L</span>`
         :`<span style="font-weight:700;color:#dc2626">−${litrosVal.toFixed(1)}L</span>`)
       :'—';
-    const movBadge=r.tipo_registo==='deposito'
+    const movBadge=isTr
+      ?`<span class="badge b-blue" style="font-size:11px">⇄ ${isEnt?'Recebido de '+_escHtml(depObraNome(r)):'Enviado para '+_escHtml(r.obra_nome||'—')}</span>`
+      :r.tipo_registo==='deposito'
       ?(isEnt
         ?`<span class="badge b-green" style="font-size:11px">↓ Entrada</span>`
         :`<span class="badge b-red" style="font-size:11px">↑ Saída</span>`)
@@ -490,14 +503,16 @@ function _renderCombDetalhe(){
 // ── Criar / Editar / Apagar registo ──────────────
 function combFormTipoChange(){
   const tipo=document.getElementById('mcf-tipo-registo').value;
+  const isTr=tipo==='transferencia';
   document.getElementById('mcf-movimento-field').style.display=tipo==='deposito'?'':'none';
   document.getElementById('mcf-equip-field').style.display=tipo==='viatura'?'':'none';
   document.getElementById('mcf-fornecedor-field').style.display=tipo==='viatura'?'':'none';
   // Depósito: de onde sai (ou onde entra). Obra: destino/centro de custo — só nas saídas do depósito e nas viaturas
   const saida=document.getElementById('mcf-movimento').value==='saida';
-  const depF=document.getElementById('mcf-dep-field'); if(depF) depF.style.display=tipo==='deposito'?'':'none';
-  const obraF=document.getElementById('mcf-obra-field'); if(obraF) obraF.style.display=(tipo==='viatura'||saida)?'':'none';
-  const lbl=document.getElementById('mcf-obra-label'); if(lbl) lbl.textContent=tipo==='deposito'?'Obra de destino (centro de custo)':'Obra (centro de custo)';
+  const depF=document.getElementById('mcf-dep-field'); if(depF) depF.style.display=(tipo==='deposito'||isTr)?'':'none';
+  const depL=document.getElementById('mcf-dep-label'); if(depL) depL.textContent=isTr?'Obra de origem (de onde sai o gasóleo)':'Depósito (obra onde está o depósito)';
+  const obraF=document.getElementById('mcf-obra-field'); if(obraF) obraF.style.display=(tipo==='viatura'||isTr||(tipo==='deposito'&&saida))?'':'none';
+  const lbl=document.getElementById('mcf-obra-label'); if(lbl) lbl.textContent=isTr?'Obra de destino (vai levar o gasóleo)':tipo==='deposito'?'Obra de destino (centro de custo)':'Obra (centro de custo)';
 }
 
 function _combFillFormObraSelect(selectedId){
@@ -571,7 +586,18 @@ async function guardarRegistoCombustivel(){
   if(!litros||litros<=0){showToast('Indique a quantidade de litros');return;}
 
   let payload;
-  if(tipoRegisto==='deposito'){
+  if(tipoRegisto==='transferencia'){
+    const depEl=document.getElementById('mcf-dep');
+    const depId=depEl.value||null;
+    if(!depId){showToast('Selecione a obra de origem');return;}
+    if(!obraId||obraId===depId){showToast('Escolha uma obra de destino diferente da origem');return;}
+    payload={
+      data,equipamento_id:null,equipamento_nome:'Transferência entre obras',
+      obra_id:obraId,obra_nome:obraNome,deposito_obra_id:depId,deposito_obra_nome:depEl.options[depEl.selectedIndex]?.text||'',
+      litros,tipo_combustivel:tipoComb,tipo_registo:'transferencia',movimento:'saida',
+      fornecedor:null,encarregado_nome:encarregado,obs
+    };
+  }else if(tipoRegisto==='deposito'){
     const depEl=document.getElementById('mcf-dep');
     const depId=depEl.value||null;
     if(!depId){showToast('Selecione o depósito');return;}
@@ -640,7 +666,7 @@ function exportCombustivelXLSX(){
     const obraNome=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
     const isEnt=r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
     const litrosVal=parseFloat(r.litros)||0;
-    const mov=r.tipo_registo==='deposito'?(isEnt?'Entrada':'Saída'):'Viatura';
+    const mov=isTransfRow(r)?'Transferência':r.tipo_registo==='deposito'?(isEnt?'Entrada':'Saída'):'Viatura';
     return [fmtPT(r.data),r.equipamento_nome||'—',obraNome,mov,(isEnt?'+':'−')+litrosVal.toFixed(1)+'L',r.tipo_combustivel||'—',r.fornecedor||'—',r.encarregado_nome||'—',r.obs||'—'];
   });
   const ws=XLSX.utils.aoa_to_sheet([['Data','Viatura/Máquina','Obra','Movimento','Litros','Tipo','Fornecedor','Encarregado','Obs'],...aoa]);

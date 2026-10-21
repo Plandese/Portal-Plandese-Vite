@@ -575,7 +575,7 @@
         <!-- Tipo de movimento (toggle) -->
         <div class="enc-field">
           <label>Movimento</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
             <button id="dep-btn-entrada" onclick="depSetMovimento('entrada')"
               style="padding:18px 8px;border-radius:var(--radius-lg);font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;border:2px solid #22c55e;background:#22c55e;color:white;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 0 0 4px rgba(34,197,94,.3),0 4px 12px rgba(34,197,94,.4);transform:scale(1.02)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
@@ -587,6 +587,12 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
               Saída
               <span style="font-size:10px;font-weight:500;letter-spacing:.3px">− litros do depósito</span>
+            </button>
+            <button id="dep-btn-transferencia" onclick="depSetMovimento('transferencia')"
+              style="padding:18px 8px;border-radius:var(--radius-lg);font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;border:2px solid #d1d5db;background:#f3f4f6;color:#6b7280;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:none;transform:scale(1)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Transferir
+              <span style="font-size:10px;font-weight:500;letter-spacing:.3px">para outra obra</span>
             </button>
           </div>
         </div>
@@ -619,18 +625,20 @@
         </div>
 
         <div class="enc-field">
-          <label>Depósito (obra onde está o depósito)</label>
+          <label id="dep-obra-label">Depósito (obra onde está o depósito)</label>
           <select id="dep-obra" class="enc-input enc-select">
             <option value="">— Selecione o depósito —</option>
           </select>
         </div>
 
         <div class="enc-field" id="dep-dest-wrap" style="display:none">
-          <label>Obra de destino (centro de custo)</label>
+          <label id="dep-dest-label">Obra de destino (centro de custo)</label>
           <select id="dep-dest" class="enc-input enc-select">
             <option value="">— Igual ao depósito —</option>
           </select>
         </div>
+
+        <div id="dep-transf-nota" style="display:none;margin:-4px 0 14px;padding:12px 14px;border-radius:14px;background:#eef3ff;color:#173f9f;font-size:13px;line-height:1.45;font-weight:500">O gasóleo passa a ser stock da obra de destino, onde depois se abastecem os equipamentos. A saída só conta depois de o encarregado da obra de origem confirmar.</div>
 
         <div class="enc-field" id="dep-cnt-wrap" style="display:none">
             <label id="dep-cnt-label">Horas / km do equipamento <span style="font-weight:400;color:var(--gray-400)">(opcional)</span></label>
@@ -3969,6 +3977,7 @@
       <select id="mcf-tipo-registo" onchange="combFormTipoChange()">
         <option value="deposito">Depósito de obra</option>
         <option value="viatura">Viatura / Equipamento</option>
+        <option value="transferencia">Transferência entre obras</option>
       </select>
     </div>
 
@@ -3978,7 +3987,7 @@
     </div>
 
     <div class="field" id="mcf-dep-field">
-      <label>Depósito (obra onde está o depósito)</label>
+      <label id="mcf-dep-label">Depósito (obra onde está o depósito)</label>
       <select id="mcf-dep"><option value="">— Selecione o depósito —</option></select>
     </div>
 
