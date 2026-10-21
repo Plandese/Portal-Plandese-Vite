@@ -712,10 +712,15 @@ function refreshEqMap(){
       iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-30]});
     const cat = EQ_CATS[eqCatNorm(eq.categoria)];
     const ago = eq.ultimoRegisto ? eqTimeAgo(new Date(eq.ultimoRegisto)) : '—';
-    const popup=`<div class="eq-popup-name">${eq.nome}</div>
-      <div class="eq-popup-cat">${cat.label}${eq.serie?' · '+eq.serie:''}</div>
-      <div class="eq-popup-loc">📍 ${eq.ultimoLocal||'Localização GPS'}</div>
-      <div class="eq-popup-time">🕐 ${ago}</div>`;
+    const dias = eq.ultimoRegisto ? (Date.now()-new Date(eq.ultimoRegisto).getTime())/864e5 : 0;
+    const mv = EQ_MOVIMENTOS.filter(m=>m.equipId===eq.id).sort((a,b)=>String(b.criadoEm).localeCompare(String(a.criadoEm)))[0];
+    const quem = mv&&mv.encarregado ? ' por '+eqEsc(mv.encarregado) : '';
+    const ref = [eq.matricula, eq.codigo&&('Nº '+eq.codigo)].filter(Boolean).map(eqEsc).join(' · ');
+    const popup=`<div class="eq-popup-top"><div class="eq-popup-name">${eqEsc(eq.nome)}</div>${eqEstadoBadge(eq.estado)}</div>
+      <div class="eq-popup-cat">${eqEsc(cat.label)}${ref?' · '+ref:''}</div>
+      <div class="eq-popup-loc">📍 ${eqEsc(eq.ultimoLocal||'Localização GPS')}</div>
+      <div class="eq-popup-time${dias>7?' eq-popup-old':''}">🕐 Registado ${ago}${quem}</div>
+      <button type="button" class="eq-popup-btn" onclick="abrirEqDetalhe('${String(eq.id).replace(/'/g,"\'")}')">Abrir ficha</button>`;
     const mk=L.marker([lat,lng],{icon}).addTo(_eqMap).bindPopup(popup);
     _eqMapMarkers.push(mk); _eqMapMarkerById[eq.id]=mk;
     bounds.push([lat,lng]);
