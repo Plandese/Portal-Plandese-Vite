@@ -203,23 +203,142 @@ async function marcarPago() {
   await recarregar();
 }
 
-function exportar(linhas, nome) {
-  const X = window.XLSX;
-  if (!X) { toast('Exportação indisponível'); return; }
+// Excel profissional (ExcelJS): título, resumo, tabela com filtros e totais + folha de resumo por centro de custo
+const _XL_AZUL = 'FF173F9F', _XL_TINTA = 'FF1B2130', _XL_LINHA = 'FFDDE2EA', _XL_ZEBRA = 'FFF5F7FC';
+const _XL_FONTE = 'Calibri';
+const _xlData = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; };
+const _xlFill = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+const _xlBorda = argb => ({ style: 'thin', color: { argb } });
+const _XL_ESTADO = { 'Paga': ['FFDFF5E7', 'FF166534'], 'Proposta de pagamento': ['FFFFF0D9', 'FFA35A08'], 'Por pagar': ['FFEAF0FC', 'FF173F9F'] };
+
+async function exportar(linhas, nome) {
+  const EJ = window.ExcelJS;
+  if (!EJ) { toast('Exportação indisponível'); return; }
   if (!linhas.length) { toast('Sem faturas para exportar'); return; }
-  const dados = linhas
-    .slice().sort((a, b) => (a.centro_custo || '').localeCompare(b.centro_custo || '', 'pt') || (a.data_pag || '').localeCompare(b.data_pag || ''))
-    .map(r => ({
-      'Centro de custo': r.centro_custo || '', 'Fornecedor': r.fornecedor || '', 'NIF': r.nif || '', 'Fatura': r.numero || '',
-      'Data': r.data || '', 'Vencimento': r.data_pag || '', 'Total (€)': Number(r.total) || 0,
-      'Estado': r.status === 'paga' ? 'Paga' : proposta(r) ? 'Proposta de pagamento' : 'Por pagar',
-      'Proposta por': nomeDe(r.proposta_por), 'Proposta em': r.proposta_em ? new Date(r.proposta_em).toLocaleDateString('pt-PT') : '',
-    }));
-  dados.push({ 'Centro de custo': 'TOTAL', 'Total (€)': Math.round(dados.reduce((s, d) => s + d['Total (€)'], 0) * 100) / 100 });
-  const ws = X.utils.json_to_sheet(dados);
-  const wb = X.utils.book_new();
-  X.utils.book_append_sheet(wb, ws, 'Tesouraria');
-  X.writeFile(wb, `${nome}_${hoje()}.xlsx`);
+  const hojeIso = hoje();
+  const estadoDe = r => r.status === 'paga' ? 'Paga' : proposta(r) ? 'Proposta de pagamento' : 'Por pagar';
+  const ord = linhas.slice().sort((x, y) => (x.centro_custo || '').localeCompare(y.centro_custo || '', 'pt') || (x.data_pag || '').localeCompare(y.data_pag || ''));
+  const total = ord.reduce((t, r) => t + (Number(r.total) || 0), 0);
+  const porEstado = e => ord.filter(r => estadoDe(r) === e).reduce((t, r) => t + (Number(r.total) || 0), 0);
+  const vencidas = ord.filter(r => porPagar(r) && r.data_pag && r.data_pag < hojeIso);
+
+  const wb = new EJ.Workbook();
+  wb.creator = 'Plandese SA'; wb.created = new Date();
+  const ws = wb.addWorksheet('Tesouraria', { views: [{ state: 'frozen', ySplit: 7, showGridLines: false }] });
+  const cols = [
+    ['Centro de custo', 26], ['Fornecedor', 34], ['NIF', 13], ['Fatura', 17], ['Data', 12], ['Vencimento', 13],
+    ['Total (€)', 15], ['Estado', 22], ['Pagamento', 15], ['Proposta por', 20], ['Proposta em', 13], ['Pago em', 13],
+  ];
+  ws.columns = cols.map(([, w]) => ({ width: w }));
+  const N = cols.length, ult = String.fromCharCode(64 + N);
+
+  // Título
+  ws.mergeCells(`A1:${ult}1`);
+  const t = ws.getCell('A1'); t.value = 'Plandese  ·  Tesouraria';
+  t.font = { name: _XL_FONTE, size: 20, bold: true, color: { argb: 'FFFFFFFF' } }; t.fill = _xlFill(_XL_AZUL);
+  t.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; ws.getRow(1).height = 38;
+  ws.mergeCells(`A2:${ult}2`);
+  const sub = ws.getCell('A2'); sub.value = `Lista de faturas aprovadas  ·  gerada a ${new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}  ·  por ${nomeDe(S.currentUser?.key) || 'utilizador'}`;
+  sub.font = { name: _XL_FONTE, size: 11, color: { argb: 'FFDCE6FA' } }; sub.fill = _xlFill(_XL_AZUL);
+  sub.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; ws.getRow(2).height = 22;
+  ws.getRow(3).height = 10;
+
+  // Resumo (4 indicadores)
+  const kpis = [
+    ['Faturas', ord.length, '0'], ['Total', total, '#,##0.00 "€"'], ['Por pagar', porEstado('Por pagar') + porEstado('Proposta de pagamento'), '#,##0.00 "€"'],
+    ['Pagas', porEstado('Paga'), '#,##0.00 "€"'], ['Vencidas', vencidas.reduce((x, r) => x + (Number(r.total) || 0), 0), '#,##0.00 "€"'],
+  ];
+  const pos = [['A', 'A'], ['B', 'B'], ['C', 'E'], ['F', 'G'], ['H', 'I']];
+  kpis.forEach(([rot, val, fmt], i) => {
+    const [c1, c2] = pos[i];
+    if (c1 !== c2) { ws.mergeCells(`${c1}4:${c2}4`); ws.mergeCells(`${c1}5:${c2}5`); }
+    const l = ws.getCell(`${c1}4`), v = ws.getCell(`${c1}5`);
+    l.value = rot.toUpperCase(); l.font = { name: _XL_FONTE, size: 9, bold: true, color: { argb: 'FF5D6678' } };
+    v.value = val; v.numFmt = fmt; v.font = { name: _XL_FONTE, size: 15, bold: true, color: { argb: rot === 'Vencidas' && val > 0 ? 'FFB3261E' : _XL_AZUL } };
+    [l, v].forEach(c => { c.fill = _xlFill('FFEAF0FC'); c.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; });
+  });
+  ws.getRow(4).height = 18; ws.getRow(5).height = 26; ws.getRow(6).height = 10;
+
+  // Cabeçalho da tabela
+  const hr = ws.getRow(7); hr.height = 28;
+  cols.forEach(([nm], i) => {
+    const c = hr.getCell(i + 1); c.value = nm;
+    c.font = { name: _XL_FONTE, size: 11, bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = _xlFill(_XL_AZUL);
+    c.alignment = { vertical: 'middle', horizontal: [5, 6, 7, 11, 12].includes(i) ? (i === 6 ? 'right' : 'center') : 'left', indent: i === 6 ? 0 : 1 };
+  });
+
+  // Linhas
+  ord.forEach((r, k) => {
+    const row = ws.getRow(8 + k); row.height = 21;
+    const est = estadoDe(r);
+    const venc = porPagar(r) && r.data_pag && r.data_pag < hojeIso;
+    const vals = [r.centro_custo || '—', r.fornecedor || '', r.nif || '', r.numero || '', _xlData(r.data), _xlData(r.data_pag), Number(r.total) || 0, est,
+      r.tipo_pagamento || '', nomeDe(r.proposta_por), r.proposta_em ? new Date(r.proposta_em) : null, _xlData((r.pago_em || '').slice(0, 10))];
+    vals.forEach((v, i) => {
+      const c = row.getCell(i + 1); c.value = v;
+      c.font = { name: _XL_FONTE, size: 10.5, color: { argb: _XL_TINTA } };
+      c.alignment = { vertical: 'middle', horizontal: [4, 5, 10, 11].includes(i) ? 'center' : i === 6 ? 'right' : 'left', indent: [4, 5, 6, 10, 11].includes(i) ? 0 : 1 };
+      c.border = { bottom: _xlBorda(_XL_LINHA) };
+      if (k % 2) c.fill = _xlFill(_XL_ZEBRA);
+    });
+    row.getCell(5).numFmt = row.getCell(6).numFmt = row.getCell(11).numFmt = row.getCell(12).numFmt = 'dd/mm/yyyy';
+    row.getCell(7).numFmt = '#,##0.00 "€"'; row.getCell(7).font = { name: _XL_FONTE, size: 10.5, bold: true, color: { argb: _XL_TINTA } };
+    const [bg, fg] = _XL_ESTADO[est];
+    const ce = row.getCell(8); ce.fill = _xlFill(bg); ce.font = { name: _XL_FONTE, size: 10, bold: true, color: { argb: fg } }; ce.alignment = { vertical: 'middle', horizontal: 'center' };
+    if (venc) row.getCell(6).font = { name: _XL_FONTE, size: 10.5, bold: true, color: { argb: 'FFB3261E' } };
+  });
+
+  // Total
+  const fim = 8 + ord.length, tr = ws.getRow(fim); tr.height = 26;
+  for (let i = 1; i <= N; i++) {
+    const c = tr.getCell(i); c.fill = _xlFill('FFEAF0FC'); c.border = { top: { style: 'medium', color: { argb: _XL_AZUL } } };
+    c.font = { name: _XL_FONTE, size: 11.5, bold: true, color: { argb: _XL_AZUL } }; c.alignment = { vertical: 'middle', indent: 1 };
+  }
+  tr.getCell(1).value = 'TOTAL';
+  tr.getCell(7).value = { formula: `SUBTOTAL(109,G8:G${fim - 1})`, result: total }; tr.getCell(7).numFmt = '#,##0.00 "€"'; tr.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+  ws.autoFilter = { from: { row: 7, column: 1 }, to: { row: fim - 1, column: N } };
+
+  // Impressão
+  ws.pageSetup = { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .4, right: .4, top: .5, bottom: .6, header: .3, footer: .3 }, printTitlesRow: '7:7' };
+  ws.headerFooter = { oddFooter: '&L&"Calibri"&9Plandese · Tesouraria&R&"Calibri"&9Página &P de &N' };
+
+  // Folha de resumo por centro de custo
+  const rs = wb.addWorksheet('Resumo por centro de custo', { views: [{ showGridLines: false }] });
+  rs.columns = [{ width: 34 }, { width: 12 }, { width: 18 }, { width: 18 }, { width: 18 }];
+  rs.mergeCells('A1:E1'); const rt = rs.getCell('A1'); rt.value = 'Resumo por centro de custo';
+  rt.font = { name: _XL_FONTE, size: 16, bold: true, color: { argb: 'FFFFFFFF' } }; rt.fill = _xlFill(_XL_AZUL); rt.alignment = { vertical: 'middle', indent: 1 }; rs.getRow(1).height = 32;
+  ['Centro de custo', 'Faturas', 'Total (€)', 'Por pagar (€)', 'Pago (€)'].forEach((h, i) => {
+    const c = rs.getCell(3, i + 1); c.value = h; c.font = { name: _XL_FONTE, bold: true, size: 11, color: { argb: _XL_AZUL } }; c.fill = _xlFill('FFEAF0FC');
+    c.border = { bottom: { style: 'medium', color: { argb: _XL_AZUL } } }; c.alignment = { vertical: 'middle', horizontal: i === 0 ? 'left' : 'right', indent: i === 0 ? 1 : 0 };
+  });
+  rs.getRow(3).height = 24;
+  const grupos = new Map();
+  ord.forEach(r => {
+    const k = r.centro_custo || '—'; const g = grupos.get(k) || { n: 0, t: 0, p: 0, g: 0 };
+    g.n++; g.t += Number(r.total) || 0; if (r.status === 'paga') g.g += Number(r.total) || 0; else g.p += Number(r.total) || 0; grupos.set(k, g);
+  });
+  let rr = 4;
+  [...grupos.entries()].sort((x, y) => y[1].t - x[1].t).forEach(([k, g], i) => {
+    [k, g.n, g.t, g.p, g.g].forEach((v, j) => {
+      const c = rs.getCell(rr, j + 1); c.value = v; c.font = { name: _XL_FONTE, size: 10.5, color: { argb: _XL_TINTA } };
+      c.alignment = { vertical: 'middle', horizontal: j === 0 ? 'left' : 'right', indent: j === 0 ? 1 : 0 }; c.border = { bottom: _xlBorda(_XL_LINHA) };
+      if (j >= 2) c.numFmt = '#,##0.00 "€"'; if (i % 2) c.fill = _xlFill(_XL_ZEBRA);
+    });
+    rs.getRow(rr).height = 20; rr++;
+  });
+  const totRow = rs.getRow(rr); totRow.height = 24;
+  ['TOTAL', { f: `SUM(B4:B${rr - 1})` }, { f: `SUM(C4:C${rr - 1})` }, { f: `SUM(D4:D${rr - 1})` }, { f: `SUM(E4:E${rr - 1})` }].forEach((v, j) => {
+    const c = totRow.getCell(j + 1); c.value = typeof v === 'string' ? v : { formula: v.f };
+    c.font = { name: _XL_FONTE, size: 11.5, bold: true, color: { argb: _XL_AZUL } }; c.fill = _xlFill('FFEAF0FC'); c.border = { top: { style: 'medium', color: { argb: _XL_AZUL } } };
+    c.alignment = { vertical: 'middle', horizontal: j === 0 ? 'left' : 'right', indent: j === 0 ? 1 : 0 }; if (j >= 2) c.numFmt = '#,##0.00 "€"';
+  });
+  rs.pageSetup = { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const al = document.createElement('a'); al.href = url; al.download = `Plandese_${nome}_${hojeIso}.xlsx`; al.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast('Excel gerado ✓');
 }
 
 // Administrador escolhe quem pode propor pagamentos
