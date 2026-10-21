@@ -147,10 +147,17 @@ function medirTeclado() {
   if (!foco || w !== _baseW || a > _base) { _base = a; _baseW = w; }
   const aberto = foco && a < _base - LIMIAR_TECLADO;
   if (aberto !== _kb) { _kb = aberto; document.body.classList.toggle('e-kb', aberto); }
+  // Com o teclado aberto a app ocupa exatamente a parte visível do ecrã, por isso o cabeçalho azul fica fixo no topo
+  if (aberto) {
+    const r = document.documentElement.style;
+    r.setProperty('--e-vh', a + 'px');
+    r.setProperty('--e-vt', Math.round(vv ? vv.offsetTop : 0) + 'px');
+  }
 }
 
 function iniciar() {
   vv?.addEventListener('resize', medirTeclado);
+  vv?.addEventListener('scroll', medirTeclado);
   window.addEventListener('resize', medirTeclado);
   document.addEventListener('focusin', medirTeclado);
   document.addEventListener('focusout', () => setTimeout(medirTeclado, 80)); // dá tempo ao foco de passar para outro campo

@@ -123,7 +123,7 @@ body.enc-mode{background:#fff!important}
 /* a barra fica visível também nos ecrãs a ecrã inteiro (escolher viatura / equipamento, ler QR do depósito) */
 #enc-app #dep-equip-scanner,#enc-app .comb-picker{bottom:var(--e-nav-h)!important;overflow-y:auto}
 /* teclado aberto (classe posta por enc-shell.js): a barra sai da frente e o ecrã ocupa o espaço todo */
-body.e-kb #enc-app{--e-nav-h:0px}
+body.e-kb #enc-app{--e-nav-h:0px;position:fixed;left:0;right:0;top:var(--e-vt,0px);height:var(--e-vh,100dvh)}
 body.e-kb #enc-app #enc-nav{display:none!important}
 #enc-app .enc-nav-i{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px 6px;color:#454d5e;font-family:inherit;-webkit-tap-highlight-color:transparent}
 #enc-app .enc-nav-i svg{width:25px;height:25px;stroke-width:1.8}
