@@ -619,9 +619,16 @@
         </div>
 
         <div class="enc-field">
-          <label>Obra (localização do depósito)</label>
+          <label>Depósito (obra onde está o depósito)</label>
           <select id="dep-obra" class="enc-input enc-select">
-            <option value="">— Selecione uma obra —</option>
+            <option value="">— Selecione o depósito —</option>
+          </select>
+        </div>
+
+        <div class="enc-field" id="dep-dest-wrap" style="display:none">
+          <label>Obra de destino (centro de custo)</label>
+          <select id="dep-dest" class="enc-input enc-select">
+            <option value="">— Igual ao depósito —</option>
           </select>
         </div>
 
@@ -3970,14 +3977,19 @@
       <div class="field"><label>Litros</label><input type="number" id="mcf-litros" step="0.01" min="0" placeholder="0.00"/></div>
     </div>
 
-    <div class="field">
-      <label>Obra</label>
+    <div class="field" id="mcf-dep-field">
+      <label>Depósito (obra onde está o depósito)</label>
+      <select id="mcf-dep"><option value="">— Selecione o depósito —</option></select>
+    </div>
+
+    <div class="field" id="mcf-obra-field">
+      <label id="mcf-obra-label">Obra (centro de custo)</label>
       <select id="mcf-obra"><option value="">— Sem obra —</option></select>
     </div>
 
     <div class="field" id="mcf-movimento-field">
       <label>Movimento</label>
-      <select id="mcf-movimento">
+      <select id="mcf-movimento" onchange="combFormTipoChange()">
         <option value="entrada">Entrada</option>
         <option value="saida">Saída</option>
       </select>

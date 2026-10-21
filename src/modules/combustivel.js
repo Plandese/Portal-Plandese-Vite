@@ -12,6 +12,9 @@ const _escHtml = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // Entrada no depósito: tipo_registo='deposito' com movimento='entrada' (ou sem movimento)
+// Depósito de onde saiu/entrou o combustível (registos antigos: a própria obra do registo)
+const depObraId=r=>r.tipo_registo==='deposito'?(r.deposito_obra_id||r.obra_id||null):null;
+const depObraNome=r=>r.deposito_obra_nome||r.obra_nome||S.OBRAS.find(o=>o.id===depObraId(r))?.nome||'—';
 const isEntDepRow=r=>r.tipo_registo==='deposito'&&(r.movimento==='entrada'||!r.movimento);
 // Saída: saída de depósito OU abastecimento directo de viatura
 const isSaidaRow=r=>(r.tipo_registo==='deposito'&&r.movimento==='saida')||r.tipo_registo==='viatura';
@@ -117,7 +120,7 @@ function _combRenderGeral(){
       <div class="cb-card">${head('trend','Litros por dia','Semana selecionada')}<div class="cb-chart">${dias.map(d=>`<div class="${d[1]?'':'off'}">${d[1]?_cbN(d[1]):''}<i style="height:${d[1]?Math.max(4,d[1]/mx*100):6}%"></i><span>${d[0]}</span></div>`).join('')}</div></div>
       <div class="cb-card">${head('pin','Por obra','Litros na semana')}${poL.length?poL.map(([id,l])=>`<div class="cb-ob"><div class="cb-lb"><span>${_escHtml(obras.get(id)||'Sem obra')}</span><b>${_cbN(l)} L</b></div><div class="cb-bar2"><i style="width:${l/pmx*100}%"></i></div></div>`).join(''):'<div class="cb-vz">Sem consumos nesta semana.</div>'}</div>
     </div>
-    <div class="cb-tw"><table><thead><tr><th>Data</th><th>Equipamento</th><th>Obra</th><th class="r">Litros</th><th>Registado por</th></tr></thead><tbody>${rowsT.length?rowsT.map(r=>{ const eq=EQUIPAMENTOS.find(e=>e.id===r.equipamento_id); const on=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—'; return `<tr class="clk" onclick="abrirCombFormRegisto(null,'${r.id}')"><td>${dm(r.data)}</td><td><b>${_escHtml(eq?.nome||r.equipamento_nome||'Depósito de obra')}</b>${eq?.codigo?`<span class="sub">${_escHtml(eq.codigo)}</span>`:''}</td><td><span class="cb-cod">${_escHtml(on)}</span></td><td class="r"><b>${_cbN(parseFloat(r.litros)||0)} L</b></td><td>${_escHtml(r.encarregado_nome||'—')}</td></tr>`; }).join(''):'<tr><td colspan="5" class="cb-vz">Sem registos nesta semana.</td></tr>'}</tbody></table></div>`;
+    <div class="cb-tw"><table><thead><tr><th>Data</th><th>Equipamento</th><th>Obra (centro de custo)</th><th>Depósito</th><th class="r">Litros</th><th>Registado por</th></tr></thead><tbody>${rowsT.length?rowsT.map(r=>{ const eq=EQUIPAMENTOS.find(e=>e.id===r.equipamento_id); const on=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—'; return `<tr class="clk" onclick="abrirCombFormRegisto(null,'${r.id}')"><td>${dm(r.data)}</td><td><b>${_escHtml(eq?.nome||r.equipamento_nome||'Depósito de obra')}</b>${eq?.codigo?`<span class="sub">${_escHtml(eq.codigo)}</span>`:''}</td><td><span class="cb-cod">${_escHtml(on)}</span></td><td>${depObraId(r)?_escHtml(depObraNome(r)):'<span style="color:var(--gray-400)">—</span>'}</td><td class="r"><b>${_cbN(parseFloat(r.litros)||0)} L</b></td><td>${_escHtml(r.encarregado_nome||'—')}</td></tr>`; }).join(''):'<tr><td colspan="6" class="cb-vz">Sem registos nesta semana.</td></tr>'}</tbody></table></div>`;
 }
 document.addEventListener('change',e=>{
   if(e.target.id==='cb-obra'){ _cbObra=e.target.value; _combRenderGeral(); } });
@@ -153,26 +156,29 @@ function renderCombObraCards(rows){
   const emptyEl=document.getElementById('comb-obras-empty');
   if(!grid) return;
   // Agrupar por obra
+  // Cada obra: registos em que é destino/centro de custo (rows) e movimentos do seu depósito (depRows)
   const map={};
+  const obraE=(id,nome)=>map[id]||(map[id]={id,nome,rows:[],depRows:[]});
   rows.forEach(r=>{
     const id=r.obra_id||'__sem_obra__';
-    const nome=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||(r.obra_id?r.obra_id:'Sem obra');
-    if(!map[id]) map[id]={id,nome,rows:[]};
-    map[id].rows.push(r);
+    obraE(id,r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||(r.obra_id?r.obra_id:'Sem obra')).rows.push(r);
+    const dId=depObraId(r);
+    if(dId) obraE(dId,depObraNome(r)).depRows.push(r);
   });
   const obras=Object.values(map).sort((a,b)=>a.nome.localeCompare(b.nome));
   if(!obras.length){grid.innerHTML='';emptyEl.style.display='';return;}
   emptyEl.style.display='none';
 
   grid.innerHTML=obras.map(ob=>{
-    const hasDep=ob.rows.some(r=>r.tipo_registo==='deposito');
+    const hasDep=ob.depRows.length>0;
     const nReg=ob.rows.length;
     const tipos=[...new Set(ob.rows.map(r=>r.tipo_combustivel).filter(Boolean))].join(', ')||'—';
 
     let box;
     if(hasDep){
-      const ent=_sumL(ob.rows,isEntDepRow);
-      const sai=_sumL(ob.rows,isSaidaRow);
+      // Stock do depósito: entradas − saídas do depósito (mesmo que o gasóleo tenha ido para outra obra) − abastecimentos de viaturas da obra
+      const ent=_sumL(ob.depRows,isEntDepRow);
+      const sai=_sumL(ob.depRows,isSaidaRow)+_sumL(ob.rows.filter(r=>r.tipo_registo==='viatura'),isSaidaRow);
       const stock=ent-sai;
       const stockColor=stock>=0?'var(--blue-700)':'#b91c1c';
       const stockBg=stock>=0?'var(--blue-50)':'#fef2f2';
@@ -193,7 +199,7 @@ function renderCombObraCards(rows){
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(ob.nome)}</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${nReg} registo${nReg!==1?'s':''} · ${_escHtml(tipos)}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${nReg} registo${nReg!==1?'s':''} · ${_escHtml(tipos)}${hasDep?` · consumo da obra ${_sumL(ob.rows,isSaidaRow).toFixed(1)} L`:''}</div>
         </div>
         ${box}
       </div>
@@ -331,7 +337,7 @@ function _combAbrirRegDetalhe(id){
   document.getElementById('mcor-title').textContent=r.equipamento_nome||'Depósito de obra';
   document.getElementById('mcor-sub').textContent=`${fmtPT(r.data)} · ${obra}`;
   box.innerHTML=`<div class="cbr-big ${isEnt?'in':'out'}">${isEnt?'+':'−'}${_fmtL(l)}<small>${mov}</small></div>
-    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${kv('Obra',_escHtml(obra),1)}${kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_fmtL(r.contador_valor).replace(/\s*L$/,'')+(r.contador_tipo==='km'?' km':' h')):''}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
+    <div class="cbr-kv">${kv('Data',fmtPT(r.data))}${depObraId(r)?kv('Depósito (de onde sai)',_escHtml(depObraNome(r)),1):''}${kv(r.tipo_registo==='deposito'&&!isEnt?'Obra de destino (centro de custo)':'Obra',_escHtml(obra),1)}${kv('Equipamento',_escHtml(r.equipamento_nome||'Depósito de obra'),1)}${kv('Combustível',_escHtml(r.tipo_combustivel||'—'))}${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_fmtL(r.contador_valor).replace(/\s*L$/,'')+(r.contador_tipo==='km'?' km':' h')):''}${kv('Fornecedor',_escHtml(r.fornecedor||'—'))}${kv('Registado por',_escHtml(r.encarregado_nome||'—'),1)}${kv('Observações',_escHtml(r.obs||'—'),1)}</div>`;
   document.getElementById('mcor-editar').onclick=()=>abrirCombFormRegisto(null,String(r.id));
   openModal('modal-comb-reg');
 }
@@ -487,11 +493,24 @@ function combFormTipoChange(){
   document.getElementById('mcf-movimento-field').style.display=tipo==='deposito'?'':'none';
   document.getElementById('mcf-equip-field').style.display=tipo==='viatura'?'':'none';
   document.getElementById('mcf-fornecedor-field').style.display=tipo==='viatura'?'':'none';
+  // Depósito: de onde sai (ou onde entra). Obra: destino/centro de custo — só nas saídas do depósito e nas viaturas
+  const saida=document.getElementById('mcf-movimento').value==='saida';
+  const depF=document.getElementById('mcf-dep-field'); if(depF) depF.style.display=tipo==='deposito'?'':'none';
+  const obraF=document.getElementById('mcf-obra-field'); if(obraF) obraF.style.display=(tipo==='viatura'||saida)?'':'none';
+  const lbl=document.getElementById('mcf-obra-label'); if(lbl) lbl.textContent=tipo==='deposito'?'Obra de destino (centro de custo)':'Obra (centro de custo)';
 }
 
 function _combFillFormObraSelect(selectedId){
   const sel=document.getElementById('mcf-obra');
   sel.innerHTML='<option value="">— Sem obra —</option>';
+  S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;sel.appendChild(op);});
+  if(selectedId&&[...sel.options].some(o=>o.value===selectedId)) sel.value=selectedId;
+}
+
+function _combFillFormDepSelect(selectedId){
+  const sel=document.getElementById('mcf-dep');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Selecione o depósito —</option>';
   S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;sel.appendChild(op);});
   if(selectedId&&[...sel.options].some(o=>o.value===selectedId)) sel.value=selectedId;
 }
@@ -508,6 +527,7 @@ async function abrirCombFormRegisto(obraIdPreset,registoId){
   const r=registoId?_combAllRows.find(x=>String(x.id)===String(registoId)):null;
 
   _combFillFormObraSelect(r?(r.obra_id||''):(obraIdPreset||''));
+  _combFillFormDepSelect(r?(depObraId(r)||''):(obraIdPreset||''));
   _combFillFormEquipSelect(r?(r.equipamento_id||''):'');
 
   document.getElementById('mcf-title').textContent=r?'Editar registo':'Novo registo';
@@ -552,11 +572,19 @@ async function guardarRegistoCombustivel(){
 
   let payload;
   if(tipoRegisto==='deposito'){
-    if(!obraId){showToast('Selecione a obra do depósito');return;}
+    const depEl=document.getElementById('mcf-dep');
+    const depId=depEl.value||null;
+    if(!depId){showToast('Selecione o depósito');return;}
+    const depNome=depEl.options[depEl.selectedIndex]?.text||'';
+    const mov=document.getElementById('mcf-movimento').value;
+    // Entrada: a obra é a do depósito. Saída: a obra escolhida (centro de custo), ou a do depósito se vazia
+    const destId=mov==='saida'&&obraId?obraId:depId;
+    const destNome=mov==='saida'&&obraId?obraNome:depNome;
     payload={
       data,equipamento_id:null,equipamento_nome:'Depósito de Obra',
-      obra_id:obraId,obra_nome:obraNome,litros,tipo_combustivel:tipoComb,
-      tipo_registo:'deposito',movimento:document.getElementById('mcf-movimento').value,
+      obra_id:destId,obra_nome:destNome,deposito_obra_id:depId,deposito_obra_nome:depNome,
+      litros,tipo_combustivel:tipoComb,
+      tipo_registo:'deposito',movimento:mov,
       fornecedor:null,encarregado_nome:encarregado,obs
     };
   }else{

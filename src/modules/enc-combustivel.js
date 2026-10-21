@@ -141,6 +141,11 @@ function _encHideAll(){
 
 // ── Depósito de Obra ────────────────────────────
 
+// Filtros PostgREST (.or): registos cujo DEPÓSITO é uma destas obras (sem depósito registado, vale a obra do registo),
+// ou que têm a obra como destino (centro de custo)
+const _orDeposito=ids=>{ const l=ids.join(','); return `deposito_obra_id.in.(${l}),and(deposito_obra_id.is.null,obra_id.in.(${l}))`; };
+const _orDepOuDestino=ids=>{ const l=ids.join(','); return `deposito_obra_id.in.(${l}),obra_id.in.(${l})`; };
+
 // Cartão da home: litros de gasóleo em stock no(s) depósito(s) da(s) obra(s) do encarregado
 function _encObrasComb(){
   const username=S.currentUser?.key;
@@ -189,7 +194,7 @@ async function encUpdateFuelWidget(){
     const {data,error}=await sb.from('registos_combustivel')
       .select('litros,movimento,tipo_registo')
       .eq('aprovacao','aprovado')
-      .in('obra_id',obras.map(o=>o.id))
+      .or(_orDeposito(obras.map(o=>o.id)))
       .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null');
     if(error) throw error;
     // Stock = entradas no depósito − saídas (saídas do depósito + abastecimentos de viaturas)
@@ -225,6 +230,8 @@ function depSetMovimento(tipo){
   }
   const wrap=document.getElementById('dep-equip-wrap');
   if(wrap) wrap.style.display = tipo==='saida' ? 'block' : 'none';
+  const dw=document.getElementById('dep-dest-wrap');
+  if(dw) dw.style.display = tipo==='saida' ? 'block' : 'none';
   if(tipo==='entrada'){ _depEquip=null; _depRenderEquipEscolhido(); }
 }
 
@@ -255,7 +262,7 @@ function _depRenderEquipEscolhido(){
     choice.style.display='flex';
   }
   _cntAplicar('dep', !!_depEquip, _depEquip?(EQUIPAMENTOS.find(e=>e.id===_depEquip.id)||null):null);
-  if(_depEquip&&_depEquip.id) _preObraEquip('dep-obra',_depEquip.id);
+  if(_depEquip&&_depEquip.id) _preObraEquip('dep-dest',_depEquip.id);
 }
 function depTrocarEquip(){ _depEquip=null; _depRenderEquipEscolhido(); }
 
@@ -339,9 +346,9 @@ async function encOpenFuelModal(){
   box.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
   try{
     const {data,error}=await sb.from('registos_combustivel')
-      .select('data,litros,movimento,tipo_registo,equipamento_nome,obra_nome,encarregado_nome')
+      .select('data,litros,movimento,tipo_registo,equipamento_nome,obra_nome,deposito_obra_nome,encarregado_nome')
       .eq('aprovacao','aprovado')
-      .in('obra_id',obras.map(o=>o.id))
+      .or(_orDepOuDestino(obras.map(o=>o.id)))
       .or('tipo_combustivel.eq.Gasóleo,tipo_combustivel.is.null')
       .order('data',{ascending:false}).order('criado_em',{ascending:false})
       .limit(8);
@@ -424,11 +431,11 @@ async function encGoCombUltimos(){
   lista.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
   try{
     const _q=cols=>sb.from('registos_combustivel').select(cols)
-      .in('obra_id',_encUltObras.map(o=>o.id))
+      .or(_orDepOuDestino(_encUltObras.map(o=>o.id)))
       .eq('aprovacao','aprovado')
       .gte('data',_cregLimite())
       .order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(100);
-    const base='id,data,litros,movimento,tipo_registo,tipo_combustivel,equipamento_nome,obra_id,obra_nome,encarregado_nome,obs,fornecedor';
+    const base='id,data,litros,movimento,tipo_registo,tipo_combustivel,equipamento_nome,obra_id,obra_nome,deposito_obra_id,deposito_obra_nome,encarregado_nome,obs,fornecedor';
     let {data,error}=await _q(base+',contador_valor,contador_tipo');
     // Se as colunas do contador ainda não existirem na base de dados, mostra a lista sem elas
     if(error) ({data,error}=await _q(base));
@@ -453,7 +460,8 @@ function encCombRegAbrir(id){
     <div style="font-size:34px;font-weight:800;letter-spacing:-1px;color:${ent?'#166534':'#b3261e'};padding:6px 0 2px">${ent?'+':'−'}${_cregNum(r.litros)} L</div>
     <div style="font-size:13.5px;font-weight:600;color:var(--m-mute);margin-bottom:10px">${_escH(mov)}</div>
     ${kv('Data',r.data?fmtPT(r.data):'—')}
-    ${kv('Obra',_escH(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—'))}
+    ${r.tipo_registo==='deposito'?kv('Depósito',_escH(r.deposito_obra_nome||r.obra_nome||'—')):''}
+    ${kv(r.tipo_registo==='deposito'&&!ent?'Obra de destino (centro de custo)':'Obra',_escH(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—'))}
     ${kv('Equipamento',_escH(r.equipamento_nome||'—'))}
     ${kv('Combustível',_escH(r.tipo_combustivel||'—'))}
     ${r.contador_valor!=null?kv(r.contador_tipo==='km'?'Quilómetros':'Horas',_cregNum(r.contador_valor)+(r.contador_tipo==='km'?' km':' h')):''}
@@ -522,8 +530,8 @@ async function _encAprBuscar(){
   const obras = _encObrasComb();
   if(!obras.length) return [];
   const {data,error} = await sb.from('registos_combustivel')
-    .select('id,data,litros,tipo_registo,tipo_combustivel,equipamento_nome,obra_nome,encarregado_nome,obs,fornecedor')
-    .in('obra_id', obras.map(o=>o.id)).eq('aprovacao','pendente')
+    .select('id,data,litros,tipo_registo,tipo_combustivel,equipamento_nome,obra_nome,deposito_obra_nome,encarregado_nome,obs,fornecedor')
+    .or(_orDeposito(obras.map(o=>o.id))).eq('aprovacao','pendente')
     .order('criado_em',{ascending:false}).limit(100);
   if(error) throw error;
   return data || [];
@@ -542,8 +550,8 @@ function _renderCombAprovar(){
     return;
   }
   lista.innerHTML = _encAprRows.map(r=>{
-    const origem = r.tipo_registo==='deposito' ? 'Depósito de obra' : 'Bomba' + (r.fornecedor ? ' · '+r.fornecedor : '');
-    const sub = [r.data?fmtPT(r.data):'', r.obra_nome||'', origem, r.tipo_combustivel||'', r.encarregado_nome||''].filter(Boolean).map(_escH).join(' · ');
+    const origem = r.tipo_registo==='deposito' ? 'Depósito de obra'+(r.deposito_obra_nome&&r.deposito_obra_nome!==r.obra_nome?' ('+r.deposito_obra_nome+')':'') : 'Bomba' + (r.fornecedor ? ' · '+r.fornecedor : '');
+    const sub = [r.data?fmtPT(r.data):'', r.deposito_obra_nome&&r.deposito_obra_nome!==r.obra_nome?'Destino: '+(r.obra_nome||''):(r.obra_nome||''), origem, r.tipo_combustivel||'', r.encarregado_nome||''].filter(Boolean).map(_escH).join(' · ');
     return `<div class="e-apr">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
         <div style="min-width:0">
@@ -591,8 +599,11 @@ function encGoCombDeposito(){
   s.style.display='flex'; s.style.flexDirection='column';
   document.getElementById('dep-data').value=fmt(new Date());
   const os=document.getElementById('dep-obra');
-  os.innerHTML='<option value="">— Selecione uma obra —</option>';
+  os.innerHTML='<option value="">— Selecione o depósito —</option>';
   S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+  const ds=document.getElementById('dep-dest');
+  if(ds){ ds.innerHTML='<option value="">— Igual ao depósito —</option>'; S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;ds.appendChild(op);}); }
+  const minhas=_encObrasComb(); if(minhas.length===1) os.value=minhas[0].id;
   document.getElementById('dep-litros').value='';
   document.getElementById('dep-obs').value='';
   _cntLimpar('dep');
@@ -635,11 +646,15 @@ async function encSubmeterCombDeposito(){
   const obraEl=document.getElementById('dep-obra');
   const obraId=obraEl.value;
   const obraNome=obraEl.options[obraEl.selectedIndex]?.text||'';
+  // Saída: centro de custo = obra de destino (por omissão, a do próprio depósito); entrada: só o depósito
+  const destEl=document.getElementById('dep-dest');
+  const destId=_depMovimento==='saida'&&destEl?.value?destEl.value:obraId;
+  const destNome=_depMovimento==='saida'&&destEl?.value?(destEl.options[destEl.selectedIndex]?.text||''):obraNome;
   const litros=parseFloat(document.getElementById('dep-litros').value)||null;
   const tipo=document.getElementById('dep-tipo').value;
   const obs=document.getElementById('dep-obs').value.trim()||null;
   if(!data){showToast('Selecione a data');return;}
-  if(!obraId){showToast('Selecione a obra do depósito');return;}
+  if(!obraId){showToast('Selecione o depósito de onde sai o gasóleo');return;}
   if(!litros||litros<=0){showToast('Indique a quantidade de litros');return;}
   if(_depMovimento==='saida' && !_depEquip){showToast('Escolha o equipamento que recebeu o combustível');return;}
   const btn=document.getElementById('dep-submit-btn');
@@ -649,8 +664,10 @@ async function encSubmeterCombDeposito(){
       data,
       equipamento_id:_depMovimento==='saida'?(_depEquip.id||null):null,
       equipamento_nome:_depMovimento==='saida'?_depEquip.nome:'Depósito de Obra',
-      obra_id:obraId,
-      obra_nome:obraNome,
+      obra_id:destId,
+      obra_nome:destNome,
+      deposito_obra_id:obraId,
+      deposito_obra_nome:obraNome,
       litros,
       tipo_combustivel:tipo,
       tipo_registo:'deposito',
@@ -663,11 +680,12 @@ async function encSubmeterCombDeposito(){
     document.getElementById('dep-alert').style.display='block';
     showToast((_depMovimento==='entrada'?'Entrada':'Saída')+' no depósito registada ✓');
     encUpdateFuelWidget();
-    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:'')+(_depMovimento==='saida'?' · '+_depEquip.nome:''), seccao:'combustivel', obra:obraId });
+    R.emitEvent?.({ acao:'Combustível · '+(_depMovimento==='entrada'?'Entrada':'Saída')+' depósito '+litros+'L'+(obraNome?' · '+obraNome:'')+(_depMovimento==='saida'?' · '+_depEquip.nome+(destId!==obraId?' → '+destNome:''):''), seccao:'combustivel', obra:obraId });
     setTimeout(()=>{
       document.getElementById('dep-litros').value='';
       document.getElementById('dep-obs').value='';
       document.getElementById('dep-obra').value='';
+      if(document.getElementById('dep-dest')) document.getElementById('dep-dest').value='';
       document.getElementById('dep-alert').style.display='none';
       _depEquip=null;
       _cntLimpar('dep');
