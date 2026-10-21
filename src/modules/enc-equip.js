@@ -4,7 +4,7 @@
 import { sb } from '../supabase.js';
 import { S, R } from '../state.js';
 import { showToast } from './navigation.js';
-import { sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqCatNorm, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
+import { qrRegistarLeitura, sbFetchEquipamentoById, sbUpdateEquipamentoLocal, EQUIPAMENTOS, EQ_MOVIMENTOS, EQ_CATS, eqCatNorm, eqFmtDt, saveEqLocal, renderEquipamentos, refreshEqMap, updateEqKPIs } from './equipamentos.js';
 import { obraEmCurso } from '../config.js';
 
 let _encHtml5Qr = null;
@@ -91,6 +91,7 @@ async function onEncQrScanned(text){
     setTimeout(()=>startEncQrScanner(), 2500);
     return;
   }
+  qrRegistarLeitura(equipId,'encarregado',S.currentUser?.nome);
   // Info do equipamento — primeiro local, depois Supabase se não encontrar
   let eq=EQUIPAMENTOS.find(e=>e.id===equipId);
   if(!eq){

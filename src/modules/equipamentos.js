@@ -1067,7 +1067,30 @@ async function initQrRegistration(){
   sc.style.cssText+=';position:fixed;inset:0;z-index:99999;overflow:auto';
   document.getElementById('login-screen').style.display='none';
   qrGasNovo();
+  qrRegistarLeitura(regId,'publico');
   return true;
+}
+
+// ── Cada leitura de QR guarda a localização: aproximada (IP, sem pedir nada) e GPS exato (se autorizado) ──
+async function qrRegistarLeitura(equipId, origem, utilizador){
+  try{
+    let ip={};
+    try{
+      const ctl=new AbortController(); setTimeout(()=>ctl.abort(),5000);
+      const r=await fetch('https://ipwho.is/?fields=success,country,city,latitude,longitude',{signal:ctl.signal});
+      const j=await r.json(); if(j&&j.success) ip=j;
+    }catch(e){}
+    const {data:id,error}=await sb.rpc('fn_qr_leitura',{
+      p_equip_id:equipId, p_origem:origem, p_utilizador:utilizador||null,
+      p_pais:ip.country||null, p_cidade:ip.city||null, p_ip_lat:ip.latitude??null, p_ip_lng:ip.longitude??null
+    });
+    if(error||!id) return;
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos=>{
+      sb.rpc('fn_qr_leitura_gps',{p_id:id,p_lat:pos.coords.latitude,p_lng:pos.coords.longitude,p_precisao:pos.coords.accuracy})
+        .then(()=>{},()=>{});
+    },()=>{},{timeout:20000,enableHighAccuracy:true,maximumAge:60000});
+  }catch(e){ console.warn('qrRegistarLeitura:',e); }
 }
 
 // ── QR lido fora da app: pede o código de acesso da obra e depois regista o gasóleo ──
@@ -1199,6 +1222,6 @@ export {
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
-  initEquipamentos, initQrRegistration, submitQrRegistration,
+  initEquipamentos, initQrRegistration, qrRegistarLeitura, submitQrRegistration,
   qrGasValidar, qrGasOrigem, qrGasSubmeter, qrGasNovo
 };
