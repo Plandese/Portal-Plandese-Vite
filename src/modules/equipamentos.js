@@ -680,13 +680,9 @@ function eqVerListaCompleta(){
     : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem equipamentos registados.</div>`;
 }
 
-// Camadas do mapa: Mapa de ruas (predefinido) ou Satélite com nomes; a escolha fica guardada no dispositivo
+// Camadas do mapa: Mapa de ruas (predefinido) ou Satélite (só imagem, sem nomes nem estradas); a escolha fica guardada no dispositivo
 function _eqCamadasMapa(map){
-  const sat=L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Imagens © Esri, Maxar, Earthstar Geographics',maxZoom:19}),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',{maxZoom:19})
-  ]);
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Imagens © Esri, Maxar, Earthstar Geographics',maxZoom:19});
   const ruas=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',maxZoom:19});
   let pref='ruas'; try{ pref=localStorage.getItem('plandese_eq_mapa')||'ruas'; }catch(e){}
   (pref==='sat'?sat:ruas).addTo(map);
