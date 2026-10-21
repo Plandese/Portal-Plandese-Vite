@@ -123,7 +123,7 @@ function itensAtencao(d) {
   const a = d.acesso;
   if (a.ponto && d.pontoPend) add('warn', 'ponto', `${pl(d.pontoPend, 'dia de ponto', 'dias de ponto')} por aprovar`, 'historico');
   if (a.apr && d.fatAprovar) add('warn', 'fatura', `${pl(d.fatAprovar, 'fatura', 'faturas')} por aprovar`, 'faturas-aprovar');
-  if ((a.tes || a.apr) && d.fatVenc) add('bad', 'aviso', `${pl(d.fatVenc, 'fatura vencida', 'faturas vencidas')} (${eur(d.fatVencEur)})`, a.tes ? 'tesouraria' : 'faturas-aprovar');
+  if (a.tes && d.fatVenc) add('bad', 'aviso', `${pl(d.fatVenc, 'fatura vencida', 'faturas vencidas')} (${eur(d.fatVencEur)})`, 'tesouraria');
   if (a.tes && d.fatProx) add('warn', 'fatura', `${pl(d.fatProx, 'fatura', 'faturas')} a vencer em 5 dias (${eur(d.fatProxEur)})`, 'tesouraria');
   if (a.fat && d.fatValidar) add('info', 'fatura', `${pl(d.fatValidar, 'fatura', 'faturas')} por validar`, 'faturas');
   if (a.cmp && d.pedPend) add(d.pedUrg ? 'bad' : 'warn', 'carrinho', `${pl(d.pedPend, 'pedido de compra', 'pedidos de compra')} por aprovar${d.pedUrg ? ` · ${pl(d.pedUrg, 'urgente', 'urgentes')}` : ''}`, 'compras');
