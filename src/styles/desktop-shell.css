@@ -1182,8 +1182,7 @@ body.device-desktop:not(.enc-mode) #modal-pt-nova .modal-title{margin:-24px -28p
 body.device-desktop:not(.enc-mode) #modal-pt-nova .modal-sub{margin:0 -28px 22px;padding:0 28px 32px;background:var(--d-brand);color:rgba(255,255,255,.84);font-size:14px}
 body.device-desktop:not(.enc-mode) #modal-pt-nova .modal-footer{margin-top:auto;padding-top:16px}
 
-/* Painel: sem faixa de indicadores; calendário (resumo) fixo à direita, favoritos por baixo */
-body.device-desktop:not(.enc-mode) #admin-app .painel-kpis{display:none!important}
+/* Painel: calendário (resumo) fixo à direita, favoritos por baixo */
 body.device-desktop:not(.enc-mode) #admin-app .painel-layout{align-items:start}
 body.device-desktop:not(.enc-mode) #admin-app .painel-side{position:sticky;top:16px;gap:16px}
 body.device-desktop:not(.enc-mode) #admin-app .painel-side .cal-widget{padding:14px 14px 12px}

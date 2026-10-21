@@ -70,6 +70,7 @@ import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, p
 
 // Fornecedores
 import { initAtividade } from './modules/atividade.js';
+import { abrirPersonalizarPainel, fecharPersonalizarPainel, pcustToggle, pcustZona, pcustMover, pcustGuardar, pcustRepor } from './modules/painel-atencao.js';
 import { initPainelRedim } from './modules/painel-redim.js';
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
@@ -167,6 +168,7 @@ Object.assign(window, {
 
   // Navegação admin
   abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra,
+  abrirPersonalizarPainel, fecharPersonalizarPainel, pcustToggle, pcustZona, pcustMover, pcustGuardar, pcustRepor,
   goTo, toggleNavGrp, refreshPortal,
   agenteToggle,
 

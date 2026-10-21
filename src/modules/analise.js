@@ -9,6 +9,7 @@ import { fmt, getMonday, calcH, fmtH } from '../utils/helpers.js';
 import { ROLE_ACCESS } from '../config.js';
 import { htmlFeriasFaltasSemana, htmlEstadoObrasSemana, htmlFiltrosPainel } from './admin.js';
 import { canAccessSection } from './permissions.js';
+import { htmlAtencao } from './painel-atencao.js';
 
 // Por enquanto a Análise mostra só quem está de férias/falta esta semana (o mesmo
 // cartão do Painel Principal). Pôr a false para voltar aos widgets completos.
@@ -370,12 +371,19 @@ export async function renderAnalise(){
   if(SO_FERIAS_FALTAS){
     const sub = document.getElementById('anl-sub');
     if(sub) sub.textContent = 'Estado das obras e férias/faltas desta semana';
-    if(!canAccessSection('historico')){ body.innerHTML = '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; return; }
+    if(!canAccessSection('historico')){
+      // Sem folhas de ponto (compras, financeiro…): só o resumo de atenção
+      _loading = true;
+      try { body.innerHTML = (await htmlAtencao({ max: 4 })) || '<div class="anl-vazio">Sem acesso às folhas de ponto.</div>'; }
+      catch(e){ body.innerHTML = `<div class="anl-vazio">Não foi possível carregar os dados: ${e.message || e}</div>`; }
+      finally { _loading = false; }
+      return;
+    }
     // Telemóvel sem obras favoritas: a página fica vazia
-    if((R.mFavObraIds?.() || [1]).length === 0){ body.innerHTML = ''; return; }
+    if((R.mFavObraIds?.() || [1]).length === 0){ body.innerHTML = await htmlAtencao({ max: 4 }).catch(() => ''); return; }
     _loading = true;
     body.innerHTML = '<div class="pl-load" style="padding:60px 20px"><span class="pl-logo"></span>A carregar dados…</div>';
-    try { const [estado, ferias] = await Promise.all([htmlEstadoObrasSemana(), htmlFeriasFaltasSemana()]); body.innerHTML = htmlFiltrosPainel() + estado + ferias; }
+    try { const [atencao, estado, ferias] = await Promise.all([htmlAtencao({ max: 4 }).catch(() => ''), htmlEstadoObrasSemana(), htmlFeriasFaltasSemana()]); body.innerHTML = atencao + htmlFiltrosPainel() + estado + ferias; }
     catch(e){ body.innerHTML = `<div class="anl-vazio">Não foi possível carregar os dados: ${e.message || e}</div>`; }
     finally { _loading = false; }
     return;

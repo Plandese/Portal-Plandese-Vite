@@ -5,9 +5,10 @@ import { sb } from '../supabase.js';
 import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, getMonday, calcH, fmtH } from '../utils/helpers.js';
-import { MESES_PT, obraEmCurso } from '../config.js';
+import { MESES_PT, obraEmCurso, obraVisivelPara } from '../config.js';
 import { showToast, openModal } from './navigation.js';
 import { canAccessSection } from './permissions.js';
+import { cartoesPainel, htmlAtencao, htmlCombustivelSemana, htmlEquipamentosResumo, carregarPainelDados, montarPainelLivre, desmontarPainelLivre } from './painel-atencao.js';
 
 let _painelSeq = 0; // evita que uma resposta antiga sobrescreva uma mais recente
 
@@ -145,21 +146,48 @@ async function renderPainel() {
   const sub = document.getElementById('painel-sub');
   if (sub) sub.textContent = `Folhas de ponto · semana de ${semanaTxt}`;
   const filtros = document.getElementById('painel-filtros');
-  if (filtros) filtros.innerHTML = htmlFiltrosPainel();
+  if (filtros) filtros.innerHTML = htmlFiltrosPainel(document.body.classList.contains('device-desktop') ? '<button type="button" class="pcust-open" onclick="abrirPersonalizarPainel()">Personalizar</button>' : '');
 
-  // Os dados vêm das folhas de ponto e dos equipamentos — só para quem tem acesso a essas secções
+  // Cada cartão só consulta dados se o perfil tiver acesso à secção respetiva
   const podeFolhas = canAccessSection('historico');
-  if (!podeFolhas && !canAccessSection('equipamentos')) { grid.innerHTML = ''; return; }
+  if (sub && !podeFolhas) sub.textContent = 'Resumo do que precisa da sua atenção';
 
   const seq = ++_painelSeq;
-  grid.innerHTML = '<div class="pl-load" style="grid-column:1/-1;padding:60px 20px"><span class="pl-logo"></span>A carregar folhas de ponto…</div>';
+  const desktop = document.body.classList.contains('device-desktop');
+  const loadHtml = '<div class="pl-load" style="grid-column:1/-1;padding:60px 20px"><span class="pl-logo"></span>A carregar…</div>';
+  const sec = document.getElementById('sec-painel');
+  let carga = document.getElementById('painel-carga');
+  if (desktop) {
+    if (!carga && sec) { carga = document.createElement('div'); carga.id = 'painel-carga'; document.getElementById('painel-kpis')?.after(carga); }
+    if (carga && !document.getElementById('painel-livre')?.children.length) carga.innerHTML = loadHtml;
+  } else {
+    grid.innerHTML = loadHtml;
+    desmontarPainelLivre();
+  }
   const kp = document.getElementById('painel-kpis');
   if (kp) kp.innerHTML = '';
 
-  const [estado, ferias, kpis] = await Promise.all([htmlEstadoObrasSemana(), podeFolhas ? htmlFeriasFaltasSemana() : '', htmlKpisPainel()]);
+  const cfg = await cartoesPainel();
+  const cartoes = cfg.ordem;
+  carregarPainelDados(true).catch(() => {});
+  const blocos = {
+    atencao: () => htmlAtencao(),
+    estado: () => htmlEstadoObrasSemana(),
+    ferias: () => podeFolhas ? htmlFeriasFaltasSemana() : '',
+    equipamentos: () => htmlEquipamentosResumo(),
+    combustivel: () => htmlCombustivelSemana(),
+  };
+  const ids = cartoes.filter(id => blocos[id]);
+  const partes = await Promise.all([
+    ...ids.map(id => blocos[id]().catch(e => { console.warn('painel (' + id + '):', e); return ''; })),
+  ]);
   if (seq !== _painelSeq) return;
-  grid.innerHTML = estado + ferias;
-  if (kp) kp.innerHTML = kpis;
+  if (carga) carga.innerHTML = '';
+  if (desktop) {
+    montarPainelLivre(ids.map((id, i) => ({ id, html: partes[i] })), cfg);
+  } else {
+    grid.innerHTML = partes.join('') || '<div class="d-empty" style="padding:30px">Sem cartões visíveis.</div>';
+  }
 }
 
 // ── Painel Principal — indicadores (presentes hoje, obras com ponto, horas extra, pedidos por aprovar) ──
@@ -260,7 +288,7 @@ async function _estadoObrasCarregar(dias, podeMO, podeEQ) {
 
 function _estadoObrasCalcular(dias, { regs, prev, equips, manut }) {
   const uteis = dias.slice(0, 5).map(_ymd);
-  const obras = S.OBRAS.filter(obraEmCurso);
+  const obras = S.OBRAS.filter(o => obraEmCurso(o) && obraVisivelPara(S.currentUser, S.OBRAS, o.id));
   const porObra = new Map(obras.map(o => [o.id, { obra: o, equipa: new Map(), equips: [] }]));
 
   // Cada colaborador conta na obra do seu registo mais recente (esta semana ou a anterior)
@@ -378,11 +406,9 @@ function _rotSemana() {
 }
 
 // Barra com a semana e a obra; aplica-se a todos os cartões do Painel Principal
-export function htmlFiltrosPainel() {
+export function htmlFiltrosPainel(extra = '') {
   if (!canAccessSection('historico') && !canAccessSection('equipamentos')) return '';
   const dias = _painelSemana();
-  const opcoes = S.OBRAS.filter(obraEmCurso).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
-    .map(o => `<option value="${_esc(o.id)}"${o.id === _pObra ? ' selected' : ''}>${_esc(o.nome)}</option>`).join('');
   return `<div class="eo-bar-nav">
     <div class="eo-sem">
       <button type="button" class="eo-nav" onclick="painelMudarSemana(-1)" title="Semana anterior" aria-label="Semana anterior">‹</button>
@@ -390,7 +416,7 @@ export function htmlFiltrosPainel() {
       <button type="button" class="eo-nav" onclick="painelMudarSemana(1)" title="Semana seguinte" aria-label="Semana seguinte">›</button>
       ${_pOffset !== 0 ? '<button type="button" class="eo-hoje" onclick="painelMudarSemana(0)">Hoje</button>' : ''}
     </div>
-    <select class="eo-sel" onchange="painelSetObra(this.value)" aria-label="Obra"><option value="">Todas as obras</option>${opcoes}</select>
+    ${extra}
   </div>`;
 }
 
