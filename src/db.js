@@ -4,7 +4,7 @@
 import { sb } from './supabase.js';
 import { S, R } from './state.js';
 import { fmt } from './utils/helpers.js';
-import { USERS_BASE } from './config.js';
+import { USERS_BASE, obraVisivelPara } from './config.js';
 
 // ═══════════════════════════════════════
 //  SUPABASE — CARREGAR DADOS
@@ -79,6 +79,7 @@ export async function carregarRegistosFecho(dIni, dFim) {
   const aprovados = new Set(aprov.map(a => a.obra_id + '|' + a.data));
   const pend = new Map();
   const aprovadosRegs = regs.filter(r => {
+    if (!obraVisivelPara(S.currentUser, S.OBRAS, r.obra_id)) return false;
     if (r.obra_id && aprovados.has(r.obra_id + '|' + r.data)) return true;
     pend.set((r.obra_id || '_sem') + '|' + r.data, { obraId: r.obra_id || '_sem', data: r.data });
     return false;

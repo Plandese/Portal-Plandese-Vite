@@ -62,6 +62,13 @@ export const OBRA_ESTADOS = [
   { id:'concluida',     label:'Concluída' },
 ];
 // Obra "em funcionamento": a que aparece no ponto, equipamentos, combustível e painel
+// Folhas de ponto: o diretor de obra só vê as obras onde é diretor (principal ou adicional); os restantes perfis veem tudo.
+// `u` = utilizador atual e `obras` = lista de obras (S.OBRAS); sem obra atribuída (ou registo sem obra) um diretor não vê nada.
+export const obraVisivelPara = (u, obras, obraId) => {
+  if(!u || u.role !== 'diretor_obra') return true;
+  const o = (obras||[]).find(x => x.id === obraId);
+  return !!o && (o.diretor_id === u.key || (o.diretores_extra||[]).includes(u.key));
+};
 export const obraEmCurso = o => !!o && o.ativa !== false && (o.estado || 'em_curso') === 'em_curso';
 
 export const ROLE_LABELS = {

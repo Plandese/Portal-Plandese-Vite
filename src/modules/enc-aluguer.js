@@ -7,7 +7,7 @@ import { fmt, fmtPT, calcH, fmtH, getMonday, isWeekend, isNonWorkday } from '../
 import { podeAprovarObra, aprovCelulaHTML } from './ponto.js';
 import { showToast } from './navigation.js';
 import { abrirResumoMOA } from './resumo-colab.js';
-import { obraEmCurso, MESES_PT } from '../config.js';
+import { obraEmCurso, obraVisivelPara, MESES_PT } from '../config.js';
 
 // ── MOA — Estado ──────────────────────
 let encAlugEmpresaId='', encAlugEmpresaNome='', encAlugObraId='', encAlugData='', encAlugHoraIni='08:00', encAlugHoraFim='17:00';
@@ -716,7 +716,7 @@ async function loadMOAWeek(){
     if(obraFil) q=q.eq('obra_id',obraFil);
     const [r1,r2]=await Promise.all([q, sb.from('aprovacoes_ponto_moa').select('*').in('data',dStrs)]);
     if(r1.error) throw r1.error;
-    rows=r1.data||[]; aprovRows=r2.data||[];
+    rows=(r1.data||[]).filter(r=>obraVisivelPara(S.currentUser,S.OBRAS,r.obra_id)); aprovRows=r2.data||[];
   }catch(e){
     res.innerHTML=`<div class="card" style="text-align:center;color:var(--red);padding:32px;font-size:13px">⚠️ Erro ao carregar dados: ${e.message}</div>`;
     _moaCache=null; return;
@@ -1384,7 +1384,7 @@ async function initMOAFilters(){
   const os=document.getElementById('moa-f-obra');
   if(os){
     os.innerHTML='<option value="">Todas</option>';
-    S.OBRAS.filter(obraEmCurso).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
+    S.OBRAS.filter(o=>obraEmCurso(o)&&obraVisivelPara(S.currentUser,S.OBRAS,o.id)).forEach(o=>{const op=document.createElement('option');op.value=o.id;op.textContent=o.nome;os.appendChild(op);});
   }
 }
 

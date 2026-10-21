@@ -5,7 +5,7 @@ import { sb } from '../supabase.js';
 import { carregarRegistosFecho } from '../db.js';
 import { S, R } from '../state.js';
 import { fmt, fmtPT, isWeekend, isNonWorkday, getMonday, dayShort, calcH, fmtH } from '../utils/helpers.js';
-import { MESES_PT, DIAS_PT_EXP, TIPOS } from '../config.js';
+import { MESES_PT, DIAS_PT_EXP, TIPOS, obraVisivelPara } from '../config.js';
 import { showToast } from './navigation.js';
 
 // ═══════════════════════════════════════
@@ -374,7 +374,7 @@ export async function renderHistSemana(){
       sb.from('aprovacoes_ponto').select('*').in('data', dStrs),
     ]);
     if(error) throw error;
-    regs = data;
+    regs = (data||[]).filter(r=>obraVisivelPara(S.currentUser,S.OBRAS,r.obra_id));
     aprov = {};
     (aprovRows||[]).forEach(a=>{ aprov[_aprovKey(a.obra_id, a.data)]=a; });
   } catch(e) {
@@ -1220,7 +1220,8 @@ export async function loadWeek(){
   cont.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar semana…</div>';
   let query=sb.from('registos_ponto').select('*').in('data',dStrs);
   if(obraFilter)query=query.eq('obra_id',obraFilter);
-  const {data:regs}=await query;
+  const {data:regsAll}=await query;
+  const regs=(regsAll||[]).filter(r=>obraVisivelPara(S.currentUser,S.OBRAS,r.obra_id));
   const obraMap={};
   (regs||[]).forEach(r=>{
     const obraId=r.obra_id||'_sem';
