@@ -501,10 +501,12 @@ function _renderCombDetalhe(){
 }
 
 // ── Criar / Editar / Apagar registo ──────────────
+const _combFormTipo=()=>{ const t=document.getElementById('mcf-tipo-registo').value; return t==='deposito'&&document.getElementById('mcf-movimento').value==='transferencia'?'transferencia':t; };
 function combFormTipoChange(){
-  const tipo=document.getElementById('mcf-tipo-registo').value;
+  const tipoSel=document.getElementById('mcf-tipo-registo').value;
+  const tipo=_combFormTipo();
   const isTr=tipo==='transferencia';
-  document.getElementById('mcf-movimento-field').style.display=tipo==='deposito'?'':'none';
+  document.getElementById('mcf-movimento-field').style.display=tipoSel==='deposito'?'':'none';
   document.getElementById('mcf-equip-field').style.display=tipo==='viatura'?'':'none';
   document.getElementById('mcf-fornecedor-field').style.display=tipo==='viatura'?'':'none';
   // Depósito: de onde sai (ou onde entra). Obra: destino/centro de custo — só nas saídas do depósito e nas viaturas
@@ -547,10 +549,10 @@ async function abrirCombFormRegisto(obraIdPreset,registoId){
 
   document.getElementById('mcf-title').textContent=r?'Editar registo':'Novo registo';
   document.getElementById('mcf-id').value=r?r.id:'';
-  document.getElementById('mcf-tipo-registo').value=r?r.tipo_registo:'deposito';
+  document.getElementById('mcf-tipo-registo').value=r?(r.tipo_registo==='transferencia'?'deposito':r.tipo_registo):'deposito';
   document.getElementById('mcf-data').value=r?r.data:fmt(new Date());
   document.getElementById('mcf-litros').value=r?r.litros:'';
-  document.getElementById('mcf-movimento').value=r?(r.movimento||'entrada'):'entrada';
+  document.getElementById('mcf-movimento').value=r?(r.tipo_registo==='transferencia'?'transferencia':(r.movimento||'entrada')):'entrada';
   document.getElementById('mcf-tipo-comb').value=r?(r.tipo_combustivel||'Gasóleo'):'Gasóleo';
   document.getElementById('mcf-fornecedor').value=r?(r.fornecedor||''):'';
   document.getElementById('mcf-encarregado').value=r?(r.encarregado_nome||''):(S.currentUser?.nome||'');
@@ -572,7 +574,7 @@ async function _combAtualizarAposAlteracao(){
 
 async function guardarRegistoCombustivel(){
   const id=document.getElementById('mcf-id').value;
-  const tipoRegisto=document.getElementById('mcf-tipo-registo').value;
+  const tipoRegisto=_combFormTipo();
   const data=document.getElementById('mcf-data').value;
   const obraEl=document.getElementById('mcf-obra');
   const obraId=obraEl.value||null;
@@ -595,7 +597,8 @@ async function guardarRegistoCombustivel(){
       data,equipamento_id:null,equipamento_nome:'Transferência entre obras',
       obra_id:obraId,obra_nome:obraNome,deposito_obra_id:depId,deposito_obra_nome:depEl.options[depEl.selectedIndex]?.text||'',
       litros,tipo_combustivel:tipoComb,tipo_registo:'transferencia',movimento:'saida',
-      fornecedor:null,encarregado_nome:encarregado,obs
+      fornecedor:null,encarregado_nome:encarregado,obs,
+      ...(id?{contador_valor:null,contador_tipo:null}:{})
     };
   }else if(tipoRegisto==='deposito'){
     const depEl=document.getElementById('mcf-dep');
