@@ -155,6 +155,7 @@ async function loadCombustivelAdmin(){
   emptyEl.style.display='none';
   try{
     await _fetchCombRows();
+    _fetchCombPend().catch(()=>{});
     _renderCombGridFiltrada();
     if(!_combVistaInicial&&_combDesk()){ _combVistaInicial=true; combSwitchView('ger'); }
   }catch(e){
@@ -223,13 +224,106 @@ let _combView='dep';
 let _combVistaInicial=false;
 function combSwitchView(view){
   _combView=view;
-  ['ger','dep','cons'].forEach(v=>{
+  ['ger','dep','cons','apr'].forEach(v=>{
     const panel=document.getElementById('comb-view-'+v);
     const btn=document.getElementById('comb-tab-btn-'+v);
     if(panel) panel.style.display=v===view?'':'none';
     if(btn) btn.classList.toggle('active',v===view);
   });
+  if(view==='apr') _combAprCarregar();
 }
+
+// ── Por aprovar: registos pendentes (QR, bomba, transferências) e rejeitados, com decisão do admin ──
+let _combPend=[];
+let _combAprFiltro='pendente';
+let _combAprBusy=false;
+async function _fetchCombPend(){
+  const {data,error}=await sb.from('registos_combustivel').select('*').in('aprovacao',['pendente','rejeitado'])
+    .order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(500);
+  if(error) throw error;
+  _combPend=data||[];
+  _combAprBadge();
+}
+function _combAprBadge(){
+  const n=_combPend.filter(r=>r.aprovacao==='pendente').length;
+  const b=document.getElementById('comb-apr-badge'); if(!b) return;
+  b.textContent=n; b.style.display=n?'inline-flex':'none';
+}
+async function _combAprCarregar(){
+  const box=document.getElementById('comb-apr-d'); if(!box) return;
+  if(!_combPend.length) box.innerHTML='<div class="pl-load"><span class="pl-logo"></span>A carregar…</div>';
+  try{ await _fetchCombPend(); }catch(e){ box.innerHTML=`<div style="text-align:center;padding:24px;color:#b91c1c">Erro: ${_escHtml(e.message)}</div>`; return; }
+  _combRenderApr();
+}
+function _combAprTipo(r){
+  if(isTransfRow(r)) return ['Transferência','b-blue'];
+  if(r.tipo_registo==='deposito') return [r.movimento==='entrada'?'Entrada em depósito':'Saída de depósito','b-orange'];
+  return [r.fornecedor?'Bomba · '+r.fornecedor:'Abastecimento','b-gray'];
+}
+function _combRenderApr(){
+  const box=document.getElementById('comb-apr-d'); if(!box) return;
+  const pend=_combPend.filter(r=>r.aprovacao==='pendente'), rej=_combPend.filter(r=>r.aprovacao==='rejeitado');
+  const lista=_combAprFiltro==='pendente'?pend:rej;
+  const hoje=new Date();
+  const dias=r=>r.criado_em?Math.max(0,Math.floor((hoje-new Date(r.criado_em))/864e5)):0;
+  const litPend=pend.reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
+  const maisAntigo=pend.length?Math.max(...pend.map(dias)):0;
+  const chip=(k,l,n)=>`<button type="button" class="fp-tab${_combAprFiltro===k?' active':''}" data-cbaprf="${k}">${l} <b>${n}</b></button>`;
+  const linhas=lista.map(r=>{
+    const [tipo,cls]=_combAprTipo(r);
+    const dep=depObraId(r)?depObraNome(r):'';
+    const dest=r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—';
+    const rota=isTransfRow(r)?`${_escHtml(dep)} → <b>${_escHtml(dest)}</b>`:(dep&&dep!==dest?`${_escHtml(dep)} → <b>${_escHtml(dest)}</b>`:`<b>${_escHtml(dest)}</b>`);
+    const d=dias(r);
+    const acoes=r.aprovacao==='pendente'
+      ?`<button class="btn btn-primary btn-sm" data-cbapr="${r.id}" data-ok="1">Aprovar</button> <button class="btn btn-secondary btn-sm" data-cbapr="${r.id}" data-ok="0">Rejeitar</button>`
+      :`<button class="btn btn-secondary btn-sm" data-cbreabrir="${r.id}">Repor como pendente</button>`;
+    return `<tr><td>${fmtPT(r.data)}</td><td><span class="badge ${cls}" style="font-size:11px">${_escHtml(tipo)}</span>${r.origem==='qr'?' <span class="badge b-gray" style="font-size:11px">QR</span>':''}</td>
+      <td>${isTransfRow(r)?'<span style="color:var(--gray-400)">—</span>':_escHtml(r.equipamento_nome||'Depósito de obra')}</td><td>${rota}</td>
+      <td class="r"><b>${_cbN(parseFloat(r.litros)||0)} L</b></td><td>${_escHtml(r.encarregado_nome||'—')}${r.aprovado_por?`<span class="sub">${r.aprovacao==='rejeitado'?'Rejeitado por ':'Aprovado por '}${_escHtml(r.aprovado_por)}</span>`:''}</td>
+      <td>${r.aprovacao==='pendente'?`<span class="cb-pill ${d>=3?'warn':'ok'}">${d?d+' dia'+(d>1?'s':''):'hoje'}</span>`:'—'}</td>
+      <td style="white-space:nowrap;text-align:right">${acoes}</td></tr>`;
+  }).join('');
+  box.innerHTML=`<div class="cb-kpis">
+      <div class="cb-kpi"><div><div class="cb-l">Por aprovar</div><div class="cb-n">${pend.length}</div></div></div>
+      <div class="cb-kpi"><div><div class="cb-l">Litros por aprovar</div><div class="cb-n">${_cbN(litPend)}<small> L</small></div></div></div>
+      <div class="cb-kpi"><div><div class="cb-l">Pendente há mais tempo</div><div class="cb-n">${pend.length?(maisAntigo?maisAntigo+'<small> dia'+(maisAntigo>1?'s':'')+'</small>':'hoje'):'—'}</div></div></div>
+      <div class="cb-kpi"><div><div class="cb-l">Rejeitados</div><div class="cb-n">${rej.length}</div></div></div>
+    </div>
+    <div class="fp-tab-bar" style="margin-bottom:14px">${chip('pendente','Pendentes',pend.length)}${chip('rejeitado','Rejeitados',rej.length)}</div>
+    <div class="cb-tw"><table><thead><tr><th>Data</th><th>Tipo</th><th>Equipamento</th><th>Origem → Obra</th><th class="r">Litros</th><th>Registado por</th><th>Há</th><th></th></tr></thead>
+    <tbody>${linhas||`<tr><td colspan="8" class="cb-vz">${_combAprFiltro==='pendente'?'Nada por aprovar. Está tudo em dia ✓':'Sem registos rejeitados.'}</td></tr>`}</tbody></table></div>
+    <div style="font-size:12px;color:var(--gray-500);margin-top:10px">Só os registos aprovados contam para o stock e para os custos. Um registo rejeitado pode ser reposto como pendente.</div>`;
+}
+async function _combAprDecidir(id,ok){
+  if(_combAprBusy) return;
+  if(!ok&&!confirm('Rejeitar este registo? Deixa de contar para o stock e para os custos.')) return;
+  _combAprBusy=true;
+  try{
+    const {data,error}=await sb.rpc('fn_comb_decidir',{p_id:Number(id),p_aprovar:!!ok});
+    if(error) throw error;
+    if(!data||!data.ok) showToast(data?.motivo==='sem_permissao'?'Sem permissão para decidir este registo':'Este registo já foi tratado');
+    else showToast(ok?'Registo aprovado ✓':'Registo rejeitado');
+  }catch(e){ showToast('Erro: '+(e.message||e)); }
+  _combAprBusy=false;
+  try{ await Promise.all([_fetchCombPend(),_fetchCombRows()]); _combRenderApr(); _renderCombGridFiltrada(); }catch(e){}
+}
+async function _combAprReabrir(id){
+  if(_combAprBusy) return;
+  _combAprBusy=true;
+  try{
+    const {error}=await sb.from('registos_combustivel').update({aprovacao:'pendente',aprovado_por:null,aprovado_em:null}).eq('id',id);
+    if(error) throw error;
+    showToast('Registo reposto como pendente');
+  }catch(e){ showToast('Erro: '+(e.message||e)); }
+  _combAprBusy=false;
+  try{ await _fetchCombPend(); _combRenderApr(); }catch(e){}
+}
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-cbaprf]'); if(f){ _combAprFiltro=f.dataset.cbaprf; _combRenderApr(); return; }
+  const a=e.target.closest('[data-cbapr]'); if(a){ _combAprDecidir(a.dataset.cbapr,a.dataset.ok==='1'); return; }
+  const r=e.target.closest('[data-cbreabrir]'); if(r) _combAprReabrir(r.dataset.cbreabrir);
+});
 
 // ── Consumo de Equipamentos: um cartão por viatura/máquina com abastecimentos ──
 let _combDetEquipId=null;

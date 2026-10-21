@@ -2433,6 +2433,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="2" y="17" width="13" height="4" rx="2"/><path d="M4 17v-4a1 1 0 0 1 1-1h6v5"/><path d="M10 12l5-8 4 3"/><path d="M19 7l2 7"/><path d="M21 14h-3l.5 2.5"/></svg>
             Consumo de Equipamentos
           </button>
+          <button class="fp-tab" id="comb-tab-btn-apr" onclick="combSwitchView('apr')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Por aprovar<span id="comb-apr-badge" class="cb-pill warn" style="display:none;margin-left:8px"></span>
+          </button>
         </div>
 
         <!-- ═══ VISTA: VISÃO GERAL (só computador) ═══ -->
@@ -2447,6 +2451,9 @@
           <div style="margin-top:6px">Sem registos. Defina o período e clique em "Pesquisar".</div>
         </div>
         </div>
+
+        <!-- ═══ VISTA: POR APROVAR ═══ -->
+        <div id="comb-view-apr" style="display:none"><div id="comb-apr-d"></div></div>
 
         <!-- ═══ VISTA: CONSUMO DE EQUIPAMENTOS ═══ -->
         <div id="comb-view-cons" style="display:none">
