@@ -630,7 +630,7 @@ function eqVerLocalizacao(id){
     const lat=parseFloat(eq.ultimoLat), lng=parseFloat(eq.ultimoLng);
     const colors={equipamento:'#6D28D9',veiculo_passageiros:'#1D4ED8',veiculo_mercadorias:'#0F766E',veiculo_pesado:'#B45309'};
     _eqLocMap = L.map('meql-map').setView([lat,lng],15);
-    _eqCamadasMapa(_eqLocMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',maxZoom:19}).addTo(_eqLocMap);
     const icon=L.divIcon({className:'',
       html:`<div style="width:28px;height:28px;background:${colors[eqCatNorm(eq.categoria)]||'#6B7280'};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
       iconSize:[28,28],iconAnchor:[14,28]});
@@ -680,27 +680,13 @@ function eqVerListaCompleta(){
     : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Sem equipamentos registados.</div>`;
 }
 
-// Camadas do mapa: Satélite (com nomes de ruas) ou Mapa de ruas; a escolha fica guardada no dispositivo
-function _eqCamadasMapa(map){
-  const sat=L.layerGroup([
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Imagens © Esri, Maxar, Earthstar Geographics',maxZoom:19}),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',{maxZoom:19})
-  ]);
-  const ruas=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',maxZoom:19});
-  let pref='sat'; try{ pref=localStorage.getItem('plandese_eq_mapa')||'sat'; }catch(e){}
-  (pref==='ruas'?ruas:sat).addTo(map);
-  L.control.layers({'Satélite':sat,'Mapa':ruas},null,{position:'topright',collapsed:false}).addTo(map);
-  map.on('baselayerchange',e=>{ try{ localStorage.setItem('plandese_eq_mapa',e.name==='Mapa'?'ruas':'sat'); }catch(_){} });
-}
-
 // ── Mapa Leaflet ────────────────────────
 function initEqMap(){
   const mapEl = document.getElementById('eq-map');
   if(!mapEl) return;
   if(_eqMap){ _eqMap.remove(); _eqMap=null; _eqMapMarkers=[]; _eqMapMarkerById={}; }
   _eqMap = L.map('eq-map').setView([38.716,-9.139], 7);
-  _eqCamadasMapa(_eqMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',maxZoom:19}).addTo(_eqMap);
   refreshEqMap();
 }
 function refreshEqMap(){

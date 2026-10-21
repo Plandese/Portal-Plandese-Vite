@@ -610,7 +610,7 @@ body.device-mobile .fat-field-row{grid-template-columns:1fr}
 /* ─────────────────────────────────────────────────────
    EQUIPAMENTOS E LOGÍSTICA
 ───────────────────────────────────────────────────── */
-#eq-map{height:360px;border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden}
+#eq-map{height:clamp(360px,calc(100dvh - 230px),900px);border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden}
 .eq-cat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
 .eq-cat-equipamento{background:#EDE9FE;color:#6D28D9}.eq-cat-vpass{background:#DBEAFE;color:#1D4ED8}
 .eq-cat-vmerc{background:#CCFBF1;color:#0F766E}.eq-cat-vpes{background:#FEF3C7;color:#92400E}
