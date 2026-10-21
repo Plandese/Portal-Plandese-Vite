@@ -249,6 +249,7 @@ async function encAlugPassarTrabalhadores(){
   // adicionados um a um ou pela sugestão verde da equipa anterior.
   encAlugTrabalhadores=[];
   _alugAnterior={data:null,colabIds:[]};
+  _alugResetBtnSubmeter();
   const obraNome=S.OBRAS.find(o=>o.id===obraId)?.nome||'—';
   const [y,m,d]=data.split('-');
   document.getElementById('enc-alug-resumo-empresa').textContent=empresaNome;
@@ -288,29 +289,39 @@ async function _alugMostrarExistentes(){
   }catch(e){}
 }
 
-// Equipa do registo anterior deste encarregado (mesma obra e empresa), a verde
+// Equipa dos últimos 7 dias deste encarregado (mesma obra e empresa), a verde — cada trabalhador aparece uma só vez
 async function carregarEquipaAnteriorAlug(){
   const box=document.getElementById('alug-ontem-box');
   if(!box) return;
   try{
+    const lim=new Date(encAlugData+'T12:00:00'); lim.setDate(lim.getDate()-7);
     const {data:regs}=await _alugQueryMeus('colab_moa_id, data')
-      .lt('data',encAlugData).eq('obra_id',encAlugObraId).eq('empresa_moa_id',encAlugEmpresaId)
-      .not('colab_moa_id','is',null).order('data',{ascending:false}).limit(50);
+      .lt('data',encAlugData).gte('data',fmt(lim)).eq('obra_id',encAlugObraId).eq('empresa_moa_id',encAlugEmpresaId)
+      .not('colab_moa_id','is',null).order('data',{ascending:false}).limit(500);
     if(!regs?.length){ _alugAnterior={data:null,colabIds:[]}; _alugDesenharAnterior(); return; }
-    const dataAnt=regs[0].data;
-    _alugAnterior={data:dataAnt,colabIds:[...new Set(regs.filter(r=>r.data===dataAnt).map(r=>r.colab_moa_id))]};
+    _alugAnterior={data:regs[0].data,colabIds:[...new Set(regs.map(r=>r.colab_moa_id))]};
   }catch(e){ _alugAnterior={data:null,colabIds:[]}; }
   _alugDesenharAnterior();
 }
 
+// Trabalhadores sugeridos: ainda não estão na lista e, se o mesmo nome estiver registado mais do que uma vez, só um aparece
+function _alugSugeridos(){
+  const jaNaLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
+  const nomes=new Set(encAlugTrabalhadores.map(t=>_alugNomeKey(t.nome)));
+  return (COLABORADORES_MOA[encAlugEmpresaId]||[]).filter(c=>{
+    if(!_alugAnterior.colabIds.includes(c.id)||jaNaLista.has(c.id)) return false;
+    const k=_alugNomeKey(c.nome); if(nomes.has(k)) return false;
+    nomes.add(k); return true;
+  });
+}
+const _alugNomeKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+
 function _alugDesenharAnterior(){
   const box=document.getElementById('alug-ontem-box');
   if(!box) return;
-  const jaNaLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
-  const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[])
-    .filter(c=>_alugAnterior.colabIds.includes(c.id)&&!jaNaLista.has(c.id));
+  const disp=_alugSugeridos();
   if(!_alugAnterior.data||!disp.length){ box.style.display='none'; return; }
-  document.getElementById('alug-ontem-label').textContent=`Equipa de ${fmtPT(_alugAnterior.data)}`;
+  document.getElementById('alug-ontem-label').textContent='Equipa dos últimos 7 dias';
   const lista=document.getElementById('alug-ontem-lista'); lista.innerHTML='';
   disp.forEach(c=>{
     const chip=document.createElement('button');
@@ -323,8 +334,7 @@ function _alugDesenharAnterior(){
 }
 
 function adicionarTodosAnteriorAlug(){
-  const jaNaLista=new Set(encAlugTrabalhadores.map(t=>t.colabId));
-  const disp=(COLABORADORES_MOA[encAlugEmpresaId]||[]).filter(c=>_alugAnterior.colabIds.includes(c.id)&&!jaNaLista.has(c.id));
+  const disp=_alugSugeridos();
   if(!disp.length){showToast('Todos já adicionados');return;}
   disp.forEach(c=>encAlugTrabalhadores.push(_novoTrab(c)));
   buildAlugList();
@@ -443,15 +453,24 @@ function encAlugUpdateStats(lista){
   document.getElementById('alug-st-t').textContent=fmtH(tt)||'0h';
 }
 
+const _ALUG_BTN_HTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg> Submeter registo';
+function _alugResetBtnSubmeter(){
+  const btn=document.querySelector('#enc-alug-screen-b .mob-save-btn');
+  if(btn){ btn.disabled=false; btn.innerHTML=_ALUG_BTN_HTML; }
+}
+// Um pedido que nunca responde (rede instável) não pode deixar o botão preso em "A guardar…"
+const _alugComTempo=(p,ms=25000)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('O servidor demorou demasiado a responder. Verifique a ligação e tente de novo.')),ms))]);
+
 async function encAlugSubmeter(){
   if(!encAlugTrabalhadores.length){showToast('Adicione pelo menos um trabalhador');return;}
   const btn=document.querySelector('#enc-alug-screen-b .mob-save-btn');
+  if(btn&&btn.disabled) return;
   if(btn){btn.disabled=true;btn.textContent='A guardar…';}
   const encId=S.currentUser?.key||null;
   try{
     // Registos já gravados deste encarregado neste dia/obra → atualizar em vez de duplicar
-    const {data:exist,error:e0}=await _alugQueryMeus('id, colab_moa_id')
-      .eq('data',encAlugData).eq('obra_id',encAlugObraId).not('colab_moa_id','is',null);
+    const {data:exist,error:e0}=await _alugComTempo(_alugQueryMeus('id, colab_moa_id')
+      .eq('data',encAlugData).eq('obra_id',encAlugObraId).not('colab_moa_id','is',null));
     if(e0) throw e0;
     const idPorColab={}; (exist||[]).forEach(r=>{idPorColab[r.colab_moa_id]=r.id;});
     const agora=new Date().toISOString();
@@ -467,15 +486,16 @@ async function encAlugSubmeter(){
       if(idEx) edits.push({id:idEx,row:{entrada:base.entrada,saida:base.saida,editado_por:S.currentUser?.nome||S.currentUser?.key||'—',editado_em:agora}});
       else novos.push({...base,criado_em:agora});
     });
-    if(novos.length){ const {error}=await sb.from('registos_ponto_moa').insert(novos); if(error) throw error; }
-    for(const e of edits){ const {error}=await sb.from('registos_ponto_moa').update(e.row).eq('id',e.id); if(error) throw error; }
+    if(novos.length){ const {error}=await _alugComTempo(sb.from('registos_ponto_moa').insert(novos)); if(error) throw error; }
+    const res=await _alugComTempo(Promise.all(edits.map(e=>sb.from('registos_ponto_moa').update(e.row).eq('id',e.id))));
+    const eErr=res.find(r=>r.error); if(eErr) throw eErr.error;
     showToast('Registo submetido com sucesso! ✓');
     try{ localStorage.setItem(`enc_done_aluguer_${fmt(new Date())}`,'1'); }catch(e){}
     R.emitEvent?.({acao:'MO Aluguer submetida · '+(S.currentUser?.nome||'Encarregado')+' ('+encAlugTrabalhadores.length+' trab.)',seccao:'historico',obra:encAlugObraId});
-    setTimeout(()=>encVoltarHome(),1500);
+    setTimeout(()=>{ encVoltarHome(); _alugResetBtnSubmeter(); },1500);
   }catch(e){
     showToast('⚠️ Não foi possível submeter: '+(e.message||e));
-    if(btn){btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg> Submeter registo';}
+    _alugResetBtnSubmeter();
   }
 }
 
