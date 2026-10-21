@@ -720,7 +720,7 @@ function refreshEqMap(){
       <div class="eq-popup-cat">${eqEsc(cat.label)}${ref?' · '+ref:''}</div>
       <div class="eq-popup-loc">📍 ${eqEsc(eq.ultimoLocal||'Localização GPS')}</div>
       <div class="eq-popup-time${dias>7?' eq-popup-old':''}">🕐 Registado ${ago}${quem}</div>
-      <button type="button" class="eq-popup-btn" onclick="abrirEqDetalhe('${String(eq.id).replace(/'/g,"\'")}')">Abrir ficha</button>`;
+      <button type="button" class="eq-popup-btn" onclick="abrirEqDetalhe('${String(eq.id).replace(/[^A-Za-z0-9_-]/g,'')}')">Abrir ficha</button>`;
     const mk=L.marker([lat,lng],{icon}).addTo(_eqMap).bindPopup(popup);
     _eqMapMarkers.push(mk); _eqMapMarkerById[eq.id]=mk;
     bounds.push([lat,lng]);
