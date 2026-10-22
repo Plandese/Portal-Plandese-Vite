@@ -42,6 +42,10 @@ export function loadPermissions(){
 const OVR_CONFIG_KEY  = 'access_overrides';
 const OVR_STORAGE_KEY = 'plandese_access_overrides_v1';
 const emptyOvr = () => ({ roles:{}, users:{} });
+// Sub-páginas fechadas por omissão a um perfil, enquanto o administrador não as abrir na matriz
+// (o diretor de obra só vê "Faturas por aprovar"; as restantes do Financeiro são dadas caso a caso)
+const DEFAULT_ROLE_OFF = { diretor_obra:['faturas','faturas-lancadas','tesouraria'] };
+const roleOffOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].off) || DEFAULT_ROLE_OFF[role] || [];
 // Telas Finais não é uma secção do portal: o acesso é a lista de usernames em app_config/telas_finais_acesso
 // (decidida no servidor por fn_tf_acesso). Aparece como sub-página extra no capítulo Produção.
 const TF_CONFIG_KEY = 'telas_finais_acesso';
@@ -106,7 +110,8 @@ async function upsertConfig(key, value){
 }
 
 function normalizeOvr(o){
-  Object.keys(o.roles).forEach(r=>{ if(!(o.roles[r].off||[]).length) delete o.roles[r]; });
+  // perfis com lista predefinida guardam sempre a lista (mesmo vazia), senão voltavam a fechar
+  Object.keys(o.roles).forEach(r=>{ if(!(o.roles[r].off||[]).length && !DEFAULT_ROLE_OFF[r]) delete o.roles[r]; });
   Object.keys(o.users).forEach(u=>{ if(!Object.keys(o.users[u]).length) delete o.users[u]; });
   return o;
 }
@@ -179,7 +184,7 @@ function offList(role, user){
   const d = draft();
   const o = user ? d.ovr.users[user] : null;
   if(o && o.off) return o.off;
-  return (d.ovr.roles[role]||{}).off || [];
+  return roleOffOf(d.ovr, role);
 }
 function secBlockedByRole(role, sec){ return !!(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)); }
 function secEff(role, user, ch, sec){
@@ -304,7 +309,7 @@ export function onPermChange(chk){
       if(sameSet(next, roleList)) delete o.chapters; else o.chapters = next;
     }
   } else if(kind==='sec'){
-    const roleOff = (d.ovr.roles[role]||{}).off || [];
+    const roleOff = roleOffOf(d.ovr, role);
     if(!user){
       const next = on ? roleOff.filter(x=>x!==sec) : [...new Set([...roleOff, sec])];
       d.ovr.roles[role] = { off: next };
@@ -353,11 +358,12 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos
 // ── Verificação central de acesso ──────────────────────────────────
 // Fonte única de verdade: sidebar, goTo, painel, análise e notificações usam estas funções.
 // Falha "fechada": secção desconhecida ou perfil sem configuração → sem acesso (excepto admin).
-// Dentro do capítulo Financeiro, cada página é só para certos perfis (fluxo das faturas)
+// Dentro do capítulo Financeiro, cada página é só para certos perfis (fluxo das faturas);
+// o diretor de obra pode recebê-las do administrador na matriz (DEFAULT_ROLE_OFF fecha-as por omissão)
 const SECTION_ROLES = {
-  'faturas':         ['admin','financeiro'],
-  'tesouraria':      ['admin','financeiro'],
-  'faturas-lancadas': ['admin','financeiro'],
+  'faturas':         ['admin','financeiro','diretor_obra'],
+  'tesouraria':      ['admin','financeiro','diretor_obra'],
+  'faturas-lancadas': ['admin','financeiro','diretor_obra'],
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };
 
@@ -365,7 +371,7 @@ export function roleCanAccessSection(role, sec, username){
   if(role === 'admin') return true;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   const uo = username ? _ovr.users[username] : null;
-  const off = (uo && uo.off) || (_ovr.roles[role] && _ovr.roles[role].off) || [];
+  const off = (uo && uo.off) || roleOffOf(_ovr, role);
   if(off.includes(sec)) return false;
   // Faturas por aprovar: o diretor de obra acede mesmo sem o capítulo Financeiro (o RLS limita-o às faturas das suas obras)
   if(sec === 'faturas-aprovar' && role === 'diretor_obra') return true;
