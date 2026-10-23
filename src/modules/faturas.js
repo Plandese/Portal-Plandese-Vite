@@ -666,6 +666,7 @@ function _fatToRow(f){
     ficheiro_url: f.ficheiroUrl || null,
     aprovado_por: f.aprovadoPor || null,
     aprovado_em:  f.aprovadoEm  || null,
+    paga_na_origem: !!f.pagaNaOrigem,
     linhas:       f.linhas || [],
     criado_por:   S.currentUser?.key || null,
   };
@@ -695,6 +696,7 @@ function _rowToFat(r){
     ficheiroUrl:  r.ficheiro_url || '',
     aprovadoPor:  r.aprovado_por || '',
     aprovadoEm:   r.aprovado_em  || '',
+    pagaNaOrigem: !!r.paga_na_origem,
     criadoEm:     r.criado_em || '',
     linhas:       Array.isArray(r.linhas) ? r.linhas : [],
     _rawText:   '',
@@ -1576,7 +1578,7 @@ async function concluirAprovacao(f, cc, pos){
   await carregarPastasFaturas();
   const antes = { status:f.status, centroCusto:f.centroCusto, aprovadoPor:f.aprovadoPor, aprovadoEm:f.aprovadoEm, dropboxPath:f.dropboxPath, ficheiroUrl:f.ficheiroUrl };
   f.centroCusto = cc;
-  f.status      = 'aprovada';
+  f.status      = f.pagaNaOrigem ? 'paga' : 'aprovada';   // já paga na origem: chega à tesouraria como paga
   f.aprovadoPor = S.currentUser?.nome || S.currentUser?.key || 'admin';
   f.aprovadoEm  = new Date().toISOString();
 
@@ -1656,11 +1658,16 @@ async function aprovarFatura(){
 
 // Etapa 1: a fatura passa para "Faturas Por Aprovar" e o(s) diretor(es) da obra são avisados
 async function confirmarCentroCusto(f, cc){
-  const antes = { status:f.status, centroCusto:f.centroCusto };
+  const antes = { status:f.status, centroCusto:f.centroCusto, pagaNaOrigem:f.pagaNaOrigem };
+  // se foi marcada como "Paga" (formulário ou estado atual), guarda a marca para chegar paga à tesouraria
+  const jaPaga = f.status === 'paga' || document.getElementById('mf-status')?.value === 'paga';
+  if(jaPaga) f.pagaNaOrigem = true;
   f.centroCusto = cc;
   f.status = 'aguarda_diretor';
   try{
-    const { error } = await sb.from('faturas').update({ status: f.status, centro_custo: f.centroCusto }).eq('id', f._dbId);
+    const upd = { status: f.status, centro_custo: f.centroCusto };
+    if(f.pagaNaOrigem) upd.paga_na_origem = true;
+    const { error } = await sb.from('faturas').update(upd).eq('id', f._dbId);
     if(error) throw error;
   } catch(e){
     Object.assign(f, antes);
