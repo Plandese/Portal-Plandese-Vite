@@ -49,9 +49,9 @@ const pessoas = () => (S.COLABORADORES || []).filter(c => c.esc && c.ativo).sort
 const minha = () => pessoas().find(c => c.user && c.user === meuUser());
 const visiveis = () => verEquipa() ? pessoas() : (minha() ? [minha()] : []);
 const pessoaSel = () => visiveis().find(c => c.n === _sel) || null;
-// Os dias de uma pessoa só os vê ela própria, o financeiro e o administrador
-const verDias = () => { const p = pessoaSel(); return !!p && (ehAdmin() || ehFinanceiro() || (p.user && p.user === meuUser())); };
-const podeEditarDias = () => { const p = pessoaSel(); return !!p && (ehAdmin() || (p.user && p.user === meuUser())); };
+// Os dias de uma pessoa só os vê ela própria e o financeiro (nem o administrador vê os dos outros)
+const verDias = () => { const p = pessoaSel(); return !!p && (ehFinanceiro() || (p.user && p.user === meuUser())); };
+const podeEditarDias = () => { const p = pessoaSel(); return !!p && !!p.user && p.user === meuUser(); };
 
 // Obra onde o utilizador atual pode lançar percentagens
 const souDiretorDe = o => ehAdmin() || o.diretor_id === meuUser() || (o.diretores_extra || []).includes(meuUser());
