@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 //  PONTO DO ESCRITÓRIO — folha de ponto mensal de quem trabalha no escritório.
-//  · Cada pessoa preenche os seus dias (X, F, FE, FJ, FI, B, LP, LO); o administrador corrige os de qualquer pessoa.
+//  · Cada pessoa preenche os seus dias (X, F, FE, FJ, FI, B, LP); o administrador corrige os de qualquer pessoa.
 //  · Os diretores de obra lançam a afetação do mês (%) por obra, só nas obras onde são diretores (RLS no servidor).
 //  Tabelas: fp_esc_dias, fp_esc_afetacao; quem tem folha: colaboradores.escritorio / colaboradores.utilizador.
 // ═══════════════════════════════════════════════════════════════════
@@ -16,7 +16,6 @@ const CODIGOS = [
   { c: 'FI', t: 'Falta injustificada', k: 'fi' },
   { c: 'B',  t: 'Baixa médica',        k: 'bx' },
   { c: 'LP', t: 'Licença parental',    k: 'lp' },
-  { c: 'LO', t: 'Layoff',              k: 'lo' },
 ];
 const KLASSE = Object.fromEntries(CODIGOS.map(x => [x.c, x.k]));
 const DIA_SEM = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
