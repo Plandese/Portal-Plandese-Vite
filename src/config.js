@@ -107,7 +107,7 @@ export const NOTIF_SECTIONS = {
 // Capítulos da sidebar — fonte única de verdade para o agrupamento de secções
 // e para a matriz de "Permissões de Acesso" em Gerir Utilizadores.
 export const NAV_CHAPTERS = [
-  {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','colaboradores']},
+  {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','ponto-escritorio','colaboradores']},
   {id:'cmp',  label:'Compras',                   sections:['compras']},
   {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','faturas-lancadas','tesouraria']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},

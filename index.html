@@ -1375,6 +1375,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span class="nav-label">Mapa de Férias</span>
         </button>
+        <button class="nav-btn" onclick="goTo('ponto-escritorio',this)" id="nav-pesc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+          <span class="nav-label">Ponto do Escritório</span>
+        </button>
         <button class="nav-btn" onclick="goTo('colaboradores',this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="16" y1="11" x2="22" y2="11"/><line x1="19" y1="8" x2="19" y2="14"/></svg>
           <span class="nav-label">Colaboradores</span>
@@ -1792,6 +1796,17 @@
           </div>
         </div>
         <div id="ferias-cont"></div>
+      </section>
+
+      <!-- PONTO DO ESCRITÓRIO -->
+      <section id="sec-ponto-escritorio" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Ponto do Escritório</div>
+            <div class="pg-sub" id="pe-sub">Presenças do mês e afetação por obra</div>
+          </div>
+        </div>
+        <div id="pe-cont"></div>
       </section>
 
       <!-- HISTÓRICO DE ATIVIDADE -->
@@ -3124,6 +3139,11 @@
     <div class="field"><label>Função *</label>
       <select id="mc-func"><option>Administrador</option><option>Administraivo de Obra</option><option>Aj. Canalizador</option><option>Ajudante Canalizador</option><option>Assessor Financeiro</option><option>Assistente DF &amp; RH</option><option>Assistente Dep Comercial</option><option>Assistente Logistica</option><option>Calceteiro</option><option>Canalizador</option><option>Condutor Manobrador</option><option>Diretor de Obra</option><option>Diretor de Obra Júnior</option><option>Encarregado</option><option>Manobrador</option><option>Motorista</option><option>Pedreiro</option><option>Responsável Dep. Comercial</option><option>Responsável Depto. Compras</option><option>Servente</option><option>Téc. Sup.Seg. e Saúde no Trabalho</option><option>Técn. Administrativo</option><option>Outro</option></select>
     </div>
+    <div class="field"><label>Utilizador do portal</label>
+      <select id="mc-user"></select>
+      <div style="font-size:12px;color:#5d6678;margin-top:5px">Quem preenche a folha de ponto deste colaborador.</div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;margin:4px 0 14px;cursor:pointer"><input type="checkbox" id="mc-esc" style="width:18px;height:18px;accent-color:var(--m-brand,#173f9f)"/>Tem folha de ponto mensal do escritório</label>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-colab')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveColab()">Guardar</button>

@@ -73,7 +73,17 @@ export async function editColab(n){
   document.getElementById('mc-num').value=c.n;
   document.getElementById('mc-nome').value=c.nome;
   document.getElementById('mc-func').value=c.func;
+  mcPreencheUtilizadores(c.user);
+  document.getElementById('mc-esc').checked=!!c.esc;
   document.getElementById('modal-colab').classList.add('open');
+}
+
+// Lista de utilizadores do portal para ligar à folha de ponto do escritório
+export function mcPreencheUtilizadores(sel=''){
+  const el=document.getElementById('mc-user'); if(!el) return;
+  el.innerHTML='<option value="">— Sem login —</option>'+Object.entries(S.USERS||{})
+    .filter(([,u])=>u.role!=='encarregado')
+    .map(([k,u])=>`<option value="${k}"${k===sel?' selected':''}>${u.nome||k}</option>`).join('');
 }
 
 export async function saveColab(){
@@ -83,10 +93,11 @@ export async function saveColab(){
   const idEdit=parseInt(document.getElementById('mc-id').value)||0;
   if(!num||!nome){alert('Nº e nome obrigatórios.');return;}
   if(!idEdit&&S.COLABORADORES.find(c=>c.n===num)){alert('Nº já existe.');return;}
+  const esc=document.getElementById('mc-esc').checked, user=document.getElementById('mc-user').value;
   let ativo=true;
-  if(idEdit){const idx=S.COLABORADORES.findIndex(c=>c.n===idEdit);if(idx>=0){ativo=S.COLABORADORES[idx].ativo;S.COLABORADORES[idx].n=num;S.COLABORADORES[idx].nome=nome;S.COLABORADORES[idx].func=func;}}
-  else S.COLABORADORES.push({n:num,nome,func,ativo:true});
-  const payload={n:num,nome,func,ativo};
+  if(idEdit){const idx=S.COLABORADORES.findIndex(c=>c.n===idEdit);if(idx>=0){ativo=S.COLABORADORES[idx].ativo;Object.assign(S.COLABORADORES[idx],{n:num,nome,func,esc,user});}}
+  else S.COLABORADORES.push({n:num,nome,func,ativo:true,esc,user});
+  const payload={n:num,nome,func,ativo,esc,user};
   await sbSaveColab(payload);
   closeModal('modal-colab');renderColabs();flashAlert('colab-alert');
   R.emitEvent?.({ acao:(idEdit?'Colaborador atualizado':'Novo colaborador')+': '+nome, seccao:'colaboradores' });

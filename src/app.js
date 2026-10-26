@@ -18,7 +18,8 @@ import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSeman
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
-import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos, colabSetVista } from './modules/colaboradores.js';
+import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos, colabSetVista, mcPreencheUtilizadores } from './modules/colaboradores.js';
+import { renderPontoEsc, peNavMes, peEscolher, peBrush, peClickDia, pePreencher, peLimparMes, peSetPct, peAbrirPessoa } from './modules/ponto-escritorio.js';
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
 
 // Permissões
@@ -114,7 +115,7 @@ Object.assign(R, {
   initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
   ensurePushSubscription, initPushPrompt, applyPendingSection,
   renderPainel, renderFaturas, renderTesouraria, renderFaturasLancadas, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
-  renderColabs, renderUsers, renderEquipamentos,
+  renderColabs, renderUsers, renderEquipamentos, mcPreencheUtilizadores, renderPontoEsc,
   loadCombustivelAdmin, renderControloObras,
   renderFechoMes, applyFilter, renderEmpresasMOA,
   loadEmpresasMOA, loadColaboradoresMOA,
@@ -191,6 +192,9 @@ Object.assign(window, {
 
   // Colaboradores
   renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos, colabSetVista,
+
+  // Folha de ponto do escritório
+  renderPontoEsc, peNavMes, peEscolher, peBrush, peClickDia, pePreencher, peLimparMes, peSetPct, peAbrirPessoa,
 
   // Advertências
   openAdvertencias, closeAdvertencias, advShowForm, advShowLista, saveAdvertencia, advEliminar, advGerarPDF,
@@ -412,6 +416,7 @@ window.savePerfil = async function () {
     if (id === 'atividade')    { initAtividade(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }
+    if (id === 'ponto-escritorio')   { renderPontoEsc(true); }
     if (id === 'pendentes-tavira')   { initPendentesTavira(); }
     if (id === 'notificacoes')       { initNotifPage(); }
     if (id === 'calendario')         { initCalendario(); }

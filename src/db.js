@@ -11,9 +11,9 @@ import { USERS_BASE, obraVisivelPara } from './config.js';
 // ═══════════════════════════════════════
 export async function carregarDados() {
   try {
-    const {data: colabs} = await sb.from('colaboradores').select('numero,nome,funcao,ativo').order('numero');
+    const {data: colabs} = await sb.from('colaboradores').select('numero,nome,funcao,ativo,escritorio,utilizador').order('numero');
     if (colabs && colabs.length > 0) {
-      S.COLABORADORES = colabs.map(c => ({n:c.numero, nome:c.nome, func:c.funcao, ativo:c.ativo}));
+      S.COLABORADORES = colabs.map(c => ({n:c.numero, nome:c.nome, func:c.funcao, ativo:c.ativo, esc:!!c.escritorio, user:c.utilizador||''}));
     }
     // Obras
     const {data: obras} = await sb.from('obras').select('*').order('nome');
@@ -114,7 +114,7 @@ export async function sbSaveObra(rec) {
 
 export async function sbSaveColab(c) {
   try {
-    const payload = {numero:c.n, nome:c.nome, funcao:c.func, ativo:c.ativo};
+    const payload = {numero:c.n, nome:c.nome, funcao:c.func, ativo:c.ativo, escritorio:!!c.esc, utilizador:c.user||null};
     await sb.from('colaboradores').upsert(payload, {onConflict:'numero'});
   } catch(e) { console.warn('Erro ao guardar colaborador:', e); }
 }

@@ -1,0 +1,101 @@
+/* ───────── Ponto do Escritório ─────────
+   Usa os tokens --d-* (definidos em :root) para servir o portal de computador e a app de telemóvel. */
+#sec-ponto-escritorio .pe-vazio{padding:34px 22px;border:1.5px dashed var(--d-line);border-radius:22px;background:#fff;color:var(--d-mute);font-size:14.5px;line-height:1.5;text-align:center}
+#sec-ponto-escritorio .pe-vazio.sm{border:0;padding:22px}
+
+#sec-ponto-escritorio .pe-bar{display:flex;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+#sec-ponto-escritorio .pe-mes{display:flex;align-items:center;gap:4px;height:50px;padding:0 5px;border:1.5px solid var(--d-line);border-radius:99px;background:#fff}
+#sec-ponto-escritorio .pe-mes b{min-width:150px;text-align:center;font-size:15px;font-weight:700;color:var(--d-ink)}
+#sec-ponto-escritorio .pe-mes button{width:38px;height:38px;border:0;border-radius:50%;background:none;color:var(--d-ink);display:grid;place-items:center;cursor:pointer}
+#sec-ponto-escritorio .pe-mes button:hover{background:#f1f4fa}
+#sec-ponto-escritorio .pe-mes svg{width:18px;height:18px}
+#sec-ponto-escritorio .pe-quem{min-width:240px;margin:0}
+
+#sec-ponto-escritorio .pe-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
+#sec-ponto-escritorio .pe-kpi{display:flex;flex-direction:column;gap:2px;padding:15px 18px;border:1.5px solid var(--d-line);border-radius:22px;background:#fff}
+#sec-ponto-escritorio .pe-kpi span{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6a7284}
+#sec-ponto-escritorio .pe-kpi b{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.15;margin-top:5px;font-variant-numeric:tabular-nums;color:var(--d-ink)}
+#sec-ponto-escritorio .pe-kpi b.t,#sec-ponto-escritorio .pe-kpi b.ok{color:var(--d-brand)}
+#sec-ponto-escritorio .pe-kpi b.ok{color:#166534}
+#sec-ponto-escritorio .pe-kpi b.e{color:#a35a08}
+#sec-ponto-escritorio .pe-kpi b.bad{color:#b42318}
+#sec-ponto-escritorio .pe-kpi b.z{color:#b4bccb}
+#sec-ponto-escritorio .pe-kpi small{font-size:12.5px;color:var(--d-mute)}
+
+#sec-ponto-escritorio .pe-card{margin-bottom:16px;border:1.5px solid var(--d-line);border-radius:22px;background:#fff;overflow:hidden}
+#sec-ponto-escritorio .pe-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:18px 20px 12px}
+#sec-ponto-escritorio .pe-card-h b{display:block;font-size:16px;font-weight:700;letter-spacing:-.2px}
+#sec-ponto-escritorio .pe-card-h small{display:block;color:var(--d-mute);font-size:13px;margin-top:2px}
+#sec-ponto-escritorio .pe-acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* etiquetas de código (legenda / pincel) */
+#sec-ponto-escritorio .pe-leg{display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 14px}
+#sec-ponto-escritorio .pe-chip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px 0 5px;border:1.5px solid transparent;border-radius:99px;font-weight:600;font-size:12.5px;font-family:inherit;color:var(--d-ink);background:#f1f4fa}
+#sec-ponto-escritorio .pe-chip b{display:grid;place-items:center;min-width:24px;height:24px;padding:0 5px;border-radius:99px;font-size:11.5px;font-weight:800;background:#fff}
+#sec-ponto-escritorio button.pe-chip{cursor:pointer}
+#sec-ponto-escritorio button.pe-chip.on{border-color:var(--d-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+
+#sec-ponto-escritorio .k-ok{--pk-bg:#e4f5ea;--pk-fg:#166534}
+#sec-ponto-escritorio .k-fer{--pk-bg:#e6ebf4;--pk-fg:#475069}
+#sec-ponto-escritorio .k-fe{--pk-bg:#e3ebfb;--pk-fg:#173f9f}
+#sec-ponto-escritorio .k-fj{--pk-bg:#fdf0d5;--pk-fg:#a35a08}
+#sec-ponto-escritorio .k-fi{--pk-bg:#fde4e1;--pk-fg:#b42318}
+#sec-ponto-escritorio .k-bx{--pk-bg:#fbe5ef;--pk-fg:#a1245f}
+#sec-ponto-escritorio .k-lp{--pk-bg:#ece6fb;--pk-fg:#5b3bb0}
+#sec-ponto-escritorio .k-lo{--pk-bg:#e9edf2;--pk-fg:#566074}
+#sec-ponto-escritorio .pe-chip[class*="k-"]{background:var(--pk-bg);color:var(--pk-fg)}
+
+/* tira dos dias do mês */
+#sec-ponto-escritorio .pe-strip{display:flex;gap:6px;padding:4px 20px 20px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#sec-ponto-escritorio .pe-d{flex:1 0 38px;min-width:38px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 6px;border:1.5px solid var(--d-line);border-radius:14px;background:#fff;color:var(--d-ink);font-family:inherit;cursor:pointer}
+#sec-ponto-escritorio .pe-d:disabled{cursor:default}
+#sec-ponto-escritorio .pe-d:not(:disabled):hover{border-color:var(--d-brand)}
+#sec-ponto-escritorio .pe-dw{font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#8a93a6}
+#sec-ponto-escritorio .pe-dn{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+#sec-ponto-escritorio .pe-dc{height:20px;min-width:28px;padding:0 6px;border-radius:99px;font-size:11.5px;font-weight:800;line-height:20px;text-align:center}
+#sec-ponto-escritorio .pe-d.we{background:#f6f8fc}
+#sec-ponto-escritorio .pe-d.we .pe-dn{color:#8a93a6}
+#sec-ponto-escritorio .pe-d.fer:not([class*="k-"]){border-color:#c3cce0}
+#sec-ponto-escritorio .pe-d.fer .pe-dn{color:var(--d-brand)}
+#sec-ponto-escritorio .pe-d[class*="k-"]{border-color:transparent;background:var(--pk-bg)}
+#sec-ponto-escritorio .pe-d[class*="k-"] .pe-dc{background:#fff;color:var(--pk-fg)}
+
+/* afetação por obra */
+#sec-ponto-escritorio .pe-tot,#sec-ponto-escritorio .pe-pill{display:inline-flex;align-items:center;height:30px;padding:0 13px;border-radius:99px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;background:#eef1f6;color:#6a7284}
+#sec-ponto-escritorio .pe-tot.ok,#sec-ponto-escritorio .pe-pill.ok{background:#e4f5ea;color:#166534}
+#sec-ponto-escritorio .pe-tot.e,#sec-ponto-escritorio .pe-pill.e{background:#fdf0d5;color:#a35a08}
+#sec-ponto-escritorio .pe-tot.bad,#sec-ponto-escritorio .pe-pill.bad{background:#fde4e1;color:#b42318}
+#sec-ponto-escritorio .pe-afet{padding-bottom:6px}
+#sec-ponto-escritorio .pe-o{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(100px,2fr) 112px;align-items:center;gap:16px;padding:11px 20px;border-top:1px solid var(--d-line2)}
+#sec-ponto-escritorio .pe-o-n{display:flex;align-items:center;gap:11px;min-width:0}
+#sec-ponto-escritorio .pe-cod{flex:none;display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:99px;background:#e3ebfb;color:var(--d-brand);font-size:12px;font-weight:800}
+#sec-ponto-escritorio .pe-o-t{min-width:0}
+#sec-ponto-escritorio .pe-o-t b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sec-ponto-escritorio .pe-o-t small{display:block;font-size:12px;color:var(--d-mute)}
+#sec-ponto-escritorio .pe-o-b{height:8px;border-radius:99px;background:#e9edf4;overflow:hidden}
+#sec-ponto-escritorio .pe-o-b i{display:block;height:100%;border-radius:99px;background:var(--d-brand-2)}
+#sec-ponto-escritorio .pe-o-v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+#sec-ponto-escritorio .pe-in{display:flex;align-items:center;height:46px;border:1.5px solid #b9c1ce;border-radius:14px;background:#fff;padding:0 12px 0 4px;transition:border-color .15s,box-shadow .15s}
+#sec-ponto-escritorio .pe-in:focus-within{border-color:var(--d-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+#sec-ponto-escritorio .pe-in input{flex:1;min-width:0;width:100%;height:100%;border:0;outline:0;background:none;box-shadow:none;padding:0 4px 0 10px;font-weight:600;font-size:16px;font-family:inherit;text-align:right;color:var(--d-ink)}
+#sec-ponto-escritorio .pe-in span{font-weight:700;color:var(--d-mute)}
+
+/* equipa */
+#sec-ponto-escritorio .pe-eq-r{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 90px auto;align-items:center;gap:14px;padding:12px 20px;border:0;border-top:1px solid var(--d-line2);background:#fff;font-family:inherit;text-align:left;cursor:pointer}
+#sec-ponto-escritorio .pe-eq-r:hover{background:#f6f8fc}
+#sec-ponto-escritorio .pe-eq-r.on{background:var(--d-tint)}
+#sec-ponto-escritorio .pe-eq-n b{display:block;font-size:14.5px;font-weight:600;color:var(--d-ink)}
+#sec-ponto-escritorio .pe-eq-n small{display:block;font-size:12.5px;color:var(--d-mute)}
+#sec-ponto-escritorio .pe-eq-d{font-size:13px;color:var(--d-mute);text-align:right}
+
+@media (max-width:700px){
+  #sec-ponto-escritorio .pe-quem{min-width:0;flex:1 1 100%}
+  #sec-ponto-escritorio .pe-mes{width:100%;justify-content:space-between}
+  #sec-ponto-escritorio .pe-card-h{padding:16px 16px 10px}
+  #sec-ponto-escritorio .pe-leg{padding:0 16px 12px}
+  #sec-ponto-escritorio .pe-strip{padding:4px 16px 16px}
+  #sec-ponto-escritorio .pe-o{grid-template-columns:minmax(0,1fr) 104px;padding:12px 16px;gap:10px 12px}
+  #sec-ponto-escritorio .pe-o-b{grid-column:1 / -1;order:3}
+  #sec-ponto-escritorio .pe-eq-r{grid-template-columns:minmax(0,1fr) auto;padding:12px 16px}
+  #sec-ponto-escritorio .pe-eq-d{display:none}
+}

@@ -167,7 +167,7 @@ export async function resetPermissions(){
 export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
 const SECTION_LABELS = {
-  'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','colaboradores':'Colaboradores',
+  'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','ponto-escritorio':'Ponto do Escritório','colaboradores':'Colaboradores',
   'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','faturas-lancadas':'Faturas Lançadas','tesouraria':'Tesouraria',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
@@ -191,11 +191,13 @@ function secEff(role, user, ch, sec){
   if(secBlockedByRole(role, sec)) return false;
   if(offList(role,user).includes(sec)) return false;
   if(sec==='faturas-aprovar' && role==='diretor_obra') return true;
+  if(sec==='ponto-escritorio') return true;
   return chapEff(role, user, ch);
 }
 function secLocked(role, user, ch, sec){
   if(secBlockedByRole(role, sec)) return true;
   if(sec==='faturas-aprovar' && role==='diretor_obra') return false;
+  if(sec==='ponto-escritorio') return false;
   return !chapEff(role, user, ch);
 }
 
@@ -375,6 +377,8 @@ export function roleCanAccessSection(role, sec, username){
   if(off.includes(sec)) return false;
   // Faturas por aprovar: o diretor de obra acede mesmo sem o capítulo Financeiro (o RLS limita-o às faturas das suas obras)
   if(sec === 'faturas-aprovar' && role === 'diretor_obra') return true;
+  // Ponto do escritório: cada pessoa preenche a sua folha, mesmo sem o capítulo Recursos Humanos (o RLS limita o que cada um vê)
+  if(sec === 'ponto-escritorio') return !!role && role !== 'encarregado';
   if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
   if(!chId) return false;
