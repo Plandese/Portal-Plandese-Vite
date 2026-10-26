@@ -304,9 +304,10 @@ export function aplicarLayoutLivre(primeiro) {
     const l = cfg.layout?.[c.dataset.card] || {};
     const w = Math.max(2, Math.min(COLS, l.w || larguraPadrao(c.dataset.card)));
     const cc = Math.max(0, Math.min(COLS - w, l.c ?? colunaPadrao(c.dataset.card)));
-    const fixa = l.h >= ALT_MIN ? l.h : null;
+    const esc = l.r > 0 ? Math.max(0.5, Math.min(2, W / l.r)) : 1; // alturas e posição vertical acompanham a largura em que foram guardadas
+    const fixa = l.h >= ALT_MIN ? Math.round(l.h * esc) : null;
     c.style.height = fixa ? fixa + 'px' : ''; c.classList.toggle('pcard-fixa', !!fixa);
-    return { id: c.dataset.card, el: c, c: cc, w, y: l.y ?? null, h: fixa || c.offsetHeight, hFixa: fixa, ordem: i };
+    return { id: c.dataset.card, el: c, c: cc, w, y: l.y == null ? null : Math.round(l.y * esc), h: fixa || c.offsetHeight, hFixa: fixa, ordem: i };
   });
   resolver(itens, primeiro);
   itens.forEach(k => {
@@ -321,7 +322,8 @@ async function guardarLayoutLivre() {
   if (!_livre?.itens) return;
   const atual = await cartoesPainel();
   const layout = {};
-  _livre.itens.forEach(k => { layout[k.id] = { c: k.c, w: k.w, y: k.y, ...(k.hFixa ? { h: k.hFixa } : {}) }; });
+  const r = _livre.el.clientWidth;
+  _livre.itens.forEach(k => { layout[k.id] = { c: k.c, w: k.w, y: k.y, r, ...(k.hFixa ? { h: k.hFixa } : {}) }; });
   await guardarCartoes({ ...atual, layout });
 }
 
@@ -407,7 +409,7 @@ function iniciarArrasto(e) {
     window.addEventListener('click', clique, { capture: true, once: true });
     setTimeout(() => window.removeEventListener('click', clique, true), 0);
     const cfg = _livre.cfg; cfg.layout = cfg.layout || {};
-    (_livre.itens || []).forEach(i => { cfg.layout[i.id] = { c: i.c, w: i.w, y: i.y, ...(i.hFixa ? { h: i.hFixa } : {}) }; }); // fixa as posições atuais de todos
+    (_livre.itens || []).forEach(i => { cfg.layout[i.id] = { c: i.c, w: i.w, y: i.y, r: _livre.el.clientWidth, ...(i.hFixa ? { h: i.hFixa } : {}) }; }); // fixa as posições atuais de todos
     Object.assign(cfg.layout[card.dataset.card], novo);
     info.drag = null;
     aplicarLayoutLivre(card.dataset.card);
