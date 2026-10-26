@@ -42,8 +42,8 @@ const meuUser = () => S.currentUser?.key;
 const ehAdmin = () => S.currentUser?.role === 'admin';
 const ehDiretor = () => S.currentUser?.role === 'diretor_obra';
 const ehFinanceiro = () => S.currentUser?.role === 'financeiro';
-// Lista de pessoas: admin e financeiro veem todas as folhas; o diretor abre as outras só para lançar a afetação das suas obras
-const verEquipa = () => ehAdmin() || ehFinanceiro() || ehDiretor();
+// Lista de pessoas: só o financeiro vê todas; todos os outros (admin e diretores incluídos) veem apenas o seu nome
+const verEquipa = () => ehFinanceiro();
 
 const pessoas = () => (S.COLABORADORES || []).filter(c => c.esc && c.ativo).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
 const minha = () => pessoas().find(c => c.user && c.user === meuUser());
