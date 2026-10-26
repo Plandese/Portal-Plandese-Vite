@@ -157,7 +157,7 @@ function _populateEncSelect(selectedId=''){
 
 // Utilizadores que podem ser diretor de obra: o perfil Diretor de Obra e administradores
 // expressamente associados (mantêm os privilégios de admin).
-const _ADMINS_DIRETORES=['david.mosca'];
+const _ADMINS_DIRETORES=['david.mosca','manuel.fonseca'];
 const _podeSerDiretor=(un,u)=>u?.role==='diretor_obra' || _ADMINS_DIRETORES.includes(un);
 
 function _populateDiretorSelect(selectedId=''){
