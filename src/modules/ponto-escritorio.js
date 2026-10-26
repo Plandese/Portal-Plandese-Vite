@@ -41,12 +41,16 @@ const fmtPct = v => (Math.round(v * 100) / 100).toLocaleString('pt-PT') + ' %';
 const meuUser = () => S.currentUser?.key;
 const ehAdmin = () => S.currentUser?.role === 'admin';
 const ehDiretor = () => S.currentUser?.role === 'diretor_obra';
-const verEquipa = () => ehAdmin() || ehDiretor();
+const ehFinanceiro = () => S.currentUser?.role === 'financeiro';
+// Lista de pessoas: admin e financeiro veem todas as folhas; o diretor abre as outras só para lançar a afetação das suas obras
+const verEquipa = () => ehAdmin() || ehFinanceiro() || ehDiretor();
 
 const pessoas = () => (S.COLABORADORES || []).filter(c => c.esc && c.ativo).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
 const minha = () => pessoas().find(c => c.user && c.user === meuUser());
 const visiveis = () => verEquipa() ? pessoas() : (minha() ? [minha()] : []);
 const pessoaSel = () => visiveis().find(c => c.n === _sel) || null;
+// Os dias de uma pessoa só os vê ela própria, o financeiro e o administrador
+const verDias = () => { const p = pessoaSel(); return !!p && (ehAdmin() || ehFinanceiro() || (p.user && p.user === meuUser())); };
 const podeEditarDias = () => { const p = pessoaSel(); return !!p && (ehAdmin() || (p.user && p.user === meuUser())); };
 
 // Obra onde o utilizador atual pode lançar percentagens
@@ -120,7 +124,7 @@ function desenhar() {
   if (sub) sub.textContent = `${p.nome}${p.func ? ' · ' + p.func : ''}`;
 
   const pessoasLista = visiveis();
-  const total = totalPct(p.n);
+  const total = totalPct(p.n), vd = verDias();
   cont.innerHTML = `
     <div class="pe-bar">
       <div class="pe-mes">
@@ -132,20 +136,20 @@ function desenhar() {
     </div>
 
     <div class="pe-kpis">
-      <div class="pe-kpi"><span>Presenças</span><b>${contar(['X'])}</b><small>dias de trabalho</small></div>
+      ${vd ? `<div class="pe-kpi"><span>Presenças</span><b>${contar(['X'])}</b><small>dias de trabalho</small></div>
       <div class="pe-kpi"><span>Férias</span><b class="t">${contar(['FE'])}</b><small>dias gozados no mês</small></div>
-      <div class="pe-kpi"><span>Faltas</span><b class="${contar(['FJ', 'FI']) ? 'e' : ''}">${contar(['FJ', 'FI'])}</b><small>justificadas e injustificadas</small></div>
+      <div class="pe-kpi"><span>Faltas</span><b class="${contar(['FJ', 'FI']) ? 'e' : ''}">${contar(['FJ', 'FI'])}</b><small>justificadas e injustificadas</small></div>` : ''}
       <div class="pe-kpi"><span>Afetação</span><b class="${classeTotal(total)}">${fmtPct(total)}</b><small>${textoTotal(total)}</small></div>
     </div>
 
-    <div class="pe-card">
+    ${vd ? `<div class="pe-card">
       <div class="pe-card-h">
         <div><b>Presenças e ausências</b><small>${podeEditarDias() ? 'Escolha o código e toque nos dias. Toque outra vez para limpar.' : 'Só a própria pessoa (ou o administrador) preenche os dias.'}</small></div>
         ${podeEditarDias() ? `<div class="pe-acts"><button type="button" class="btn btn-secondary btn-sm" onclick="pePreencher()">Preencher dias úteis</button><button type="button" class="btn btn-secondary btn-sm" onclick="peLimparMes()">Limpar mês</button></div>` : ''}
       </div>
       ${podeEditarDias() ? `<div class="pe-leg">${CODIGOS.map(x => `<button type="button" class="pe-chip k-${x.k}${_brush === x.c ? ' on' : ''}" onclick="peBrush('${x.c}')"><b>${x.c}</b>${x.t}</button>`).join('')}</div>` : `<div class="pe-leg">${CODIGOS.map(x => `<span class="pe-chip k-${x.k}"><b>${x.c}</b>${x.t}</span>`).join('')}</div>`}
       <div class="pe-strip">${diasHTML()}</div>
-    </div>
+    </div>` : ''}
 
     <div class="pe-card">
       <div class="pe-card-h">
@@ -157,10 +161,10 @@ function desenhar() {
 
     ${pessoasLista.length > 1 ? `
     <div class="pe-card">
-      <div class="pe-card-h"><div><b>Equipa em ${MESES_PT[_mes]}</b><small>Dias registados e afetação já lançada</small></div></div>
+      <div class="pe-card-h"><div><b>Equipa em ${MESES_PT[_mes]}</b><small>${ehDiretor() ? 'Afetação já lançada' : 'Dias registados e afetação já lançada'}</small></div></div>
       <div class="pe-eq">${pessoasLista.map(c => {
         const t = totalPct(c.n), nd = _diasTodos.filter(x => x.colaborador === c.n).length;
-        return `<button type="button" class="pe-eq-r${c.n === p.n ? ' on' : ''}" onclick="peAbrirPessoa(${c.n})"><span class="pe-eq-n"><b>${esc(c.nome)}</b><small>${esc(c.func || '')}</small></span><span class="pe-eq-d">${nd} dia${nd === 1 ? '' : 's'}</span><span class="pe-pill ${classeTotal(t)}">${t ? fmtPct(t) : 'Sem afetação'}</span></button>`;
+        return `<button type="button" class="pe-eq-r${c.n === p.n ? ' on' : ''}" onclick="peAbrirPessoa(${c.n})"><span class="pe-eq-n"><b>${esc(c.nome)}</b><small>${esc(c.func || '')}</small></span><span class="pe-eq-d">${ehDiretor() ? '' : `${nd} dia${nd === 1 ? '' : 's'}`}</span><span class="pe-pill ${classeTotal(t)}">${t ? fmtPct(t) : 'Sem afetação'}</span></button>`;
       }).join('')}</div>
     </div>` : ''}`;
 
