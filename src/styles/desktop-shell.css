@@ -1397,7 +1397,7 @@ body.device-desktop:not(.enc-mode) #admin-app .fe-ac{font-size:11px}
 body.device-desktop:not(.enc-mode) #admin-app .fe-wk:not(.fe):not(.pd):not(.fa){cursor:pointer}
 body.device-desktop:not(.enc-mode) #admin-app .fe-wk:hover{box-shadow:0 0 0 2px var(--d-brand)}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-mm.sel{background:var(--d-tint);border-radius:16px;margin:-8px;padding:8px}
-body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sws{background:var(--d-tint);border-radius:18px;padding:14px 16px;margin-bottom:20px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sws{background:var(--d-tint);border-radius:18px;padding:14px 16px;grid-column:1 / -1}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sws-t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-brand);margin-bottom:8px}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #d9e2f6}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw:first-of-type{border-top:0}

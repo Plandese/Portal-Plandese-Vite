@@ -615,8 +615,7 @@ function _feGaveta(p) {
       <div class="fe-gv-t">${_esc2(c.nome)}</div><div class="fe-gv-s">${_esc2(c.func || '—')} · Nº ${c.n} · ${_ano}</div></div>
     <div class="fe-gv-b">
       <div class="fe-gv-k"><div><b>${p.fe + p.pd}</b><small>Marcados</small></div><div><b>${p.fe}</b><small>Utilizados</small></div><div><b>${p.pd}</b><small>Previstos</small></div></div>
-      ${_anoMes != null ? _feSemanasHtml(c.n, _anoMes) : ''}
-      <div class="fe-gv-m">${Array.from({ length: 12 }, (_, m) => _feMiniMes(c.n, m)).join('')}</div>
+      <div class="fe-gv-m">${Array.from({ length: 12 }, (_, m) => (m === (_anoMes & ~1) && _anoMes != null ? _feSemanasHtml(c.n, _anoMes) : '') + _feMiniMes(c.n, m)).join('')}</div>
     </div>
     <div class="fe-gv-f"><div class="fe-leg"><span><i style="background:var(--fe-util)"></i>Utilizadas</span><span><i style="background:var(--fe-prev)"></i>Previstas</span><span><i style="background:#e0952b"></i>Falta</span></div>
       <button type="button" class="btn ${_locked ? 'btn-primary' : 'btn-secondary'} fe-gv-bt" data-flock>${_locked ? 'Editar férias previstas' : 'Concluir edição'}</button>
@@ -666,7 +665,9 @@ function _renderAno(cont, allColabs) {
   // a gaveta vive no <body> (position:fixed) para não ficar presa a ancestrais com transform
   let host = document.getElementById('fe-gv-host');
   if (!host) { host = document.createElement('div'); host.id = 'fe-gv-host'; document.body.appendChild(host); }
-  host.innerHTML = sel ? _feGaveta(sel) : '';}
+  host.innerHTML = sel ? _feGaveta(sel) : '';
+  const alvo = host.querySelector('.fe-sws'), corpo = host.querySelector('.fe-gv-b');
+  if (alvo && corpo) corpo.scrollTop = alvo.offsetTop - 12;}
 
 // pintar dias previstos arrastando na gaveta
 async function _fePintar(el, on) {
