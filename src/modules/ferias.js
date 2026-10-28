@@ -531,8 +531,152 @@ document.addEventListener('click', e => {
     if (_mes > 11) { _mes = 0; _ano++; renderMapaFerias(); return; }
     _renderTabela(); return;
   }
+  const fa = e.target.closest('[data-fano]');
+  if (fa) { _anoSel = +fa.dataset.fano; _renderTabela(); return; }
+  if (e.target.closest('[data-fclose]')) { _anoSel = null; _renderTabela(); return; }
+  if (e.target.closest('[data-flock]')) { feriasToggleLock(); return; }
+  if (e.target.closest('[data-fsm]')) { _soMarc = !_soMarc; _renderTabela(); return; }
+  const ff = e.target.closest('[data-fff]');
+  if (ff) { if (ff.dataset.fff === '') _filtroFuncs.clear(); else if (_filtroFuncs.has(ff.dataset.fff)) _filtroFuncs.delete(ff.dataset.fff); else _filtroFuncs.add(ff.dataset.fff); _renderTabela(); return; }
   if (e.target.closest('[data-fmarcar]')) { _vista = 'ano'; if (_locked) feriasToggleLock(); else _renderTabela(); }
 });
+
+// ── Vista do ano (computador): semanas, pressão de ausências e gaveta por pessoa ──
+let _anoSel = null; // colaborador aberto na gaveta (nº)
+let _soMarc = true; // vista do ano: só quem tem férias/faltas marcadas
+let _paint = null;  // pincel ativo ao arrastar na gaveta: { on }
+const _DS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+const _fim = dt => dt.getDay() === 0 || dt.getDay() === 6;
+
+function _feAnoDados(colabs) {
+  const ini = new Date(_ano, 0, 1, 12), off = (ini.getDay() + 6) % 7;
+  const ndAno = Math.round((new Date(_ano, 11, 31, 12) - ini) / 864e5) + 1;
+  const nw = Math.ceil((off + ndAno) / 7);
+  const wkOf = (m, d) => Math.floor((Math.round((new Date(_ano, m, d, 12) - ini) / 864e5) + off) / 7);
+  const sim = new Array(nw).fill(0), simD = new Array(nw).fill('');
+  const pessoas = colabs.map(c => {
+    const wk = Array.from({ length: nw }, () => ({ fe: 0, pd: 0, fa: 0 }));
+    let fe = 0, pd = 0;
+    for (let m = 0; m < 12; m++) for (let d = 1, nd = new Date(_ano, m + 1, 0).getDate(); d <= nd; d++) {
+      if (_fim(new Date(_ano, m, d))) continue;
+      const key = `${c.n}|${fmt(new Date(_ano, m, d, 12))}`, w = wk[wkOf(m, d)];
+      if (_feriasUtilizadas.has(key)) { w.fe++; fe++; } else if (_feriasPrevistas.has(key)) { w.pd++; pd++; } else if (_faltas.has(key)) w.fa++;
+    }
+    return { c, wk, fe, pd };
+  });
+  // pico de ausências em simultâneo por semana (dia da semana mais cheio)
+  let pico = { n: 0, dia: '' };
+  for (let m = 0; m < 12; m++) for (let d = 1, nd = new Date(_ano, m + 1, 0).getDate(); d <= nd; d++) {
+    if (_fim(new Date(_ano, m, d))) continue;
+    const ds = fmt(new Date(_ano, m, d, 12)); let n = 0;
+    colabs.forEach(c => { const k = `${c.n}|${ds}`; if (_feriasUtilizadas.has(k) || _feriasPrevistas.has(k)) n++; });
+    const w = wkOf(m, d);
+    if (n > sim[w]) { sim[w] = n; simD[w] = `${String(d).padStart(2, '0')}/${String(m + 1).padStart(2, '0')}`; }
+    if (n > pico.n) pico = { n, dia: `${d} de ${_MES_L[m]}` };
+  }
+  const ms = Array.from({ length: 12 }, (_, m) => wkOf(m, 1));
+  return { nw, off, ini, pessoas, sim, simD, pico, ms, wkOf };
+}
+
+function _feMiniMes(n, m) {
+  const pad = (new Date(_ano, m, 1).getDay() + 6) % 7, nd = new Date(_ano, m + 1, 0).getDate();
+  let h = `<div class="fe-mm"><b>${MESES_FULL[m]}</b><div class="fe-md">${_DS.map(x => `<i>${x}</i>`).join('')}${'<span></span>'.repeat(pad)}`;
+  for (let d = 1; d <= nd; d++) {
+    const dt = new Date(_ano, m, d), ds = fmt(new Date(_ano, m, d, 12)), key = `${n}|${ds}`, we = _fim(dt);
+    const t = _feriasUtilizadas.has(key) ? 'fe' : _feriasPrevistas.has(key) ? 'pd' : _faltas.has(key) ? 'fa' : '';
+    const ed = !_locked && !we && t !== 'fe' && t !== 'fa';
+    h += `<span class="fe-dd${t ? ' ' + t : ''}${we ? ' we' : ''}${ed ? ' ed' : ''}"${we ? '' : ` data-fdia="${ds}"`}>${d}</span>`;
+  }
+  return h + '</div></div>';
+}
+
+function _feGaveta(p) {
+  const c = p.c;
+  return `<div class="fe-gv-bg" data-fclose></div><aside class="fe-gv" role="dialog" aria-label="Férias de ${_esc2(c.nome)}">
+    <div class="fe-gv-h"><button type="button" class="fe-gv-x" data-fclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <div class="fe-gv-t">${_esc2(c.nome)}</div><div class="fe-gv-s">${_esc2(c.func || '—')} · Nº ${c.n} · ${_ano}</div></div>
+    <div class="fe-gv-b">
+      <div class="fe-gv-k"><div><b>${p.fe + p.pd}</b><small>Marcados</small></div><div><b>${p.fe}</b><small>Utilizados</small></div><div><b>${p.pd}</b><small>Previstos</small></div></div>
+      <div class="fe-gv-m">${Array.from({ length: 12 }, (_, m) => _feMiniMes(c.n, m)).join('')}</div>
+    </div>
+    <div class="fe-gv-f"><div class="fe-leg"><span><i style="background:var(--fe-util)"></i>Utilizadas</span><span><i style="background:var(--fe-prev)"></i>Previstas</span><span><i style="background:#e0952b"></i>Falta</span></div>
+      <button type="button" class="btn ${_locked ? 'btn-primary' : 'btn-secondary'} fe-gv-bt" data-flock>${_locked ? 'Editar férias previstas' : 'Concluir edição'}</button>
+      ${_locked ? '' : '<small>Clique ou arraste sobre os dias úteis para marcar e desmarcar.</small>'}</div></aside>`;
+}
+
+function _renderAno(cont, allColabs) {
+  const funcs = [...new Set(allColabs.map(c => c.func))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt'));
+  const colabs = _filtroFuncs.size ? allColabs.filter(c => _filtroFuncs.has(c.func)) : allColabs;
+  const D = _feAnoDados(colabs);
+  const hoje = new Date(), semHoje = hoje.getFullYear() === _ano ? D.wkOf(hoje.getMonth(), hoje.getDate()) : -1;
+  const maxSim = Math.max(1, ...D.sim);
+  const comFerias = D.pessoas.filter(p => p.fe + p.pd > 0).length;
+  const totFe = D.pessoas.reduce((a, p) => a + p.fe, 0), totPd = D.pessoas.reduce((a, p) => a + p.pd, 0);
+  const rows = D.pessoas.filter(p => !_soMarc || p.fe + p.pd + p.wk.some(w => w.fa) > 0).sort((a, b) => a.c.nome.localeCompare(b.c.nome, 'pt'));
+
+  const chips = `<button type="button" class="fe-fc fe-sm${_soMarc ? ' on' : ''}" data-fsm>Só com marcações</button><span class="fe-sep"></span><button type="button" class="fe-fc${_filtroFuncs.size ? '' : ' on'}" data-fff="">Todas</button>` +
+    funcs.map(f => `<button type="button" class="fe-fc${_filtroFuncs.has(f) ? ' on' : ''}" data-fff="${_esc2(f)}">${_esc2(f)}</button>`).join('');
+  const kpi = (v, l, s) => `<div class="card fe-kpi"><b>${v}</b><span>${l}</span><small>${s}</small></div>`;
+
+  let g = `<div class="fe-ag" style="--nw:${D.nw}"><div class="fe-ah" style="grid-row:1;grid-column:1"></div>`;
+  D.ms.forEach((w, m) => { g += `<div class="fe-am" style="grid-row:1;grid-column:${w + 2} / ${(D.ms[m + 1] ?? D.nw) + 2}">${MESES[m]}</div>`; });
+  g += `<div class="fe-an2" style="grid-row:2;grid-column:1"><b>Ausentes em simultâneo</b><small>Pico: ${D.pico.n ? `${D.pico.n} ${D.pico.n === 1 ? 'pessoa' : 'pessoas'} · ${D.pico.dia}` : '—'}</small></div>`;
+  for (let w = 0; w < D.nw; w++) {
+    const n = D.sim[w];
+    g += `<div class="fe-ac${w === semHoje ? ' td' : ''}" style="grid-row:2;grid-column:${w + 2};${n ? `background:rgba(23,63,159,${(.12 + .88 * n / maxSim).toFixed(2)});color:${n / maxSim > .45 ? '#fff' : 'var(--d-brand)'}` : ''}" title="${n ? `${n} ${n === 1 ? 'pessoa ausente' : 'pessoas ausentes'} em simultâneo (${D.simD[w]})` : 'Sem ausências'}">${n || ''}</div>`;
+  }
+  g += `<div class="fe-ah r" style="grid-row:1;grid-column:${D.nw + 2}">Usadas</div><div class="fe-ah r" style="grid-row:1;grid-column:${D.nw + 3}">Previstas</div>`;
+  rows.forEach((r, i) => {
+    const row = i + 3, ini = r.c.nome.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    g += `<div class="fe-gl" style="grid-row:${row}"></div><div class="fe-n fe-nm${_anoSel === r.c.n ? ' on' : ''}" data-fano="${r.c.n}" style="grid-row:${row}"><div class="d-pp"><span class="d-rav">${_esc2(ini)}</span><div><b>${_esc2(r.c.nome)}</b><small>${_esc2(r.c.func || '—')}</small></div></div></div>`;
+    r.wk.forEach((w, k) => {
+      const t = w.fe ? 'fe' : w.pd ? 'pd' : w.fa ? 'fa' : '', n = w.fe || w.pd || w.fa;
+      const al = n ? (.4 + .6 * Math.min(n, 5) / 5).toFixed(2) : 0;
+      const nome = t === 'fe' ? 'de férias' : t === 'pd' ? 'de férias previstas' : 'de falta';
+      const sem = new Date(D.ini.getTime() + (k * 7 - D.off) * 864e5);
+      g += `<div class="fe-wk${t ? ' ' + t : ''}${k === semHoje ? ' td' : ''}" data-fano="${r.c.n}" style="grid-row:${row};grid-column:${k + 2};${t ? `--a:${al}` : ''}" ${t ? `title="${n} ${n === 1 ? 'dia' : 'dias'} ${nome} · semana de ${String(sem.getDate()).padStart(2, '0')}/${String(sem.getMonth() + 1).padStart(2, '0')}"` : ''}></div>`;
+    });
+    g += `<div class="fe-tt" data-fano="${r.c.n}" style="grid-row:${row};grid-column:${D.nw + 2}">${_totalBadge(r.fe, 'var(--fe-util-t)', 'var(--fe-util-bg)')}</div><div class="fe-tt" data-fano="${r.c.n}" style="grid-row:${row};grid-column:${D.nw + 3}">${_totalBadge(r.pd, 'var(--fe-prev-t)', 'var(--fe-prev-bg)')}</div>`;
+  });
+  g += '</div>';
+
+  const sel = _anoSel != null ? D.pessoas.find(p => p.c.n === _anoSel) : null;
+  cont.innerHTML = `<div class="fe-kpis">${kpi(comFerias, 'Colaboradores com férias', `de ${colabs.length} em ${_ano}`)}${kpi(totFe + totPd, 'Dias úteis marcados', `${totFe} utilizados · ${totPd} previstos`)}${kpi(D.pico.n || '—', 'Pico de ausências', D.pico.n ? D.pico.dia : 'Sem marcações')}</div>
+    <div class="fe-fl"><span>Função</span>${chips}</div>
+    <div class="card fe-card">${rows.length ? `<div class="tbl-wrap fe-wrap">${g}</div>` : '<div class="d-empty" style="border:0">Sem marcações para os filtros escolhidos.</div>'}</div>
+    <div class="fe-bar fe-bar2"><div class="fe-leg"><span><i style="background:var(--fe-util)"></i>Férias utilizadas</span><span><i style="background:var(--fe-prev)"></i>Férias previstas</span><span><i style="background:#e0952b"></i>Falta</span><span><i style="background:rgba(23,63,159,.55)"></i>Mais pessoas ausentes</span></div><small class="fe-dica">Clique numa pessoa para ver o ano e marcar férias.</small></div>
+    `;
+  // a gaveta vive no <body> (position:fixed) para não ficar presa a ancestrais com transform
+  let host = document.getElementById('fe-gv-host');
+  if (!host) { host = document.createElement('div'); host.id = 'fe-gv-host'; document.body.appendChild(host); }
+  host.innerHTML = sel ? _feGaveta(sel) : '';
+}
+
+// pintar dias previstos arrastando na gaveta
+async function _fePintar(el, on) {
+  const ds = el.dataset.fdia, n = _anoSel, key = `${n}|${ds}`;
+  if (_feriasUtilizadas.has(key) || _feriasPrevistas.has(key) === on) return;
+  if (on) _feriasPrevistas.add(key); else _feriasPrevistas.delete(key);
+  el.classList.toggle('pd', on);
+  try {
+    if (on) await sb.from('ferias_previstas').upsert({ colab_numero: n, data: ds }, { onConflict: 'colab_numero,data' });
+    else await sb.from('ferias_previstas').delete().eq('colab_numero', n).eq('data', ds);
+  } catch (e) { console.warn('_fePintar:', e); }
+}
+document.addEventListener('mousedown', e => {
+  const el = e.target.closest('.fe-dd.ed[data-fdia]');
+  if (!el) return;
+  e.preventDefault();
+  _paint = { on: !_feriasPrevistas.has(`${_anoSel}|${el.dataset.fdia}`) };
+  _fePintar(el, _paint.on);
+});
+document.addEventListener('mouseover', e => {
+  if (!_paint) return;
+  const el = e.target.closest('.fe-dd.ed[data-fdia]');
+  if (el) _fePintar(el, _paint.on);
+});
+document.addEventListener('mouseup', () => { if (_paint) { _paint = null; _renderTabela(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _anoSel != null) { _anoSel = null; _renderTabela(); } });
 
 // ── Render da tabela a partir dos dados em memória ────────────
 // Chamado por lock/filtro — nunca faz fetch ao Supabase.
@@ -553,11 +697,13 @@ function _renderTabela() {
   }
 
   const desk = document.body.classList.contains('device-desktop') && !document.body.classList.contains('enc-mode');
+  if (!(desk && _vista === 'ano')) document.getElementById('fe-gv-host')?.replaceChildren();
   const sec = document.getElementById('sec-mapa-ferias');
   if (sec) sec.dataset.vista = desk ? _vista : 'ano';
   const sb2 = document.querySelector('#sec-mapa-ferias .pg-sub'); if (sb2 && desk) sb2.textContent = _vista === 'mes' ? 'Quem está ausente e quando' : 'Visão anual das férias por colaborador';
   document.querySelectorAll('#fe-seg button').forEach(b => b.classList.toggle('on', b.dataset.fv === _vista));
   if (desk && _vista === 'mes') { _renderMes(cont, allColabs); return; }
+  if (desk && _vista === 'ano') { _renderAno(cont, allColabs); return; }
 
   const funcs = [...new Set(allColabs.map(c => c.func))].sort((a, b) => a.localeCompare(b, 'pt'));
   const colabs = _filtroFuncs.size ? allColabs.filter(c => _filtroFuncs.has(c.func)) : allColabs;

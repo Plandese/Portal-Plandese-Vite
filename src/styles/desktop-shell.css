@@ -1321,3 +1321,72 @@ body.device-desktop:not(.enc-mode) #admin-app #eq-chips-d .eq-vista-tg button sp
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal{display:flex;flex-direction:column;height:100%;max-height:none;overflow:hidden;padding-bottom:0}
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe #meqo-list{flex:1 1 auto;min-height:0;max-height:none!important;overflow-y:auto}
 body.device-desktop:not(.enc-mode) #modal-eq-obra-detalhe > .modal > .modal-footer{flex:none;position:static;margin:12px -28px 0;padding:14px 28px;background:#fff;border-top:1px solid var(--d-line)}
+
+/* Mapa de Férias — vista do ano: semanas, pressão de ausências e gaveta por pessoa */
+body.device-desktop:not(.enc-mode) #admin-app .fe-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-kpi{padding:16px 20px;display:flex;flex-direction:column;gap:2px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-kpi b{font-size:28px;font-weight:800;letter-spacing:-.6px;color:var(--d-brand);line-height:1.1}
+body.device-desktop:not(.enc-mode) #admin-app .fe-kpi span{font-size:13.5px;font-weight:600;color:var(--d-ink)}
+body.device-desktop:not(.enc-mode) #admin-app .fe-kpi small{font-size:12.5px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fl > span{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5d6678;margin-right:4px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fc{height:34px;padding:0 14px;border:1.5px solid #b9c1ce;border-radius:99px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:var(--d-ink);cursor:pointer}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fc.on{background:var(--d-brand);border-color:var(--d-brand);color:#fff}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ag{display:grid;grid-template-columns:230px repeat(var(--nw),minmax(10px,1fr)) 76px 76px;align-items:center;min-width:820px;column-gap:2px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ah{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-mute);padding:12px 0}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ah.r{text-align:center}
+body.device-desktop:not(.enc-mode) #admin-app .fe-am{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-brand);padding:12px 0 12px 4px;border-left:1px solid var(--d-line)}
+body.device-desktop:not(.enc-mode) #admin-app .fe-an2{padding:6px 6px 6px 20px;line-height:1.2}
+body.device-desktop:not(.enc-mode) #admin-app .fe-an2 b{display:block;font-size:13px;font-weight:700}
+body.device-desktop:not(.enc-mode) #admin-app .fe-an2 small{display:block;font-size:12px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ac{height:26px;border-radius:6px;background:#f3f5f9;font-size:10.5px;font-weight:700;display:grid;place-items:center}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk{height:26px;border-radius:6px;background:#f3f5f9;position:relative;z-index:1}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk.fe{background:rgba(47,111,228,var(--a))}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk.pd{background:rgba(120,155,235,var(--a))}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk.fa{background:rgba(224,149,43,var(--a))}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ac.td,body.device-desktop:not(.enc-mode) #admin-app .fe-wk.td{outline:2px solid var(--d-brand);outline-offset:1px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ag [data-fano]{cursor:pointer}
+body.device-desktop:not(.enc-mode) #admin-app .fe-nm:hover,body.device-desktop:not(.enc-mode) #admin-app .fe-nm.on{background:#f1f4fa}
+body.device-desktop:not(.enc-mode) #admin-app .fe-tt{text-align:center}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ag .fe-n{padding:9px 6px 9px 20px;border-radius:0}
+body.device-desktop:not(.enc-mode) #admin-app .fe-bar2{margin:14px 2px 0}
+body.device-desktop:not(.enc-mode) #admin-app .fe-bar2 .fe-leg i{width:26px;height:14px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-dica{font-size:12.5px;color:var(--d-mute)}
+/* gaveta */
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bg{position:fixed;inset:0;background:rgba(10,18,38,.42);z-index:900}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv{position:fixed;top:0;right:0;height:100vh;width:min(540px,100%);z-index:901;display:flex;flex-direction:column;background:#fff;border-radius:30px 0 0 30px;box-shadow:-24px 0 70px rgba(10,28,90,.28);overflow:hidden;animation:dSlideIn .3s cubic-bezier(.2,.8,.2,1)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-h{position:relative;flex:none;background:var(--d-brand);color:#fff;padding:26px 28px 44px;overflow:hidden}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-h::before{content:'';position:absolute;left:-30%;top:-120%;width:90%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.07)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-x{position:absolute;right:20px;top:20px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;cursor:pointer;display:grid;place-items:center}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-x svg{width:18px;height:18px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-t{position:relative;font-size:23px;font-weight:800;letter-spacing:-.4px;padding-right:44px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-s{position:relative;font-size:14px;margin-top:6px;color:rgba(255,255,255,.84)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-b{flex:1;overflow-y:auto;background:#fff;margin-top:-24px;border-radius:26px 0 0 0;position:relative;padding:22px 28px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-k{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-k div{background:var(--d-tint);border-radius:16px;padding:12px 14px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-k b{display:block;font-size:22px;font-weight:800;color:var(--d-brand)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-k small{font-size:12px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-mm > b{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-md{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;user-select:none}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-md i{font-style:normal;font-size:10px;font-weight:700;color:var(--d-mute);text-align:center;padding-bottom:2px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd{height:28px;display:grid;place-items:center;font-size:11.5px;font-weight:600;border-radius:8px;color:var(--d-ink)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.we{color:#a3aab8}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.fe{background:var(--fe-util);color:#fff}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.pd{background:var(--fe-prev);color:#1d3f8f}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.fa{background:#e0952b;color:#fff}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.ed{cursor:pointer;box-shadow:inset 0 0 0 1px #d5dae3}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-dd.ed:hover{box-shadow:inset 0 0 0 2px var(--d-brand)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-f{flex:none;padding:14px 28px 18px;border-top:1px solid var(--d-line);background:#fff;display:flex;flex-direction:column;gap:10px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-f .fe-leg i{width:22px;height:12px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bt{width:100%!important;height:52px!important;border-radius:99px!important;font-size:16px;font-weight:600}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-f small{font-size:12.5px;color:var(--d-mute);text-align:center}
+@media (max-width:1100px){body.device-desktop:not(.enc-mode) #admin-app .fe-kpis{grid-template-columns:1fr}}
+body.device-desktop:not(.enc-mode) #admin-app .fe-sep{width:1px;height:22px;background:var(--d-line);margin:0 4px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fc.fe-sm{border-color:var(--d-brand);color:var(--d-brand)}
+body.device-desktop:not(.enc-mode) #admin-app .fe-fc.fe-sm.on{color:#fff}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-leg span{display:inline-flex;align-items:center;gap:8px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-leg i{display:inline-block;border-radius:99px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bt{background:var(--d-brand)!important;background-image:none!important;border:0!important;box-shadow:none!important;color:#fff!important}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bt.btn-secondary{background:#fff!important;border:1.5px solid var(--d-brand)!important;color:var(--d-brand)!important}
