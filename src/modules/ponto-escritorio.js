@@ -42,15 +42,15 @@ const meuUser = () => S.currentUser?.key;
 const ehAdmin = () => S.currentUser?.role === 'admin';
 const ehDiretor = () => S.currentUser?.role === 'diretor_obra';
 const ehFinanceiro = () => S.currentUser?.role === 'financeiro';
-// Lista de pessoas: só o financeiro vê todas; todos os outros (admin e diretores incluídos) veem apenas o seu nome
-const verEquipa = () => ehFinanceiro();
+// Lista de pessoas: o administrador e o financeiro veem todas; os outros (diretores incluídos) veem apenas o seu nome
+const verEquipa = () => ehAdmin() || ehFinanceiro();
 
 const pessoas = () => (S.COLABORADORES || []).filter(c => c.esc && c.ativo).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
 const minha = () => pessoas().find(c => c.user && c.user === meuUser());
 const visiveis = () => verEquipa() ? pessoas() : (minha() ? [minha()] : []);
 const pessoaSel = () => visiveis().find(c => c.n === _sel) || null;
-// Os dias de uma pessoa só os vê ela própria e o financeiro (nem o administrador vê os dos outros)
-const verDias = () => { const p = pessoaSel(); return !!p && (ehFinanceiro() || (p.user && p.user === meuUser())); };
+// Os dias de uma pessoa vê-os ela própria, o administrador e o financeiro (só ela os edita)
+const verDias = () => { const p = pessoaSel(); return !!p && (ehAdmin() || ehFinanceiro() || (p.user && p.user === meuUser())); };
 const podeEditarDias = () => { const p = pessoaSel(); return !!p && !!p.user && p.user === meuUser(); };
 
 // Obra onde o utilizador atual pode lançar percentagens
@@ -144,7 +144,7 @@ function desenhar() {
 
     ${vd ? `<div class="pe-card">
       <div class="pe-card-h">
-        <div><b>Presenças e ausências</b><small>${podeEditarDias() ? 'Escolha o código e toque nos dias. Toque outra vez para limpar.' : 'Só a própria pessoa (ou o administrador) preenche os dias.'}</small></div>
+        <div><b>Presenças e ausências</b><small>${podeEditarDias() ? 'Escolha o código e toque nos dias. Toque outra vez para limpar.' : 'Só a própria pessoa preenche os dias.'}</small></div>
         ${podeEditarDias() ? `<div class="pe-acts"><button type="button" class="btn btn-secondary btn-sm" onclick="pePreencher()">Preencher dias úteis</button><button type="button" class="btn btn-secondary btn-sm" onclick="peLimparMes()">Limpar mês</button></div>` : ''}
       </div>
       ${podeEditarDias() ? `<div class="pe-leg">${CODIGOS.map(x => `<button type="button" class="pe-chip k-${x.k}${_brush === x.c ? ' on' : ''}" onclick="peBrush('${x.c}')"><b>${x.c}</b>${x.t}</button>`).join('')}</div>` : `<div class="pe-leg">${CODIGOS.map(x => `<span class="pe-chip k-${x.k}"><b>${x.c}</b>${x.t}</span>`).join('')}</div>`}
