@@ -48,7 +48,7 @@ function diretoresDaObra(nome) {
 async function carregar() {
   await carregarAprovadoresFaturas();
   const { data, error } = await sb.from('faturas')
-    .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo')
+    .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo,guia_estado')
     .eq('status', 'aguarda_diretor')
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
@@ -136,7 +136,7 @@ function desenharObra(box, obra, rs, h) {
       <td>${r.data ? fmtPT(r.data) : '—'}</td>
       <td class="r"><b>${eur(r.total)}</b></td>
       <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
-      <td class="r"><span class="dd-pill info">Aprovar</span></td>
+      <td class="r">${r.guia_estado === 'suspensa' ? '<span class="dd-pill bad" title="As guias de remessa não coincidem com a fatura">Suspensa</span>' : '<span class="dd-pill info">Aprovar</span>'}</td>
     </tr>`;
   }).join('');
   box.innerHTML = `<div class="far-obra-hdr">

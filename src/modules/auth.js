@@ -203,6 +203,7 @@ export async function entrarComoUtilizador(authedUser) {
     document.getElementById('enc-app').style.display='flex';
     document.getElementById('enc-name').textContent=authedUser.nome;
     await R.initEnc();
+    window.guiasInit?.();
     R.ensurePushSubscription?.();
     R.initPushPrompt?.();
   } else {
@@ -213,6 +214,7 @@ export async function entrarComoUtilizador(authedUser) {
     document.getElementById('u-role').textContent=ROLE_LABELS[authedUser.role]||authedUser.role;
     await R.loadPermissionsFromServer();
     R.applyStoredPermissions();
+    window.guiasInit?.();
     R.initAdmin();
     R.applyRolePermissions(authedUser.role);
     R.initTelasFinaisLink?.();

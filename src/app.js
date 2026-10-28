@@ -36,6 +36,7 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 import { renderTesouraria } from './modules/tesouraria.js';
 import { renderFaturasLancadas } from './modules/faturas-lancadas.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
+import './modules/guias.js';
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirArtigosFatura } from './modules/faturas.js';
 import { handlersArtigos } from './modules/faturas-artigos.js';
 

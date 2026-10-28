@@ -189,6 +189,7 @@ async function lerFaturaComClaude(item){
     _ccMotivo: c.centro_custo_motivo || '',
     _flags, _fonte: 'claude', _exemplos: 0, _rawText: '',
     linhas: normalizarLinhas(c.linhas),
+    guiasRef: Array.isArray(c.guias_ref) ? [...new Set(c.guias_ref.map(x => String(x).trim()).filter(Boolean))] : [],
   };
 }
 
@@ -668,6 +669,7 @@ function _fatToRow(f){
     aprovado_em:  f.aprovadoEm  || null,
     paga_na_origem: !!f.pagaNaOrigem,
     linhas:       f.linhas || [],
+    guias_ref:    f.guiasRef || [],
     criado_por:   S.currentUser?.key || null,
   };
 }
@@ -697,6 +699,9 @@ function _rowToFat(r){
     aprovadoPor:  r.aprovado_por || '',
     aprovadoEm:   r.aprovado_em  || '',
     pagaNaOrigem: !!r.paga_na_origem,
+    guiasRef:     r.guias_ref || [],
+    guiaEstado:   r.guia_estado || null,
+    guiaResumo:   r.guia_resumo || null,
     criadoEm:     r.criado_em || '',
     linhas:       Array.isArray(r.linhas) ? r.linhas : [],
     _rawText:   '',
@@ -1121,6 +1126,7 @@ function editarFatura(id){
     aproBar.style.display = (pode1 || pode2) ? 'flex' : 'none';
   }
 
+  mostrarGuiasFatura(f);
   atualizaArtigosModal(f);
   validaCamposModal();
   document.getElementById('modal-fat').classList.add('open');
@@ -1128,6 +1134,26 @@ function editarFatura(id){
     const el=document.getElementById(id);
     if(el && !el._wired){ el.addEventListener('input', validaCamposModal); el._wired=true; }
   });
+}
+// Quadro das guias de remessa no detalhe da fatura (suspensa / conferida / guias referidas)
+function mostrarGuiasFatura(f){
+  const bar = document.getElementById('mf-aprovacao-bar'); if(!bar) return;
+  let box = document.getElementById('mf-guia-box');
+  if(!box){ box = document.createElement('div'); box.id = 'mf-guia-box'; bar.parentNode.insertBefore(box, bar); }
+  const refs = (f.guiasRef||[]).join(', ');
+  if(f.guiaEstado === 'suspensa'){
+    const div = (f.guiaResumo?.divergencias||[]).map(d => d.tipo==='qtd'
+      ? `<li><b>${_fEsc(d.desc)}</b>: fatura ${d.fatura} · guia ${d.guia}</li>`
+      : d.tipo==='so_fatura' ? `<li><b>${_fEsc(d.desc)}</b>: faturado (${d.fatura}) e não vem na guia</li>` : `<li><b>${_fEsc(d.desc)}</b>: na guia (${d.guia}) e não está na fatura</li>`).join('');
+    box.style.cssText = 'margin-top:14px;padding:14px 16px;background:#fef3f2;border:1.5px solid #fda29b;border-radius:14px;color:#b42318;font-size:13.5px';
+    box.innerHTML = `<b>Fatura suspensa — as guias de remessa não coincidem</b>${div ? `<ul style="margin:8px 0 0 18px;padding:0">${div}</ul>` : ''}`;
+  } else if(f.guiaEstado === 'ok'){
+    box.style.cssText = 'margin-top:14px;padding:12px 16px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;color:#166534;font-size:13.5px';
+    box.innerHTML = `<b>Guias de remessa conferidas ✓</b>${refs ? ` · ${_fEsc(refs)}` : ''}`;
+  } else if(refs){
+    box.style.cssText = 'margin-top:14px;padding:12px 16px;background:#f6f8fc;border:1.5px solid #dde2ea;border-radius:14px;color:#5d6678;font-size:13.5px';
+    box.innerHTML = `Guias referidas na fatura: <b>${_fEsc(refs)}</b> · ainda por receber/conferir`;
+  } else { box.style.cssText = 'display:none'; box.innerHTML = ''; }
 }
 function abrirDocumentoNovaJanela(url){
   const w = Math.min(1000, screen.availWidth - 80), h = Math.min(900, screen.availHeight - 80);
@@ -1647,6 +1673,9 @@ async function aprovarFatura(){
   if(f.status !== 'aguarda_diretor'){
     return confirmarCentroCusto(f, cc);
   }
+
+  // Fatura suspensa: as guias de remessa não coincidem com o que foi faturado
+  if(f.guiaEstado === 'suspensa'){ showToast('Fatura suspensa: as guias de remessa não coincidem. Resolva a divergência antes de aprovar.'); return; }
 
   // Etapa 2 — diretor aprova e carimba. PDF da Dropbox: escolher onde fica o carimbo; "Guardar" conclui
   if(dropboxIsConnected() && f.dropboxPath && f._fonte === 'dropbox' && /\.pdf$/i.test(f.dropboxPath)){
