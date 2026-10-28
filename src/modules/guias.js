@@ -135,9 +135,11 @@ function lerFoto(file) {
 }
 
 // ── Ecrã (sobreposição a ecrã inteiro, igual no telemóvel e no computador) ───
-let _foto = null;        // { blob, base64 }
+let _paginas = [];       // páginas fotografadas: { blob, base64, url }
 let _lida = null;        // dados lidos, editáveis
-let _passo = 'inicio';   // inicio | a_ler | rever | resultado
+let _passo = 'inicio';   // inicio | camara | paginas | a_ler | rever | resultado
+let _tudoOk = false;     // "confirmo que fotografei todas as páginas"
+let _semFalta = false;   // o utilizador confirmou que a guia tem mesmo só as páginas fotografadas
 let _res = null, _guiaGuardada = null, _busy = false, _sug = [];
 
 function garantirOverlay() {
@@ -162,10 +164,14 @@ async function listaMinhas() {
 async function desenhar() {
   const b = $('gr-body'); if (!b) return;
   const sub = $('gr-s');
+  if (_passo !== 'camara') pararCamara();
+  $('gr-ov')?.classList.toggle('gr-cam-on', _passo === 'camara');
+  if (_passo === 'camara') { sub.textContent = `Página ${_paginas.length + 1}`; b.innerHTML = htmlCamara(); iniciarCamara(); return; }
+  if (_passo === 'paginas') { sub.textContent = `${_paginas.length} página${_paginas.length === 1 ? '' : 's'} fotografada${_paginas.length === 1 ? '' : 's'}`; b.innerHTML = htmlPaginas(); return; }
   if (_passo === 'inicio') {
     sub.textContent = 'Receber material em obra';
     b.innerHTML = `${_cfg?.ativo ? '' : '<div class="gr-teste">Modo de teste — nada é aplicado às faturas.</div>'}
-      <button type="button" class="gr-foto" data-gr="foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><b>Fotografar guia</b><small>Uma fotografia por guia, com o papel inteiro à vista</small></button>
+      <button type="button" class="gr-foto" data-gr="foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><b>Fotografar guia</b><small>A câmara tira a foto sozinha quando a folha encaixa. Guias com várias páginas: uma foto por página.</small></button>
       <div class="gr-sec">As minhas guias</div><div id="gr-lista" class="gr-lista">A carregar…</div>`;
     try {
       const l = await listaMinhas();
@@ -179,7 +185,9 @@ async function desenhar() {
     const d = _lida, obras = (S.OBRAS || []).filter(o => o.ativa !== false);
     const minhas = obras.filter(o => o.encarregado_id === S.currentUser?.key || (o.encarregados_extra || []).includes(S.currentUser?.key));
     const obraSel = d.obra_id || (minhas.length === 1 ? minhas[0].id : '');
-    b.innerHTML = `${d.confianca != null && d.confianca < 0.8 ? '<div class="gr-aviso">Leitura com pouca confiança — confira com a guia.</div>' : ''}
+    const faltam = d.paginas_total > _paginas.length && !_semFalta;
+    b.innerHTML = `${faltam ? `<div class="gr-falta"><b>Faltam páginas</b><small>A guia indica ${d.paginas_total} páginas e só fotografou ${_paginas.length}.</small><button type="button" class="gr-pri" data-gr="maispag">Fotografar as páginas em falta</button><button type="button" class="gr-sec-btn" data-gr="semfalta">A guia só tem ${_paginas.length} página${_paginas.length === 1 ? '' : 's'}</button></div>` : ''}
+      ${d.confianca != null && d.confianca < 0.8 ? '<div class="gr-aviso">Leitura com pouca confiança — confira com a guia.</div>' : ''}
       ${(d.avisos || []).map(a => `<div class="gr-aviso">${esc(a)}</div>`).join('')}
       <label class="gr-l">Fornecedor<input id="gr-f" value="${esc(d.fornecedor)}"></label>
       <div class="gr-2"><label class="gr-l">Nº da guia<input id="gr-n" value="${esc(d.numero)}"></label><label class="gr-l">NIF<input id="gr-nif" inputmode="numeric" value="${esc(d.nif)}"></label></div>
@@ -188,7 +196,7 @@ async function desenhar() {
       <div class="gr-sec">Materiais recebidos</div>
       <div id="gr-linhas">${d.linhas.map((l, i) => `<div class="gr-ln" data-i="${i}"><input class="gr-ld" data-k="descricao" value="${esc(l.descricao)}" aria-label="Material"><input class="gr-lq" data-k="qtd" inputmode="decimal" value="${esc(l.qtd)}" aria-label="Quantidade"><input class="gr-lu" data-k="un" value="${esc(l.un)}" aria-label="Unidade"><button type="button" class="gr-lx" data-gr="rem" data-i="${i}" aria-label="Remover">×</button></div>`).join('') || '<div class="gr-vazio">Nenhum material lido.</div>'}</div>
       <button type="button" class="gr-sec-btn" data-gr="add">+ Adicionar linha</button>
-      <button type="button" class="gr-pri" data-gr="guardar"${_busy ? ' disabled' : ''}>Guardar guia</button>
+      <button type="button" class="gr-pri" data-gr="guardar"${_busy || faltam ? ' disabled' : ''}>Guardar guia</button>
       <button type="button" class="gr-sec-btn" data-gr="cancelar">Cancelar</button>`;
   } else if (_passo === 'resultado') {
     sub.textContent = 'Resultado';
@@ -230,11 +238,10 @@ function lerCampos() {
   });
 }
 
-async function processarFoto(file) {
+async function lerPaginas() {
   _passo = 'a_ler'; desenhar();
   try {
-    _foto = await lerFoto(file);
-    const { data, error } = await sb.functions.invoke('ler-guia', { body: { base64: _foto.base64, mediaType: 'image/jpeg' } });
+    const { data, error } = await sb.functions.invoke('ler-guia', { body: { paginas: _paginas.map(p => ({ base64: p.base64, mediaType: 'image/jpeg' })) } });
     if (error || !data?.guia) {
       let msg = data?.error || error?.message || 'sem resposta';
       try { const j = await error?.context?.json?.(); if (j?.error) msg = j.error; } catch (_) {}
@@ -244,19 +251,172 @@ async function processarFoto(file) {
     _lida = {
       fornecedor: g.fornecedor || '', nif: String(g.nif || '').replace(/\D/g, '').slice(-9), numero: g.numero || '', data: g.data || '',
       obra_id: '', confianca: Number(g.confianca) || 0, avisos: Array.isArray(g.avisos) ? g.avisos.filter(Boolean) : [],
+      paginas_total: Number(g.paginas_total) || 0,
       linhas: (g.linhas || []).map(l => ({ descricao: l.descricao || '', ref_fornecedor: l.ref_fornecedor || '', qtd: Number(l.qtd) || 0, un: l.un || '' })),
     };
     // obra pelo local da guia: o nome da obra (sem o código "O065 - ") aparece no local ou vice-versa
     const loc = semAcentos(g.local_obra || '');
     const o = loc && (S.OBRAS || []).find(x => { const n = semAcentos(String(x.nome).replace(/^O\d+\s*-\s*/i, '')); return n.length > 3 && (loc.includes(n) || n.includes(loc)); });
     if (o) _lida.obra_id = o.id;
+    _semFalta = false;
     _passo = 'rever';
   } catch (e) {
-    _passo = 'inicio'; desenhar();
+    _passo = 'paginas'; desenhar();
     erro('Não foi possível ler a guia: ' + (e.message || e));
     return;
   }
   desenhar();
+}
+
+// ── Câmara guiada: tira a foto sozinha quando a folha encaixa no retângulo ──
+// Limiares afinados para texto impresso em papel branco; se na obra o disparo for lento ou falhar muito, é aqui que se ajusta.
+const CAM = { PAPEL_MIN: 105, PAPEL_FRAC: 0.70, BORDA_FRAC: 0.62, FORA_MAX: 0.88, MOV_MAX: 5, NITIDEZ_MIN: 40, ESTAVEL: 5, INTERVALO: 160 };
+let _stream = null, _timer = null, _prev = null, _estavel = 0, _espera = 0, _capturando = false;
+const _tmp = document.createElement('canvas');
+
+function htmlCamara() {
+  return `<div class="gr-cam"><video id="gr-video" playsinline muted autoplay></video>
+    <div class="gr-guia" id="gr-guia"><i></i><i></i><i></i><i></i></div>
+    <div class="gr-dica" id="gr-dica">A abrir a câmara…</div>
+    <div class="gr-cam-bar"><button type="button" class="gr-cam-b" data-gr="camvoltar" aria-label="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <button type="button" class="gr-disp" data-gr="disparar" aria-label="Tirar fotografia"></button>
+      <button type="button" class="gr-cam-b" data-gr="escolher" aria-label="Usar a câmara do telemóvel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></button></div></div>`;
+}
+
+function pararCamara() {
+  clearInterval(_timer); _timer = null; _prev = null; _estavel = 0;
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+}
+
+// Retângulo A4 centrado, na orientação do ecrã (em píxeis do vídeo apresentado)
+function geomGuia(W, H) {
+  let gw, gh;
+  if (H >= W) { gw = Math.min(W * 0.86, H * 0.74 / 1.414); gh = gw * 1.414; }
+  else { gh = Math.min(H * 0.78, W * 0.8 / 1.414); gw = gh * 1.414; }
+  return { x: (W - gw) / 2, y: (H - gh) / 2 - H * 0.03, w: gw, h: gh };
+}
+// Converte um retângulo do ecrã para coordenadas do vídeo (object-fit: cover)
+function paraVideo(v, r) {
+  const W = v.clientWidth, H = v.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
+  const k = Math.max(W / vw, H / vh), ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
+  return { x: (r.x - ox) / k, y: (r.y - oy) / k, w: r.w / k, h: r.h / k };
+}
+
+async function iniciarCamara() {
+  const dica = t => { const d = $('gr-dica'); if (d) d.textContent = t; };
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('sem câmara');
+    _stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false });
+  } catch (e) {
+    _passo = _paginas.length ? 'paginas' : 'inicio'; desenhar();
+    erro('Não foi possível abrir a câmara (autorize o acesso). Use "Escolher fotografia" ou a câmara do telemóvel.');
+    return;
+  }
+  const v = $('gr-video'); if (!v) return pararCamara();
+  v.srcObject = _stream;
+  try { await v.play(); } catch (_) {}
+  const pos = () => {
+    const g = $('gr-guia'); if (!g || !v.clientWidth) return;
+    const r = geomGuia(v.clientWidth, v.clientHeight);
+    g.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
+  };
+  pos(); window.addEventListener('resize', pos, { once: true });
+  dica('Encaixe a folha no retângulo');
+  _capturando = false; _estavel = 0; _espera = 0; _prev = null;
+  _timer = setInterval(() => analisar(v), CAM.INTERVALO);
+}
+
+// Analisa uma imagem pequena do vídeo e decide se a folha está encaixada, firme e nítida
+function analisar(v) {
+  if (_capturando || !v.videoWidth) return;
+  const SW = 240, SH = Math.round(SW * v.videoHeight / v.videoWidth);
+  _tmp.width = SW; _tmp.height = SH;
+  const cx = _tmp.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(v, 0, 0, SW, SH);
+  const px = cx.getImageData(0, 0, SW, SH).data, L = new Uint8Array(SW * SH);
+  for (let i = 0, j = 0; i < px.length; i += 4, j++) L[j] = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
+  const g = paraVideo(v, geomGuia(v.clientWidth, v.clientHeight)), k = SW / v.videoWidth;
+  const R = { x: Math.max(0, Math.round(g.x * k)), y: Math.max(0, Math.round(g.y * k)), w: Math.round(g.w * k), h: Math.round(g.h * k) };
+  R.w = Math.min(R.w, SW - R.x); R.h = Math.min(R.h, SH - R.y);
+  const m = medirFolha(L, SW, SH, R);
+  // movimento entre imagens consecutivas
+  let mov = 0;
+  if (_prev && _prev.length === L.length) { let s = 0; for (let i = 0; i < L.length; i += 7) s += Math.abs(L[i] - _prev[i]); mov = s / (L.length / 7); } else mov = 99;
+  _prev = L;
+  const dica = t => { const d = $('gr-dica'); if (d) d.textContent = t; };
+  const guia = $('gr-guia');
+  let ok = false;
+  if (!m.papel) dica('Encaixe a folha no retângulo');
+  else if (m.fora) dica('Afaste um pouco: a folha deve caber no retângulo');
+  else if (mov > CAM.MOV_MAX) dica('Mantenha o telemóvel firme');
+  else if (m.nitidez < CAM.NITIDEZ_MIN) dica('A focar…');
+  else { ok = true; dica('Não mexa…'); }
+  guia?.classList.toggle('ok', ok); guia?.classList.toggle('warn', !ok && m.papel);
+  _estavel = ok ? _estavel + 1 : 0;
+  // folha encaixada mas sem disparar há uns segundos: lembra o botão manual
+  _espera = m.papel ? _espera + 1 : 0;
+  if (_espera > 30 && !ok) dica('Se a folha está encaixada, toque no botão branco');
+  if (_estavel >= CAM.ESTAVEL) capturar(v);
+}
+
+// Mede se a folha (zona clara) enche o retângulo, não passa dele e está nítida
+export function medirFolha(L, SW, SH, R) {
+  const hist = new Uint32Array(256); let n = 0;
+  for (let y = R.y; y < R.y + R.h; y++) for (let x = R.x; x < R.x + R.w; x++) { hist[L[y * SW + x]]++; n++; }
+  if (!n) return { papel: false };
+  let acc = 0, p90 = 255; for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= n * 0.9) { p90 = i; break; } }
+  const lim = p90 * 0.75;
+  const frac = (x0, y0, w, h) => { let c = 0, t = 0; for (let y = Math.max(0, y0); y < Math.min(SH, y0 + h); y++) for (let x = Math.max(0, x0); x < Math.min(SW, x0 + w); x++) { t++; if (L[y * SW + x] >= lim) c++; } return t ? c / t : 0; };
+  const papel = p90 >= CAM.PAPEL_MIN && frac(R.x, R.y, R.w, R.h) >= CAM.PAPEL_FRAC;
+  if (!papel) return { papel: false };
+  const e = Math.max(3, Math.round(Math.min(R.w, R.h) * 0.08));
+  const bordas = [frac(R.x, R.y, R.w, e), frac(R.x, R.y + R.h - e, R.w, e), frac(R.x, R.y, e, R.h), frac(R.x + R.w - e, R.y, e, R.h)];
+  const encaixa = bordas.every(f => f >= CAM.BORDA_FRAC);
+  if (!encaixa) return { papel: false };
+  const o = Math.max(3, Math.round(Math.min(R.w, R.h) * 0.05));
+  // a folha passa do retângulo se a faixa de fora também for papel em (pelo menos) 3 dos 4 lados
+  const fora = [frac(R.x, R.y - o, R.w, o), frac(R.x, R.y + R.h, R.w, o), frac(R.x - o, R.y, o, R.h), frac(R.x + R.w, R.y, o, R.h)].filter(f => f >= CAM.FORA_MAX).length >= 3;
+  // nitidez: variância do laplaciano dentro do retângulo
+  let s = 0, s2 = 0, c = 0;
+  for (let y = R.y + 1; y < R.y + R.h - 1; y += 1) for (let x = R.x + 1; x < R.x + R.w - 1; x += 1) {
+    const l = 4 * L[y * SW + x] - L[y * SW + x - 1] - L[y * SW + x + 1] - L[(y - 1) * SW + x] - L[(y + 1) * SW + x]; s += l; s2 += l * l; c++;
+  }
+  const nitidez = c ? s2 / c - (s / c) ** 2 : 0;
+  return { papel: true, fora, nitidez };
+}
+
+// Guarda a imagem do retângulo (com uma pequena margem) em alta resolução
+async function capturar(v) {
+  if (_capturando) return; _capturando = true;
+  const g = paraVideo(v, geomGuia(v.clientWidth, v.clientHeight)), m = Math.min(g.w, g.h) * 0.03;
+  const sx = Math.max(0, g.x - m), sy = Math.max(0, g.y - m), sw = Math.min(v.videoWidth - sx, g.w + 2 * m), sh = Math.min(v.videoHeight - sy, g.h + 2 * m);
+  const k = Math.min(1, 1800 / Math.max(sw, sh)), c = document.createElement('canvas');
+  c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  navigator.vibrate?.(70);
+  $('gr-guia')?.classList.add('flash');
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+  if (!blob) { _capturando = false; return; }
+  const base64 = await new Promise(r => { const f = new FileReader(); f.onload = () => r(String(f.result).split(',')[1]); f.readAsDataURL(blob); });
+  _paginas.push({ blob, base64, url: URL.createObjectURL(blob) });
+  _tudoOk = false; _passo = 'paginas'; desenhar();
+}
+
+function htmlPaginas() {
+  const n = _paginas.length;
+  return `<div class="gr-pgs">${_paginas.map((p, i) => `<div class="gr-pg"><img src="${p.url}" alt="Página ${i + 1}"><span>${i + 1}</span><button type="button" class="gr-pgx" data-gr="rempag" data-i="${i}" aria-label="Apagar página ${i + 1}">×</button></div>`).join('')}
+    <button type="button" class="gr-pg gr-pg-add" data-gr="maispag"><b>+</b><small>Outra página</small></button></div>
+    <label class="gr-conf"><input type="checkbox" id="gr-tudo" ${_tudoOk ? 'checked' : ''}><span>Confirmo que fotografei <b>todas as páginas</b> desta guia (${n}).</span></label>
+    <button type="button" class="gr-pri" data-gr="ler" ${_tudoOk && n ? '' : 'disabled'}>Terminei — ler a guia</button>
+    <button type="button" class="gr-sec-btn" data-gr="cancelar">Cancelar</button>`;
+}
+
+async function fotoDeFicheiro(file) {
+  try {
+    const f = await lerFoto(file);
+    _paginas.push({ blob: f.blob, base64: f.base64, url: URL.createObjectURL(f.blob) });
+    _tudoOk = false; _passo = 'paginas'; desenhar();
+  } catch (e) { erro('Fotografia inválida: ' + (e.message || e)); }
 }
 
 function erro(msg) {
@@ -275,16 +435,20 @@ async function guardar() {
   if (!d.linhas.length || d.linhas.some(l => !l.descricao || !isFinite(l.qtd))) return erro('Confirme os materiais: cada linha precisa de descrição e quantidade.');
   _busy = true; desenhar();
   try {
-    const path = `${S.currentUser?.key || 'anon'}/${Date.now()}.jpg`;
-    const up = await sb.storage.from(BUCKET).upload(path, _foto.blob, { contentType: 'image/jpeg' });
-    if (up.error) throw up.error;
+    const base = `${S.currentUser?.key || 'anon'}/${Date.now()}`, caminhos = [];
+    for (let i = 0; i < _paginas.length; i++) {
+      const path = `${base}-p${i + 1}.jpg`;
+      const up = await sb.storage.from(BUCKET).upload(path, _paginas[i].blob, { contentType: 'image/jpeg' });
+      if (up.error) { sb.storage.from(BUCKET).remove(caminhos).catch(() => {}); throw up.error; }
+      caminhos.push(path);
+    }
     const obra = (S.OBRAS || []).find(o => o.id === d.obra_id);
     const linhas = d.linhas.map(l => ({ desc: l.descricao, ref_forn: l.ref_fornecedor || '', qtd: l.qtd, un: l.un || '' }));
     const { data, error } = await sb.from('guias_remessa').insert({
       numero: d.numero, fornecedor: d.fornecedor, nif: d.nif || null, data: d.data || null, obra_id: d.obra_id || null, obra_nome: obra?.nome || null,
-      linhas, confianca: d.confianca, avisos: d.avisos, foto_path: path, teste: !_cfg?.ativo,
+      linhas, confianca: d.confianca, avisos: d.avisos, foto_path: caminhos[0], fotos: caminhos, paginas: caminhos.length, teste: !_cfg?.ativo,
     }).select().single();
-    if (error) { sb.storage.from(BUCKET).remove([path]).catch(() => {}); throw error; }
+    if (error) { sb.storage.from(BUCKET).remove(caminhos).catch(() => {}); throw error; }
     _guiaGuardada = { ...data, linhas };
     _res = await casar(_guiaGuardada, null);
     await aplicar(_guiaGuardada, _res);
@@ -309,27 +473,36 @@ async function ligar(faturaId) {
 function abrir() {
   garantirOverlay().hidden = false;
   document.body.classList.add('gr-aberto');
-  _passo = 'inicio'; _foto = null; _lida = null; _res = null; _busy = false;
+  _passo = 'inicio'; limparPaginas(); _lida = null; _res = null; _busy = false;
   desenhar();
 }
-function fechar() { const ov = $('gr-ov'); if (ov) ov.hidden = true; document.body.classList.remove('gr-aberto'); }
+function limparPaginas() { _paginas.forEach(p => URL.revokeObjectURL(p.url)); _paginas = []; _tudoOk = false; _semFalta = false; }
+function fechar() { pararCamara(); const ov = $('gr-ov'); if (ov) { ov.hidden = true; ov.classList.remove('gr-cam-on'); } document.body.classList.remove('gr-aberto'); }
 
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-gr]'); if (!b || !$('gr-ov')?.contains(b)) return;
   const a = b.dataset.gr;
   if (a === 'fechar') fechar();
-  else if (a === 'foto') $('gr-file').click();
-  else if (a === 'cancelar') { _passo = 'inicio'; desenhar(); }
-  else if (a === 'outra') { _passo = 'inicio'; desenhar(); }
+  else if (a === 'foto') { limparPaginas(); _passo = 'camara'; desenhar(); }
+  else if (a === 'maispag') { _passo = 'camara'; desenhar(); }
+  else if (a === 'camvoltar') { _passo = _paginas.length ? 'paginas' : 'inicio'; desenhar(); }
+  else if (a === 'disparar') { const v = $('gr-video'); if (v?.videoWidth) capturar(v); }
+  else if (a === 'escolher') $('gr-file').click();
+  else if (a === 'rempag') { const p = _paginas.splice(+b.dataset.i, 1)[0]; if (p) URL.revokeObjectURL(p.url); _tudoOk = false; _passo = _paginas.length ? 'paginas' : 'inicio'; desenhar(); }
+  else if (a === 'ler') { if (_tudoOk && _paginas.length) lerPaginas(); }
+  else if (a === 'semfalta') { _semFalta = true; desenhar(); }
+  else if (a === 'cancelar') { limparPaginas(); _passo = 'inicio'; desenhar(); }
+  else if (a === 'outra') { limparPaginas(); _passo = 'inicio'; desenhar(); }
   else if (a === 'guardar') guardar();
   else if (a === 'add') { lerCampos(); _lida.linhas.push({ descricao: '', ref_fornecedor: '', qtd: 1, un: '' }); desenhar(); }
   else if (a === 'rem') { lerCampos(); _lida.linhas.splice(+b.dataset.i, 1); desenhar(); }
   else if (a === 'ligar') ligar(b.dataset.f);
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'gr-tudo') { _tudoOk = e.target.checked; const bt = document.querySelector('#gr-body [data-gr=ler]'); if (bt) bt.disabled = !(_tudoOk && _paginas.length); return; }
   if (e.target.id !== 'gr-file') return;
   const f = e.target.files?.[0]; e.target.value = '';
-  if (f) processarFoto(f);
+  if (f) fotoDeFicheiro(f);
 });
 
 // ── Entradas no menu: só para quem pode usar o ecrã ───────────────

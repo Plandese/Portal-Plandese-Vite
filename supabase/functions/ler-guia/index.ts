@@ -32,6 +32,7 @@ const TOOL = {
           required: ["descricao", "qtd"],
         },
       },
+      paginas_total: { type: "number", description: "Nº total de páginas da guia se vier impresso (ex.: 'Pág. 1/3' ou 'Página 2 de 3' → 3). 0 se não estiver indicado." },
       confianca: { type: "number", description: "0 a 1: confiança global na leitura." },
       avisos: { type: "array", items: { type: "string" }, description: "Dúvidas (foto desfocada, número ilegível, quantidade manuscrita, linhas cortadas...)." },
     },
@@ -59,24 +60,31 @@ Deno.serve(async (req: Request) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY não configurada no Supabase" }, 500);
 
-    const { base64, mediaType } = await req.json();
-    if (!base64 || !mediaType) return json({ error: "base64 e mediaType são obrigatórios" }, 400);
-    if (!["image/jpeg", "image/png"].includes(mediaType)) return json({ error: "Só são aceites fotografias JPEG ou PNG" }, 400);
+    // Uma ou várias páginas da MESMA guia: { paginas: [{ base64, mediaType }] } (ou, em formato antigo, { base64, mediaType })
+    const body = await req.json();
+    const paginas: { base64: string; mediaType: string }[] = Array.isArray(body.paginas) && body.paginas.length
+      ? body.paginas : [{ base64: body.base64, mediaType: body.mediaType }];
+    if (paginas.length > 8) return json({ error: "No máximo 8 páginas por guia" }, 400);
+    for (const p of paginas) {
+      if (!p?.base64 || !p?.mediaType) return json({ error: "base64 e mediaType são obrigatórios" }, 400);
+      if (!["image/jpeg", "image/png"].includes(p.mediaType)) return json({ error: "Só são aceites fotografias JPEG ou PNG" }, 400);
+    }
+    const blocos = paginas.map((p) => ({ type: "image", source: { type: "base64", media_type: p.mediaType, data: p.base64 } }));
+    const texto = paginas.length > 1
+      ? `Estas ${paginas.length} imagens são as páginas, por ordem, da MESMA guia de remessa. Junta os materiais de todas as páginas numa só lista (sem repetir linhas) e regista-os chamando a ferramenta registar_guia.`
+      : "Extrai os dados desta guia de remessa e regista-os chamando a ferramenta registar_guia.";
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4000,
+        max_tokens: 6000,
         system: SYSTEM,
         tools: [TOOL],
         messages: [{
           role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: "Extrai os dados desta guia de remessa e regista-os chamando a ferramenta registar_guia." },
-          ],
+          content: [...blocos, { type: "text", text: texto }],
         }],
       }),
     });
