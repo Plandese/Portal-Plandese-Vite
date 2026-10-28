@@ -266,8 +266,6 @@ function _combRenderApr(){
   const lista=_combAprFiltro==='pendente'?pend:rej;
   const hoje=new Date();
   const dias=r=>r.criado_em?Math.max(0,Math.floor((hoje-new Date(r.criado_em))/864e5)):0;
-  const litPend=pend.reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
-  const maisAntigo=pend.length?Math.max(...pend.map(dias)):0;
   const chip=(k,l,n)=>`<button type="button" class="fp-tab${_combAprFiltro===k?' active':''}" data-cbaprf="${k}">${l} <b>${n}</b></button>`;
   const linhas=lista.map(r=>{
     const [tipo,cls]=_combAprTipo(r);
@@ -284,13 +282,7 @@ function _combRenderApr(){
       <td>${r.aprovacao==='pendente'?`<span class="cb-pill ${d>=3?'warn':'ok'}">${d?d+' dia'+(d>1?'s':''):'hoje'}</span>`:'—'}</td>
       <td style="white-space:nowrap;text-align:right">${acoes}</td></tr>`;
   }).join('');
-  box.innerHTML=`<div class="cb-kpis">
-      <div class="cb-kpi"><div><div class="cb-l">Por aprovar</div><div class="cb-n">${pend.length}</div></div></div>
-      <div class="cb-kpi"><div><div class="cb-l">Litros por aprovar</div><div class="cb-n">${_cbN(litPend)}<small> L</small></div></div></div>
-      <div class="cb-kpi"><div><div class="cb-l">Pendente há mais tempo</div><div class="cb-n">${pend.length?(maisAntigo?maisAntigo+'<small> dia'+(maisAntigo>1?'s':'')+'</small>':'hoje'):'—'}</div></div></div>
-      <div class="cb-kpi"><div><div class="cb-l">Rejeitados</div><div class="cb-n">${rej.length}</div></div></div>
-    </div>
-    <div class="fp-tab-bar" style="margin-bottom:14px">${chip('pendente','Pendentes',pend.length)}${chip('rejeitado','Rejeitados',rej.length)}</div>
+  box.innerHTML=`<div class="fp-tab-bar" style="margin-bottom:14px">${chip('pendente','Pendentes',pend.length)}${chip('rejeitado','Rejeitados',rej.length)}</div>
     <div class="cb-tw"><table><thead><tr><th>Data</th><th>Tipo</th><th>Equipamento</th><th>Origem → Obra</th><th class="r">Litros</th><th>Registado por</th><th>Há</th><th></th></tr></thead>
     <tbody>${linhas||`<tr><td colspan="8" class="cb-vz">${_combAprFiltro==='pendente'?'Nada por aprovar. Está tudo em dia ✓':'Sem registos rejeitados.'}</td></tr>`}</tbody></table></div>
     <div style="font-size:12px;color:var(--gray-500);margin-top:10px">Só os registos aprovados contam para o stock e para os custos. Um registo rejeitado pode ser reposto como pendente.</div>`;
