@@ -668,6 +668,7 @@
           <textarea id="dep-obs" class="enc-input" rows="2" style="resize:vertical;min-height:56px" placeholder="Ex: Reabastecimento semanal…"></textarea>
         </div>
 
+        <div id="dep-erro" role="alert" onclick="this.style.display='none'" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:14px;background:#fef3f2;border:1.5px solid #fda29b;color:#b42318;font-size:14px;line-height:1.4"></div>
         <div class="alert alert-ok" id="dep-alert" style="display:none;margin-bottom:12px">Registo guardado com sucesso!</div>
 
         <button class="enc-btn" id="dep-submit-btn" style="background:linear-gradient(135deg,#0369a1,#0ea5e9)" onclick="encSubmeterCombDeposito()">
@@ -820,6 +821,7 @@
             <label>Observações <span style="font-weight:400;color:var(--gray-400)">(opcional)</span></label>
             <textarea id="comb-viatura-obs" class="enc-input" rows="2" style="resize:vertical;min-height:56px" placeholder="Ex: Abastecimento completo…"></textarea>
           </div>
+          <div id="comb-viatura-erro" role="alert" onclick="this.style.display='none'" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:14px;background:#fef3f2;border:1.5px solid #fda29b;color:#b42318;font-size:14px;line-height:1.4"></div>
           <div class="alert alert-ok" id="comb-viatura-alert" style="display:none;margin-bottom:12px">Registo guardado com sucesso!</div>
           <button class="enc-btn" id="comb-viatura-submit-btn" style="background:linear-gradient(135deg,#dc2626,#f97316)" onclick="encSubmeterCombViatura()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg>

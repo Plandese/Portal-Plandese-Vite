@@ -654,6 +654,24 @@ function encCombViaturaComEquip(eq){
   _cntSyncViatura();
 }
 
+// Erro ao guardar: fica visível até ser fechado (o aviso rápido desaparecia antes de o utilizador o ler)
+function _encErroGuardar(id,e){
+  const m=String(e?.message||e||'');
+  const motivo=/failed to fetch|networkerror|load failed/i.test(m)?'Sem ligação à internet.'
+    :/jwt|expired|not authenticated|401/i.test(m)?'A sessão terminou. Saia e volte a entrar.'
+    :/row-level security|permission|403/i.test(m)?'Não tem permissão para este registo.'
+    :m;
+  const el=document.getElementById(id);
+  if(el){
+    el.replaceChildren();
+    const t=document.createElement('b'); t.textContent='Não foi possível guardar o registo.';
+    const d=document.createElement('div'); d.textContent=motivo;
+    const f=document.createElement('small'); f.textContent='Toque aqui para fechar e tente de novo.';
+    el.append(t,d,f); el.style.display='block'; el.scrollIntoView?.({block:'center',behavior:'smooth'});
+  }
+  showToast('Erro ao guardar: '+m);
+}
+
 async function encSubmeterCombDeposito(){
   const data=document.getElementById('dep-data').value;
   const obraEl=document.getElementById('dep-obra');
@@ -674,6 +692,7 @@ async function encSubmeterCombDeposito(){
   if(!litros||litros<=0){showToast('Indique a quantidade de litros');return;}
   if(_depMovimento==='saida' && !_depEquip){showToast('Escolha o equipamento que recebeu o combustível');return;}
   const btn=document.getElementById('dep-submit-btn');
+  const er=document.getElementById('dep-erro'); if(er) er.style.display='none';
   if(btn){btn.disabled=true;}
   try{
     const {data:ins,error}=await sb.from('registos_combustivel').insert({
@@ -710,7 +729,7 @@ async function encSubmeterCombDeposito(){
       if(btn){btn.disabled=false;}
     },1800);
   }catch(e){
-    showToast('Erro ao guardar: '+(e.message||e));
+    _encErroGuardar('dep-erro',e);
     if(btn){btn.disabled=false;}
   }
 }
@@ -854,6 +873,7 @@ async function encSubmeterCombViatura(){
   if(!data){showToast('Selecione a data');return;}
   if(!litros||litros<=0){showToast('Indique a quantidade de litros');return;}
   const btn=document.getElementById('comb-viatura-submit-btn');
+  const er=document.getElementById('comb-viatura-erro'); if(er) er.style.display='none';
   if(btn){btn.disabled=true;}
   try{
     const {error}=await sb.from('registos_combustivel').insert({
@@ -884,7 +904,7 @@ async function encSubmeterCombViatura(){
     _combViaturaShowState('success');
     if(btn){btn.disabled=false;}
   }catch(e){
-    showToast('Erro ao guardar: '+(e.message||e));
+    _encErroGuardar('comb-viatura-erro',e);
     if(btn){btn.disabled=false;}
   }
 }
