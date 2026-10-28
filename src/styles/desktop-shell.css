@@ -1412,3 +1412,5 @@ body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill{display:inline-flex;alig
 body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.info{background:#e5eeff;color:#1d4ed8}
 body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.warn{background:#fff0d9;color:#a35a08}
 body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.mute{background:#eef1f6;color:#5d6678}
+body.device-desktop:not(.enc-mode) #admin-app .cb-apagar{border-color:#d92d20;color:#b42318}
+body.device-desktop:not(.enc-mode) #admin-app .cb-apagar:hover{background:#fef3f2}

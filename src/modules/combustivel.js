@@ -275,7 +275,7 @@ function _combRenderApr(){
     const d=dias(r);
     const acoes=r.aprovacao==='pendente'
       ?`<button class="btn btn-primary btn-sm" data-cbapr="${r.id}" data-ok="1">Aprovar</button> <button class="btn btn-secondary btn-sm" data-cbapr="${r.id}" data-ok="0">Rejeitar</button>`
-      :`<button class="btn btn-secondary btn-sm" data-cbreabrir="${r.id}">Repor como pendente</button>`;
+      :`<button class="btn btn-secondary btn-sm" data-cbreabrir="${r.id}">Repor como pendente</button> <button class="btn btn-secondary btn-sm cb-apagar" data-cbapagar="${r.id}">Apagar</button>`;
     return `<tr><td>${fmtPT(r.data)}</td><td><span class="badge ${cls}" style="font-size:11px">${_escHtml(tipo)}</span>${r.origem==='qr'?' <span class="badge b-gray" style="font-size:11px">QR</span>':''}</td>
       <td>${isTransfRow(r)?'<span style="color:var(--gray-400)">—</span>':_escHtml(r.equipamento_nome||'Depósito de obra')}</td><td>${rota}</td>
       <td class="r"><b>${_cbN(parseFloat(r.litros)||0)} L</b></td><td>${_escHtml(r.encarregado_nome||'—')}${r.aprovado_por?`<span class="sub">${r.aprovacao==='rejeitado'?'Rejeitado por ':'Aprovado por '}${_escHtml(r.aprovado_por)}</span>`:''}</td>
@@ -311,10 +311,23 @@ async function _combAprReabrir(id){
   _combAprBusy=false;
   try{ await _fetchCombPend(); _combRenderApr(); }catch(e){}
 }
+async function _combAprApagar(id){
+  if(_combAprBusy) return;
+  if(!confirm('Apagar definitivamente este registo rejeitado? Esta ação não pode ser anulada.')) return;
+  _combAprBusy=true;
+  try{
+    const {error}=await sb.from('registos_combustivel').delete().eq('id',id).eq('aprovacao','rejeitado');
+    if(error) throw error;
+    showToast('Registo apagado');
+  }catch(e){ showToast('Erro ao apagar: '+(e.message||e)); }
+  _combAprBusy=false;
+  try{ await Promise.all([_fetchCombPend(),_fetchCombRows()]); _combRenderApr(); _renderCombGridFiltrada(); }catch(e){}
+}
 document.addEventListener('click',e=>{
   const f=e.target.closest('[data-cbaprf]'); if(f){ _combAprFiltro=f.dataset.cbaprf; _combRenderApr(); return; }
   const a=e.target.closest('[data-cbapr]'); if(a){ _combAprDecidir(a.dataset.cbapr,a.dataset.ok==='1'); return; }
-  const r=e.target.closest('[data-cbreabrir]'); if(r) _combAprReabrir(r.dataset.cbreabrir);
+  const r=e.target.closest('[data-cbreabrir]'); if(r){ _combAprReabrir(r.dataset.cbreabrir); return; }
+  const d=e.target.closest('[data-cbapagar]'); if(d) _combAprApagar(d.dataset.cbapagar);
 });
 
 // ── Consumo de Equipamentos: um cartão por viatura/máquina com abastecimentos ──
