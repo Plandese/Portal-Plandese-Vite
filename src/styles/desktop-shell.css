@@ -1414,3 +1414,5 @@ body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.warn{background:#fff0d9;
 body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.mute{background:#eef1f6;color:#5d6678}
 body.device-desktop:not(.enc-mode) #admin-app .cb-apagar{border-color:#d92d20;color:#b42318}
 body.device-desktop:not(.enc-mode) #admin-app .cb-apagar:hover{background:#fef3f2}
+/* A data do cabeçalho é só informativa (sem calendário ao clicar) */
+body #admin-app .dw-date{cursor:default!important;border-bottom:0!important}
