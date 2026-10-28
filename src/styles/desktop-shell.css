@@ -1332,7 +1332,7 @@ body.device-desktop:not(.enc-mode) #admin-app .fe-fl{display:flex;align-items:ce
 body.device-desktop:not(.enc-mode) #admin-app .fe-fl > span{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5d6678;margin-right:4px}
 body.device-desktop:not(.enc-mode) #admin-app .fe-fc{height:34px;padding:0 14px;border:1.5px solid #b9c1ce;border-radius:99px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:var(--d-ink);cursor:pointer}
 body.device-desktop:not(.enc-mode) #admin-app .fe-fc.on{background:var(--d-brand);border-color:var(--d-brand);color:#fff}
-body.device-desktop:not(.enc-mode) #admin-app .fe-ag{display:grid;grid-template-columns:230px repeat(var(--nw),minmax(10px,1fr)) 76px 76px;align-items:center;min-width:820px;column-gap:2px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ag{display:grid;grid-template-columns:230px repeat(12,minmax(54px,1fr)) 76px 76px;align-items:center;min-width:1000px;column-gap:6px}
 body.device-desktop:not(.enc-mode) #admin-app .fe-ah{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-mute);padding:12px 0}
 body.device-desktop:not(.enc-mode) #admin-app .fe-ah.r{text-align:center}
 body.device-desktop:not(.enc-mode) #admin-app .fe-am{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-brand);padding:12px 0 12px 4px;border-left:1px solid var(--d-line)}
@@ -1390,3 +1390,25 @@ body.device-desktop:not(.enc-mode) #fe-gv-host .fe-leg span{display:inline-flex;
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-leg i{display:inline-block;border-radius:99px}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bt{background:var(--d-brand)!important;background-image:none!important;border:0!important;box-shadow:none!important;color:#fff!important}
 body.device-desktop:not(.enc-mode) #fe-gv-host .fe-gv-bt.btn-secondary{background:#fff!important;border:1.5px solid var(--d-brand)!important;color:var(--d-brand)!important}
+body.device-desktop:not(.enc-mode) #admin-app .fe-am{text-align:center;border-left:0;padding:12px 0}
+body.device-desktop:not(.enc-mode) #admin-app .fe-am.td{color:#fff;background:var(--d-brand);border-radius:99px;padding:5px 0;margin:7px 0}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ac,body.device-desktop:not(.enc-mode) #admin-app .fe-wk{height:34px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:700}
+body.device-desktop:not(.enc-mode) #admin-app .fe-ac{font-size:11px}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk:not(.fe):not(.pd):not(.fa){cursor:pointer}
+body.device-desktop:not(.enc-mode) #admin-app .fe-wk:hover{box-shadow:0 0 0 2px var(--d-brand)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-mm.sel{background:var(--d-tint);border-radius:16px;margin:-8px;padding:8px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sws{background:var(--d-tint);border-radius:18px;padding:14px 16px;margin-bottom:20px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sws-t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-brand);margin-bottom:8px}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #d9e2f6}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw:first-of-type{border-top:0}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw i{width:10px;height:10px;border-radius:50%;flex:none}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw i.fe{background:var(--fe-util)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw i.pd{background:var(--fe-prev)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw i.fa{background:#e0952b}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw b{font-size:14px;font-weight:600;flex:1}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw small{font-size:12.5px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .fe-sw-v{font-size:13.5px;color:var(--d-mute)}
+body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:99px;font-size:12.5px;font-weight:700}
+body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.info{background:#e5eeff;color:#1d4ed8}
+body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.warn{background:#fff0d9;color:#a35a08}
+body.device-desktop:not(.enc-mode) #fe-gv-host .dd-pill.mute{background:#eef1f6;color:#5d6678}
