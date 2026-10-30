@@ -9,10 +9,12 @@ import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
 import { abrirFaturaPorDbId, faturaSemFicheiro, moverFaturaLancada, sincronizarLancadas } from './faturas.js';
 import { dropboxDownload } from './dropbox.js';
+import { conferenciasFaturas } from './guias-escritorio.js';
 
 let _rows = [];
 let _estado = 'todas';   // todas | por_pagar | propostas | pagas | lancadas | nao_lancadas
 let _carregado = false;
+let _conf = new Map();   // conferência das guias por fatura (id → { pct, estado }); só quem tem acesso às guias a vê
 let _podePropor = false;
 let _proponentes = [];   // usernames (lista em app_config.tesouraria_proponentes)
 const _meses = { data: '', data_pag: '' };   // filtro por mês (YYYY-MM) da emissão / do vencimento
@@ -54,6 +56,15 @@ async function carregar() {
     _proponentes = Array.isArray(cfg?.value) ? cfg.value : [];
   } catch (e) { console.warn('Tesouraria (permissões):', e); _podePropor = false; }
   _carregado = true;
+  conferenciasFaturas().then(m => { _conf = m; desenhar(); }).catch(e => console.warn('Tesouraria (guias):', e));
+}
+
+// Selo «Guias n%»: quanto do valor da fatura já está coberto pelas guias de remessa
+function pillGuias(c) {
+  if (!c || c.pct == null) return '<span class="mut">—</span>';
+  const cls = c.estado === 'ok' ? 'ok' : c.estado === 'divergente' ? 'bad' : c.pct > 0 ? 'warn' : 'mute';
+  const tit = { ok: 'As guias batem certo com a fatura', divergente: 'As quantidades das guias divergem da fatura', faltam: 'Faltam guias referidas pela fatura', sem_guias: 'Ainda não há guias associadas', sem_leitura: 'Há guias por ler' }[c.estado] || '';
+  return `<span class="dd-pill ${cls}" title="${tit}">Guias ${c.pct}%</span>`;
 }
 
 function filtrar() {
@@ -185,17 +196,18 @@ function desenhar() {
         <td>${r.centralgest_lancada
           ? `<button type="button" class="dd-pill ok tes-cg" data-tes-cg="${r.id}" title="Lançada por ${esc(nomeDe(r.centralgest_por))} em ${esc(dmy(r.centralgest_em))} — clique para desmarcar">Lançada</button>`
           : `<button type="button" class="dd-pill mute tes-cg" data-tes-cg="${r.id}" title="Clique para marcar como lançada no CentralGest">Não lançada</button>`}</td>
+        <td>${pillGuias(_conf.get(r.id))}</td>
       </tr>`;
     }).join('');
     const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
-    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="4"></td></tr>${linhas}</tbody>`;
+    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="5"></td></tr>${linhas}</tbody>`;
   }).join('');
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th>${thMes('data', 'Emissão')}${thMes('data_pag', 'Vencimento')}<th>Estado</th><th>CentralGest</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th>${thMes('data', 'Emissão')}${thMes('data_pag', 'Vencimento')}<th>Estado</th><th>CentralGest</th><th>Guias</th></tr></thead>
     ${corpo}
-    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="4"></td></tr></tfoot>
+    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="5"></td></tr></tfoot>
   </table></div>`;
   desenharBarra();
 }
