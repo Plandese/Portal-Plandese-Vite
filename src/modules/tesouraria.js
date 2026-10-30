@@ -344,7 +344,7 @@ async function exportar(linhas, nome) {
 }
 
 // Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual
-const nomeSeguro = t => String(t || '').replace(/[\/:*?"<>|]+/g, '_').trim();
+const nomeSeguro = t => String(t || '').replace(/[\\/:*?"<>|]+/g, '_').trim();
 async function descarregarZip(btn) {
   const lista = filtrar().filter(r => r.dropbox_path);
   if (!lista.length) { toast('Sem ficheiros de faturas neste filtro'); return; }
