@@ -11,7 +11,7 @@ import { abrirFaturaPorDbId, faturaSemFicheiro } from './faturas.js';
 import { dropboxDownload } from './dropbox.js';
 
 let _rows = [];
-let _estado = 'todas';   // todas | por_pagar | propostas | pagas
+let _estado = 'todas';   // todas | por_pagar | propostas | pagas | lancadas | nao_lancadas
 let _carregado = false;
 let _podePropor = false;
 let _proponentes = [];   // usernames (lista em app_config.tesouraria_proponentes)
@@ -62,6 +62,8 @@ function filtrar() {
     if (_estado === 'por_pagar' && !porPagar(r)) return false;
     if (_estado === 'propostas' && !proposta(r)) return false;
     if (_estado === 'pagas' && r.status !== 'paga') return false;
+    if (_estado === 'lancadas' && !r.centralgest_lancada) return false;
+    if (_estado === 'nao_lancadas' && r.centralgest_lancada) return false;
     if (cc && (r.centro_custo || '') !== (cc === '__sem__' ? '' : cc)) return false;
     if (q && !`${r.fornecedor || ''} ${r.numero || ''} ${r.centro_custo || ''}`.toLowerCase().includes(q)) return false;
     return true;
@@ -110,7 +112,7 @@ function desenhar() {
 
   const chips = document.getElementById('tes-chips');
   if (chips) {
-    chips.innerHTML = [['todas', 'Todas', _rows], ['por_pagar', 'Por pagar', _rows.filter(porPagar)], ['propostas', 'Propostas', _rows.filter(proposta)], ['pagas', 'Pagas', _rows.filter(r => r.status === 'paga')]]
+    chips.innerHTML = [['todas', 'Todas', _rows], ['por_pagar', 'Por pagar', _rows.filter(porPagar)], ['propostas', 'Propostas', _rows.filter(proposta)], ['pagas', 'Pagas', _rows.filter(r => r.status === 'paga')], ['lancadas', 'Lançadas', _rows.filter(r => r.centralgest_lancada)], ['nao_lancadas', 'Não lançadas', _rows.filter(r => !r.centralgest_lancada)]]
       .map(([k, l, arr]) => `<button type="button" class="d-chip-f${_estado === k ? ' on' : ''}" data-tes-chip="${k}">${l}<b>${arr.length}</b></button>`).join('');
   }
 
