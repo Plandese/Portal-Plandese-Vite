@@ -15,6 +15,7 @@ let _estado = 'todas';   // todas | por_pagar | propostas | pagas | lancadas | n
 let _carregado = false;
 let _podePropor = false;
 let _proponentes = [];   // usernames (lista em app_config.tesouraria_proponentes)
+const _meses = { data: '', data_pag: '' };   // filtro por mês (YYYY-MM) da emissão / do vencimento
 const _sel = new Set();  // ids selecionados
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -64,10 +65,36 @@ function filtrar() {
     if (_estado === 'pagas' && r.status !== 'paga') return false;
     if (_estado === 'lancadas' && !r.centralgest_lancada) return false;
     if (_estado === 'nao_lancadas' && r.centralgest_lancada) return false;
+    if (_meses.data && (r.data || '').slice(0, 7) !== _meses.data) return false;
+    if (_meses.data_pag && (r.data_pag || '').slice(0, 7) !== _meses.data_pag) return false;
     if (cc && (r.centro_custo || '') !== (cc === '__sem__' ? '' : cc)) return false;
     if (q && !`${r.fornecedor || ''} ${r.numero || ''} ${r.centro_custo || ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+const nomeMes = ym => { const [a, m] = ym.split('-'); const t = new Date(Number(a), Number(m) - 1, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+const thMes = (campo, rotulo) => {
+  const ativo = _meses[campo];
+  return `<th data-tes-mes="${campo}" style="cursor:pointer;user-select:none;white-space:nowrap${ativo ? ';color:var(--d-brand,#173f9f)' : ''}" title="Filtrar por mês">${rotulo}${ativo ? ' · ' + esc(nomeMes(ativo)) : ''} ▾</th>`;
+};
+
+function fecharMesPop() { document.getElementById('tes-mes-pop')?.remove(); }
+function abrirMesPop(th) {
+  const campo = th.dataset.tesMes;
+  const jaAberto = document.getElementById('tes-mes-pop')?.dataset.campo === campo;
+  fecharMesPop();
+  if (jaAberto) return;
+  const cont = new Map();
+  _rows.forEach(r => { const m = (r[campo] || '').slice(0, 7); if (m) cont.set(m, (cont.get(m) || 0) + 1); });
+  const meses = [...cont.keys()].sort().reverse();
+  const item = (v, txt, n) => `<button type="button" data-tes-mes-v="${esc(v)}" style="display:flex;justify-content:space-between;gap:18px;width:100%;padding:9px 14px;border:0;background:${_meses[campo] === v ? '#e5eeff' : 'transparent'};color:#1b2130;font:600 13px inherit;font-family:inherit;text-align:left;cursor:pointer;border-radius:10px"><span>${esc(txt)}</span>${n != null ? `<span style="color:#6a7284;font-weight:500">${n}</span>` : ''}</button>`;
+  const pop = document.createElement('div');
+  pop.id = 'tes-mes-pop'; pop.dataset.campo = campo;
+  const r = th.getBoundingClientRect();
+  pop.style.cssText = `position:fixed;z-index:9999;top:${r.bottom + 6}px;left:${Math.max(8, Math.min(r.left, window.innerWidth - 250))}px;width:236px;max-height:340px;overflow-y:auto;padding:6px;background:#fff;border:1px solid #dde2ea;border-radius:16px;box-shadow:0 16px 40px rgba(10,28,90,.18)`;
+  pop.innerHTML = item('', 'Todos os meses') + (meses.length ? meses.map(m => item(m, nomeMes(m), cont.get(m))).join('') : '<div style="padding:10px 14px;color:#6a7284;font-size:13px">Sem datas</div>');
+  document.body.appendChild(pop);
 }
 
 function desenharBarra() {
@@ -118,7 +145,7 @@ function desenhar() {
 
   const lista = filtrar();
   if (!lista.length) {
-    box.innerHTML = '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
+    box.innerHTML = '<div class="d-empty" style="border:0">Sem faturas para mostrar.' + ((_meses.data || _meses.data_pag) ? ' <button type="button" class="btn btn-secondary btn-sm" data-tes-act="limpar-meses">Limpar filtro de meses</button>' : '') + '</div>';
     desenharBarra();
     return;
   }
@@ -166,7 +193,7 @@ function desenhar() {
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Emissão</th><th>Vencimento</th><th>Estado</th><th>CentralGest</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th>${thMes('data', 'Emissão')}${thMes('data_pag', 'Vencimento')}<th>Estado</th><th>CentralGest</th></tr></thead>
     ${corpo}
     <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="4"></td></tr></tfoot>
   </table></div>`;
@@ -444,10 +471,16 @@ document.addEventListener('click', e => {
     else if (act === 'exportar') exportar(_rows.filter(r => _sel.has(r.id)), 'faturas_selecionadas');
     else if (act === 'exportar-prop') exportar(_rows, 'tesouraria');
     else if (act === 'sync-cg') { a.disabled = true; sincronizarLancadas().finally(() => { a.disabled = false; }); }
+    else if (act === 'limpar-meses') { _meses.data = ''; _meses.data_pag = ''; desenhar(); }
     else if (act === 'zip') descarregarZip(a);
     else if (act === 'quem') abrirQuemPropoe();
     return;
   }
+
+  const mv = e.target.closest('[data-tes-mes-v]');
+  if (mv) { _meses[document.getElementById('tes-mes-pop').dataset.campo] = mv.dataset.tesMesV; fecharMesPop(); desenhar(); return; }
+  const thm = e.target.closest('th[data-tes-mes]');
+  if (thm) { abrirMesPop(thm); return; }
 
   const cg = e.target.closest('[data-tes-cg]');
   if (cg) { alternarCentralGest(Number(cg.dataset.tesCg)); return; }
@@ -478,3 +511,6 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => { if (e.target.id === 'tes-q') desenhar(); });
 document.addEventListener('change', e => { if (e.target.id === 'tes-cc') desenhar(); });
+
+// fecha o seletor de mês ao clicar fora
+document.addEventListener('mousedown', e => { if (!e.target.closest('#tes-mes-pop, th[data-tes-mes]')) fecharMesPop(); });
