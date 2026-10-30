@@ -1416,3 +1416,5 @@ body.device-desktop:not(.enc-mode) #admin-app .cb-apagar{border-color:#d92d20;co
 body.device-desktop:not(.enc-mode) #admin-app .cb-apagar:hover{background:#fef3f2}
 /* A data do cabeçalho é só informativa (sem calendário ao clicar) */
 body #admin-app .dw-date{cursor:default!important;border-bottom:0!important}
+.tes-cg{border:0;cursor:pointer;font-family:inherit}
+.tes-cg:hover{filter:brightness(.95)}

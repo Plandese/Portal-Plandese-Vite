@@ -34,7 +34,7 @@ const proposta = r => porPagar(r) && !!r.proposta_por;
 
 async function carregar() {
   const { data, error } = await sb.from('faturas')
-    .select('id,dropbox_path,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
+    .select('id,centralgest_lancada,centralgest_por,centralgest_em,dropbox_path,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
     .in('status', APROVADAS)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
@@ -152,17 +152,20 @@ function desenhar() {
         <td class="r"><b>${eur(r.total)}</b></td>
         <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
         <td>${estado}${r.tipo_pagamento === 'debito_direto' ? ' <span class="dd-pill info" title="Fatura a débito direto">Débito direto</span>' : r.tipo_pagamento === 'referencia_mb' ? ' <span class="dd-pill info" title="Fatura com referência MB">Ref. MB</span>' : ''}${faturaSemFicheiro(r.id) ? ' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>' : ''}</td>
+        <td>${r.centralgest_lancada
+          ? `<button type="button" class="dd-pill ok tes-cg" data-tes-cg="${r.id}" title="Lançada por ${esc(nomeDe(r.centralgest_por))} em ${esc(dmy(r.centralgest_em))} — clique para desmarcar">Lançada</button>`
+          : `<button type="button" class="dd-pill mute tes-cg" data-tes-cg="${r.id}" title="Clique para marcar como lançada no CentralGest">Não lançada</button>`}</td>
       </tr>`;
     }).join('');
     const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
-    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="2"></td></tr>${linhas}</tbody>`;
+    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="3"></td></tr>${linhas}</tbody>`;
   }).join('');
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Estado</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Estado</th><th>CentralGest</th></tr></thead>
     ${corpo}
-    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="2"></td></tr></tfoot>
+    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="3"></td></tr></tfoot>
   </table></div>`;
   desenharBarra();
 }
@@ -343,6 +346,19 @@ async function exportar(linhas, nome) {
   toast('Excel gerado ✓');
 }
 
+// Marca/desmarca a fatura como lançada no CentralGest
+async function alternarCentralGest(id) {
+  const r = _rows.find(x => x.id === id); if (!r) return;
+  const nova = !r.centralgest_lancada;
+  const upd = nova
+    ? { centralgest_lancada: true, centralgest_por: S.currentUser?.key || null, centralgest_em: new Date().toISOString() }
+    : { centralgest_lancada: false, centralgest_por: null, centralgest_em: null };
+  const { error } = await sb.from('faturas').update(upd).eq('id', id);
+  if (error) { console.warn('CentralGest:', error); toast('Não foi possível guardar a marca do CentralGest'); return; }
+  Object.assign(r, upd);
+  desenhar();
+}
+
 // Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual
 const nomeSeguro = t => String(t || '').replace(/[\\/:*?"<>|]+/g, '_').trim();
 async function descarregarZip(btn) {
@@ -423,6 +439,9 @@ document.addEventListener('click', e => {
     else if (act === 'quem') abrirQuemPropoe();
     return;
   }
+
+  const cg = e.target.closest('[data-tes-cg]');
+  if (cg) { alternarCentralGest(Number(cg.dataset.tesCg)); return; }
 
   const c = e.target.closest('[data-tes-chip]');
   if (c) { _estado = c.dataset.tesChip; desenhar(); return; }
