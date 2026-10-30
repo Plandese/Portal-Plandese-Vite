@@ -364,7 +364,7 @@ async function alternarCentralGest(id) {
   try {
     const novo = await moverFaturaLancada(id, nova);
     if (novo) { r.dropbox_path = novo; toast(nova ? 'Fatura movida para a pasta das lançadas ✓' : 'Fatura devolvida à pasta das aprovadas ✓'); }
-  } catch (e) { console.warn('CentralGest (mover ficheiro):', e); toast('Marcada, mas não foi possível mover o ficheiro na Dropbox'); }
+  } catch (e) { console.warn('CentralGest (mover ficheiro):', e); toast('Marcada, mas não foi possível mover o ficheiro na Dropbox: ' + String(e?.message || e).slice(0, 300)); }
 }
 
 // Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual
