@@ -24,8 +24,8 @@ async function carregarCfg() {
 }
 const euTeste = () => (_cfg?.teste || []).includes(S.currentUser?.key);
 const ativo = () => !!_cfg?.ativo;
-// Quem pode usar o ecrã: utilizadores de teste; com o interruptor ativo, também os encarregados
-const posso = () => euTeste() || (ativo() && S.currentUser?.role === 'encarregado');
+// Quem pode usar o ecrã (em testes): administradores e utilizadores de teste; com o interruptor ativo, também os encarregados
+const posso = () => S.currentUser?.role === 'admin' || euTeste() || (ativo() && S.currentUser?.role === 'encarregado');
 
 // ── Fotografia: reduz e converte para JPEG ───────────────────────
 function lerFoto(file) {
