@@ -8,6 +8,7 @@ import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
 import { abrirFaturaPorDbId, faturaSemFicheiro } from './faturas.js';
+import { dropboxDownload } from './dropbox.js';
 
 let _rows = [];
 let _estado = 'todas';   // todas | por_pagar | propostas | pagas
@@ -33,7 +34,7 @@ const proposta = r => porPagar(r) && !!r.proposta_por;
 
 async function carregar() {
   const { data, error } = await sb.from('faturas')
-    .select('id,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
+    .select('id,dropbox_path,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
     .in('status', APROVADAS)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
@@ -93,7 +94,8 @@ function desenhar() {
   const hdr = document.getElementById('tes-hdr-act');
   if (hdr) {
     hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button>' : '')
-      + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar Excel</button>';
+      + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar Excel</button>'
+      + (document.getElementById('tes-cc')?.value ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="zip">Descarregar faturas (ZIP)</button>' : '');
   }
 
   // opções do filtro de centro de custo (mantém a seleção atual)
@@ -341,6 +343,42 @@ async function exportar(linhas, nome) {
   toast('Excel gerado ✓');
 }
 
+// Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual
+const nomeSeguro = t => String(t || '').replace(/[\/:*?"<>|]+/g, '_').trim();
+async function descarregarZip(btn) {
+  const lista = filtrar().filter(r => r.dropbox_path);
+  if (!lista.length) { toast('Sem ficheiros de faturas neste filtro'); return; }
+  const cc = document.getElementById('tes-cc')?.value;
+  const nomeCc = cc === '__sem__' ? 'Sem centro de custo' : cc;
+  const txt = btn.textContent; btn.disabled = true;
+  try {
+    const { default: JSZip } = await import('jszip');
+    const zip = new JSZip();
+    const usados = new Set();
+    let falhas = 0;
+    for (let i = 0; i < lista.length; i++) {
+      btn.textContent = `A preparar… ${i + 1}/${lista.length}`;
+      const r = lista[i];
+      try {
+        const blob = await dropboxDownload(r.dropbox_path);
+        const orig = r.dropbox_path.split('/').pop();
+        let nome = `${nomeSeguro(r.fornecedor)}/${nomeSeguro(orig)}`;
+        for (let n = 2; usados.has(nome.toLowerCase()); n++) nome = `${nomeSeguro(r.fornecedor)}/${n}_${nomeSeguro(orig)}`;
+        usados.add(nome.toLowerCase());
+        zip.file(nome, blob);
+      } catch (e) { console.warn('ZIP faturas:', r.dropbox_path, e); falhas++; }
+    }
+    if (falhas === lista.length) { toast('Não foi possível obter os ficheiros da Dropbox'); return; }
+    btn.textContent = 'A compactar…';
+    const out = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(out);
+    const al = document.createElement('a'); al.href = url; al.download = `Faturas_${nomeSeguro(nomeCc)}_${hoje()}.zip`; al.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`ZIP gerado ✓ (${lista.length - falhas} faturas${falhas ? `, ${falhas} sem ficheiro` : ''})`);
+  } catch (e) { console.error(e); toast('Erro ao gerar o ZIP'); }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+
 // Administrador escolhe quem pode propor pagamentos
 function abrirQuemPropoe() {
   const users = Object.entries(S.USERS || {})
@@ -381,6 +419,7 @@ document.addEventListener('click', e => {
     else if (act === 'limpar') { _sel.clear(); desenhar(); }
     else if (act === 'exportar') exportar(_rows.filter(r => _sel.has(r.id)), 'faturas_selecionadas');
     else if (act === 'exportar-prop') exportar(_rows, 'tesouraria');
+    else if (act === 'zip') descarregarZip(a);
     else if (act === 'quem') abrirQuemPropoe();
     return;
   }
