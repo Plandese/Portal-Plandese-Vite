@@ -413,8 +413,8 @@ async function descarregarZip(btn) {
       try {
         const blob = await dropboxDownload(r.dropbox_path);
         const orig = r.dropbox_path.split('/').pop();
-        let nome = `${nomeSeguro(r.fornecedor)}/${nomeSeguro(orig)}`;
-        for (let n = 2; usados.has(nome.toLowerCase()); n++) nome = `${nomeSeguro(r.fornecedor)}/${n}_${nomeSeguro(orig)}`;
+        let nome = nomeSeguro(orig);
+        for (let n = 2; usados.has(nome.toLowerCase()); n++) nome = `${n}_${nomeSeguro(orig)}`;
         usados.add(nome.toLowerCase());
         zip.file(nome, blob);
       } catch (e) { console.warn('ZIP faturas:', r.dropbox_path, e); falhas++; }
