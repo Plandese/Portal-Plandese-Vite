@@ -1,12 +1,73 @@
 // ═══════════════════════════════════════════════════════════════════
 //  GUIAS DE REMESSA (escritório) — as guias fotografadas pelos encarregados chegam aqui já em PDF
 //  (pasta «Guias» da Dropbox). Quem trata das faturas abre o PDF e casa cada guia com a fatura do fornecedor.
-//  Uma fatura pode ter várias guias. O casamento é manual: o encarregado só fotografa.
+//  Uma fatura pode ter várias guias. Depois de casadas, o portal compara as quantidades das guias com as da fatura
+//  (soma de todas as guias da fatura) e assinala as divergências.
 // ═══════════════════════════════════════════════════════════════════
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
 import { dropboxDownload } from './dropbox.js';
+
+// ── Comparação guia ↔ fatura ─────────────────────────────────────
+const semAcentos = t => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const normNumero = t => String(t == null ? '' : t).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+const normDesc = t => semAcentos(t).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const normRef = t => String(t == null ? '' : t).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+const tokens = t => new Set(normDesc(t).split(' ').filter(w => w.length > 1));
+function similar(a, b) {
+  const A = tokens(a), B = tokens(b);
+  if (!A.size || !B.size) return 0;
+  let i = 0; A.forEach(w => { if (B.has(w)) i++; });
+  return i / (A.size + B.size - i);
+}
+// Junta linhas repetidas do mesmo material (mesma referência ou descrição) somando as quantidades
+function agrupar(linhas) {
+  const out = [];
+  (linhas || []).forEach(l => {
+    const qtd = Number(l.qtd);
+    if (!isFinite(qtd)) return;
+    const ref = normRef(l.ref_forn ?? l.ref_fornecedor), desc = l.desc ?? l.descricao ?? '';
+    const g = out.find(x => (ref && x.ref && x.ref === ref) || (!ref && !x.ref && normDesc(x.desc) === normDesc(desc)));
+    if (g) g.qtd += qtd; else out.push({ ref, desc, qtd, un: l.un || '' });
+  });
+  return out;
+}
+// O que a fatura cobra vs o que as guias entregaram → lista de divergências
+function compararLinhas(linhasFatura, linhasGuias) {
+  const F = agrupar(linhasFatura), G = agrupar(linhasGuias), usadasG = new Set(), div = [];
+  F.forEach(f => {
+    let j = G.findIndex((g, k) => !usadasG.has(k) && f.ref && g.ref && f.ref === g.ref);
+    if (j < 0) {
+      let melhor = 0;
+      G.forEach((g, k) => { if (usadasG.has(k)) return; const sc = similar(f.desc, g.desc); if (sc > melhor) { melhor = sc; j = k; } });
+      if (melhor < 0.6) j = -1;
+    }
+    if (j < 0) { div.push({ tipo: 'so_fatura', desc: f.desc, fatura: f.qtd, un: f.un }); return; }
+    usadasG.add(j);
+    if (Math.abs(f.qtd - G[j].qtd) > 0.0009) div.push({ tipo: 'qtd', desc: f.desc, fatura: f.qtd, guia: G[j].qtd, un: f.un || G[j].un });
+  });
+  G.forEach((g, k) => { if (!usadasG.has(k)) div.push({ tipo: 'so_guia', desc: g.desc, guia: g.qtd, un: g.un }); });
+  return div;
+}
+const fmtQtd = n => Number(n).toLocaleString('pt-PT', { maximumFractionDigits: 3 });
+
+// Verificação de uma fatura com todas as guias que lhe estão associadas
+function verificar(f) {
+  if (!f) return { estado: 'sem_dados' };
+  const guias = _rows.filter(g => g.fatura_id === f.id);
+  const refs = (f.guias_ref || []).filter(Boolean);
+  const faltam = refs.filter(r => !guias.some(g => normNumero(g.numero) === normNumero(r)));
+  if (!(f.linhas || []).length) return { estado: 'sem_artigos', guias };
+  if (guias.some(g => !(g.linhas || []).length)) return { estado: 'sem_leitura', guias, faltam };
+  if (faltam.length) return { estado: 'faltam', guias, faltam };
+  const div = compararLinhas(f.linhas, guias.flatMap(g => g.linhas || []));
+  return { estado: div.length ? 'divergente' : 'ok', guias, div, faltam };
+}
+const VERIF_PILL = {
+  ok: ['Bate certo ✓', 'ok'], divergente: ['Divergente', 'bad'], faltam: ['Faltam guias', 'warn'],
+  sem_artigos: ['Fatura sem artigos', 'mute'], sem_leitura: ['Guia por ler', 'mute'], sem_dados: ['—', 'mute'],
+};
 
 let _rows = [];            // guias_remessa
 let _fat = new Map();      // id → fatura (só as já casadas)
@@ -24,14 +85,14 @@ const casada = g => !!g.fatura_id;
 
 async function carregar() {
   const { data, error } = await sb.from('guias_remessa')
-    .select('id,numero,data,fornecedor,obra_nome,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
+    .select('id,numero,data,nif,fornecedor,obra_nome,linhas,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
     .order('criado_em', { ascending: false }).limit(1000);
   if (error) throw error;
   _rows = data || [];
   const ids = [...new Set(_rows.map(g => g.fatura_id).filter(Boolean))];
   _fat = new Map();
   if (ids.length) {
-    const { data: fs } = await sb.from('faturas').select('id,numero,fornecedor,total,data').in('id', ids);
+    const { data: fs } = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,guias_ref,linhas').in('id', ids);
     (fs || []).forEach(f => _fat.set(f.id, f));
   }
 }
@@ -50,10 +111,43 @@ function filtrar() {
   });
 }
 
+function pillVerif(f) {
+  const v = verificar(f), [t, c] = VERIF_PILL[v.estado] || VERIF_PILL.sem_dados;
+  const n = v.estado === 'divergente' ? ` (${v.div.length})` : v.estado === 'faltam' ? ` (${v.faltam.length})` : '';
+  return `<button type="button" class="dd-pill ${c}" data-gre-verif="${f?.id || ''}" style="border:0;cursor:pointer;font-family:inherit" title="Ver a comparação com a fatura">${t}${n}</button>`;
+}
+
+function verDetalhe(faturaId) {
+  const f = _fat.get(faturaId); if (!f) return;
+  const v = verificar(f);
+  document.getElementById('modal-gre-verif')?.remove();
+  const el = document.createElement('div');
+  el.className = 'modal-bg open'; el.id = 'modal-gre-verif';
+  const [t, c] = VERIF_PILL[v.estado] || VERIF_PILL.sem_dados;
+  let corpo = '';
+  if (v.estado === 'ok') corpo = '<div style="padding:14px;border-radius:14px;background:#dff5e7;color:#166534;font-weight:600">Os materiais e as quantidades das guias coincidem com a fatura.</div>';
+  else if (v.estado === 'divergente') corpo = `<table class="cmp-t" style="margin-top:6px"><thead><tr><th>Material</th><th class="r">Fatura</th><th class="r">Guias</th></tr></thead><tbody>${v.div.map(d => `<tr>
+      <td>${esc(d.desc)}${d.tipo === 'so_fatura' ? '<br><small style="color:#b3261e">Faturado mas não vem nas guias</small>' : d.tipo === 'so_guia' ? '<br><small style="color:#b3261e">Vem nas guias mas não está na fatura</small>' : ''}</td>
+      <td class="r">${d.fatura != null ? fmtQtd(d.fatura) + ' ' + esc(d.un || '') : '—'}</td>
+      <td class="r">${d.guia != null ? fmtQtd(d.guia) + ' ' + esc(d.un || '') : '—'}</td></tr>`).join('')}</tbody></table>`;
+  else if (v.estado === 'faltam') corpo = `<div style="padding:14px;border-radius:14px;background:#fff0d9;color:#a35a08">A fatura refere ${v.faltam.length === 1 ? 'uma guia que ainda não foi associada' : v.faltam.length + ' guias que ainda não foram associadas'}: <b>${esc(v.faltam.join(', '))}</b>.<br>A comparação faz-se quando todas estiverem casadas.</div>`;
+  else if (v.estado === 'sem_artigos') corpo = '<div style="padding:14px;border-radius:14px;background:#eef1f6;color:#5d6678">A fatura não tem artigos lidos, por isso não há o que comparar.</div>';
+  else if (v.estado === 'sem_leitura') corpo = '<div style="padding:14px;border-radius:14px;background:#eef1f6;color:#5d6678">Alguma guia ainda não tem os materiais lidos. Use «Ler dados em falta» ou abra a guia.</div>';
+  el.innerHTML = `<div class="modal" style="width:min(680px,96vw);max-height:92vh;overflow-y:auto">
+    <div class="modal-title">Fatura ${esc(f.numero || '')}</div>
+    <div class="modal-sub">${esc(f.fornecedor || '')} · ${v.guias?.length || 0} guia${(v.guias?.length || 0) === 1 ? '' : 's'} associada${(v.guias?.length || 0) === 1 ? '' : 's'}: ${esc((v.guias || []).map(g => g.numero || '—').join(', '))}</div>
+    <div style="margin:12px 0"><span class="dd-pill ${c}">${t}</span></div>
+    ${corpo}
+    <div class="modal-footer"><button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+  </div>`;
+  document.body.appendChild(el);
+}
+
 function desenhar() {
   const emFalta = _rows.filter(g => !g.fornecedor && !g.numero && !g.data);
   const hdr = document.getElementById('gre-hdr-act');
-  if (hdr) hdr.innerHTML = emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '';
+  const porCasarNum = _rows.filter(g => !casada(g) && g.numero).length;
+  if (hdr) hdr.innerHTML = (porCasarNum ? '<button type="button" class="btn btn-secondary btn-sm" data-gre-auto title="Casa as guias com as faturas que referem o mesmo nº de guia">Casar automaticamente</button>' : '') + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
   const chips = document.getElementById('gre-chips');
   if (chips) {
     const por = _rows.filter(g => !casada(g)), cas = _rows.filter(casada);
@@ -64,7 +158,7 @@ function desenhar() {
   const lista = filtrar();
   if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Sem guias para mostrar.</div>'; return; }
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura</th><th></th></tr></thead>
+    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura</th><th>Verificação</th><th></th></tr></thead>
     <tbody>${lista.map(g => {
       const f = _fat.get(g.fatura_id);
       const pdf = g.pdf_path
@@ -82,6 +176,7 @@ function desenhar() {
         <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
         <td>${g.numero ? '<b>' + esc(g.numero) + '</b>' : '<span class="mut">—</span>'}</td>
         <td>${fat}</td>
+        <td>${casada(g) ? pillVerif(f) : '<span class="mut">—</span>'}</td>
         <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${acao}</td>
       </tr>`;
     }).join('')}</tbody></table></div>`;
@@ -177,19 +272,29 @@ async function gerarPdf(id) {
 async function carregarFaturas() {
   if (_faturas) return _faturas;
   const { data, error } = await sb.from('faturas')
-    .select('id,numero,fornecedor,data,total,status')
+    .select('id,numero,fornecedor,nif,data,total,status,guias_ref')
     .order('data', { ascending: false, nullsFirst: false }).limit(1500);
   if (error) throw error;
   _faturas = data || [];
   return _faturas;
 }
 
+// Relevância de uma fatura para uma guia: 3 = refere o nº desta guia; 2 = mesmo fornecedor
+function relevancia(g, f) {
+  const n = normNumero(g.numero);
+  if (n && (f.guias_ref || []).some(r => normNumero(r) === n)) return 3;
+  if ((g.nif && f.nif && g.nif === f.nif) || (g.fornecedor && f.fornecedor && similar(g.fornecedor, f.fornecedor) >= 0.6)) return 2;
+  return 0;
+}
+
 function desenharFaturas(modal, guiaId) {
+  const g = _rows.find(x => x.id === guiaId) || {};
   const q = modal.querySelector('#gre-fq').value.trim().toLowerCase();
-  const l = (_faturas || []).filter(f => !q || `${f.fornecedor || ''} ${f.numero || ''}`.toLowerCase().includes(q)).slice(0, 60);
+  const l = (_faturas || []).filter(f => !q || `${f.fornecedor || ''} ${f.numero || ''}`.toLowerCase().includes(q))
+    .map(f => ({ f, r: relevancia(g, f) })).sort((a, b) => b.r - a.r).slice(0, 60).map(x => ({ ...x.f, _r: x.r }));
   modal.querySelector('#gre-flista').innerHTML = l.length
     ? l.map(f => `<button type="button" class="gre-f" data-gre-esc="${f.id}" style="display:flex;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #eef1f6;background:#fff;font-family:inherit;text-align:left;cursor:pointer">
-        <span><b style="font-size:13px">${esc(f.fornecedor || 'Sem fornecedor')}</b><br><small style="color:#6a7284">${esc(f.numero || '—')} · ${f.data ? esc(fmtPT(f.data)) : 'sem data'}</small></span>
+        <span><b style="font-size:13px">${esc(f.fornecedor || 'Sem fornecedor')}</b><br><small style="color:#6a7284">${esc(f.numero || '—')} · ${f.data ? esc(fmtPT(f.data)) : 'sem data'}</small>${f._r === 3 ? ' <span class="dd-pill ok" style="height:20px;font-size:11px">Refere esta guia</span>' : f._r === 2 ? ' <span class="dd-pill info" style="height:20px;font-size:11px">Mesmo fornecedor</span>' : ''}</span>
         <span style="font-weight:700;font-size:13px;white-space:nowrap">${eur(f.total)}</span></button>`).join('')
     : '<div style="padding:14px;color:#6a7284">Nenhuma fatura encontrada</div>';
 }
@@ -232,6 +337,28 @@ async function casar(guiaId, faturaId) {
   await carregar(); desenhar();
 }
 
+// Casa as guias por casar com a fatura que refere o mesmo nº de guia (e o mesmo fornecedor, quando há NIF)
+async function casarAutomatico(btn) {
+  btn.disabled = true;
+  try {
+    await carregarFaturas();
+    let n = 0, ambiguas = 0;
+    for (const g of _rows.filter(x => !casada(x) && x.numero)) {
+      const num = normNumero(g.numero);
+      const cands = _faturas.filter(f => (f.guias_ref || []).some(r => normNumero(r) === num) && (!g.nif || !f.nif || g.nif === f.nif));
+      if (cands.length > 1) { ambiguas++; continue; }
+      if (cands.length !== 1) continue;
+      const upd = { fatura_id: cands[0].id, estado: 'casada', casada_em: new Date().toISOString() };
+      if (!g.fornecedor && cands[0].fornecedor) upd.fornecedor = cands[0].fornecedor;
+      const { error } = await sb.from('guias_remessa').update(upd).eq('id', g.id);
+      if (!error) n++;
+    }
+    toast(n ? `${n} guia${n === 1 ? '' : 's'} casada${n === 1 ? '' : 's'} automaticamente ✓${ambiguas ? ` (${ambiguas} ambígua${ambiguas === 1 ? '' : 's'}, ficam para casar à mão)` : ''}` : 'Nenhuma guia encontrou fatura com o mesmo nº de guia');
+    await carregar(); desenhar();
+  } catch (e) { toast('Não foi possível casar automaticamente: ' + String(e.message || e).slice(0, 200)); }
+  btn.disabled = false;
+}
+
 async function desfazer(id) {
   if (!confirm('Desfazer o casamento desta guia com a fatura?')) return;
   const { error } = await sb.from('guias_remessa').update({ fatura_id: null, estado: 'por_casar', casada_em: null }).eq('id', id);
@@ -245,9 +372,11 @@ function ligar() {
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-ler-todas],[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
+    const t = e.target.closest('[data-gre-auto],[data-gre-verif],[data-gre-ler-todas],[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
-    if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
+    if (t.dataset.greAuto !== undefined) casarAutomatico(t);
+    else if (t.dataset.greVerif) verDetalhe(Number(t.dataset.greVerif));
+    else if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
     else if (t.dataset.greTab) { _tab = t.dataset.greTab; desenhar(); }
     else if (t.dataset.grePdf) abrirPdf(Number(t.dataset.grePdf));
     else if (t.dataset.greGerar) gerarPdf(Number(t.dataset.greGerar));
@@ -260,6 +389,8 @@ function ligar() {
 
 // seletor de fatura (janela criada dinamicamente)
 document.addEventListener('click', e => {
+  const vm = document.getElementById('modal-gre-verif');
+  if (vm && (e.target.closest('[data-gre-fechar-verif]') || e.target === vm)) { vm.remove(); return; }
   const fm = document.getElementById('modal-gre-fotos');
   const gd = fm && e.target.closest('[data-gre-guardar]');
   if (gd) { guardarDados(Number(gd.dataset.greGuardar)); return; }
