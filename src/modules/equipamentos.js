@@ -303,7 +303,7 @@ function renderEqPorObra(){
 function _eqObraRowHtml(eq){
   const pend = eqPendentes(eq.id).length;
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--gray-100)">
-    <div style="flex:1;min-width:0">
+    <div style="flex:1;min-width:0;cursor:pointer" onclick="abrirEqDetalhe('${eq.id}')" title="Abrir detalhe do equipamento">
       <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${eqEsc(eq.nome)}</div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[eqCatBadge(eq.categoria),eqEstadoBadge(eq.estado),eqPropBadge(eq)].join(' ')}</div>
     </div>
