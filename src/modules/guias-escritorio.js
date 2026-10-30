@@ -43,7 +43,7 @@ function filtrar() {
     if (_tab === 'casadas' && !casada(g)) return false;
     if (q) {
       const f = _fat.get(g.fatura_id);
-      const txt = `${g.numero || ''} ${g.data ? fmtPT(g.data) : ''} ${g.obra_nome || ''} ${nomeDe(g.criado_por)} ${f?.numero || ''} ${f?.fornecedor || ''}`.toLowerCase();
+      const txt = `${g.fornecedor || ''} ${g.numero || ''} ${g.data ? fmtPT(g.data) : ''} ${g.obra_nome || ''} ${f?.numero || ''} ${f?.fornecedor || ''}`.toLowerCase();
       if (!txt.includes(q)) return false;
     }
     return true;
@@ -61,7 +61,7 @@ function desenhar() {
   const lista = filtrar();
   if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Sem guias para mostrar.</div>'; return; }
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data da guia</th><th>Enviada por</th><th>Obra</th><th>Págs.</th><th>Nº da guia</th><th>Fatura</th><th></th></tr></thead>
+    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura</th><th></th></tr></thead>
     <tbody>${lista.map(g => {
       const f = _fat.get(g.fatura_id);
       const pdf = g.pdf_path
@@ -75,9 +75,8 @@ function desenhar() {
         : `<button type="button" class="btn btn-sm" data-gre-casar="${g.id}">Casar com fatura</button>`;
       return `<tr data-gre-ver="${g.id}" style="cursor:pointer" title="Clique para ver as fotografias">
         <td>${g.data ? esc(fmtPT(g.data)) : '<span class="mut" title="Clique na guia para indicar a data de receção">Sem data</span>'}</td>
-        <td>${esc(nomeDe(g.criado_por))}</td>
+        <td>${g.fornecedor ? '<b>' + esc(g.fornecedor) + '</b>' : '<span class="mut">—</span>'}</td>
         <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
-        <td>${g.paginas || 1}</td>
         <td>${g.numero ? '<b>' + esc(g.numero) + '</b>' : '<span class="mut">—</span>'}</td>
         <td>${fat}</td>
         <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${acao}</td>
@@ -88,7 +87,7 @@ function desenhar() {
 // ── Fotografias ──────────────────────────────────────────────────
 async function guardarDados(id) {
   const m = document.getElementById('modal-gre-fotos'); if (!m) return;
-  const upd = { data: m.querySelector('#gre-data').value || null, numero: m.querySelector('#gre-numf').value.trim() || null };
+  const upd = { data: m.querySelector('#gre-data').value || null, numero: m.querySelector('#gre-numf').value.trim() || null, fornecedor: m.querySelector('#gre-forn').value.trim() || null };
   const { error } = await sb.from('guias_remessa').update(upd).eq('id', id);
   if (error) { toast('Não foi possível guardar: ' + (error.message || error)); return; }
   Object.assign(_rows.find(x => x.id === id) || {}, upd);
@@ -106,6 +105,7 @@ async function verFotos(id) {
     <div class="modal-title">Guia${g.numero ? ' ' + esc(g.numero) : ''}</div>
     <div class="modal-sub">Enviada por ${esc(nomeDe(g.criado_por))} em ${esc(dataHora(g.criado_em))}${g.obra_nome ? ' · ' + esc(g.obra_nome) : ''}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end">
+      <label style="flex:2 1 100%;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Fornecedor<input id="gre-forn" value="${esc(g.fornecedor || '')}" placeholder="Nome do fornecedor" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
       <label style="flex:1;min-width:170px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Data da guia (receção do material)<input id="gre-data" type="date" value="${esc(g.data || '')}" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
       <label style="flex:1;min-width:170px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Nº da guia<input id="gre-numf" value="${esc(g.numero || '')}" placeholder="Ex.: GR 2026/1234" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
       <button class="btn btn-primary" data-gre-guardar="${g.id}" style="height:46px">Guardar</button>
@@ -201,6 +201,8 @@ async function casar(guiaId, faturaId) {
   const numero = modal?.querySelector('#gre-num')?.value.trim() || null;
   const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() };
   if (numero) upd.numero = numero;
+  const g0 = _rows.find(x => x.id === guiaId), fat0 = (_faturas || []).find(x => x.id === faturaId);
+  if (!g0?.fornecedor && fat0?.fornecedor) upd.fornecedor = fat0.fornecedor;
   const dt = modal?.querySelector('#gre-dt')?.value;
   if (dt) upd.data = dt;
   const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
