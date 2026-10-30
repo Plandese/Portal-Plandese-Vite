@@ -1432,7 +1432,11 @@
         </button>
         <button class="nav-btn" onclick="guiasAbrir()" id="nav-guias" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span class="nav-label">Guias de remessa (teste)</span>
+          <span class="nav-label">Fotografar guia (teste)</span>
+        </button>
+        <button class="nav-btn" onclick="goTo('guias',this)" id="nav-gre">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
+          <span class="nav-label">Guias de Remessa</span>
         </button>
         <button class="nav-btn" onclick="goTo('faturas-lancadas',this)" id="nav-flan">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -1884,6 +1888,21 @@
           <select id="flan-obra" style="min-width:240px"><option value="">Todas as obras</option></select>
         </div>
         <div class="card" id="flan-mapa" style="padding:0;overflow:hidden"></div>
+      </section>
+
+      <!-- GUIAS DE REMESSA (escritório) -->
+      <section id="sec-guias" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Guias de Remessa</div>
+            <div class="pg-sub">Guias fotografadas pelos encarregados, já em PDF — casar com a fatura do fornecedor</div>
+          </div>
+        </div>
+        <div id="gre-chips" class="d-chips"></div>
+        <div class="filter-bar">
+          <input type="text" id="gre-q" placeholder="Pesquisar obra, encarregado, nº da guia ou fatura…" style="flex:1;min-width:220px"/>
+        </div>
+        <div class="card" id="gre-mapa" style="padding:0;overflow:hidden"></div>
       </section>
 
       <!-- TESOURARIA -->

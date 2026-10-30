@@ -119,6 +119,7 @@ export async function refreshPortal(){
         'faturas-aprovar': ()=>R.renderFaturasAprovar?.(),
         'faturas-lancadas': ()=>R.renderFaturasLancadas?.(),
         'tesouraria':      ()=>R.renderTesouraria?.(),
+        'guias':           ()=>R.renderGuiasEscritorio?.(),
         'compras':         ()=>R.renderCompras?.(),
         'equipamentos':    ()=>R.renderEquipamentos?.(),
         'combustivel':     ()=>R.loadCombustivelAdmin?.(),

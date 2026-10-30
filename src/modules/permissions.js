@@ -44,7 +44,7 @@ const OVR_STORAGE_KEY = 'plandese_access_overrides_v1';
 const emptyOvr = () => ({ roles:{}, users:{} });
 // Sub-páginas fechadas por omissão a um perfil, enquanto o administrador não as abrir na matriz
 // (o diretor de obra só vê "Faturas por aprovar"; as restantes do Financeiro são dadas caso a caso)
-const DEFAULT_ROLE_OFF = { diretor_obra:['faturas','faturas-lancadas','tesouraria'] };
+const DEFAULT_ROLE_OFF = { diretor_obra:['faturas','faturas-lancadas','tesouraria','guias'] };
 const roleOffOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].off) || DEFAULT_ROLE_OFF[role] || [];
 // Telas Finais não é uma secção do portal: o acesso é a lista de usernames em app_config/telas_finais_acesso
 // (decidida no servidor por fn_tf_acesso). Aparece como sub-página extra no capítulo Produção.
@@ -168,7 +168,7 @@ export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
 const SECTION_LABELS = {
   'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','ponto-escritorio':'Ponto do Escritório','colaboradores':'Colaboradores',
-  'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','faturas-lancadas':'Faturas Lançadas','tesouraria':'Tesouraria',
+  'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','faturas-lancadas':'Faturas Lançadas','tesouraria':'Tesouraria','guias':'Guias de Remessa',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
   'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',
@@ -365,6 +365,7 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos
 const SECTION_ROLES = {
   'faturas':         ['admin','financeiro','diretor_obra'],
   'tesouraria':      ['admin','financeiro','diretor_obra'],
+  'guias':           ['admin','financeiro','diretor_obra'],
   'faturas-lancadas': ['admin','financeiro','diretor_obra'],
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };

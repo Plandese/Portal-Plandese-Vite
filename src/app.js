@@ -34,6 +34,7 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 
 // Faturas
 import { renderTesouraria } from './modules/tesouraria.js';
+import { renderGuiasEscritorio } from './modules/guias-escritorio.js';
 import { renderFaturasLancadas } from './modules/faturas-lancadas.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
 import './modules/guias.js';
@@ -115,7 +116,7 @@ Object.assign(R, {
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
   ensurePushSubscription, initPushPrompt, applyPendingSection,
-  renderPainel, renderFaturas, renderTesouraria, renderFaturasLancadas, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
+  renderPainel, renderFaturas, renderTesouraria, renderGuiasEscritorio, renderFaturasLancadas, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos, mcPreencheUtilizadores, renderPontoEsc,
   loadCombustivelAdmin, renderControloObras,
   renderFechoMes, applyFilter, renderEmpresasMOA,
@@ -407,6 +408,7 @@ window.savePerfil = async function () {
     if (id === 'faturas-aprovar') { renderFaturasAprovar({ reset: true }); }
     if (id === 'faturas-lancadas') { renderFaturasLancadas(); }
     if (id === 'tesouraria')   { renderTesouraria(); }
+    if (id === 'guias')        { renderGuiasEscritorio(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); }
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
