@@ -153,6 +153,7 @@ function desenhar() {
         <td><b>${esc(r.numero || '—')}</b></td>
         <td class="r"><b>${eur(r.total)}</b></td>
         <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
+        <td>${r.data ? fmtPT(r.data) : '<span class="mut">—</span>'}</td>
         <td>${estado}${r.tipo_pagamento === 'debito_direto' ? ' <span class="dd-pill info" title="Fatura a débito direto">Débito direto</span>' : r.tipo_pagamento === 'referencia_mb' ? ' <span class="dd-pill info" title="Fatura com referência MB">Ref. MB</span>' : ''}${faturaSemFicheiro(r.id) ? ' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>' : ''}</td>
         <td>${r.centralgest_lancada
           ? `<button type="button" class="dd-pill ok tes-cg" data-tes-cg="${r.id}" title="Lançada por ${esc(nomeDe(r.centralgest_por))} em ${esc(dmy(r.centralgest_em))} — clique para desmarcar">Lançada</button>`
@@ -160,14 +161,14 @@ function desenhar() {
       </tr>`;
     }).join('');
     const ckG = podeSel ? `<td class="tes-ck">${elegiveis.length ? `<input type="checkbox" data-tes-ckg="${esc(k)}"${todas ? ' checked' : ''} aria-label="Selecionar todas as faturas deste fornecedor"/>` : ''}</td>` : '';
-    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="3"></td></tr>${linhas}</tbody>`;
+    return `<tbody class="tes-grp"><tr class="tes-gh">${ckG}<td colspan="3">${k ? esc(k) : 'Sem fornecedor'} <small>${rs.length} fatura${rs.length === 1 ? '' : 's'}</small></td><td class="r"><b>${eur(sub)}</b></td><td colspan="4"></td></tr>${linhas}</tbody>`;
   }).join('');
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Estado</th><th>CentralGest</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th><th>Vencimento</th><th>Emissão</th><th>Estado</th><th>CentralGest</th></tr></thead>
     ${corpo}
-    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="3"></td></tr></tfoot>
+    <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="4"></td></tr></tfoot>
   </table></div>`;
   desenharBarra();
 }
