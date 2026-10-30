@@ -5,6 +5,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
+import { conferenciaFatura } from './guias-escritorio.js';
 import { normalizarLinhas, associarAuto, perguntarArtigos, resumoArtigos } from './faturas-artigos.js';
 import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxListAll, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxMoveTeam, dropboxLinkTeam } from './dropbox.js';
 
@@ -1154,6 +1155,24 @@ function mostrarGuiasFatura(f){
     box.style.cssText = 'margin-top:14px;padding:12px 16px;background:#f6f8fc;border:1.5px solid #dde2ea;border-radius:14px;color:#5d6678;font-size:13.5px';
     box.innerHTML = `Guias referidas na fatura: <b>${_fEsc(refs)}</b> · ainda por receber/conferir`;
   } else { box.style.cssText = 'display:none'; box.innerHTML = ''; }
+  // Conferência ao vivo das quantidades (percentagem do valor da fatura coberto pelas guias casadas)
+  if(f.guiaEstado === 'suspensa' || !f._dbId || !(refs || f.linhas?.length)) return;
+  conferenciaGuiasFatura(f).then(c => {
+    if(!c || c.pct == null || !(c.refs || c.guias)) return;
+    if(String(document.getElementById('mf-id')?.value) !== String(f.id)) return;   // entretanto abriu outra fatura
+    const ok = c.estado === 'ok', mau = c.estado === 'divergente';
+    const cor = ok ? '#166534' : mau ? '#b42318' : '#a35a08';
+    box.style.cssText = `margin-top:14px;padding:14px 16px;background:${ok ? '#f0fdf4' : mau ? '#fef3f2' : '#fff7e6'};border:1.5px solid ${ok ? '#bbf7d0' : mau ? '#fda29b' : '#f5d38b'};border-radius:14px;color:${cor};font-size:13.5px`;
+    const barra = `<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><div style="flex:1;height:8px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden"><div style="height:100%;width:${c.pct}%;background:${cor};border-radius:99px"></div></div><b>${c.pct}%</b></div>`;
+    const det = mau ? `<ul style="margin:8px 0 0 18px;padding:0">${c.div.map(d => d.tipo==='qtd' ? `<li><b>${_fEsc(d.desc)}</b>: fatura ${d.fatura} · guias ${d.guia}</li>` : d.tipo==='so_fatura' ? `<li><b>${_fEsc(d.desc)}</b>: faturado (${d.fatura}) e não vem nas guias</li>` : `<li><b>${_fEsc(d.desc)}</b>: nas guias (${d.guia}) e não está na fatura</li>`).join('')}</ul>` : '';
+    box.innerHTML = ok
+      ? `<b>Guias de remessa conferidas ✓</b> · ${c.guias} guia${c.guias === 1 ? '' : 's'}${barra}`
+      : `<b>Guias de remessa: ${c.pct}% da fatura conferido</b> — ${_fEsc(c.resumo)}${barra}${det}`;
+    f._conf = c;
+  });
+}
+async function conferenciaGuiasFatura(f){
+  try{ return await conferenciaFatura(f._dbId, f.linhas, f.guiasRef); }catch(e){ console.warn('Guias (conferência):', e); return null; }
 }
 function abrirDocumentoNovaJanela(url){
   const w = Math.min(1000, screen.availWidth - 80), h = Math.min(900, screen.availHeight - 80);
@@ -1782,6 +1801,14 @@ async function aprovarFatura(){
   // Fatura suspensa: as guias de remessa não coincidem com o que foi faturado
   if(f.guiaEstado === 'suspensa'){ showToast('Fatura suspensa: as guias de remessa não coincidem. Resolva a divergência antes de aprovar.'); return; }
 
+  // Aviso (não bloqueia): as guias de remessa ainda não cobrem toda a fatura
+  const conf = await conferenciaGuiasFatura(f);
+  if(conf && conf.pct != null && conf.pct < 100 && (conf.refs || conf.guias)){
+    if(!confirm(`As guias de remessa só cobrem ${conf.pct}% desta fatura (${conf.resumo}).
+
+Aprovar mesmo assim?`)) return;
+  }
+
   // Etapa 2 — diretor aprova e carimba. PDF da Dropbox: escolher onde fica o carimbo; "Guardar" conclui
   if(dropboxIsConnected() && f.dropboxPath && f._fonte === 'dropbox' && /\.pdf$/i.test(f.dropboxPath)){
     return abrirColocarCarimbo(f, cc);
@@ -1812,7 +1839,9 @@ async function confirmarCentroCusto(f, cc){
   closeModal('modal-fat');
   showToast(`Fatura enviada para aprovação do diretor — ${cc}`);
 
-  const msg = `Fatura por aprovar: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${cc})`;
+  const conf = await conferenciaGuiasFatura(f);
+  const avisoGuias = conf && conf.pct != null && conf.pct < 100 && (conf.refs || conf.guias) ? ` · Guias ${conf.pct}%` : '';
+  const msg = `Fatura por aprovar: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${cc})${avisoGuias}`;
   R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar', obra:cc });
   const obra = S.OBRAS.find(o=>o.nome===cc);
   const destinatarios = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra||[]), ..._aprovadoresFat].filter(u => u && u !== S.currentUser?.key))];

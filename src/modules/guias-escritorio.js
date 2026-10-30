@@ -78,9 +78,8 @@ function percentagem(linhasFatura, linhasGuias) {
 const fmtQtd = n => Number(n).toLocaleString('pt-PT', { maximumFractionDigits: 3 });
 
 // Verificação de uma fatura com todas as guias que lhe estão associadas
-function verificar(f) {
+function verificar(f, guias = _rows.filter(g => g.fatura_id === f?.id)) {
   if (!f) return { estado: 'sem_dados' };
-  const guias = _rows.filter(g => g.fatura_id === f.id);
   const refs = (f.guias_ref || []).filter(Boolean);
   const faltam = refs.filter(r => !guias.some(g => mesmaGuia(g.numero, r)));
   if (!(f.linhas || []).length) return { estado: 'sem_artigos', guias, refs, faltam, pct: null };
@@ -480,6 +479,16 @@ document.addEventListener('input', e => {
   if (e.target.id !== 'gre-fq') return;
   const m = document.getElementById('modal-gre'); if (m) desenharFaturas(m, Number(m.dataset.guia));
 });
+
+// Conferência de UMA fatura (para o ecrã de aprovação do diretor): lê as guias casadas com ela e compara
+export async function conferenciaFatura(dbId, linhas, guiasRef) {
+  if (!dbId) return null;
+  const { data, error } = await sb.from('guias_remessa').select('id,numero,linhas,fatura_id').eq('fatura_id', dbId);
+  if (error) throw error;
+  const v = verificar({ id: dbId, linhas: linhas || [], guias_ref: guiasRef || [] }, data || []);
+  const resumo = { faltam: `faltam guias: ${(v.faltam || []).join(', ')}`, divergente: `${(v.div || []).length} divergência(s) nas quantidades`, sem_guias: 'ainda não há guias associadas', sem_leitura: 'há guias por ler' }[v.estado] || '';
+  return { estado: v.estado, pct: v.pct, guias: v.guias.length, refs: (v.refs || []).length, faltam: v.faltam || [], div: v.div || [], resumo };
+}
 
 // Conferência (% e estado) das faturas que referem guias ou já têm guias associadas — usada na Tesouraria
 export async function conferenciasFaturas() {
