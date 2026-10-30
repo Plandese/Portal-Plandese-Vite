@@ -172,6 +172,14 @@ export async function dropboxListFolder(path){
   return out.filter(e => e['.tag'] === 'file');
 }
 
+// Lista tudo o que está numa pasta (ficheiros e pastas), opcionalmente em profundidade
+export async function dropboxListAll(path, recursive = false){
+  let res = await _rpc('files/list_folder', { path, recursive, limit: 2000 });
+  const out = [...res.entries];
+  while(res.has_more){ res = await _rpc('files/list_folder/continue', { cursor: res.cursor }); out.push(...res.entries); }
+  return out;
+}
+
 export async function dropboxDownload(path){
   const resp = await _call(CONTENT + 'files/download', { headers: { 'Dropbox-API-Arg': _asciiJson({ path }) }, team: true });
   if(!resp.ok) throw new Error('Dropbox download falhou: ' + await _msg(resp));

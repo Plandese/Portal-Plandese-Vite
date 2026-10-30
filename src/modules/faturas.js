@@ -6,7 +6,7 @@ import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
 import { normalizarLinhas, associarAuto, perguntarArtigos, resumoArtigos } from './faturas-artigos.js';
-import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxMoveTeam, dropboxLinkTeam } from './dropbox.js';
+import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxListAll, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxMoveTeam, dropboxLinkTeam } from './dropbox.js';
 
 let FATURAS = [];
 let FAT_QUEUE = [];
@@ -1347,6 +1347,89 @@ async function moverFaturaLancada(dbId, lancada){
   return novo;
 }
 
+// Compatibiliza o que já foi lançado à mão: ficheiros que estão na pasta das lançadas ficam marcados
+// como lançados no portal e os soltos na raiz passam para «Lançadas/<fornecedor>/».
+async function sincronizarLancadas(){
+  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores'); return; }
+  await carregarPastasFaturas();
+  let raiz = _pastas?.lancadas ? _lim(_pastas.lancadas) : '';
+  try{
+    if(!raiz){
+      const pai = _pastaAprovadas().replace(/\/[^/]+$/,'');
+      const cand = (await dropboxListAll(pai)).filter(e => e['.tag'] === 'folder' && /lan[cç]ad/i.test(e.name));
+      raiz = cand.length === 1 ? cand[0].path_display : _pastaLancadas();
+    }
+    let ficheiros;
+    try{ ficheiros = (await dropboxListAll(raiz, true)).filter(e => e['.tag'] === 'file'); }
+    catch(e){ if(/not_found/.test(String(e.message))){ showToast('Pasta «' + raiz + '» não encontrada na Dropbox'); return; } throw e; }
+    if(!ficheiros.length){ showToast('A pasta «' + raiz + '» não tem ficheiros'); return; }
+
+    const { data: rows, error } = await sb.from('faturas')
+      .select('id,fornecedor,nif,dropbox_path,centralgest_lancada')
+      .in('status', ['aprovada','validada','paga']).not('dropbox_path','is',null).limit(5000);
+    if(error) throw error;
+    const base = p => _norm(String(p).split('/').pop());
+    const porNome = new Map();   // nome do ficheiro → faturas
+    rows.forEach(r => { const k = base(r.dropbox_path); porNome.set(k, [...(porNome.get(k)||[]), r]); });
+    const porCaminho = new Map(rows.map(r => [_norm(r.dropbox_path), r]));
+
+    const plano = []; let semFatura = 0, ambiguos = 0;
+    for(const e of ficheiros){
+      let r = porCaminho.get(_norm(e.path_display));
+      if(!r){
+        const cands = porNome.get(base(e.path_display)) || [];
+        if(cands.length === 1) r = cands[0];
+        else if(cands.length > 1){ ambiguos++; continue; }
+      }
+      if(!r){ semFatura++; continue; }
+      plano.push({ r, e });
+    }
+    const jaOk = plano.filter(({r,e}) => r.centralgest_lancada && _norm(r.dropbox_path) === _norm(e.path_display)).length;
+    const soltos = plano.filter(({e}) => _norm(e.path_display.replace(/\/[^/]*$/,'')) === _norm(raiz)).length;
+    const aMarcar = plano.length - jaOk;
+    if(!aMarcar && !soltos){ alert(`Tudo compatível.
+${ficheiros.length} ficheiros na pasta «${raiz}»; ${jaOk} já estão marcados.${semFatura ? `
+${semFatura} sem fatura correspondente no portal.` : ''}`); return; }
+    if(!confirm(`Pasta das lançadas: ${raiz}
+
+· ${ficheiros.length} ficheiros encontrados
+· ${plano.length} correspondem a faturas do portal (${jaOk} já marcadas)
+· ${soltos} soltos na raiz vão para uma pasta por fornecedor
+· ${semFatura} sem fatura no portal; ${ambiguos} ambíguos (ignorados)
+
+Marcar como lançadas e organizar?`)) return;
+
+    if(_lim(_pastas?.lancadas) !== _lim(raiz)){
+      _pastas = { ...(_pastas || {}), lancadas: _lim(raiz) };
+      await sb.from('app_config').upsert({ key: FAT_PASTAS_KEY, value: _pastas, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    }
+    const por = S.currentUser?.key || null, em = new Date().toISOString();
+    let marcadas = 0, movidas = 0, falhas = 0, i = 0;
+    for(const { r, e } of plano){
+      showToast(`A sincronizar… ${++i}/${plano.length}`);
+      let caminho = e.path_display;
+      try{
+        if(_norm(caminho.replace(/\/[^/]*$/,'')) === _norm(raiz)){
+          const forn = await _pastaDoFornecedor({ nif: r.nif, fornecedor: r.fornecedor });
+          caminho = await dropboxMoveTeam(caminho, `${raiz}/${forn}/${caminho.split('/').pop()}`);
+          movidas++;
+        }
+      } catch(err){ console.warn('Mover para pasta do fornecedor:', e.path_display, err); falhas++; }
+      const upd = { dropbox_path: caminho };
+      if(!r.centralgest_lancada){ upd.centralgest_lancada = true; upd.centralgest_por = por; upd.centralgest_em = em; marcadas++; }
+      const { error: er } = await sb.from('faturas').update(upd).eq('id', r.id);
+      if(er){ console.warn('Atualizar fatura', r.id, er); falhas++; }
+    }
+    await carregarFaturas();
+    _refrescarTesouraria();
+    alert(`Sincronização concluída.
+· ${marcadas} faturas marcadas como lançadas
+· ${movidas} ficheiros organizados por fornecedor
+· ${semFatura} ficheiros sem fatura no portal; ${ambiguos} ambíguos${falhas ? `
+· ${falhas} falhas (ver consola)` : ''}`);
+  } catch(e){ console.warn('Sincronizar lançadas:', e); alert('Não foi possível sincronizar: ' + (e.message || e)); }
+}
+
 // Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
 let _aprovadoresFat = [];
 async function carregarAprovadoresFaturas(){
@@ -2081,5 +2164,5 @@ export {
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
   importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas, abrirArtigosFatura,
-  carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada,
+  carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada, sincronizarLancadas,
 };
