@@ -24,7 +24,7 @@ const casada = g => !!g.fatura_id;
 
 async function carregar() {
   const { data, error } = await sb.from('guias_remessa')
-    .select('id,numero,fornecedor,obra_nome,paginas,pdf_path,criado_por,criado_em,fatura_id,casada_em')
+    .select('id,numero,fornecedor,obra_nome,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
     .order('criado_em', { ascending: false }).limit(1000);
   if (error) throw error;
   _rows = data || [];
@@ -73,7 +73,7 @@ function desenhar() {
       const acao = casada(g)
         ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-desf="${g.id}">Desfazer</button>`
         : `<button type="button" class="btn btn-sm" data-gre-casar="${g.id}">Casar com fatura</button>`;
-      return `<tr>
+      return `<tr data-gre-ver="${g.id}" style="cursor:pointer" title="Clique para ver as fotografias">
         <td>${esc(dataHora(g.criado_em))}</td>
         <td>${esc(nomeDe(g.criado_por))}</td>
         <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
@@ -83,6 +83,33 @@ function desenhar() {
         <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${acao}</td>
       </tr>`;
     }).join('')}</tbody></table></div>`;
+}
+
+// ── Fotografias ──────────────────────────────────────────────────
+async function verFotos(id) {
+  const g = _rows.find(x => x.id === id); if (!g) return;
+  const caminhos = (Array.isArray(g.fotos) && g.fotos.length ? g.fotos : [g.foto_path]).filter(Boolean);
+  document.getElementById('modal-gre-fotos')?.remove();
+  const el = document.createElement('div');
+  el.className = 'modal-bg open'; el.id = 'modal-gre-fotos'; el.dataset.guia = id;
+  el.innerHTML = `<div class="modal" style="width:min(760px,96vw);max-height:94vh;display:flex;flex-direction:column">
+    <div class="modal-title">Guia${g.numero ? ' ' + esc(g.numero) : ''}</div>
+    <div class="modal-sub">Enviada por ${esc(nomeDe(g.criado_por))} em ${esc(dataHora(g.criado_em))}${g.obra_nome ? ' · ' + esc(g.obra_nome) : ''}</div>
+    <div id="gre-fotos" style="flex:1;min-height:0;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:12px"><div style="padding:14px;color:#6a7284">A carregar…</div></div>
+    <div class="modal-footer">${g.pdf_path ? '<button class="btn btn-secondary" data-gre-pdf="' + g.id + '">Abrir PDF</button>' : ''}<button class="btn btn-secondary" data-gre-fechar-fotos>Fechar</button></div>
+  </div>`;
+  document.body.appendChild(el);
+  const box = el.querySelector('#gre-fotos');
+  try {
+    const { data, error } = await sb.storage.from('guias-remessa').createSignedUrls(caminhos, 3600);
+    if (error) throw error;
+    const urls = (data || []).filter(d => d.signedUrl);
+    if (!urls.length) throw new Error('sem fotografias');
+    box.innerHTML = urls.map((d, i) => `<a href="${d.signedUrl}" target="_blank" rel="noopener" title="Abrir em tamanho real"><img src="${d.signedUrl}" alt="Página ${i + 1}" style="width:100%;border:1px solid #dde2ea;border-radius:14px;display:block"></a>`).join('');
+  } catch (e) {
+    console.warn('Guias (fotos):', e);
+    box.innerHTML = '<div style="padding:14px;color:#b3261e">Não foi possível carregar as fotografias.</div>';
+  }
 }
 
 // ── PDF ──────────────────────────────────────────────────────────
@@ -177,19 +204,23 @@ function ligar() {
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf]');
+    const t = e.target.closest('[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
     if (t.dataset.greTab) { _tab = t.dataset.greTab; desenhar(); }
     else if (t.dataset.grePdf) abrirPdf(Number(t.dataset.grePdf));
     else if (t.dataset.greGerar) gerarPdf(Number(t.dataset.greGerar));
     else if (t.dataset.greCasar) abrirSeletor(Number(t.dataset.greCasar));
     else if (t.dataset.greDesf) desfazer(Number(t.dataset.greDesf));
+    else if (t.dataset.greVer) verFotos(Number(t.dataset.greVer));
   });
   document.getElementById('gre-q')?.addEventListener('input', e => { _q = e.target.value; desenhar(); });
 }
 
 // seletor de fatura (janela criada dinamicamente)
 document.addEventListener('click', e => {
+  const fm = document.getElementById('modal-gre-fotos');
+  if (fm && (e.target.closest('[data-gre-fechar-fotos]') || e.target === fm)) { fm.remove(); return; }
+  if (fm && e.target.closest('[data-gre-pdf]')) { abrirPdf(Number(e.target.closest('[data-gre-pdf]').dataset.grePdf)); return; }
   const m = document.getElementById('modal-gre'); if (!m) return;
   if (e.target.closest('[data-gre-fechar]') || e.target === m) { m.remove(); return; }
   const f = e.target.closest('[data-gre-esc]');
