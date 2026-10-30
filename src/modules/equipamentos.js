@@ -307,7 +307,7 @@ function _eqObraRowHtml(eq){
       <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${eqEsc(eq.nome)}</div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${[eqCatBadge(eq.categoria),eqEstadoBadge(eq.estado),eqPropBadge(eq)].join(' ')}</div>
     </div>
-    ${pend?`<span class="eq-pend-dot" title="Pedidos de manutenção pendentes">${pend}</span>`:''}
+    ${pend?`<span title="Pedidos de manutenção pendentes" style="flex:none;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:12px;font-weight:700;white-space:nowrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>${pend} ${pend===1?'pendente':'pendentes'}</span>`:''}
   </div>`;
 }
 
