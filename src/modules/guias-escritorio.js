@@ -51,6 +51,9 @@ function filtrar() {
 }
 
 function desenhar() {
+  const emFalta = _rows.filter(g => !g.fornecedor && !g.numero && !g.data);
+  const hdr = document.getElementById('gre-hdr-act');
+  if (hdr) hdr.innerHTML = emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '';
   const chips = document.getElementById('gre-chips');
   if (chips) {
     const por = _rows.filter(g => !casada(g)), cas = _rows.filter(casada);
@@ -143,6 +146,23 @@ async function abrirPdf(id) {
   }
 }
 
+// Lê (com o Claude, no servidor) fornecedor, nº e data das guias ainda em branco
+async function lerEmFalta(btn) {
+  const lista = _rows.filter(g => !g.fornecedor && !g.numero && !g.data);
+  if (!lista.length) return;
+  btn.disabled = true;
+  let ok = 0;
+  for (let i = 0; i < lista.length; i++) {
+    btn.textContent = `A ler… ${i + 1}/${lista.length}`;
+    try {
+      const r = await sb.functions.invoke('guias-pdf', { body: { guia_id: lista[i].id, so_ler: true } });
+      if (!r.error && r.data?.ok && r.data.lido) ok++;
+    } catch (e) { console.warn('Guias (ler):', e); }
+  }
+  toast(`${ok} de ${lista.length} guias lidas`);
+  await carregar(); desenhar();
+}
+
 async function gerarPdf(id) {
   toast('A gerar o PDF…');
   try {
@@ -225,9 +245,10 @@ function ligar() {
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
+    const t = e.target.closest('[data-gre-ler-todas],[data-gre-tab],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
-    if (t.dataset.greTab) { _tab = t.dataset.greTab; desenhar(); }
+    if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
+    else if (t.dataset.greTab) { _tab = t.dataset.greTab; desenhar(); }
     else if (t.dataset.grePdf) abrirPdf(Number(t.dataset.grePdf));
     else if (t.dataset.greGerar) gerarPdf(Number(t.dataset.greGerar));
     else if (t.dataset.greCasar) abrirSeletor(Number(t.dataset.greCasar));
