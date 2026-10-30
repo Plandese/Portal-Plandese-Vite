@@ -191,6 +191,11 @@ export async function dropboxUploadTeam(blob, path){
   return (await resp.json()).path_display;
 }
 
+export async function dropboxMoveTeam(fromPath, toPath){
+  const data = await _rpc('files/move_v2', { from_path: fromPath, to_path: toPath, autorename: true });
+  return data.metadata?.path_display;
+}
+
 export async function dropboxDeleteTeam(path){
   await _rpc('files/delete_v2', { path });
 }

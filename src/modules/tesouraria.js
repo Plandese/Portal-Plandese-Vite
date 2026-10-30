@@ -7,7 +7,7 @@
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
-import { abrirFaturaPorDbId, faturaSemFicheiro } from './faturas.js';
+import { abrirFaturaPorDbId, faturaSemFicheiro, moverFaturaLancada } from './faturas.js';
 import { dropboxDownload } from './dropbox.js';
 
 let _rows = [];
@@ -360,6 +360,11 @@ async function alternarCentralGest(id) {
   if (error) { console.warn('CentralGest:', error); toast('Não foi possível guardar a marca do CentralGest'); return; }
   Object.assign(r, upd);
   desenhar();
+  // o ficheiro acompanha o estado: lançada → pasta «Lançadas/<fornecedor>»; desmarcada → volta às aprovadas
+  try {
+    const novo = await moverFaturaLancada(id, nova);
+    if (novo) { r.dropbox_path = novo; toast(nova ? 'Fatura movida para a pasta das lançadas ✓' : 'Fatura devolvida à pasta das aprovadas ✓'); }
+  } catch (e) { console.warn('CentralGest (mover ficheiro):', e); toast('Marcada, mas não foi possível mover o ficheiro na Dropbox'); }
 }
 
 // Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual

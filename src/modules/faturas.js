@@ -6,7 +6,7 @@ import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, flashAlert, closeModal } from './navigation.js';
 import { sb } from '../supabase.js';
 import { normalizarLinhas, associarAuto, perguntarArtigos, resumoArtigos } from './faturas-artigos.js';
-import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxLinkTeam } from './dropbox.js';
+import { dropboxUpload, dropboxFatPath, dropboxIsConnected, dropboxGetSharedLink, dropboxMoveFile, dropboxListFolder, dropboxDownload, dropboxUploadTeam, dropboxDeleteTeam, dropboxMoveTeam, dropboxLinkTeam } from './dropbox.js';
 
 let FATURAS = [];
 let FAT_QUEUE = [];
@@ -1324,6 +1324,28 @@ async function _pastaDoFornecedor(f){
   return _pastaFornecedor(f.fornecedor);
 }
 const _pastaAprovadas = () => _lim(_pastas?.aprovadas || localStorage.getItem('fat_dbx_aprovadas')) || _pastaPendentes().replace(/\/[^/]+$/,'') + '/2-Aprovadas';
+// Pasta das faturas já lançadas no CentralGest (ao lado da das aprovadas), com uma subpasta por fornecedor
+const _pastaLancadas = () => _lim(_pastas?.lancadas) || _pastaAprovadas().replace(/\/[^/]+$/,'') + '/3-Lançadas';
+const _sob = (p, raiz) => _norm(p).startsWith(_norm(raiz) + '/');
+// Fatura lançada → ficheiro vai para «Lançadas/<fornecedor>/»; desmarcada → volta a «Aprovadas/<fornecedor>/».
+// Devolve o novo caminho (ou null se não houve movimento).
+async function moverFaturaLancada(dbId, lancada){
+  await carregarPastasFaturas();
+  let f = FATURAS.find(x => x._dbId === dbId);
+  if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
+  const atual = f?.dropboxPath;
+  if(!atual) return null;
+  const de   = lancada ? _pastaAprovadas() : _pastaLancadas();
+  const para = lancada ? _pastaLancadas()  : _pastaAprovadas();
+  if(!_sob(atual, de)) return null;
+  const novo = await dropboxMoveTeam(atual, `${para}/${await _pastaDoFornecedor(f)}/${atual.split('/').pop()}`);
+  const link = await dropboxLinkTeam(novo);
+  _docCache.delete(atual);
+  f.dropboxPath = novo; f.ficheiroUrl = link || f.ficheiroUrl || '';
+  const { error } = await sb.from('faturas').update({ dropbox_path: f.dropboxPath, ficheiro_url: f.ficheiroUrl || null }).eq('id', dbId);
+  if(error) throw error;
+  return novo;
+}
 
 // Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
 let _aprovadoresFat = [];
@@ -1355,7 +1377,7 @@ async function configurarPastasFaturas(){
   if(p == null) return;
   const a = prompt('PASTA GERAL DE FATURAS APROVADAS (destino das faturas carimbadas):', _pastaAprovadas());
   if(a == null) return;
-  _pastas = { pendentes: _lim(p), aprovadas: _lim(a) };
+  _pastas = { ...(_pastas || {}), pendentes: _lim(p), aprovadas: _lim(a) };
   try{
     const { error } = await sb.from('app_config').upsert({ key: FAT_PASTAS_KEY, value: _pastas, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     if(error) throw error;
@@ -2059,5 +2081,5 @@ export {
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
   importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas, abrirArtigosFatura,
-  carregarAprovadoresFaturas, ehAprovadorFaturas,
+  carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada,
 };
