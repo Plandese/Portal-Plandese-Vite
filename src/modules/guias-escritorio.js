@@ -24,7 +24,7 @@ const casada = g => !!g.fatura_id;
 
 async function carregar() {
   const { data, error } = await sb.from('guias_remessa')
-    .select('id,numero,fornecedor,obra_nome,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
+    .select('id,numero,data,fornecedor,obra_nome,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
     .order('criado_em', { ascending: false }).limit(1000);
   if (error) throw error;
   _rows = data || [];
@@ -43,7 +43,7 @@ function filtrar() {
     if (_tab === 'casadas' && !casada(g)) return false;
     if (q) {
       const f = _fat.get(g.fatura_id);
-      const txt = `${g.numero || ''} ${g.obra_nome || ''} ${nomeDe(g.criado_por)} ${f?.numero || ''} ${f?.fornecedor || ''}`.toLowerCase();
+      const txt = `${g.numero || ''} ${g.data ? fmtPT(g.data) : ''} ${g.obra_nome || ''} ${nomeDe(g.criado_por)} ${f?.numero || ''} ${f?.fornecedor || ''}`.toLowerCase();
       if (!txt.includes(q)) return false;
     }
     return true;
@@ -61,7 +61,7 @@ function desenhar() {
   const lista = filtrar();
   if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Sem guias para mostrar.</div>'; return; }
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Enviada em</th><th>Enviada por</th><th>Obra</th><th>Págs.</th><th>Nº da guia</th><th>Fatura</th><th></th></tr></thead>
+    <thead><tr><th>Data da guia</th><th>Enviada por</th><th>Obra</th><th>Págs.</th><th>Nº da guia</th><th>Fatura</th><th></th></tr></thead>
     <tbody>${lista.map(g => {
       const f = _fat.get(g.fatura_id);
       const pdf = g.pdf_path
@@ -74,7 +74,7 @@ function desenhar() {
         ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-desf="${g.id}">Desfazer</button>`
         : `<button type="button" class="btn btn-sm" data-gre-casar="${g.id}">Casar com fatura</button>`;
       return `<tr data-gre-ver="${g.id}" style="cursor:pointer" title="Clique para ver as fotografias">
-        <td>${esc(dataHora(g.criado_em))}</td>
+        <td>${g.data ? esc(fmtPT(g.data)) : '<span class="mut" title="Clique na guia para indicar a data de receção">Sem data</span>'}</td>
         <td>${esc(nomeDe(g.criado_por))}</td>
         <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
         <td>${g.paginas || 1}</td>
@@ -86,6 +86,16 @@ function desenhar() {
 }
 
 // ── Fotografias ──────────────────────────────────────────────────
+async function guardarDados(id) {
+  const m = document.getElementById('modal-gre-fotos'); if (!m) return;
+  const upd = { data: m.querySelector('#gre-data').value || null, numero: m.querySelector('#gre-numf').value.trim() || null };
+  const { error } = await sb.from('guias_remessa').update(upd).eq('id', id);
+  if (error) { toast('Não foi possível guardar: ' + (error.message || error)); return; }
+  Object.assign(_rows.find(x => x.id === id) || {}, upd);
+  desenhar();
+  toast('Dados da guia guardados ✓');
+}
+
 async function verFotos(id) {
   const g = _rows.find(x => x.id === id); if (!g) return;
   const caminhos = (Array.isArray(g.fotos) && g.fotos.length ? g.fotos : [g.foto_path]).filter(Boolean);
@@ -95,6 +105,11 @@ async function verFotos(id) {
   el.innerHTML = `<div class="modal" style="width:min(760px,96vw);max-height:94vh;display:flex;flex-direction:column">
     <div class="modal-title">Guia${g.numero ? ' ' + esc(g.numero) : ''}</div>
     <div class="modal-sub">Enviada por ${esc(nomeDe(g.criado_por))} em ${esc(dataHora(g.criado_em))}${g.obra_nome ? ' · ' + esc(g.obra_nome) : ''}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end">
+      <label style="flex:1;min-width:170px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Data da guia (receção do material)<input id="gre-data" type="date" value="${esc(g.data || '')}" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
+      <label style="flex:1;min-width:170px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Nº da guia<input id="gre-numf" value="${esc(g.numero || '')}" placeholder="Ex.: GR 2026/1234" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
+      <button class="btn btn-primary" data-gre-guardar="${g.id}" style="height:46px">Guardar</button>
+    </div>
     <div id="gre-fotos" style="flex:1;min-height:0;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:12px"><div style="padding:14px;color:#6a7284">A carregar…</div></div>
     <div class="modal-footer">${g.pdf_path ? '<button class="btn btn-secondary" data-gre-pdf="' + g.id + '">Abrir PDF</button>' : ''}<button class="btn btn-secondary" data-gre-fechar-fotos>Fechar</button></div>
   </div>`;
@@ -169,6 +184,8 @@ async function abrirSeletor(id) {
     <div class="modal-sub">Guia enviada por ${esc(nomeDe(g.criado_por))} em ${esc(dataHora(g.criado_em))}${g.obra_nome ? ' · ' + esc(g.obra_nome) : ''}</div>
     <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:12px 0 6px">Nº da guia (opcional)</label>
     <input id="gre-num" value="${esc(g.numero || '')}" placeholder="Ex.: GR 2026/1234" style="width:100%;height:46px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box">
+    <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:14px 0 6px">Data da guia (receção do material)</label>
+    <input id="gre-dt" type="date" value="${esc(g.data || '')}" style="width:100%;height:46px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box">
     <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:14px 0 6px">Fatura</label>
     <input id="gre-fq" placeholder="Pesquisar fornecedor ou nº da fatura…" style="width:100%;height:46px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box">
     <div id="gre-flista" style="margin-top:10px;max-height:300px;overflow-y:auto;border:1px solid #dde2ea;border-radius:14px"><div style="padding:14px;color:#6a7284">A carregar…</div></div>
@@ -184,6 +201,8 @@ async function casar(guiaId, faturaId) {
   const numero = modal?.querySelector('#gre-num')?.value.trim() || null;
   const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() };
   if (numero) upd.numero = numero;
+  const dt = modal?.querySelector('#gre-dt')?.value;
+  if (dt) upd.data = dt;
   const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
   if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
   modal?.remove();
@@ -219,6 +238,8 @@ function ligar() {
 // seletor de fatura (janela criada dinamicamente)
 document.addEventListener('click', e => {
   const fm = document.getElementById('modal-gre-fotos');
+  const gd = fm && e.target.closest('[data-gre-guardar]');
+  if (gd) { guardarDados(Number(gd.dataset.greGuardar)); return; }
   if (fm && (e.target.closest('[data-gre-fechar-fotos]') || e.target === fm)) { fm.remove(); return; }
   if (fm && e.target.closest('[data-gre-pdf]')) { abrirPdf(Number(e.target.closest('[data-gre-pdf]').dataset.grePdf)); return; }
   const m = document.getElementById('modal-gre'); if (!m) return;
