@@ -119,7 +119,7 @@ async function processQueueItem(item){
     await registarFaturaLida(fat, dbxPath);
     item.status='done'; item.progress=100; renderQueue();
     showToast(`Fatura ${fat.numero||''} de ${fat.fornecedor||'fornecedor'} lida e pendente de aprovação`);
-    // Os artigos só se associam depois de o diretor aprovar a fatura (em Faturas Lançadas)
+    // Os artigos só se associam depois de o diretor aprovar a fatura
   } catch(e){
     console.error('Erro processamento fatura:', e);
     item.status='error'; item.error = e.message || 'Erro ao processar';

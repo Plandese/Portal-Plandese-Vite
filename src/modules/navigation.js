@@ -117,7 +117,6 @@ export async function refreshPortal(){
         'utilizadores':    ()=>R.renderUsers?.(),
         'faturas':         ()=>R.renderFaturas?.(),
         'faturas-aprovar': ()=>R.renderFaturasAprovar?.(),
-        'faturas-lancadas': ()=>R.renderFaturasLancadas?.(),
         'tesouraria':      ()=>R.renderTesouraria?.(),
         'guias':           ()=>R.renderGuiasEscritorio?.(),
         'compras':         ()=>R.renderCompras?.(),
