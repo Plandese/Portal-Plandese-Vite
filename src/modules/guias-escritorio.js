@@ -102,6 +102,7 @@ let _tab = 'por_casar';    // por_casar | casadas | todas | porfatura
 let _fest = 'todas';       // filtro do separador «Por fatura»: todas | incompletas | divergentes | completas
 let _q = '';
 let _ligado = false;
+let _todas = [];          // todas as faturas do portal (separador «Faturas»)
 let _faturas = null;       // lista de faturas para escolher (carregada ao abrir o seletor)
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -126,6 +127,8 @@ async function carregar() {
     sb.from('faturas').select(cols).not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
+  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo').order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
 
@@ -183,6 +186,50 @@ function desenharPorFatura(box) {
     <div class="mut" style="font-size:12.5px;margin-bottom:10px">Faturas que referem guias ou já têm guias associadas. A percentagem é o valor da fatura já coberto pelas quantidades recebidas (tolerância de 2%).</div>${corpo}`;
 }
 
+const estadoFat = st => st === 'aprovada' || st === 'paga' ? 'ok' : st === 'rejeitada' ? 'bad' : 'mute';
+const rotuloEstado = st => st ? String(st).replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) : '—';
+
+// Separador «Faturas»: todas as faturas do portal; ao clicar mostra os artigos lidos
+function desenharTodasFaturas(box) {
+  const q = _q.trim().toLowerCase();
+  const lista = _todas.filter(f => !q || `${f.fornecedor || ''} ${f.numero || ''} ${f.nif || ''} ${f.centro_custo || ''}`.toLowerCase().includes(q));
+  box.innerHTML = lista.length ? `<div class="tbl-wrap"><table class="cmp-t">
+    <thead><tr><th>Data</th><th>Fatura</th><th>Fornecedor</th><th class="r">Valor</th><th>Estado</th><th class="r">Artigos</th><th class="r">Guias</th></tr></thead>
+    <tbody>${lista.map(f => {
+      const na = (f.linhas || []).length, ng = (Array.isArray(f.guias_ref) ? f.guias_ref : []).length;
+      return `<tr data-gre-fat="${f.id}" style="cursor:pointer" title="Clique para ver os artigos">
+        <td>${f.data ? esc(fmtPT(f.data)) : '<span class="mut">—</span>'}</td>
+        <td><b>${esc(f.numero || '—')}</b></td><td>${esc(f.fornecedor || '—')}</td><td class="r">${eur(Number(f.total))}</td>
+        <td><span class="dd-pill ${estadoFat(f.status)}">${esc(rotuloEstado(f.status))}</span></td>
+        <td class="r">${na ? na : '<span class="mut">—</span>'}</td><td class="r">${ng ? ng : '<span class="mut">—</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
+}
+
+function verFatura(id) {
+  const f = _todas.find(x => x.id === id); if (!f) return;
+  const linhas = f.linhas || [], refs = Array.isArray(f.guias_ref) ? f.guias_ref : [];
+  document.getElementById('modal-gre-verif')?.remove();
+  const el = document.createElement('div');
+  el.className = 'modal-bg open'; el.id = 'modal-gre-verif';
+  const tabela = linhas.length ? `<div style="margin-top:10px;max-height:52vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
+    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead>
+    <tbody>${linhas.map(l => `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}</tbody></table></div>`
+    : '<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Esta fatura não tem artigos lidos.</div>';
+  el.innerHTML = `<div class="modal" style="width:min(820px,96vw);max-height:92vh;overflow-y:auto">
+    <div class="modal-title">Fatura ${esc(f.numero || '—')}</div>
+    <div class="modal-sub">${esc(f.fornecedor || '')}${f.nif ? ' · NIF ' + esc(f.nif) : ''}${f.data ? ' · ' + esc(fmtPT(f.data)) : ''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <span class="dd-pill ${estadoFat(f.status)}">${esc(rotuloEstado(f.status))}</span>
+      <span class="dd-pill mute">${eur(Number(f.total))}</span>
+      ${f.centro_custo ? `<span class="dd-pill mute">${esc(f.centro_custo)}</span>` : ''}
+      <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span>
+      ${refs.length ? `<span class="dd-pill mute">Guias: ${esc(refs.join(', '))}</span>` : ''}</div>
+    ${tabela}
+    <div class="modal-footer"><button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+  </div>`;
+  document.body.appendChild(el);
+}
+
 function pillVerif(f) {
   const v = verificar(f), [t, c] = VERIF_PILL[v.estado] || VERIF_PILL.sem_dados;
   const n = v.estado === 'divergente' ? ` (${v.div.length})` : v.estado === 'faltam' ? ` (${v.faltam.length})` : '';
@@ -224,11 +271,12 @@ function desenhar() {
   const chips = document.getElementById('gre-chips');
   if (chips) {
     const por = _rows.filter(g => !casada(g)), cas = _rows.filter(casada);
-    chips.innerHTML = [['por_casar', 'Por casar', por], ['casadas', 'Casadas', cas], ['todas', 'Todas', _rows], ['porfatura', 'Por fatura', [..._fat.values()]]]
+    chips.innerHTML = [['por_casar', 'Por casar', por], ['casadas', 'Casadas', cas], ['todas', 'Todas', _rows], ['porfatura', 'Por fatura', [..._fat.values()]], ['faturas', 'Faturas', _todas]]
       .map(([k, l, a]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-gre-tab="${k}">${l}<b>${a.length}</b></button>`).join('');
   }
   const box = document.getElementById('gre-mapa'); if (!box) return;
   if (_tab === 'porfatura') return desenharPorFatura(box);
+  if (_tab === 'faturas') return desenharTodasFaturas(box);
   const lista = filtrar();
   if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Sem guias para mostrar.</div>'; return; }
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t">
@@ -469,9 +517,10 @@ function ligar() {
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-auto],[data-gre-verif],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
+    const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-verif],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
     if (t.dataset.greAuto !== undefined) casarAutomatico(t);
+    else if (t.dataset.greFat) verFatura(Number(t.dataset.greFat));
     else if (t.dataset.greVerif) verDetalhe(Number(t.dataset.greVerif));
     else if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
     else if (t.dataset.greFest) { _fest = t.dataset.greFest; desenhar(); }
