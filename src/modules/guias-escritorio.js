@@ -267,6 +267,21 @@ async function guardarDados(id) {
   toast('Dados da guia guardados ✓');
 }
 
+// Artigos, quantidades e unidades lidos na guia
+function artigosGuia(g) {
+  const linhas = g.linhas || [];
+  const f = casada(g) ? _fat.get(g.fatura_id) : null;
+  const info = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <span class="dd-pill ${f ? 'ok' : 'mute'}">${f ? 'Fatura ' + esc(f.numero || '—') : 'Por casar'}</span>
+    ${g.paginas ? `<span class="dd-pill mute">${g.paginas} pág.</span>` : ''}
+    ${g.nif ? `<span class="dd-pill mute">NIF ${esc(g.nif)}</span>` : ''}
+    <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span></div>`;
+  if (!linhas.length) return info + '<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Os artigos desta guia ainda não foram lidos. Use «Gerar PDF» ou «Ler dados em falta» para os ler.</div>';
+  return info + `<div style="margin-top:10px;max-height:34vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
+    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th></tr></thead>
+    <tbody>${linhas.map(l => `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${fmtQtd(l.qtd)}</td><td>${esc(l.un || '—')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
 async function verFotos(id) {
   const g = _rows.find(x => x.id === id); if (!g) return;
   const caminhos = (Array.isArray(g.fotos) && g.fotos.length ? g.fotos : [g.foto_path]).filter(Boolean);
@@ -282,6 +297,7 @@ async function verFotos(id) {
       <label style="flex:1;min-width:170px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678">Nº da guia<input id="gre-numf" value="${esc(g.numero || '')}" placeholder="Ex.: GR 2026/1234" style="display:block;width:100%;height:46px;margin-top:6px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box"></label>
       <button class="btn btn-primary" data-gre-guardar="${g.id}" style="height:46px">Guardar</button>
     </div>
+    ${artigosGuia(g)}
     <div id="gre-fotos" style="flex:1;min-height:0;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:12px"><div style="padding:14px;color:#6a7284">A carregar…</div></div>
     <div class="modal-footer">${g.pdf_path ? '<button class="btn btn-secondary" data-gre-pdf="' + g.id + '">Abrir PDF</button>' : ''}<button class="btn btn-secondary" data-gre-fechar-fotos>Fechar</button></div>
   </div>`;
