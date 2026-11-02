@@ -75,6 +75,31 @@ function percentagem(linhasFatura, linhasGuias) {
   });
   return peso ? Math.round(soma / peso * 100) : null;
 }
+// Para cada linha da fatura: quanto já chegou nas guias e a percentagem (linhas repetidas do mesmo material partilham o total)
+function coberturaPorArtigo(linhasFatura, linhasGuias) {
+  const G = agrupar(linhasGuias), usadas = new Set(), grupos = [];
+  (linhasFatura || []).forEach((l, i) => {
+    const ref = normRef(l.ref_forn ?? l.ref_fornecedor), desc = l.desc ?? l.descricao ?? '';
+    const g = grupos.find(x => (ref && x.ref && x.ref === ref) || (!ref && !x.ref && normDesc(x.desc) === normDesc(desc)));
+    const qtd = Number(l.qtd) || 0;
+    if (g) { g.qtd += qtd; g.idx.push(i); } else grupos.push({ ref, desc, qtd, idx: [i] });
+  });
+  const out = new Array((linhasFatura || []).length).fill(null);
+  grupos.forEach(f => {
+    let j = G.findIndex((g, k) => !usadas.has(k) && f.ref && g.ref && f.ref === g.ref);
+    if (j < 0) {
+      let melhor = 0;
+      G.forEach((g, k) => { if (usadas.has(k)) return; const sc = similar(f.desc, g.desc); if (sc > melhor) { melhor = sc; j = k; } });
+      if (melhor < 0.6) j = -1;
+    }
+    let rec = 0;
+    if (j >= 0) { usadas.add(j); rec = G[j].qtd; }
+    let pct = f.qtd > 0 ? Math.min(rec / f.qtd, 1) : (rec > 0 ? 1 : 0);
+    if (pct >= 1 - TOLERANCIA) pct = 1;
+    f.idx.forEach(i => { out[i] = { rec, pct: Math.round(pct * 100), un: j >= 0 ? G[j].un : '', excesso: f.qtd > 0 && rec > f.qtd * (1 + TOLERANCIA) }; });
+  });
+  return out;
+}
 const fmtQtd = n => Number(n).toLocaleString('pt-PT', { maximumFractionDigits: 3 });
 
 // Verificação de uma fatura com todas as guias que lhe estão associadas
@@ -208,14 +233,21 @@ function desenharTodasFaturas(box) {
 function verFatura(id) {
   const f = _todas.find(x => x.id === id); if (!f) return;
   const linhas = f.linhas || [], refs = Array.isArray(f.guias_ref) ? f.guias_ref : [];
+  const guias = _rows.filter(g => g.fatura_id === f.id), lidas = guias.filter(g => (g.linhas || []).length);
+  const cob = lidas.length ? coberturaPorArtigo(linhas, lidas.flatMap(g => g.linhas)) : null;
+  const pctTotal = lidas.length ? percentagem(linhas, lidas.flatMap(g => g.linhas)) : null;
   document.getElementById('modal-gre-verif')?.remove();
   const el = document.createElement('div');
   el.className = 'modal-bg open'; el.id = 'modal-gre-verif';
   const tabela = linhas.length ? `<div style="margin-top:10px;max-height:52vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
-    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead>
-    <tbody>${linhas.map(l => `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}</tbody></table></div>`
+    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th><th class="r">Preço un.</th><th class="r">Total</th><th>Recebido nas guias</th></tr></thead>
+    <tbody>${linhas.map((l, i) => {
+      const c = cob?.[i];
+      const rec = !c ? '<span class="mut">—</span>' : `<div style="display:flex;align-items:center;gap:8px;white-space:nowrap">${barraPct(c.pct, c.pct >= 100 ? '#1f8a4c' : c.pct > 0 ? '#c77700' : '#b3261e')}<span class="mut" style="font-size:12.5px">${fmtQtd(c.rec)} ${esc(l.un || c.un || '')}${c.excesso ? ' <b style="color:#b3261e">a mais</b>' : ''}</span></div>`;
+      return `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td><td>${rec}</td></tr>`;
+    }).join('')}</tbody></table></div>`
     : '<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Esta fatura não tem artigos lidos.</div>';
-  el.innerHTML = `<div class="modal" style="width:min(820px,96vw);max-height:92vh;overflow-y:auto">
+  el.innerHTML = `<div class="modal" style="width:min(980px,96vw);max-height:92vh;overflow-y:auto">
     <div class="modal-title">Fatura ${esc(f.numero || '—')}</div>
     <div class="modal-sub">${esc(f.fornecedor || '')}${f.nif ? ' · NIF ' + esc(f.nif) : ''}${f.data ? ' · ' + esc(fmtPT(f.data)) : ''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -224,6 +256,7 @@ function verFatura(id) {
       ${f.centro_custo ? `<span class="dd-pill mute">${esc(f.centro_custo)}</span>` : ''}
       <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span>
       ${refs.length ? `<span class="dd-pill mute">Guias: ${esc(refs.join(', '))}</span>` : ''}</div>
+    ${linhas.length ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:13px">Conferência com as guias</b>${pctTotal != null ? barraPct(pctTotal, pctTotal >= 100 ? '#1f8a4c' : '#c77700') : ''}<span class="mut" style="font-size:12.5px">${!guias.length ? 'Ainda não há guias casadas com esta fatura.' : !lidas.length ? 'As guias casadas ainda não têm os artigos lidos.' : lidas.length < guias.length ? 'Há guias casadas por ler.' : guias.length + ' guia' + (guias.length === 1 ? '' : 's') + ' casada' + (guias.length === 1 ? '' : 's')}</span></div>` : ''}
     ${tabela}
     <div class="modal-footer"><button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
   </div>`;
