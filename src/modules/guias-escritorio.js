@@ -277,9 +277,29 @@ function artigosGuia(g) {
     ${g.nif ? `<span class="dd-pill mute">NIF ${esc(g.nif)}</span>` : ''}
     <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span></div>`;
   if (!linhas.length) return info + '<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Os artigos desta guia ainda não foram lidos. Use «Gerar PDF» ou «Ler dados em falta» para os ler.</div>';
-  return info + `<div style="margin-top:10px;max-height:34vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
+  return info + `<div style="margin-top:10px;max-height:48vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
     <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th></tr></thead>
     <tbody>${linhas.map(l => `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${fmtQtd(l.qtd)}</td><td>${esc(l.un || '—')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+// Abre uma página nova só com a(s) imagem(ns) da guia
+async function abrirFoto(id) {
+  const g = _rows.find(x => x.id === id); if (!g) return;
+  const caminhos = (Array.isArray(g.fotos) && g.fotos.length ? g.fotos : [g.foto_path]).filter(Boolean);
+  const w = window.open('', '_blank');   // abre já, para o bloqueador de popups não impedir
+  try {
+    const { data, error } = await sb.storage.from('guias-remessa').createSignedUrls(caminhos, 3600);
+    if (error) throw error;
+    const urls = (data || []).filter(d => d.signedUrl).map(d => d.signedUrl);
+    if (!urls.length) throw new Error('sem fotografias');
+    if (!w) { window.open(urls[0], '_blank'); return; }
+    w.document.write('<!doctype html><meta charset="utf-8"><title>Guia ' + esc(g.numero || '') + '</title><body style="margin:0;background:#1b2130;display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px">' + urls.map((u, k) => '<img src="' + u + '" alt="Página ' + (k + 1) + '" style="max-width:100%;height:auto;display:block">').join('') + '</body>');
+    w.document.close();
+  } catch (e) {
+    w?.close();
+    console.warn('Guias (fotos):', e);
+    toast('Não foi possível abrir a fotografia.');
+  }
 }
 
 async function verFotos(id) {
@@ -298,21 +318,9 @@ async function verFotos(id) {
       <button class="btn btn-primary" data-gre-guardar="${g.id}" style="height:46px">Guardar</button>
     </div>
     ${artigosGuia(g)}
-    <div id="gre-fotos" style="flex:1;min-height:0;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:12px"><div style="padding:14px;color:#6a7284">A carregar…</div></div>
-    <div class="modal-footer">${g.pdf_path ? '<button class="btn btn-secondary" data-gre-pdf="' + g.id + '">Abrir PDF</button>' : ''}<button class="btn btn-secondary" data-gre-fechar-fotos>Fechar</button></div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-gre-foto="${g.id}">Ver fotografia${caminhos.length === 1 ? '' : 's'}</button>${g.pdf_path ? '<button class="btn btn-secondary" data-gre-pdf="' + g.id + '">Abrir PDF</button>' : ''}<button class="btn btn-secondary" data-gre-fechar-fotos>Fechar</button></div>
   </div>`;
   document.body.appendChild(el);
-  const box = el.querySelector('#gre-fotos');
-  try {
-    const { data, error } = await sb.storage.from('guias-remessa').createSignedUrls(caminhos, 3600);
-    if (error) throw error;
-    const urls = (data || []).filter(d => d.signedUrl);
-    if (!urls.length) throw new Error('sem fotografias');
-    box.innerHTML = urls.map((d, i) => `<a href="${d.signedUrl}" target="_blank" rel="noopener" title="Abrir em tamanho real"><img src="${d.signedUrl}" alt="Página ${i + 1}" style="width:100%;border:1px solid #dde2ea;border-radius:14px;display:block"></a>`).join('');
-  } catch (e) {
-    console.warn('Guias (fotos):', e);
-    box.innerHTML = '<div style="padding:14px;color:#b3261e">Não foi possível carregar as fotografias.</div>';
-  }
 }
 
 // ── PDF ──────────────────────────────────────────────────────────
@@ -485,6 +493,7 @@ document.addEventListener('click', e => {
   const gd = fm && e.target.closest('[data-gre-guardar]');
   if (gd) { guardarDados(Number(gd.dataset.greGuardar)); return; }
   if (fm && (e.target.closest('[data-gre-fechar-fotos]') || e.target === fm)) { fm.remove(); return; }
+  if (fm && e.target.closest('[data-gre-foto]')) { abrirFoto(Number(e.target.closest('[data-gre-foto]').dataset.greFoto)); return; }
   if (fm && e.target.closest('[data-gre-pdf]')) { abrirPdf(Number(e.target.closest('[data-gre-pdf]').dataset.grePdf)); return; }
   const m = document.getElementById('modal-gre'); if (!m) return;
   if (e.target.closest('[data-gre-fechar]') || e.target === m) { m.remove(); return; }
