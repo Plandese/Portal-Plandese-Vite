@@ -17,6 +17,7 @@ let _carregado = false;
 let _conf = new Map();   // conferência das guias por fatura (id → { pct, estado }); só quem tem acesso às guias a vê
 let _podePropor = false;
 let _proponentes = [];   // usernames (lista em app_config.tesouraria_proponentes)
+let _estCol = '';   // filtro da coluna Estado: paga | proposta | por_propor | dd | mb | sem_ficheiro
 const _meses = { data: '', data_pag: '' };   // filtro por mês (YYYY-MM) da emissão / do vencimento
 const _sel = new Set();  // ids selecionados
 
@@ -76,12 +77,37 @@ function filtrar() {
     if (_estado === 'pagas' && r.status !== 'paga') return false;
     if (_estado === 'lancadas' && !r.centralgest_lancada) return false;
     if (_estado === 'nao_lancadas' && r.centralgest_lancada) return false;
+    if (_estCol && !EST_COL.find(([k]) => k === _estCol)[2](r)) return false;
     if (_meses.data && (r.data || '').slice(0, 7) !== _meses.data) return false;
     if (_meses.data_pag && (r.data_pag || '').slice(0, 7) !== _meses.data_pag) return false;
     if (cc && (r.centro_custo || '') !== (cc === '__sem__' ? '' : cc)) return false;
     if (q && !`${r.fornecedor || ''} ${r.numero || ''} ${r.centro_custo || ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+// filtro do cabeçalho «Estado»
+const EST_COL = [
+  ['paga', 'Paga', r => r.status === 'paga'],
+  ['proposta', 'Proposta a pagamento', r => proposta(r)],
+  ['por_propor', 'Por propor', r => porPagar(r) && !r.proposta_por],
+  ['dd', 'Débito direto', r => r.tipo_pagamento === 'debito_direto'],
+  ['mb', 'Ref. MB', r => r.tipo_pagamento === 'referencia_mb'],
+  ['sem_ficheiro', 'Sem ficheiro', r => faturaSemFicheiro(r.id)],
+];
+const thEstado = () => `<th data-tes-est style="cursor:pointer;user-select:none;white-space:nowrap${_estCol ? ';color:var(--d-brand,#173f9f)' : ''}" title="Filtrar por estado">Estado${_estCol ? ' · ' + esc(EST_COL.find(([k]) => k === _estCol)[1]) : ''} ▾</th>`;
+function fecharEstPop() { document.getElementById('tes-est-pop')?.remove(); }
+function abrirEstPop(th) {
+  const jaAberto = !!document.getElementById('tes-est-pop');
+  fecharEstPop();
+  if (jaAberto) return;
+  const item = (v, txt, n) => `<button type="button" data-tes-est-v="${esc(v)}" style="display:flex;justify-content:space-between;gap:18px;width:100%;padding:9px 14px;border:0;background:${_estCol === v ? '#e5eeff' : 'transparent'};color:#1b2130;font:600 13px inherit;font-family:inherit;text-align:left;cursor:pointer;border-radius:10px"><span>${esc(txt)}</span><span style="color:#6a7284;font-weight:500">${n}</span></button>`;
+  const pop = document.createElement('div');
+  pop.id = 'tes-est-pop';
+  const r = th.getBoundingClientRect();
+  pop.style.cssText = `position:fixed;z-index:9999;top:${r.bottom + 6}px;left:${Math.max(8, Math.min(r.left, window.innerWidth - 260))}px;width:246px;padding:6px;background:#fff;border:1px solid #dde2ea;border-radius:16px;box-shadow:0 16px 40px rgba(10,28,90,.18)`;
+  pop.innerHTML = item('', 'Todos os estados', _rows.length) + EST_COL.map(([k, l, f]) => item(k, l, _rows.filter(f).length)).join('');
+  document.body.appendChild(pop);
 }
 
 const nomeMes = ym => { const [a, m] = ym.split('-'); const t = new Date(Number(a), Number(m) - 1, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
@@ -156,7 +182,7 @@ function desenhar() {
 
   const lista = filtrar();
   if (!lista.length) {
-    box.innerHTML = '<div class="d-empty" style="border:0">Sem faturas para mostrar.' + ((_meses.data || _meses.data_pag) ? ' <button type="button" class="btn btn-secondary btn-sm" data-tes-act="limpar-meses">Limpar filtro de meses</button>' : '') + '</div>';
+    box.innerHTML = '<div class="d-empty" style="border:0">Sem faturas para mostrar.' + ((_meses.data || _meses.data_pag || _estCol) ? ' <button type="button" class="btn btn-secondary btn-sm" data-tes-act="limpar-meses">Limpar filtros</button>' : '') + '</div>';
     desenharBarra();
     return;
   }
@@ -205,7 +231,7 @@ function desenhar() {
 
   const colsAntes = podeSel ? 4 : 3;
   box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t tes-t">
-    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th>${thMes('data', 'Emissão')}${thMes('data_pag', 'Vencimento')}<th>Estado</th><th>CentralGest</th><th>Guias</th></tr></thead>
+    <thead><tr>${podeSel ? '<th class="tes-ck"></th>' : ''}<th>Fornecedor</th><th>Centro de custo</th><th>Fatura</th><th class="r">Valor com IVA</th>${thMes('data', 'Emissão')}${thMes('data_pag', 'Vencimento')}${thEstado()}<th>CentralGest</th><th>Guias</th></tr></thead>
     ${corpo}
     <tfoot><tr><td colspan="${colsAntes}"><b>Total (${lista.length} faturas)</b>${totalProp ? ` · <span class="tes-prop-tot">Propostas: ${eur(totalProp)}</span>` : ''}</td><td class="r"><b>${eur(total)}</b></td><td colspan="5"></td></tr></tfoot>
   </table></div>`;
@@ -483,11 +509,16 @@ document.addEventListener('click', e => {
     else if (act === 'exportar') exportar(_rows.filter(r => _sel.has(r.id)), 'faturas_selecionadas');
     else if (act === 'exportar-prop') exportar(_rows, 'tesouraria');
     else if (act === 'sync-cg') { a.disabled = true; sincronizarLancadas().finally(() => { a.disabled = false; }); }
-    else if (act === 'limpar-meses') { _meses.data = ''; _meses.data_pag = ''; desenhar(); }
+    else if (act === 'limpar-meses') { _meses.data = ''; _meses.data_pag = ''; _estCol = ''; desenhar(); }
     else if (act === 'zip') descarregarZip(a);
     else if (act === 'quem') abrirQuemPropoe();
     return;
   }
+
+  const ev = e.target.closest('[data-tes-est-v]');
+  if (ev) { _estCol = ev.dataset.tesEstV; fecharEstPop(); desenhar(); return; }
+  const the = e.target.closest('th[data-tes-est]');
+  if (the) { abrirEstPop(the); return; }
 
   const mv = e.target.closest('[data-tes-mes-v]');
   if (mv) { _meses[document.getElementById('tes-mes-pop').dataset.campo] = mv.dataset.tesMesV; fecharMesPop(); desenhar(); return; }
@@ -525,4 +556,4 @@ document.addEventListener('input', e => { if (e.target.id === 'tes-q') desenhar(
 document.addEventListener('change', e => { if (e.target.id === 'tes-cc') desenhar(); });
 
 // fecha o seletor de mês ao clicar fora
-document.addEventListener('mousedown', e => { if (!e.target.closest('#tes-mes-pop, th[data-tes-mes]')) fecharMesPop(); });
+document.addEventListener('mousedown', e => { if (!e.target.closest('#tes-mes-pop, th[data-tes-mes]')) fecharMesPop(); if (!e.target.closest('#tes-est-pop, th[data-tes-est]')) fecharEstPop(); });
