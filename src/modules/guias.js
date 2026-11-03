@@ -327,7 +327,6 @@ export async function guiasInit() {
   await carregarCfg();
   const ok = posso();
   const row = $('enc-row-guias'); if (row) row.hidden = !ok;
-  const nav = $('nav-guias'); if (nav) nav.hidden = !ok;
 }
 
 Object.assign(window, { guiasAbrir: abrir, guiasInit });
