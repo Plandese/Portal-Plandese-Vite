@@ -90,7 +90,7 @@ begin
   insert into gt_faturas (origem_id, fornecedor, nif, numero, data, data_pag, base, iva, total, status, centro_custo, linhas, guias_ref, ficheiro, notas, teste, criado_em, criado_por)
     select f.id, f.fornecedor, f.nif, f.numero, f.data, f.data_pag, f.base, f.iva, f.total, f.status, f.centro_custo, coalesce(f.linhas, '[]'::jsonb), coalesce(f.guias_ref, '[]'::jsonb), f.ficheiro, f.notas, false, f.criado_em, f.criado_por
     from faturas f
-    where f.fornecedor ilike '%secil%' and not f.teste and (f.data is null or f.data < '2026-01-01' or f.data > '2026-05-31')
+    where f.fornecedor ilike '%secil%' and f.centro_custo like 'O065%' and not f.teste and (f.data is null or f.data < '2026-01-01' or f.data > '2026-05-31')
       and not exists (select 1 from gt_faturas g where g.origem_id = f.id);
   get diagnostics n_novas = row_count;
   update gt_faturas g set fornecedor = f.fornecedor, nif = f.nif, numero = f.numero, data = f.data, data_pag = f.data_pag, base = f.base, iva = f.iva, total = f.total,
