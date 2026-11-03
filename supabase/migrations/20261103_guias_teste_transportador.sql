@@ -12,3 +12,6 @@ $$;
 -- gt_sincronizar_guias: quando o fornecedor da guia e o da fatura são diferentes, não compara o NIF nem os materiais:
 --   confere o nº da guia (G.T.) e a quantidade da linha que a cita (tolerância 2%)
 -- (definições completas aplicadas na Supabase a partir das funções anteriores; ver histórico do projeto)
+
+-- gt_faturas.dropbox_path: caminho do ficheiro da fatura (botão «Ver fatura (PDF)»); gt_importar_faturas mantém-no atualizado
+alter table gt_faturas add column if not exists dropbox_path text;

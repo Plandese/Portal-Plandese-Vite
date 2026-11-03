@@ -191,7 +191,7 @@ async function carregar() {
     sb.from(T.faturas).select(cols).not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
-  const t = await sb.from(T.faturas).select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste' + (T.materiais ? ',artigos_assoc_em' : '')).order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  const t = await sb.from(T.faturas).select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste' + (T.materiais ? ',artigos_assoc_em,dropbox_path' : '')).order('data', { ascending: false, nullsFirst: false }).limit(3000);
   _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
@@ -346,7 +346,7 @@ function abrirFatura(id) {
     <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && (refs.length || casadasG.length) ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
     ${refs.length || casadasG.length ? tit('1 · Guias desta fatura') + `<div style="border:1px solid #dde2ea;border-radius:14px;overflow:hidden">${guiaRows.join('')}</div>` + outrasHtml : (outrasHtml ? tit('Guias') + outrasHtml : '')}
     ${tit((refs.length || casadasG.length ? '2 · ' : '') + 'Artigos e quantidades')}${tabela}
-    <div class="modal-footer">${T.materiais && s.k === 'ok' && linhas.length ? `<button class="btn btn-secondary" data-gre-art="${f.id}">Associar artigos</button>` : ''}${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+    <div class="modal-footer">${f.dropbox_path ? `<button class="btn btn-secondary" data-gre-fpdf="${f.id}">Ver fatura (PDF)</button>` : ''}${T.materiais && s.k === 'ok' && linhas.length ? `<button class="btn btn-secondary" data-gre-art="${f.id}">Associar artigos</button>` : ''}${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
   </div>`;
   document.body.appendChild(el);
 }
@@ -543,6 +543,20 @@ async function verFotos(id) {
 }
 
 // ── PDF ──────────────────────────────────────────────────────────
+// Abre o ficheiro da fatura (Dropbox da empresa), quando a fatura o tem
+async function abrirPdfFatura(id) {
+  const f = _todas.find(x => x.id === id); if (!f?.dropbox_path) return;
+  const w = window.open('', '_blank');
+  try {
+    const blob = await dropboxDownload(f.dropbox_path);
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+    if (w) w.location.href = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    w?.close();
+    toast('Não foi possível abrir a fatura: ' + String(e.message || e).slice(0, 200));
+  }
+}
 async function abrirPdf(id) {
   const g = _rows.find(x => x.id === id); if (!g?.pdf_path) return;
   const w = window.open('', '_blank');   // abre já, para o bloqueador de popups não impedir
@@ -726,6 +740,8 @@ document.addEventListener('click', e => {
   if (vm && (e.target.closest('[data-gre-fechar-verif]') || e.target === vm)) { vm.remove(); return; }
   if (vm) {
     const cf = e.target.closest('[data-gre-cf]'), ca = e.target.closest('[data-gre-cf-all]'), df = e.target.closest('[data-gre-df]'), vr = e.target.closest('[data-gre-ver]'), pf = e.target.closest('[data-gre-pdf]');
+    const fp = e.target.closest('[data-gre-fpdf]');
+    if (fp) { abrirPdfFatura(Number(fp.dataset.greFpdf)); return; }
     const ar = e.target.closest('[data-gre-art]');
     if (ar) { associarArtigos(Number(ar.dataset.greArt)); return; }
     if (cf) { const [g, f] = cf.dataset.greCf.split(':').map(Number); casarUma(g, f); return; }
