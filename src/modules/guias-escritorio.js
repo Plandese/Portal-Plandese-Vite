@@ -351,8 +351,10 @@ async function associarSincronizadas(refazerPendentes = false) {
     // já tratada: só se repete para as linhas ainda por associar (depois de o utilizador ensinar uma associação nova)
     if (f.artigos_assoc_em && !(refazerPendentes && f.linhas.some(l => l.estado === 'pendente'))) continue;
     try {
+      const antes = JSON.stringify((f.linhas || []).map(l => [l.art_ref, l.estado]));
       await associarAuto(f);
       (f.linhas || []).forEach(l => { delete l._via; });
+      if (f.artigos_assoc_em && JSON.stringify(f.linhas.map(l => [l.art_ref, l.estado])) === antes) continue;   // nada de novo: não grava
       const at = new Date().toISOString();
       const { error } = await sb.from(T.faturas).update({ linhas: f.linhas, artigos_assoc_em: at }).eq('id', f.id);
       if (!error) { f.artigos_assoc_em = at; n++; }
@@ -742,7 +744,7 @@ export async function renderGuiasEscritorio() {
   ligar();
   _faturas = null;   // volta a ler as faturas na próxima escolha
   if (!_rows.length) box.innerHTML = '<div class="d-empty" style="border:0">A carregar…</div>';
-  try { try { await sb.rpc(T.rpc); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); if (await associarSincronizadas()) await carregar(); } catch (e) {
+  try { try { await sb.rpc(T.rpc); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); if (await associarSincronizadas(true)) await carregar(); } catch (e) {
     console.warn('Guias:', e);
     box.innerHTML = '<div class="d-empty" style="border:0">Não foi possível carregar: ' + esc(e.message || e) + '</div>';
     return;
