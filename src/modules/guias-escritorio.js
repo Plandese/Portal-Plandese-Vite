@@ -149,10 +149,10 @@ async function carregar() {
   // faturas com guias casadas + faturas que referem guias (mesmo que ainda não haja nenhuma casada)
   const [a, b] = await Promise.all([
     ids.length ? sb.from('faturas').select(cols).in('id', ids) : { data: [] },
-    sb.from('faturas').select(cols).not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
+    sb.from('faturas').select(cols).ilike('fornecedor', '%secil%').not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
-  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo').order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo').ilike('fornecedor', '%secil%').order('data', { ascending: false, nullsFirst: false }).limit(3000);
   _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
@@ -452,6 +452,7 @@ async function carregarFaturas() {
   if (_faturas) return _faturas;
   const { data, error } = await sb.from('faturas')
     .select('id,numero,fornecedor,nif,data,total,status,guias_ref')
+    .ilike('fornecedor', '%secil%')
     .order('data', { ascending: false, nullsFirst: false }).limit(1500);
   if (error) throw error;
   _faturas = data || [];
