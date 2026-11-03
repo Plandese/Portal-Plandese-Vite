@@ -51,3 +51,6 @@ window.QRCodeLib = QRCodeLib;
 // Importa a logica completa da aplicacao (migrada de portal_antigo.html)
 // app.js ja importa: supabase.js, config.js, utils/helpers.js
 import './app.js';
+
+// Catálogo de artigos (materiais) vindo da Supabase; /artigos-data.js é só a cópia de arranque
+import './modules/artigos-catalogo.js';
