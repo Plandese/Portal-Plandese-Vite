@@ -9,6 +9,9 @@
 import { sb } from '../supabase.js';
 import { showToast } from './navigation.js';
 
+let ALIAS_TAB = 'fatura_artigo_alias';   // a página de teste das guias usa a sua (gt_artigo_alias)
+export function configurarArtigos(c){ if(c?.alias) ALIAS_TAB = c.alias; }
+
 const AUTO_MIN = 0.78;     // pontuação mínima para associar sem perguntar
 const AUTO_MARGEM = 0.08;  // diferença mínima para o 2.º classificado
 
@@ -78,7 +81,7 @@ async function carregarAlias(nif){
   if(_alias[nif]) return _alias[nif];
   const m = new Map();
   try{
-    const { data, error } = await sb.from('fatura_artigo_alias').select('chave,art_ref,art_nome,un').eq('nif', nif);
+    const { data, error } = await sb.from(ALIAS_TAB).select('chave,art_ref,art_nome,un').eq('nif', nif);
     if(error) throw error;
     (data || []).forEach(r => m.set(r.chave, r));
   } catch(e){ console.warn('Associações de artigos:', e); }
@@ -94,7 +97,7 @@ async function guardarAlias(nif, l){
   }));
   if(!rows.length) return;
   try{
-    const { error } = await sb.from('fatura_artigo_alias').upsert(rows, { onConflict: 'nif,chave' });
+    const { error } = await sb.from(ALIAS_TAB).upsert(rows, { onConflict: 'nif,chave' });
     if(error) throw error;
     rows.forEach(r => (_alias[nif] ||= new Map()).set(r.chave, r));
   } catch(e){ console.warn('Guardar associação:', e); showToast('Não foi possível memorizar a associação'); }

@@ -8,8 +8,12 @@ import './styles/mobile-shell.css';   // só para as variáveis (--m-brand, más
 import './styles/guias-teste.css';
 import { sb } from './supabase.js';
 import { configurarGuias, renderGuiasEscritorio } from './modules/guias-escritorio.js';
+import { configurarArtigos, handlersArtigos } from './modules/faturas-artigos.js';
+import './modules/artigos-catalogo.js';   // base de dados de materiais (Supabase)
 
-configurarGuias({ guias: 'gt_guias', faturas: 'gt_faturas', rpc: 'gt_sincronizar_guias' });
+configurarGuias({ guias: 'gt_guias', faturas: 'gt_faturas', rpc: 'gt_sincronizar_guias', materiais: true });
+configurarArtigos({ alias: 'gt_artigo_alias' });   // a memória de associações do teste não mexe na do portal
+Object.assign(window, handlersArtigos);            // botões do diálogo «Associar artigos»
 
 const $ = id => document.getElementById(id);
 const authEmail = u => `${u}@portal.plandese.local`;

@@ -9,6 +9,7 @@ import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
 import { dropboxDownload } from './dropbox.js';
+import { associarAuto, perguntarArtigos } from './faturas-artigos.js';
 
 // ── Comparação guia ↔ fatura ─────────────────────────────────────
 const semAcentos = t => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -125,7 +126,7 @@ const VERIF_PILL = {
 };
 
 // Tabelas em uso: as do portal por omissão; a página de teste (guias-teste.html) aponta para as suas (gt_*)
-const T = { guias: 'guias_remessa', faturas: 'faturas', rpc: 'fn_sincronizar_guias' };
+const T = { guias: 'guias_remessa', faturas: 'faturas', rpc: 'fn_sincronizar_guias', materiais: false };
 export function configurarGuias(cfg) { Object.assign(T, cfg); }
 
 let _rows = [];            // guias
@@ -159,7 +160,7 @@ async function carregar() {
     sb.from(T.faturas).select(cols).not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
-  const t = await sb.from(T.faturas).select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste').order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  const t = await sb.from(T.faturas).select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste' + (T.materiais ? ',artigos_assoc_em' : '')).order('data', { ascending: false, nullsFirst: false }).limit(3000);
   _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
@@ -298,11 +299,11 @@ function abrirFatura(id) {
     sem_ref: 'Esta fatura não refere guias (por exemplo, custos de transporte), por isso não há nada a conferir.',
   }[s.k];
   const tabela = linhas.length ? `<div style="max-height:34vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
-    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd. faturada</th><th>Un.</th><th class="r">Total</th><th>Recebido nas guias</th></tr></thead>
+    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd. faturada</th><th>Un.</th><th class="r">Total</th><th>Recebido nas guias</th>${T.materiais ? '<th>Artigo da base de dados</th>' : ''}</tr></thead>
     <tbody>${linhas.map((l, i) => {
       const c = cob?.[i];
       const rec = !c ? '<span class="mut">—</span>' : `<div style="display:flex;align-items:center;gap:8px;white-space:nowrap">${barraPct(c.pct, c.pct >= 100 ? '#1f8a4c' : c.pct > 0 ? '#c77700' : '#b3261e')}<span class="mut" style="font-size:12.5px">${fmtQtd(c.rec)} ${esc(l.un || c.un || '')}${c.excesso ? ' <b style="color:#b3261e">a mais</b>' : ''}</span></div>`;
-      return `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.total)}</td><td>${rec}</td></tr>`;
+      return `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.total)}</td><td>${rec}</td>${T.materiais ? `<td>${celulaArtigo(l, s.k)}</td>` : ''}</tr>`;
     }).join('')}</tbody></table></div>` : '<div style="padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Esta fatura não tem artigos lidos.</div>';
   const tit = t => `<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:18px 0 8px">${t}</div>`;
   document.getElementById('modal-gre-verif')?.remove();
@@ -314,9 +315,116 @@ function abrirFatura(id) {
     <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && (refs.length || casadasG.length) ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
     ${refs.length || casadasG.length ? tit('1 · Guias desta fatura') + `<div style="border:1px solid #dde2ea;border-radius:14px;overflow:hidden">${guiaRows.join('')}</div>` + outrasHtml : (outrasHtml ? tit('Guias') + outrasHtml : '')}
     ${tit((refs.length || casadasG.length ? '2 · ' : '') + 'Artigos e quantidades')}${tabela}
-    <div class="modal-footer">${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+    <div class="modal-footer">${T.materiais && s.k === 'ok' && linhas.length ? `<button class="btn btn-secondary" data-gre-art="${f.id}">Associar artigos</button>` : ''}${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
   </div>`;
   document.body.appendChild(el);
+}
+
+// ── Artigos da fatura ↔ base de dados de materiais (só na página de teste) ──────────────
+// Só as faturas SINCRONIZADAS (guias certas, «Bate certo») entram: aí há certeza de que o material foi fornecido.
+let _infoCat = null, _infoCatDe = null;
+function infoArtigo(codigo) {
+  const cat = window.ARTIGOS_CATALOGO || {};
+  if (_infoCatDe !== cat) {
+    _infoCat = new Map(); _infoCatDe = cat;
+    Object.keys(cat).forEach((k, gi) => (cat[k].items || []).forEach(([c, nome, un]) => { if (c && !_infoCat.has(c)) _infoCat.set(c, { grupo: cat[k].label || k, ordem: gi, nome, un }); }));
+  }
+  return _infoCat.get(codigo) || null;
+}
+const ESTADO_ART = { auto: ['Automático', 'info'], manual: ['Manual', 'mute'] };
+function celulaArtigo(l, k) {
+  if (k !== 'ok') return '<span class="mut" title="Disponível quando a fatura estiver sincronizada com as guias">—</span>';
+  if (l.estado === 'ignorado') return '<span class="dd-pill mute">Ignorado (não é material)</span>';
+  if (l.art_ref && ESTADO_ART[l.estado]) return `<b>${esc(l.art_ref)}</b> <span class="mut">${esc(l.art_nome)}</span> <span class="dd-pill ${ESTADO_ART[l.estado][1]}">${ESTADO_ART[l.estado][0]}</span>`;
+  return '<span class="dd-pill warn">Por associar</span>';
+}
+async function guardarLinhasFatura(f) {
+  const { error } = await sb.from(T.faturas).update({ linhas: f.linhas, artigos_assoc_em: new Date().toISOString() }).eq('id', f.id);
+  if (error) toast('Não foi possível guardar os artigos: ' + (error.message || error));
+}
+// Associa sozinho (memória do fornecedor + pontuação contra a base de dados) os artigos das faturas sincronizadas ainda não tratadas
+async function associarSincronizadas(refazerPendentes = false) {
+  if (!T.materiais) return 0;
+  const sug = sugestoes(); let n = 0;
+  for (const f of _todas) {
+    if (!(f.linhas || []).length || situacao(f, sug).k !== 'ok') continue;
+    // já tratada: só se repete para as linhas ainda por associar (depois de o utilizador ensinar uma associação nova)
+    if (f.artigos_assoc_em && !(refazerPendentes && f.linhas.some(l => l.estado === 'pendente'))) continue;
+    try {
+      await associarAuto(f);
+      (f.linhas || []).forEach(l => { delete l._via; });
+      const at = new Date().toISOString();
+      const { error } = await sb.from(T.faturas).update({ linhas: f.linhas, artigos_assoc_em: at }).eq('id', f.id);
+      if (!error) { f.artigos_assoc_em = at; n++; }
+    } catch (e) { console.warn('Associar artigos:', e); }
+  }
+  return n;
+}
+async function associarArtigos(fid) {
+  const f = _todas.find(x => x.id === fid); if (!f) return;
+  const pend = (f.linhas || []).some(l => l.estado === 'pendente' || !l.estado);
+  await perguntarArtigos(f, { todas: !pend, onSave: guardarLinhasFatura });
+  await carregar();
+  if (await associarSincronizadas(true)) await carregar();   // o que acabou de ser ensinado aplica-se às outras faturas do fornecedor
+  desenhar();
+}
+const obraDe = f => ((f.centro_custo || '').match(/O\d{2,3}/) || [''])[0];
+let _custosObra = '';
+// Lista de custos: o que foi fornecido e faturado, por artigo da base de dados (código), das faturas sincronizadas
+function custosDados() {
+  const sug = sugestoes(), por = new Map(), faturasPend = [];
+  let pend = 0, nFat = 0;
+  _todas.forEach(f => {
+    if (_custosObra && obraDe(f) !== _custosObra) return;
+    if (situacao(f, sug).k !== 'ok' || !(f.linhas || []).length) return;
+    nFat++;
+    let pf = 0;
+    f.linhas.forEach(l => {
+      if (l.estado === 'ignorado') return;
+      if (!(l.art_ref && (l.estado === 'auto' || l.estado === 'manual'))) { pend++; pf++; return; }
+      const ch = l.art_ref + '|' + (l.un || '');
+      const g = por.get(ch) || { codigo: l.art_ref, nome: l.art_nome, un: l.un || '', qtd: 0, total: 0, faturas: new Set() };
+      g.qtd += Number(l.qtd) || 0; g.total += Number(l.total) || 0; g.faturas.add(f.numero); por.set(ch, g);
+    });
+    if (pf) faturasPend.push(f.id);
+  });
+  const grupos = new Map();
+  [...por.values()].forEach(a => {
+    const inf = infoArtigo(a.codigo), gl = inf?.grupo || 'Sem grupo';
+    const g = grupos.get(gl) || { label: gl, ordem: inf?.ordem ?? 999, linhas: [], total: 0 };
+    g.linhas.push(a); g.total += a.total; grupos.set(gl, g);
+  });
+  const lista = [...grupos.values()].sort((a, b) => a.ordem - b.ordem);
+  lista.forEach(g => g.linhas.sort((a, b) => a.codigo.localeCompare(b.codigo)));
+  return { lista, pend, nFat, faturasPend, nArt: por.size, total: lista.reduce((s, g) => s + g.total, 0) };
+}
+function desenharCustos(box) {
+  const obras = [...new Set(_todas.map(obraDe).filter(Boolean))].sort();
+  if (!_custosObra && obras.length) _custosObra = obras.includes('O065') ? 'O065' : obras[0];
+  const d = custosDados();
+  const opts = obras.map(o => `<option value="${o}"${o === _custosObra ? ' selected' : ''}>${esc((_todas.find(f => obraDe(f) === o)?.centro_custo) || o)}</option>`).join('');
+  const corpo = d.lista.length ? d.lista.map(g => `<tbody>
+      <tr><td colspan="6" style="background:#f6f8fc;font-weight:800;padding:10px 14px">${esc(g.label)} <span class="mut" style="font-weight:600">· ${eur(g.total)}</span></td></tr>
+      ${g.linhas.map(a => `<tr><td><b>${esc(a.codigo)}</b></td><td>${esc(a.nome)}</td><td>${esc(a.un)}</td><td class="r">${fmtQtd(a.qtd)}</td>
+        <td class="r">${a.qtd ? eur(a.total / a.qtd) : '—'}</td><td class="r"><b>${eur(a.total)}</b></td></tr>`).join('')}</tbody>`).join('')
+    : '<tbody><tr><td colspan="6"><div class="d-empty" style="border:0">Ainda não há artigos associados. Aparecem aqui assim que as faturas sincronizadas tiverem os artigos ligados à base de dados de materiais.</div></td></tr></tbody>';
+  box.innerHTML = `<div style="padding:14px 16px 4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <select id="gre-obra" style="height:42px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 12px;font-family:inherit;font-size:14px">${opts}</select>
+      <span class="dd-pill info">${plural(d.nArt, 'artigo', 'artigos')}</span>
+      <span class="dd-pill ok">${plural(d.nFat, 'fatura sincronizada', 'faturas sincronizadas')}</span>
+      <span class="dd-pill mute">Total ${eur(d.total)} (sem IVA)</span>
+      ${d.pend ? `<span class="dd-pill warn">${plural(d.pend, 'linha por associar', 'linhas por associar')}</span><button type="button" class="btn btn-secondary btn-sm" data-gre-art="${d.faturasPend[0]}">Associar agora</button>` : ''}
+      <span style="flex:1"></span><button type="button" class="btn btn-secondary btn-sm" data-gre-csv>Exportar CSV</button></div>
+    <div class="mut" style="font-size:12.5px;padding:6px 16px 10px">Só entram faturas sincronizadas com as guias (material realmente fornecido). Os custos são os das faturas, sem IVA, agrupados pelo código da base de dados de materiais.</div>
+    <div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Código</th><th>Artigo</th><th>Un.</th><th class="r">Quantidade</th><th class="r">Custo médio un.</th><th class="r">Custo total</th></tr></thead>${corpo}</table></div>`;
+}
+function exportarCustosCsv() {
+  const d = custosDados(), n = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  const linhas = [['Grupo', 'Código', 'Artigo', 'Un.', 'Quantidade', 'Custo médio un.', 'Custo total']];
+  d.lista.forEach(g => g.linhas.forEach(a => linhas.push([g.label, a.codigo, a.nome, a.un, n(a.qtd), a.qtd ? n(a.total / a.qtd) : '', n(a.total)])));
+  const csv = '\ufeff' + linhas.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `lista-de-custos-${_custosObra || 'todas'}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 function desenhar() {
@@ -326,10 +434,10 @@ function desenhar() {
   const pend = soltas().filter(g => !g.sync_bloqueada).length;
   if (hdr) hdr.innerHTML = `<button type="button" class="btn btn-sm" data-gre-auto title="O portal sincroniza sozinho; isto força uma nova passagem agora">Sincronizar${pend ? ' (' + pend + ' pendentes)' : ''}</button>` + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
   const chips = document.getElementById('gre-chips');
-  if (chips) chips.innerHTML = [['faturas', 'Faturas', _todas.filter(f => POR_TRATAR.includes(situacao(f, sug).k))], ['soltas', 'Guias pendentes', soltas()]]
+  if (chips) chips.innerHTML = [['faturas', 'Faturas', _todas.filter(f => POR_TRATAR.includes(situacao(f, sug).k))], ['soltas', 'Guias pendentes', soltas()]].concat(T.materiais ? [['custos', 'Lista de custos', custosDados().lista.flatMap(g => g.linhas)]] : [])
     .map(([k, l, a]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-gre-tab="${k}">${l}<b>${a.length}</b></button>`).join('');
   const box = document.getElementById('gre-mapa'); if (!box) return;
-  if (_tab === 'soltas') desenharSoltas(box, sug); else desenharListaFaturas(box, sug);
+  if (_tab === 'soltas') desenharSoltas(box, sug); else if (_tab === 'custos' && T.materiais) desenharCustos(box); else desenharListaFaturas(box, sug);
   const m = document.getElementById('modal-gre-verif');
   if (m?.dataset.fatura) abrirFatura(Number(m.dataset.fatura));
 }
@@ -522,7 +630,7 @@ async function sincronizar(btn) {
     if (error) throw error;
     const n = (data?.por_referencia || 0) + (data?.por_conjunto || 0);
     toast(n ? `${plural(n, 'guia sincronizada', 'guias sincronizadas')} automaticamente ✓${data?.pendentes ? ` · ${data.pendentes} pendentes` : ''}` : data?.pendentes ? `Nada de novo: ${data.pendentes} guias continuam pendentes` : 'Tudo sincronizado ✓');
-    await carregar(); desenhar();
+    await carregar(); if (await associarSincronizadas()) await carregar(); desenhar();
   } catch (e) { toast('Não foi possível sincronizar: ' + String(e.message || e).slice(0, 200)); }
   if (btn) btn.disabled = false;
 }
@@ -560,9 +668,11 @@ function ligar() {
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-cf],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
+    const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-cf],[data-gre-art],[data-gre-csv],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
     if (t.dataset.greAuto !== undefined) sincronizar(t);
+    else if (t.dataset.greArt) associarArtigos(Number(t.dataset.greArt));
+    else if (t.dataset.greCsv !== undefined) exportarCustosCsv();
     else if (t.dataset.greFat) abrirFatura(Number(t.dataset.greFat));
     else if (t.dataset.greCf) { const [g, f] = t.dataset.greCf.split(':').map(Number); casarUma(g, f); }
     else if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
@@ -583,6 +693,8 @@ document.addEventListener('click', e => {
   if (vm && (e.target.closest('[data-gre-fechar-verif]') || e.target === vm)) { vm.remove(); return; }
   if (vm) {
     const cf = e.target.closest('[data-gre-cf]'), ca = e.target.closest('[data-gre-cf-all]'), df = e.target.closest('[data-gre-df]'), vr = e.target.closest('[data-gre-ver]'), pf = e.target.closest('[data-gre-pdf]');
+    const ar = e.target.closest('[data-gre-art]');
+    if (ar) { associarArtigos(Number(ar.dataset.greArt)); return; }
     if (cf) { const [g, f] = cf.dataset.greCf.split(':').map(Number); casarUma(g, f); return; }
     if (ca) { casarProntas(Number(ca.dataset.greCfAll)); return; }
     if (df) { desfazer(Number(df.dataset.greDf)); return; }
@@ -600,6 +712,7 @@ document.addEventListener('click', e => {
   const f = e.target.closest('[data-gre-esc]');
   if (f) casar(Number(m.dataset.guia), Number(f.dataset.greEsc));
 });
+document.addEventListener('change', e => { if (e.target.id === 'gre-obra') { _custosObra = e.target.value; desenhar(); } });
 document.addEventListener('input', e => {
   if (e.target.id !== 'gre-fq') return;
   const m = document.getElementById('modal-gre'); if (m) desenharFaturas(m, Number(m.dataset.guia));
@@ -629,7 +742,7 @@ export async function renderGuiasEscritorio() {
   ligar();
   _faturas = null;   // volta a ler as faturas na próxima escolha
   if (!_rows.length) box.innerHTML = '<div class="d-empty" style="border:0">A carregar…</div>';
-  try { try { await sb.rpc(T.rpc); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); } catch (e) {
+  try { try { await sb.rpc(T.rpc); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); if (await associarSincronizadas()) await carregar(); } catch (e) {
     console.warn('Guias:', e);
     box.innerHTML = '<div class="d-empty" style="border:0">Não foi possível carregar: ' + esc(e.message || e) + '</div>';
     return;
