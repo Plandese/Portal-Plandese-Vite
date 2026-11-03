@@ -106,9 +106,40 @@ function coberturaPorArtigo(linhasFatura, linhasGuias) {
 }
 const fmtQtd = n => Number(n).toLocaleString('pt-PT', { maximumFractionDigits: 3 });
 
+// Guias de OUTRO fornecedor (ex.: nota de receção da pedreira vs fatura do transportador, que cita «G.T. nnnnnn» em cada linha):
+// não há materiais iguais para comparar; confere-se, linha a linha, a quantidade da fatura com a da guia citada
+const GT_RE = /G\.?\s?T\.?\s*(\d{4,})/i;
+const primeiraPalavra = t => semAcentos(t).split(/[^a-z0-9]+/).filter(Boolean)[0] || '';
+const eCruzado = (f, guias) => guias.length > 0 && guias.every(g => primeiraPalavra(g.fornecedor) !== primeiraPalavra(f.fornecedor));
+const qtdGuia = g => (g.linhas || []).reduce((s, x) => s + (Number(x.qtd) || 0), 0);
+function verificarCruzado(f, guias) {
+  const refs = (f.guias_ref || []).filter(Boolean);
+  const faltam = refs.filter(r => !guias.some(g => mesmaGuia(g.numero, r)));
+  const div = []; let ok = 0, tot = 0;
+  (f.linhas || []).forEach(l => {
+    const m = String(l.desc || '').match(GT_RE); if (!m) return;
+    const v = Number(l.total) || 1; tot += v;
+    const g = guias.find(x => mesmaGuia(x.numero, m[1])); if (!g) return;
+    const qg = qtdGuia(g), qf = Number(l.qtd) || 0;
+    if (qf && qg && Math.abs(qf - qg) > Math.max(0.0009, TOLERANCIA * qf)) div.push({ tipo: 'qtd', desc: l.desc, fatura: qf, guia: qg, un: l.un });
+    else ok += v;
+  });
+  return { estado: div.length ? 'divergente' : faltam.length ? 'faltam' : 'ok', guias, refs, faltam, div, pct: tot ? Math.round(ok / tot * 100) : null, cruzado: true };
+}
+function coberturaCruzada(linhasFatura, guias) {
+  return (linhasFatura || []).map(l => {
+    const m = String(l.desc || '').match(GT_RE); if (!m) return null;
+    const g = guias.find(x => mesmaGuia(x.numero, m[1])); if (!g) return { rec: 0, pct: 0, un: l.un || '', excesso: false };
+    const qg = qtdGuia(g), qf = Number(l.qtd) || 0;
+    const pct = qf ? Math.min(qg / qf, 1) : 0;
+    return { rec: qg, pct: Math.round((pct >= 1 - TOLERANCIA ? 1 : pct) * 100), un: l.un || '', excesso: qf > 0 && qg > qf * (1 + TOLERANCIA) };
+  });
+}
+
 // Verificação de uma fatura com todas as guias que lhe estão associadas
 function verificar(f, guias = _rows.filter(g => g.fatura_id === f?.id)) {
   if (!f) return { estado: 'sem_dados' };
+  if (eCruzado(f, guias)) return verificarCruzado(f, guias);
   const refs = (f.guias_ref || []).filter(Boolean);
   const faltam = refs.filter(r => !guias.some(g => mesmaGuia(g.numero, r)));
   if (!(f.linhas || []).length) return { estado: 'sem_artigos', guias, refs, faltam, pct: null };
@@ -272,7 +303,7 @@ function abrirFatura(id) {
   const sug = sugestoes(), s = situacao(f, sug), v = s.v;
   const linhas = f.linhas || [], refs = (Array.isArray(f.guias_ref) ? f.guias_ref : []).filter(Boolean);
   const casadasG = _rows.filter(g => g.fatura_id === f.id), lidas = casadasG.filter(g => (g.linhas || []).length);
-  const cob = lidas.length ? coberturaPorArtigo(linhas, lidas.flatMap(g => g.linhas)) : null;
+  const cob = lidas.length ? (v.cruzado ? coberturaCruzada(linhas, lidas) : coberturaPorArtigo(linhas, lidas.flatMap(g => g.linhas))) : null;
   const solta = r => soltas().find(g => mesmaGuia(g.numero, r) && (!g.nif || !f.nif || g.nif === f.nif));
   const btn = (a, t, cls = 'btn-secondary') => `<button type="button" class="btn ${cls} btn-sm" ${a}>${t}</button>`;
   const lin = (num, pill, acoes, nota) => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #eef1f6"><b style="min-width:150px">${esc(num || '—')}</b>${pill}<span class="mut" style="flex:1;font-size:12.5px">${nota || ''}</span><span style="display:flex;gap:6px">${acoes}</span></div>`;
