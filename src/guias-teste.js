@@ -22,6 +22,9 @@ async function arrancar() {
   const { data } = await sb.auth.getSession();
   if (!data?.session) { $('gt-login').hidden = false; $('gt-app').hidden = true; return; }
   _user = (data.session.user.email || '').split('@')[0];
+  // só o administrador (o servidor também o exige: as tabelas gt_* ignoram os outros)
+  const { data: papel } = await sb.rpc('fn_my_role');
+  if (papel !== 'admin') { $('gt-login').hidden = true; $('gt-app').hidden = true; $('gt-semacesso').hidden = false; return; }
   $('gt-user').textContent = _user;
   $('gt-login').hidden = true; $('gt-app').hidden = false;
   try { await sb.rpc('gt_importar_faturas'); } catch (e) { console.warn('Importar faturas:', e); }

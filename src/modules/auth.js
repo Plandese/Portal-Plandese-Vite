@@ -218,6 +218,7 @@ export async function entrarComoUtilizador(authedUser) {
     R.initAdmin();
     R.applyRolePermissions(authedUser.role);
     R.initTelasFinaisLink?.();
+    R.initGuiasTesteLink?.();
     R.initNotifications();
     R.initAgente?.();
     R.ensurePushSubscription?.();

@@ -106,3 +106,14 @@ grant execute on function gt_importar_faturas() to authenticated, service_role;
 
 select cron.unschedule('gt-sincronizar-guias') where exists (select 1 from cron.job where jobname = 'gt-sincronizar-guias');
 select cron.schedule('gt-sincronizar-guias', '*/15 * * * *', 'select public.gt_sincronizar_guias()');
+
+-- Só o administrador usa o sistema de teste (página «Guias de Remessa (teste)» em Definições)
+drop policy if exists gt_faturas_ler on gt_faturas;
+create policy gt_faturas_ler on gt_faturas for select to authenticated using (fn_my_role() = 'admin');
+drop policy if exists gt_guias_ler on gt_guias;
+create policy gt_guias_ler on gt_guias for select to authenticated using (fn_my_role() = 'admin');
+drop policy if exists gt_guias_inserir on gt_guias;
+create policy gt_guias_inserir on gt_guias for insert to authenticated with check (criado_por = fn_my_username() and fn_my_role() = 'admin');
+drop policy if exists gt_guias_alterar on gt_guias;
+create policy gt_guias_alterar on gt_guias for update to authenticated using (fn_my_role() = 'admin') with check (fn_my_role() = 'admin');
+-- (gt_importar_faturas também exige fn_my_role() = 'admin')

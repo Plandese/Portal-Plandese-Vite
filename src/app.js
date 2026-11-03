@@ -104,6 +104,7 @@ import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave
 
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
 import { initTelasFinaisLink, abrirTelasFinais } from './modules/telas-finais.js';
+import { initGuiasTesteLink, abrirGuiasTeste } from './modules/guias-teste-link.js';
 import { initExistencias, exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar, exAbrirAdd, exSetPreco, exRemover } from './modules/existencias.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
@@ -125,8 +126,10 @@ Object.assign(R, {
   renderAnalise, anlResetObras,
   initAgente, agenteStop,
   initTelasFinaisLink,
+  initGuiasTesteLink,
 });
 window.abrirTelasFinais = abrirTelasFinais;
+window.abrirGuiasTeste = abrirGuiasTeste;
 Object.assign(window, handlersArtigos, { abrirArtigosFatura });
 Object.assign(window, { exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar, exAbrirAdd, exSetPreco, exRemover });
 
