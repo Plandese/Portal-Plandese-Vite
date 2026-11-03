@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 //  GUIAS DE REMESSA (escritório) — as guias fotografadas pelos encarregados chegam aqui já em PDF
-//  (pasta «Guias» da Dropbox). Quem trata das faturas abre o PDF e casa cada guia com a fatura do fornecedor.
-//  Uma fatura pode ter várias guias. Depois de casadas, o portal compara as quantidades das guias com as da fatura
+//  (pasta «Guias» da Dropbox). O portal sincroniza sozinho cada guia com a fatura do fornecedor (motor fn_sincronizar_guias,
+//  na base de dados: referência da guia, obra, datas, materiais e quantidades/valor); só ficam pendentes as que não fazem sentido.
+//  Uma fatura pode ter várias guias. Depois de sincronizadas, o portal compara as quantidades das guias com as da fatura
 //  (soma de todas as guias da fatura) e assinala as divergências.
 // ═══════════════════════════════════════════════════════════════════
 import { S } from '../state.js';
@@ -141,7 +142,7 @@ const casada = g => !!g.fatura_id;
 
 async function carregar() {
   const { data, error } = await sb.from('guias_remessa')
-    .select('id,numero,data,nif,fornecedor,obra_nome,linhas,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em')
+    .select('id,numero,data,nif,fornecedor,obra_nome,linhas,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em,sync_auto,sync_score,sync_motivo,sync_nota,sync_bloqueada')
     .order('criado_em', { ascending: false }).limit(1000);
   if (error) throw error;
   _rows = data || [];
@@ -201,13 +202,14 @@ function situacao(f, sug) {
   let k, passo;
   if (!refs && !v.guias.length) { k = 'sem_ref'; passo = 'Não refere guias'; }
   else if (v.estado === 'ok') { k = 'ok'; passo = 'Nada a fazer'; }
+  else if (v.estado === 'sem_artigos' && v.guias.length) { k = 'ok'; passo = 'Sincronizada por valor'; }
   else if (v.estado === 'divergente') { k = 'div'; passo = 'Rever ' + plural(v.div.length, 'diferença', 'diferenças'); }
-  else if (prontas) { k = 'casar'; passo = 'Casar ' + plural(prontas, 'guia pronta', 'guias prontas'); }
+  else if (prontas) { k = 'casar'; passo = 'Sincronizar ' + plural(prontas, 'guia', 'guias'); }
   else if (v.estado === 'sem_leitura') { k = 'ler'; passo = 'Ler os artigos de uma guia'; }
   else { k = 'espera'; passo = v.faltam?.length ? 'Faltam ' + plural(v.faltam.length, 'guia', 'guias') : 'À espera das guias'; }
   return { v, k, passo, prontas };
 }
-const SIT_PILL = { ok: ['Bate certo ✓', 'ok'], div: ['Divergente', 'bad'], casar: ['Guias prontas a casar', 'info'], ler: ['Guia por ler', 'warn'], espera: ['À espera de guias', 'warn'], sem_ref: ['Sem guias a conferir', 'mute'] };
+const SIT_PILL = { ok: ['Bate certo ✓', 'ok'], div: ['Divergente', 'bad'], casar: ['Por sincronizar', 'info'], ler: ['Guia por ler', 'warn'], espera: ['À espera de guias', 'warn'], sem_ref: ['Sem guias a conferir', 'mute'] };
 const SIT_ORDEM = { div: 0, casar: 1, ler: 2, espera: 3, ok: 4, sem_ref: 5 };
 const corSit = k => k === 'div' ? '#b3261e' : k === 'ok' ? '#1f8a4c' : '#c77700';
 
@@ -235,17 +237,17 @@ function desenharListaFaturas(box, sug) {
         <td>${s.k === 'ok' || s.k === 'sem_ref' ? `<span class="mut">${esc(s.passo)}</span>` : `<b>${esc(s.passo)}</b>`}</td></tr>`;
     }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
   box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 0">${sub}</div>
-    <div class="mut" style="font-size:12.5px;padding:10px 16px">Cada fatura mostra o que falta para a conferência ficar completa. A percentagem é o valor já coberto pelas quantidades das guias casadas (tolerância de 2%).</div>${corpo}`;
+    <div class="mut" style="font-size:12.5px;padding:10px 16px">Cada fatura mostra o que falta para a conferência ficar completa. A percentagem é o valor já coberto pelas quantidades das guias sincronizadas (tolerância de 2%).</div>${corpo}`;
 }
 
 function desenharSoltas(box, sug) {
   const q = _q.trim().toLowerCase();
   const lista = soltas().filter(g => !q || `${g.fornecedor || ''} ${g.numero || ''} ${g.obra_nome || ''}`.toLowerCase().includes(q))
     .sort((a, b) => (sug.has(b.id) - sug.has(a.id)) || String(b.criado_em || '').localeCompare(String(a.criado_em || '')));
-  if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Todas as guias estão casadas com uma fatura.</div>'; return; }
-  box.innerHTML = `<div class="mut" style="font-size:12.5px;padding:14px 16px 10px">Guias que ainda não estão ligadas a nenhuma fatura. Quando uma fatura refere o nº da guia, a sugestão aparece já aqui; é só confirmar.</div>
+  if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Todas as guias estão sincronizadas com uma fatura.</div>'; return; }
+  box.innerHTML = `<div class="mut" style="font-size:12.5px;padding:14px 16px 10px">A sincronização é automática. Estas são as guias que o portal não conseguiu ligar a uma fatura com segurança; a coluna «Porque está pendente» explica o motivo.</div>
     <div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura sugerida</th><th></th></tr></thead>
+    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Porque está pendente</th><th></th></tr></thead>
     <tbody>${lista.map(g => {
       const f = sug.get(g.id);
       const pdf = g.pdf_path ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-pdf="${g.id}">Abrir PDF</button>` : `<button type="button" class="btn btn-secondary btn-sm" data-gre-gerar="${g.id}" title="O PDF ainda não foi gerado">Gerar PDF</button>`;
@@ -254,8 +256,8 @@ function desenharSoltas(box, sug) {
         <td>${g.fornecedor ? '<b>' + esc(g.fornecedor) + '</b>' : '<span class="mut">—</span>'}</td>
         <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
         <td>${g.numero ? '<b>' + esc(g.numero) + '</b>' : '<span class="mut">—</span>'}</td>
-        <td>${f ? `<span class="dd-pill info">${esc(f.numero || '—')}</span> <small class="mut">refere esta guia</small>` : '<span class="mut">Nenhuma fatura a refere</span>'}</td>
-        <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${f ? `<button type="button" class="btn btn-sm" data-gre-cf="${g.id}:${f.id}">Casar</button>` : `<button type="button" class="btn btn-secondary btn-sm" data-gre-casar="${g.id}">Escolher fatura</button>`}</td></tr>`;
+        <td>${f ? `<span class="dd-pill info">${esc(f.numero || '—')}</span> <small class="mut">refere esta guia</small> ` : ''}${g.sync_bloqueada ? '<small class="mut">Sincronização removida à mão. </small>' : ''}<small class="mut">${esc(g.sync_nota || 'A aguardar a próxima sincronização.')}</small></td>
+        <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${f ? `<button type="button" class="btn btn-sm" data-gre-cf="${g.id}:${f.id}">Sincronizar</button>` : `<button type="button" class="btn btn-secondary btn-sm" data-gre-casar="${g.id}">Escolher fatura</button>`}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
@@ -269,26 +271,26 @@ function abrirFatura(id) {
   const solta = r => soltas().find(g => mesmaGuia(g.numero, r) && (!g.nif || !f.nif || g.nif === f.nif));
   const btn = (a, t, cls = 'btn-secondary') => `<button type="button" class="btn ${cls} btn-sm" ${a}>${t}</button>`;
   const lin = (num, pill, acoes, nota) => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #eef1f6"><b style="min-width:150px">${esc(num || '—')}</b>${pill}<span class="mut" style="flex:1;font-size:12.5px">${nota || ''}</span><span style="display:flex;gap:6px">${acoes}</span></div>`;
-  const linhaCasada = g => lin(g.numero, '<span class="dd-pill ok">Casada ✓</span>', btn(`data-gre-ver="${g.id}"`, 'Ver') + (g.pdf_path ? btn(`data-gre-pdf="${g.id}"`, 'PDF') : '') + btn(`data-gre-df="${g.id}"`, 'Desfazer'), (g.linhas || []).length ? plural(g.linhas.length, 'artigo lido', 'artigos lidos') : 'artigos por ler');
+  const linhaCasada = g => lin(g.numero, `<span class="dd-pill ok">Sincronizada ✓</span>${g.sync_auto ? `<span class="dd-pill info" title="Sincronizada automaticamente pelo portal">Automática${g.sync_score ? ' · ' + g.sync_score + '%' : ''}</span>` : '<span class="dd-pill mute">Manual</span>'}`, btn(`data-gre-ver="${g.id}"`, 'Ver') + (g.pdf_path ? btn(`data-gre-pdf="${g.id}"`, 'PDF') : '') + btn(`data-gre-df="${g.id}"`, 'Remover'), esc(g.sync_motivo || '') + ((g.linhas || []).length ? '' : ' · artigos por ler'));
   const usadas = new Set();
   const guiaRows = refs.map(r => {
     const c = casadasG.find(g => mesmaGuia(g.numero, r));
     if (c) { usadas.add(c.id); return linhaCasada(c); }
     const sl = solta(r);
-    if (sl) return lin(r, '<span class="dd-pill info">Recebida, por casar</span>', btn(`data-gre-ver="${sl.id}"`, 'Ver') + btn(`data-gre-cf="${sl.id}:${f.id}"`, 'Casar', 'btn-primary'), sug.get(sl.id)?.id === f.id ? 'certeza total: só esta fatura a refere' : 'outra fatura também a refere');
+    if (sl) return lin(r, '<span class="dd-pill info">Recebida, por sincronizar</span>', btn(`data-gre-ver="${sl.id}"`, 'Ver') + btn(`data-gre-cf="${sl.id}:${f.id}"`, 'Sincronizar', 'btn-primary'), sl.sync_nota ? esc(sl.sync_nota) : (sug.get(sl.id)?.id === f.id ? 'só esta fatura a refere' : 'outra fatura também a refere'));
     return lin(r, '<span class="dd-pill mute">Ainda não chegou</span>', '', 'a fatura refere esta guia, mas ainda não foi carregada');
   });
   casadasG.filter(g => !usadas.has(g.id)).forEach(g => guiaRows.push(linhaCasada(g)));
   const outras = soltas().filter(g => !refs.some(r => mesmaGuia(g.numero, r)) && ((g.nif && f.nif && g.nif === f.nif) || (g.fornecedor && f.fornecedor && similar(g.fornecedor, f.fornecedor) >= 0.6)));
-  const outrasHtml = outras.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:#173f9f;font-weight:600">Outras guias soltas deste fornecedor (${outras.length}) — a fatura não as refere</summary><div style="border:1px solid #dde2ea;border-radius:14px;margin-top:8px;overflow:hidden">${outras.map(g => lin(g.numero, '<span class="dd-pill mute">Por casar</span>', btn(`data-gre-ver="${g.id}"`, 'Ver') + btn(`data-gre-cf="${g.id}:${f.id}"`, 'Casar mesmo assim'), g.data ? esc(fmtPT(g.data)) : '')).join('')}</div></details>` : '';
+  const outrasHtml = outras.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:#173f9f;font-weight:600">Outras guias pendentes deste fornecedor (${outras.length}) — a fatura não as refere</summary><div style="border:1px solid #dde2ea;border-radius:14px;margin-top:8px;overflow:hidden">${outras.map(g => lin(g.numero, '<span class="dd-pill mute">Pendente</span>', btn(`data-gre-ver="${g.id}"`, 'Ver') + btn(`data-gre-cf="${g.id}:${f.id}"`, 'Sincronizar mesmo assim'), g.data ? esc(fmtPT(g.data)) : '')).join('')}</div></details>` : '';
   const divTxt = d => d.tipo === 'so_fatura' ? `${esc(d.desc)}: faturado ${fmtQtd(d.fatura)} ${esc(d.un || '')} e não vem nas guias` : d.tipo === 'so_guia' ? `${esc(d.desc)}: vem nas guias (${fmtQtd(d.guia)} ${esc(d.un || '')}) e não está na fatura` : `${esc(d.desc)}: fatura ${fmtQtd(d.fatura)} ${esc(d.un || '')} · guias ${fmtQtd(d.guia)} ${esc(d.un || '')}`;
   const estilo = { ok: ['#dff5e7', '#166534'], div: ['#fde4e1', '#b3261e'], casar: ['#e4ecfb', '#173f9f'], ler: ['#fff0d9', '#a35a08'], espera: ['#fff0d9', '#a35a08'], sem_ref: ['#eef1f6', '#5d6678'] }[s.k];
   const msg = {
-    ok: 'Tudo certo: as quantidades das guias coincidem com a fatura.',
+    ok: v.estado === 'sem_artigos' ? 'As guias estão sincronizadas pelo valor da fatura. Como a fatura não tem artigos lidos, não há quantidades para conferir.' : 'Tudo certo: as quantidades das guias coincidem com a fatura.',
     div: `Há ${plural(v.div?.length || 0, 'diferença', 'diferenças')} entre a fatura e as guias:<ul style="margin:6px 0 0 18px;padding:0;font-weight:500">${(v.div || []).map(d => `<li>${divTxt(d)}</li>`).join('')}</ul>`,
-    casar: `Já chegaram ${plural(s.prontas, 'guia que refere', 'guias que referem')} esta fatura. Casa-${s.prontas === 1 ? 'a' : 'as'} para a conferência avançar.`,
-    ler: 'Há guias casadas sem os artigos lidos. Abra a guia («Ver») para a ler.',
-    espera: v.faltam?.length ? `Ainda faltam as guias: <b>${esc(v.faltam.join(', '))}</b>. A comparação final faz-se quando chegarem todas.` : 'Ainda não há guias casadas com esta fatura.',
+    casar: `Há ${plural(s.prontas, 'guia que refere', 'guias que referem')} esta fatura mas o portal não a sincronizou sozinho. Confirme abaixo.`,
+    ler: 'Há guias sincronizadas sem os artigos lidos. Abra a guia («Ver») para a ler.',
+    espera: v.faltam?.length ? `Ainda faltam as guias: <b>${esc(v.faltam.join(', '))}</b>. A comparação final faz-se quando chegarem todas.` : 'Ainda não há guias sincronizadas com esta fatura.',
     sem_ref: 'Esta fatura não refere guias (por exemplo, custos de transporte), por isso não há nada a conferir.',
   }[s.k];
   const tabela = linhas.length ? `<div style="max-height:34vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
@@ -308,7 +310,7 @@ function abrirFatura(id) {
     <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && refs.length ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
     ${refs.length || casadasG.length ? tit('1 · Guias desta fatura') + `<div style="border:1px solid #dde2ea;border-radius:14px;overflow:hidden">${guiaRows.join('')}</div>` + outrasHtml : (outrasHtml ? tit('Guias') + outrasHtml : '')}
     ${tit((refs.length || casadasG.length ? '2 · ' : '') + 'Artigos e quantidades')}${tabela}
-    <div class="modal-footer">${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Casar ${plural(s.prontas, 'guia pronta', 'guias prontas')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+    <div class="modal-footer">${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
   </div>`;
   document.body.appendChild(el);
 }
@@ -317,9 +319,10 @@ function desenhar() {
   const sug = sugestoes();
   const emFalta = _rows.filter(g => !g.fornecedor && !g.numero && !g.data);
   const hdr = document.getElementById('gre-hdr-act');
-  if (hdr) hdr.innerHTML = (sug.size ? `<button type="button" class="btn btn-sm" data-gre-auto title="Casa as guias com a fatura que refere o mesmo nº de guia (só quando há uma única fatura)">Casar ${plural(sug.size, 'guia certa', 'guias certas')}</button>` : '') + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
+  const pend = soltas().filter(g => !g.sync_bloqueada).length;
+  if (hdr) hdr.innerHTML = `<button type="button" class="btn btn-sm" data-gre-auto title="O portal sincroniza sozinho; isto força uma nova passagem agora">Sincronizar${pend ? ' (' + pend + ' pendentes)' : ''}</button>` + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
   const chips = document.getElementById('gre-chips');
-  if (chips) chips.innerHTML = [['faturas', 'Faturas', _todas.filter(f => POR_TRATAR.includes(situacao(f, sug).k))], ['soltas', 'Guias sem fatura', soltas()]]
+  if (chips) chips.innerHTML = [['faturas', 'Faturas', _todas.filter(f => POR_TRATAR.includes(situacao(f, sug).k))], ['soltas', 'Guias pendentes', soltas()]]
     .map(([k, l, a]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-gre-tab="${k}">${l}<b>${a.length}</b></button>`).join('');
   const box = document.getElementById('gre-mapa'); if (!box) return;
   if (_tab === 'soltas') desenharSoltas(box, sug); else desenharListaFaturas(box, sug);
@@ -343,7 +346,7 @@ function artigosGuia(g) {
   const linhas = g.linhas || [];
   const f = casada(g) ? _fat.get(g.fatura_id) : null;
   const info = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-    <span class="dd-pill ${f ? 'ok' : 'mute'}">${f ? 'Fatura ' + esc(f.numero || '—') : 'Por casar'}</span>
+    <span class="dd-pill ${f ? 'ok' : 'mute'}">${f ? 'Fatura ' + esc(f.numero || '—') : 'Pendente'}</span>
     ${g.paginas ? `<span class="dd-pill mute">${g.paginas} pág.</span>` : ''}
     ${g.nif ? `<span class="dd-pill mute">NIF ${esc(g.nif)}</span>` : ''}
     <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span></div>`;
@@ -437,7 +440,7 @@ async function gerarPdf(id) {
   } catch (e) { toast('Não foi possível gerar o PDF: ' + String(e.message || e).slice(0, 200)); }
 }
 
-// ── Casar com fatura ─────────────────────────────────────────────
+// ── Sincronização manual (para o que o motor deixou pendente) ─────────────────────────────────────────────
 async function carregarFaturas() {
   if (_faturas) return _faturas;
   const { data, error } = await sb.from('faturas')
@@ -475,7 +478,7 @@ async function abrirSeletor(id) {
   const el = document.createElement('div');
   el.className = 'modal-bg open'; el.id = 'modal-gre'; el.dataset.guia = id;
   el.innerHTML = `<div class="modal" style="width:560px">
-    <div class="modal-title">Casar guia com fatura</div>
+    <div class="modal-title">Sincronizar guia com fatura</div>
     <div class="modal-sub">Guia enviada por ${esc(nomeDe(g.criado_por))} em ${esc(dataHora(g.criado_em))}${g.obra_nome ? ' · ' + esc(g.obra_nome) : ''}</div>
     <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:12px 0 6px">Nº da guia (opcional)</label>
     <input id="gre-num" value="${esc(g.numero || '')}" placeholder="Ex.: GR 2026/1234" style="width:100%;height:46px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;box-sizing:border-box">
@@ -494,61 +497,56 @@ async function abrirSeletor(id) {
 async function casar(guiaId, faturaId) {
   const modal = document.getElementById('modal-gre');
   const numero = modal?.querySelector('#gre-num')?.value.trim() || null;
-  const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() };
+  const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false };
   if (numero) upd.numero = numero;
   const g0 = _rows.find(x => x.id === guiaId), fat0 = (_faturas || []).find(x => x.id === faturaId);
   if (!g0?.fornecedor && fat0?.fornecedor) upd.fornecedor = fat0.fornecedor;
   const dt = modal?.querySelector('#gre-dt')?.value;
   if (dt) upd.data = dt;
   const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
-  if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
+  if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
   modal?.remove();
-  toast('Guia casada com a fatura ✓');
+  toast('Guia sincronizada com a fatura ✓');
   await carregar(); desenhar();
 }
 
-// Casa as guias soltas com a fatura que as refere, só quando uma única fatura o faz (certeza total)
-async function casarAutomatico(btn) {
-  btn.disabled = true;
+// Força uma passagem do motor de sincronização (corre sozinho na base de dados sempre que chega uma guia ou uma fatura)
+async function sincronizar(btn) {
+  if (btn) btn.disabled = true;
   try {
-    const sug = sugestoes(); let n = 0;
-    for (const [gid, f] of sug) {
-      const g = _rows.find(x => x.id === gid);
-      const upd = { fatura_id: f.id, estado: 'casada', casada_em: new Date().toISOString() };
-      if (!g?.fornecedor && f.fornecedor) upd.fornecedor = f.fornecedor;
-      const { error } = await sb.from('guias_remessa').update(upd).eq('id', gid);
-      if (!error) n++;
-    }
-    toast(n ? `${plural(n, 'guia casada', 'guias casadas')} automaticamente ✓` : 'Nenhuma guia tem uma fatura que a refira com certeza');
+    const { data, error } = await sb.rpc('fn_sincronizar_guias');
+    if (error) throw error;
+    const n = (data?.por_referencia || 0) + (data?.por_conjunto || 0);
+    toast(n ? `${plural(n, 'guia sincronizada', 'guias sincronizadas')} automaticamente ✓${data?.pendentes ? ` · ${data.pendentes} pendentes` : ''}` : data?.pendentes ? `Nada de novo: ${data.pendentes} guias continuam pendentes` : 'Tudo sincronizado ✓');
     await carregar(); desenhar();
-  } catch (e) { toast('Não foi possível casar automaticamente: ' + String(e.message || e).slice(0, 200)); }
-  btn.disabled = false;
+  } catch (e) { toast('Não foi possível sincronizar: ' + String(e.message || e).slice(0, 200)); }
+  if (btn) btn.disabled = false;
 }
 
 async function desfazer(id) {
-  if (!confirm('Desfazer o casamento desta guia com a fatura?')) return;
-  const { error } = await sb.from('guias_remessa').update({ fatura_id: null, estado: 'por_casar', casada_em: null }).eq('id', id);
-  if (error) { toast('Não foi possível desfazer: ' + (error.message || error)); return; }
+  if (!confirm('Remover a sincronização desta guia com a fatura? O portal não a volta a sincronizar sozinho.')) return;
+  const { error } = await sb.from('guias_remessa').update({ fatura_id: null, estado: 'por_casar', casada_em: null, sync_auto: false, sync_score: null, sync_motivo: null, sync_nota: null, sync_bloqueada: true }).eq('id', id);
+  if (error) { toast('Não foi possível remover: ' + (error.message || error)); return; }
   await carregar(); desenhar();
 }
 
 // Casa uma guia com uma fatura (a janela da fatura, se estiver aberta, atualiza-se sozinha)
 async function casarUma(guiaId, faturaId) {
   const g = _rows.find(x => x.id === guiaId), f = _todas.find(x => x.id === faturaId);
-  const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() };
+  const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false };
   if (!g?.fornecedor && f?.fornecedor) upd.fornecedor = f.fornecedor;
   const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
-  if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
-  toast('Guia casada com a fatura ✓');
+  if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
+  toast('Guia sincronizada com a fatura ✓');
   await carregar(); desenhar();
 }
 // Casa de uma vez as guias que só esta fatura refere
 async function casarProntas(faturaId) {
   const ids = [...sugestoes()].filter(([, f]) => f.id === faturaId).map(([id]) => id);
   if (!ids.length) return;
-  const { error } = await sb.from('guias_remessa').update({ fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() }).in('id', ids);
-  if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
-  toast(`${plural(ids.length, 'guia casada', 'guias casadas')} ✓`);
+  const { error } = await sb.from('guias_remessa').update({ fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false }).in('id', ids);
+  if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
+  toast(`${plural(ids.length, 'guia sincronizada', 'guias sincronizadas')} ✓`);
   await carregar(); desenhar();
 }
 
@@ -560,7 +558,7 @@ function ligar() {
   sec.addEventListener('click', e => {
     const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-cf],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
-    if (t.dataset.greAuto !== undefined) casarAutomatico(t);
+    if (t.dataset.greAuto !== undefined) sincronizar(t);
     else if (t.dataset.greFat) abrirFatura(Number(t.dataset.greFat));
     else if (t.dataset.greCf) { const [g, f] = t.dataset.greCf.split(':').map(Number); casarUma(g, f); }
     else if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
@@ -603,7 +601,7 @@ document.addEventListener('input', e => {
   const m = document.getElementById('modal-gre'); if (m) desenharFaturas(m, Number(m.dataset.guia));
 });
 
-// Conferência de UMA fatura (para o ecrã de aprovação do diretor): lê as guias casadas com ela e compara
+// Conferência de UMA fatura (para o ecrã de aprovação do diretor): lê as guias sincronizadas com ela e compara
 export async function conferenciaFatura(dbId, linhas, guiasRef) {
   if (!dbId) return null;
   const { data, error } = await sb.from('guias_remessa').select('id,numero,linhas,fatura_id').eq('fatura_id', dbId);
@@ -627,7 +625,7 @@ export async function renderGuiasEscritorio() {
   ligar();
   _faturas = null;   // volta a ler as faturas na próxima escolha
   if (!_rows.length) box.innerHTML = '<div class="d-empty" style="border:0">A carregar…</div>';
-  try { await carregar(); } catch (e) {
+  try { try { await sb.rpc('fn_sincronizar_guias'); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); } catch (e) {
     console.warn('Guias:', e);
     box.innerHTML = '<div class="d-empty" style="border:0">Não foi possível carregar: ' + esc(e.message || e) + '</div>';
     return;
