@@ -50,6 +50,7 @@ async function carregar() {
   const { data, error } = await sb.from('faturas')
     .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo,guia_estado')
     .eq('status', 'aguarda_diretor')
+    .eq('teste', false)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw error;

@@ -155,7 +155,7 @@ async function carregar() {
     sb.from('faturas').select(cols).ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null').not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
-  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo').ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null').order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste').ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null').order('data', { ascending: false, nullsFirst: false }).limit(3000);
   _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
@@ -229,7 +229,7 @@ function desenharListaFaturas(box, sug) {
       const [t, c] = SIT_PILL[s.k];
       return `<tr data-gre-fat="${f.id}" style="cursor:pointer" title="Clique para abrir a fatura">
         <td>${f.data ? esc(fmtPT(f.data)) : '<span class="mut">—</span>'}</td>
-        <td><b>${esc(f.numero || '—')}</b><br><small class="mut">${esc(f.centro_custo || '')}</small></td>
+        <td><b>${esc(f.numero || '—')}</b>${f.teste ? ' <span class="dd-pill mute" title="Fatura carregada só para este teste; não aparece nas outras páginas">Teste</span>' : ''}<br><small class="mut">${esc(f.centro_custo || '')}</small></td>
         <td class="r">${eur(Number(f.total))}</td>
         <td>${nr ? `${tem}/${nr}` : '<span class="mut">—</span>'}</td>
         <td>${s.v.pct != null && nr ? barraPct(s.v.pct, corSit(s.k)) : '<span class="mut">—</span>'}</td>

@@ -713,7 +713,7 @@ async function carregarFaturas(){
   carregarAprovadoresFaturas();
   try{
     const { data, error } = await sb.from('faturas')
-      .select('*').order('criado_em', { ascending: false }).limit(500);
+      .select('*').eq('teste', false).order('criado_em', { ascending: false }).limit(500);
     if(error) throw error;
     if(data){
       FATURAS = data.map(_rowToFat);

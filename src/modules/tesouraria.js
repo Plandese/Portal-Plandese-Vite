@@ -40,6 +40,7 @@ async function carregar() {
   const { data, error } = await sb.from('faturas')
     .select('id,centralgest_lancada,centralgest_por,centralgest_em,dropbox_path,fornecedor,nif,numero,total,data,data_pag,tipo_pagamento,status,centro_custo,proposta_por,proposta_em,pago_por,pago_em')
     .in('status', APROVADAS)
+    .eq('teste', false)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw error;

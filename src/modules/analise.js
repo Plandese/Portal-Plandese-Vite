@@ -242,7 +242,7 @@ async function _carregar(){
     push('compras', sb.from('pedidos_compra').select('id,estado,obra_id,created_at,urgencia,titulo').gte('created_at', de), 'compras');
   }
   if(_pode('fin')){
-    push('faturas', sb.from('faturas').select('id,fornecedor,total,data,status,centro_custo').gte('data', de).lte('data', ate), 'faturas');
+    push('faturas', sb.from('faturas').select('id,fornecedor,total,data,status,centro_custo').eq('teste', false).gte('data', de).lte('data', ate), 'faturas');
   }
   if(_pode('log')){
     let q = sb.from('registos_combustivel').select('data,litros,tipo_registo,movimento,obra_id').eq('aprovacao','aprovado').gte('data', de).lte('data', ate);

@@ -56,7 +56,7 @@ export async function carregarPainelDados(forcar = false) {
     q(podePonto, () => lerTudo(() => sb.from('aprovacoes_ponto').select('obra_id,data').gte('data', ymd(somaDias(hojeD, -14))).order('data')), []),
     q(podePonto, async () => { const { data, error } = await sb.from('registos_ponto').select('colab_numero,obra_id,tipo').eq('data', hoje); if (error) throw error; return data || []; }, []),
     q(podeCmp, async () => { const { data, error } = await sb.from('pedidos_compra').select('id,estado,urgencia,obra_id'); if (error) throw error; return data || []; }, []),
-    q(podeFat || podeApr || podeTes, async () => { const { data, error } = await sb.from('faturas').select('id,status,data_pag,total').in('status', ['extraida', 'rever', 'pendente_aprovacao', 'aguarda_diretor', 'aprovada']); if (error) throw error; return data || []; }, []),
+    q(podeFat || podeApr || podeTes, async () => { const { data, error } = await sb.from('faturas').select('id,status,data_pag,total').in('status', ['extraida', 'rever', 'pendente_aprovacao', 'aguarda_diretor', 'aprovada']).eq('teste', false); if (error) throw error; return data || []; }, []),
     q(podeEq, async () => { const { data, error } = await sb.from('equipamentos').select('id,estado,ultimo_registo'); if (error) throw error; return data || []; }, []),
     q(podeEq, async () => { const { data, error } = await sb.from('eq_manutencoes').select('id').eq('estado', 'pendente'); if (error) throw error; return data || []; }, []),
     q(podeComb, async () => { const { data, error } = await sb.from('registos_combustivel').select('data,litros,obra_id,obra_nome,aprovacao').gte('data', seg); if (error) throw error; return data || []; }, []),
