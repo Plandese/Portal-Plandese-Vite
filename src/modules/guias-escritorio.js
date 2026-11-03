@@ -235,8 +235,8 @@ function desenharListaFaturas(box, sug) {
         <td>${f.data ? esc(fmtPT(f.data)) : '<span class="mut">—</span>'}</td>
         <td><b>${esc(f.numero || '—')}</b>${f.teste ? ' <span class="dd-pill mute" title="Fatura carregada só para este teste; não aparece nas outras páginas">Teste</span>' : ''}<br><small class="mut">${esc(f.centro_custo || '')}</small></td>
         <td class="r">${eur(Number(f.total))}</td>
-        <td>${nr ? `${tem}/${nr}` : '<span class="mut">—</span>'}</td>
-        <td>${s.v.pct != null && nr ? barraPct(s.v.pct, corSit(s.k)) : '<span class="mut">—</span>'}</td>
+        <td>${nr ? `${tem}/${nr}` : s.v.guias.length ? String(s.v.guias.length) : '<span class="mut">—</span>'}</td>
+        <td>${s.v.pct != null && (nr || s.v.guias.length) ? barraPct(s.v.pct, corSit(s.k)) : s.v.guias.length ? '<span class="mut" title="A fatura não tem artigos lidos: as guias foram sincronizadas pelo valor">Por valor</span>' : '<span class="mut">—</span>'}</td>
         <td><span class="dd-pill ${c}">${t}</span></td>
         <td>${s.k === 'ok' || s.k === 'sem_ref' ? `<span class="mut">${esc(s.passo)}</span>` : `<b>${esc(s.passo)}</b>`}</td></tr>`;
     }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
@@ -311,7 +311,7 @@ function abrirFatura(id) {
   el.innerHTML = `<div class="modal" style="width:min(940px,96vw);max-height:92vh;overflow-y:auto">
     <div class="modal-title">Fatura ${esc(f.numero || '—')}</div>
     <div class="modal-sub">${esc(f.fornecedor || '')}${f.data ? ' · ' + esc(fmtPT(f.data)) : ''} · ${eur(Number(f.total))}${f.centro_custo ? ' · ' + esc(f.centro_custo) : ''}</div>
-    <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && refs.length ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
+    <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && (refs.length || casadasG.length) ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
     ${refs.length || casadasG.length ? tit('1 · Guias desta fatura') + `<div style="border:1px solid #dde2ea;border-radius:14px;overflow:hidden">${guiaRows.join('')}</div>` + outrasHtml : (outrasHtml ? tit('Guias') + outrasHtml : '')}
     ${tit((refs.length || casadasG.length ? '2 · ' : '') + 'Artigos e quantidades')}${tabela}
     <div class="modal-footer">${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Sincronizar ${plural(s.prontas, 'guia', 'guias')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
