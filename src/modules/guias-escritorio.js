@@ -30,9 +30,10 @@ function agrupar(linhas) {
     const qtd = Number(l.qtd);
     if (!isFinite(qtd)) return;
     const ref = normRef(l.ref_forn ?? l.ref_fornecedor), desc = l.desc ?? l.descricao ?? '';
-    const g = out.find(x => (ref && x.ref && x.ref === ref) || (!ref && !x.ref && normDesc(x.desc) === normDesc(desc)));
+    // mesma referência, ou mesma descrição quando uma das linhas vem sem referência (a leitura da guia nem sempre a apanha)
+    const g = out.find(x => (ref && x.ref && x.ref === ref) || ((!ref || !x.ref) && normDesc(x.desc) === normDesc(desc)));
     const valor = Number(l.total) || 0;
-    if (g) { g.qtd += qtd; g.valor += valor; } else out.push({ ref, desc, qtd, un: l.un || '', valor });
+    if (g) { g.qtd += qtd; g.valor += valor; if (!g.ref && ref) g.ref = ref; } else out.push({ ref, desc, qtd, un: l.un || '', valor });
   });
   return out;
 }
@@ -50,7 +51,8 @@ function compararLinhas(linhasFatura, linhasGuias) {
     usadasG.add(j);
     if (Math.abs(f.qtd - G[j].qtd) > Math.max(0.0009, TOLERANCIA * f.qtd)) div.push({ tipo: 'qtd', desc: f.desc, fatura: f.qtd, guia: G[j].qtd, un: f.un || G[j].un });
   });
-  G.forEach((g, k) => { if (!usadasG.has(k)) div.push({ tipo: 'so_guia', desc: g.desc, guia: g.qtd, un: g.un }); });
+  // O transporte vem nas guias mas não é um artigo da fatura (ou vem noutra fatura): não conta como diferença
+  G.forEach((g, k) => { if (!usadasG.has(k) && !/^transp/.test(normDesc(g.desc))) div.push({ tipo: 'so_guia', desc: g.desc, guia: g.qtd, un: g.un }); });
   return div;
 }
 // Diferenças até 2% da quantidade faturada contam como certas
@@ -123,8 +125,8 @@ const VERIF_PILL = {
 
 let _rows = [];            // guias_remessa
 let _fat = new Map();      // id → fatura (só as já casadas)
-let _tab = 'por_casar';    // por_casar | casadas | todas | porfatura
-let _fest = 'todas';       // filtro do separador «Por fatura»: todas | incompletas | divergentes | completas
+let _tab = 'faturas';      // faturas | soltas
+let _fest = 'por_tratar';   // filtro da lista de faturas: por_tratar | div | ok | sem_ref | todas
 let _q = '';
 let _ligado = false;
 let _todas = [];          // todas as faturas do portal (separador «Faturas»)
@@ -176,165 +178,153 @@ function barraPct(p, cor) {
   return `<span style="display:inline-flex;align-items:center;gap:8px;min-width:150px"><span style="flex:1;height:8px;border-radius:99px;background:#e6eaf1;overflow:hidden;min-width:90px"><span style="display:block;height:100%;width:${p}%;background:${cor || '#173f9f'};border-radius:99px"></span></span><b style="font-size:13px;min-width:38px;text-align:right">${p}%</b></span>`;
 }
 
-// Separador «Por fatura»: como está a conferência das guias de cada fatura
-function linhasPorFatura() {
-  const q = _q.trim().toLowerCase();
-  return [..._fat.values()].map(f => ({ f, v: verificar(f) }))
-    .filter(({ f, v }) => {
-      if (q && !`${f.fornecedor || ''} ${f.numero || ''}`.toLowerCase().includes(q)) return false;
-      if (_fest === 'completas') return v.estado === 'ok';
-      if (_fest === 'divergentes') return v.estado === 'divergente';
-      if (_fest === 'incompletas') return v.estado !== 'ok' && v.estado !== 'divergente';
-      return true;
-    })
-    // primeiro o que mais urgência tem: aprovadas pelo diretor mas ainda por conferir
-    .sort((a, b) => (b.f.status === 'aprovada' && b.v.estado !== 'ok') - (a.f.status === 'aprovada' && a.v.estado !== 'ok') || (a.v.pct ?? -1) - (b.v.pct ?? -1));
-}
-function desenharPorFatura(box) {
-  const todas = [..._fat.values()].map(f => verificar(f).estado);
-  const cnt = k => k === 'todas' ? todas.length : todas.filter(e => k === 'completas' ? e === 'ok' : k === 'divergentes' ? e === 'divergente' : (e !== 'ok' && e !== 'divergente')).length;
-  const sub = [['todas', 'Todas'], ['incompletas', 'Incompletas'], ['divergentes', 'Divergentes'], ['completas', 'Completas']]
-    .map(([k, l]) => `<button type="button" class="d-chip-f${_fest === k ? ' on' : ''}" data-gre-fest="${k}">${l}<b>${cnt(k)}</b></button>`).join('');
-  const lista = linhasPorFatura();
-  const corpo = lista.length ? `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Fatura</th><th>Fornecedor</th><th class="r">Valor</th><th>Aprovação</th><th>Conferência</th><th>Guias</th><th>Estado</th></tr></thead>
-    <tbody>${lista.map(({ f, v }) => {
-      const nr = (v.refs || []).length, tem = nr - (v.faltam || []).length;
-      const guiasTxt = nr ? `${tem}/${nr}` : String(v.guias?.length || 0);
-      const aprov = f.status === 'aprovada' ? '<span class="dd-pill ok">Aprovada</span>' : `<span class="dd-pill mute">${esc(f.status ? String(f.status).replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) : '—')}</span>`;
-      return `<tr data-gre-verif="${f.id}" style="cursor:pointer" title="Clique para ver o detalhe">
-        <td><b>${esc(f.numero || '—')}</b></td><td>${esc(f.fornecedor || '—')}</td><td class="r">${eur(Number(f.total))}</td><td>${aprov}</td>
-        <td>${v.pct != null ? barraPct(v.pct, corPct(v)) : '<span class="mut">—</span>'}</td>
-        <td>${guiasTxt}</td><td>${pillVerif(f)}</td></tr>`;
-    }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
-  box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${sub}</div>
-    <div class="mut" style="font-size:12.5px;margin-bottom:10px">Faturas que referem guias ou já têm guias associadas. A percentagem é o valor da fatura já coberto pelas quantidades recebidas (tolerância de 2%).</div>${corpo}`;
-}
-
+// ── Ecrã centrado na fatura ──────────────────────────────────────
+// Separador «Faturas»: cada fatura com o que falta fazer; ao abrir vê-se tudo (guias, artigos, quantidades) numa só janela.
+// Separador «Guias sem fatura»: as guias ainda soltas, com a fatura certa já sugerida quando é 100% certa.
 const estadoFat = st => st === 'aprovada' || st === 'paga' ? 'ok' : st === 'rejeitada' ? 'bad' : 'mute';
 const rotuloEstado = st => st ? String(st).replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()) : '—';
+const soltas = () => _rows.filter(g => !casada(g));
+// A fatura refere esta guia (mesmo nº) e o fornecedor não é contrariado pelo NIF
+const refere = (f, g) => !!normNumero(g.numero) && (f.guias_ref || []).some(r => mesmaGuia(r, g.numero)) && (!g.nif || !f.nif || g.nif === f.nif);
+// guia solta → fatura, só quando uma única fatura a refere (certeza total)
+function sugestoes() {
+  const m = new Map();
+  soltas().forEach(g => { const c = _todas.filter(f => refere(f, g)); if (c.length === 1) m.set(g.id, c[0]); });
+  return m;
+}
+const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+const POR_TRATAR = ['div', 'casar', 'ler', 'espera'];
+// Situação de uma fatura e o próximo passo
+function situacao(f, sug) {
+  const v = verificar(f), refs = v.refs.length;
+  const prontas = [...sug.values()].filter(x => x.id === f.id).length;
+  let k, passo;
+  if (!refs && !v.guias.length) { k = 'sem_ref'; passo = 'Não refere guias'; }
+  else if (v.estado === 'ok') { k = 'ok'; passo = 'Nada a fazer'; }
+  else if (v.estado === 'divergente') { k = 'div'; passo = 'Rever ' + plural(v.div.length, 'diferença', 'diferenças'); }
+  else if (prontas) { k = 'casar'; passo = 'Casar ' + plural(prontas, 'guia pronta', 'guias prontas'); }
+  else if (v.estado === 'sem_leitura') { k = 'ler'; passo = 'Ler os artigos de uma guia'; }
+  else { k = 'espera'; passo = v.faltam?.length ? 'Faltam ' + plural(v.faltam.length, 'guia', 'guias') : 'À espera das guias'; }
+  return { v, k, passo, prontas };
+}
+const SIT_PILL = { ok: ['Bate certo ✓', 'ok'], div: ['Divergente', 'bad'], casar: ['Guias prontas a casar', 'info'], ler: ['Guia por ler', 'warn'], espera: ['À espera de guias', 'warn'], sem_ref: ['Sem guias a conferir', 'mute'] };
+const SIT_ORDEM = { div: 0, casar: 1, ler: 2, espera: 3, ok: 4, sem_ref: 5 };
+const corSit = k => k === 'div' ? '#b3261e' : k === 'ok' ? '#1f8a4c' : '#c77700';
 
-// Separador «Faturas»: todas as faturas do portal; ao clicar mostra os artigos lidos
-function desenharTodasFaturas(box) {
+function desenharListaFaturas(box, sug) {
   const q = _q.trim().toLowerCase();
-  const lista = _todas.filter(f => !q || `${f.fornecedor || ''} ${f.numero || ''} ${f.nif || ''} ${f.centro_custo || ''}`.toLowerCase().includes(q));
-  box.innerHTML = lista.length ? `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data</th><th>Fatura</th><th>Fornecedor</th><th class="r">Valor</th><th>Estado</th><th class="r">Artigos</th><th class="r">Guias</th></tr></thead>
-    <tbody>${lista.map(f => {
-      const na = (f.linhas || []).length, ng = (Array.isArray(f.guias_ref) ? f.guias_ref : []).length;
-      return `<tr data-gre-fat="${f.id}" style="cursor:pointer" title="Clique para ver os artigos">
+  const todas = _todas.map(f => ({ f, s: situacao(f, sug) }));
+  const noFiltro = k => _fest === 'todas' || (_fest === 'por_tratar' ? POR_TRATAR.includes(k) : _fest === k);
+  const cnt = k => todas.filter(x => k === 'todas' || (k === 'por_tratar' ? POR_TRATAR.includes(x.s.k) : x.s.k === k)).length;
+  const sub = [['por_tratar', 'Por tratar'], ['div', 'Divergentes'], ['ok', 'Completas'], ['sem_ref', 'Sem guias a conferir'], ['todas', 'Todas']]
+    .map(([k, l]) => `<button type="button" class="d-chip-f${_fest === k ? ' on' : ''}" data-gre-fest="${k}">${l}<b>${cnt(k)}</b></button>`).join('');
+  const lista = todas.filter(({ f, s }) => noFiltro(s.k) && (!q || `${f.fornecedor || ''} ${f.numero || ''} ${(f.guias_ref || []).join(' ')}`.toLowerCase().includes(q)))
+    .sort((a, b) => SIT_ORDEM[a.s.k] - SIT_ORDEM[b.s.k] || String(b.f.data || '').localeCompare(String(a.f.data || '')));
+  const corpo = lista.length ? `<div class="tbl-wrap"><table class="cmp-t">
+    <thead><tr><th>Data</th><th>Fatura</th><th class="r">Valor</th><th>Guias</th><th>Conferência</th><th>Estado</th><th>Próximo passo</th></tr></thead>
+    <tbody>${lista.map(({ f, s }) => {
+      const nr = s.v.refs.length, tem = nr - (s.v.faltam || []).length;
+      const [t, c] = SIT_PILL[s.k];
+      return `<tr data-gre-fat="${f.id}" style="cursor:pointer" title="Clique para abrir a fatura">
         <td>${f.data ? esc(fmtPT(f.data)) : '<span class="mut">—</span>'}</td>
-        <td><b>${esc(f.numero || '—')}</b></td><td>${esc(f.fornecedor || '—')}</td><td class="r">${eur(Number(f.total))}</td>
-        <td><span class="dd-pill ${estadoFat(f.status)}">${esc(rotuloEstado(f.status))}</span></td>
-        <td class="r">${na ? na : '<span class="mut">—</span>'}</td><td class="r">${ng ? ng : '<span class="mut">—</span>'}</td></tr>`;
+        <td><b>${esc(f.numero || '—')}</b><br><small class="mut">${esc(f.centro_custo || '')}</small></td>
+        <td class="r">${eur(Number(f.total))}</td>
+        <td>${nr ? `${tem}/${nr}` : '<span class="mut">—</span>'}</td>
+        <td>${s.v.pct != null && nr ? barraPct(s.v.pct, corSit(s.k)) : '<span class="mut">—</span>'}</td>
+        <td><span class="dd-pill ${c}">${t}</span></td>
+        <td>${s.k === 'ok' || s.k === 'sem_ref' ? `<span class="mut">${esc(s.passo)}</span>` : `<b>${esc(s.passo)}</b>`}</td></tr>`;
     }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar.</div>';
+  box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 0">${sub}</div>
+    <div class="mut" style="font-size:12.5px;padding:10px 16px">Cada fatura mostra o que falta para a conferência ficar completa. A percentagem é o valor já coberto pelas quantidades das guias casadas (tolerância de 2%).</div>${corpo}`;
 }
 
-function verFatura(id) {
+function desenharSoltas(box, sug) {
+  const q = _q.trim().toLowerCase();
+  const lista = soltas().filter(g => !q || `${g.fornecedor || ''} ${g.numero || ''} ${g.obra_nome || ''}`.toLowerCase().includes(q))
+    .sort((a, b) => (sug.has(b.id) - sug.has(a.id)) || String(b.criado_em || '').localeCompare(String(a.criado_em || '')));
+  if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Todas as guias estão casadas com uma fatura.</div>'; return; }
+  box.innerHTML = `<div class="mut" style="font-size:12.5px;padding:14px 16px 10px">Guias que ainda não estão ligadas a nenhuma fatura. Quando uma fatura refere o nº da guia, a sugestão aparece já aqui; é só confirmar.</div>
+    <div class="tbl-wrap"><table class="cmp-t">
+    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura sugerida</th><th></th></tr></thead>
+    <tbody>${lista.map(g => {
+      const f = sug.get(g.id);
+      const pdf = g.pdf_path ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-pdf="${g.id}">Abrir PDF</button>` : `<button type="button" class="btn btn-secondary btn-sm" data-gre-gerar="${g.id}" title="O PDF ainda não foi gerado">Gerar PDF</button>`;
+      return `<tr data-gre-ver="${g.id}" style="cursor:pointer" title="Clique para ver os artigos e a fotografia">
+        <td>${g.data ? esc(fmtPT(g.data)) : '<span class="mut">Sem data</span>'}</td>
+        <td>${g.fornecedor ? '<b>' + esc(g.fornecedor) + '</b>' : '<span class="mut">—</span>'}</td>
+        <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
+        <td>${g.numero ? '<b>' + esc(g.numero) + '</b>' : '<span class="mut">—</span>'}</td>
+        <td>${f ? `<span class="dd-pill info">${esc(f.numero || '—')}</span> <small class="mut">refere esta guia</small>` : '<span class="mut">Nenhuma fatura a refere</span>'}</td>
+        <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${f ? `<button type="button" class="btn btn-sm" data-gre-cf="${g.id}:${f.id}">Casar</button>` : `<button type="button" class="btn btn-secondary btn-sm" data-gre-casar="${g.id}">Escolher fatura</button>`}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// Janela única da fatura: guias, artigos e conferência
+function abrirFatura(id) {
   const f = _todas.find(x => x.id === id); if (!f) return;
-  const linhas = f.linhas || [], refs = Array.isArray(f.guias_ref) ? f.guias_ref : [];
-  const guias = _rows.filter(g => g.fatura_id === f.id), lidas = guias.filter(g => (g.linhas || []).length);
+  const sug = sugestoes(), s = situacao(f, sug), v = s.v;
+  const linhas = f.linhas || [], refs = (Array.isArray(f.guias_ref) ? f.guias_ref : []).filter(Boolean);
+  const casadasG = _rows.filter(g => g.fatura_id === f.id), lidas = casadasG.filter(g => (g.linhas || []).length);
   const cob = lidas.length ? coberturaPorArtigo(linhas, lidas.flatMap(g => g.linhas)) : null;
-  const pctTotal = lidas.length ? percentagem(linhas, lidas.flatMap(g => g.linhas)) : null;
-  document.getElementById('modal-gre-verif')?.remove();
-  const el = document.createElement('div');
-  el.className = 'modal-bg open'; el.id = 'modal-gre-verif';
-  const tabela = linhas.length ? `<div style="margin-top:10px;max-height:52vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
-    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd.</th><th>Un.</th><th class="r">Preço un.</th><th class="r">Total</th><th>Recebido nas guias</th></tr></thead>
+  const solta = r => soltas().find(g => mesmaGuia(g.numero, r) && (!g.nif || !f.nif || g.nif === f.nif));
+  const btn = (a, t, cls = 'btn-secondary') => `<button type="button" class="btn ${cls} btn-sm" ${a}>${t}</button>`;
+  const lin = (num, pill, acoes, nota) => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #eef1f6"><b style="min-width:150px">${esc(num || '—')}</b>${pill}<span class="mut" style="flex:1;font-size:12.5px">${nota || ''}</span><span style="display:flex;gap:6px">${acoes}</span></div>`;
+  const linhaCasada = g => lin(g.numero, '<span class="dd-pill ok">Casada ✓</span>', btn(`data-gre-ver="${g.id}"`, 'Ver') + (g.pdf_path ? btn(`data-gre-pdf="${g.id}"`, 'PDF') : '') + btn(`data-gre-df="${g.id}"`, 'Desfazer'), (g.linhas || []).length ? plural(g.linhas.length, 'artigo lido', 'artigos lidos') : 'artigos por ler');
+  const usadas = new Set();
+  const guiaRows = refs.map(r => {
+    const c = casadasG.find(g => mesmaGuia(g.numero, r));
+    if (c) { usadas.add(c.id); return linhaCasada(c); }
+    const sl = solta(r);
+    if (sl) return lin(r, '<span class="dd-pill info">Recebida, por casar</span>', btn(`data-gre-ver="${sl.id}"`, 'Ver') + btn(`data-gre-cf="${sl.id}:${f.id}"`, 'Casar', 'btn-primary'), sug.get(sl.id)?.id === f.id ? 'certeza total: só esta fatura a refere' : 'outra fatura também a refere');
+    return lin(r, '<span class="dd-pill mute">Ainda não chegou</span>', '', 'a fatura refere esta guia, mas ainda não foi carregada');
+  });
+  casadasG.filter(g => !usadas.has(g.id)).forEach(g => guiaRows.push(linhaCasada(g)));
+  const outras = soltas().filter(g => !refs.some(r => mesmaGuia(g.numero, r)) && ((g.nif && f.nif && g.nif === f.nif) || (g.fornecedor && f.fornecedor && similar(g.fornecedor, f.fornecedor) >= 0.6)));
+  const outrasHtml = outras.length ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px;color:#173f9f;font-weight:600">Outras guias soltas deste fornecedor (${outras.length}) — a fatura não as refere</summary><div style="border:1px solid #dde2ea;border-radius:14px;margin-top:8px;overflow:hidden">${outras.map(g => lin(g.numero, '<span class="dd-pill mute">Por casar</span>', btn(`data-gre-ver="${g.id}"`, 'Ver') + btn(`data-gre-cf="${g.id}:${f.id}"`, 'Casar mesmo assim'), g.data ? esc(fmtPT(g.data)) : '')).join('')}</div></details>` : '';
+  const divTxt = d => d.tipo === 'so_fatura' ? `${esc(d.desc)}: faturado ${fmtQtd(d.fatura)} ${esc(d.un || '')} e não vem nas guias` : d.tipo === 'so_guia' ? `${esc(d.desc)}: vem nas guias (${fmtQtd(d.guia)} ${esc(d.un || '')}) e não está na fatura` : `${esc(d.desc)}: fatura ${fmtQtd(d.fatura)} ${esc(d.un || '')} · guias ${fmtQtd(d.guia)} ${esc(d.un || '')}`;
+  const estilo = { ok: ['#dff5e7', '#166534'], div: ['#fde4e1', '#b3261e'], casar: ['#e4ecfb', '#173f9f'], ler: ['#fff0d9', '#a35a08'], espera: ['#fff0d9', '#a35a08'], sem_ref: ['#eef1f6', '#5d6678'] }[s.k];
+  const msg = {
+    ok: 'Tudo certo: as quantidades das guias coincidem com a fatura.',
+    div: `Há ${plural(v.div?.length || 0, 'diferença', 'diferenças')} entre a fatura e as guias:<ul style="margin:6px 0 0 18px;padding:0;font-weight:500">${(v.div || []).map(d => `<li>${divTxt(d)}</li>`).join('')}</ul>`,
+    casar: `Já chegaram ${plural(s.prontas, 'guia que refere', 'guias que referem')} esta fatura. Casa-${s.prontas === 1 ? 'a' : 'as'} para a conferência avançar.`,
+    ler: 'Há guias casadas sem os artigos lidos. Abra a guia («Ver») para a ler.',
+    espera: v.faltam?.length ? `Ainda faltam as guias: <b>${esc(v.faltam.join(', '))}</b>. A comparação final faz-se quando chegarem todas.` : 'Ainda não há guias casadas com esta fatura.',
+    sem_ref: 'Esta fatura não refere guias (por exemplo, custos de transporte), por isso não há nada a conferir.',
+  }[s.k];
+  const tabela = linhas.length ? `<div style="max-height:34vh;overflow:auto;border:1px solid #dde2ea;border-radius:14px"><table class="cmp-t">
+    <thead><tr><th>Ref.</th><th>Artigo</th><th class="r">Qtd. faturada</th><th>Un.</th><th class="r">Total</th><th>Recebido nas guias</th></tr></thead>
     <tbody>${linhas.map((l, i) => {
       const c = cob?.[i];
       const rec = !c ? '<span class="mut">—</span>' : `<div style="display:flex;align-items:center;gap:8px;white-space:nowrap">${barraPct(c.pct, c.pct >= 100 ? '#1f8a4c' : c.pct > 0 ? '#c77700' : '#b3261e')}<span class="mut" style="font-size:12.5px">${fmtQtd(c.rec)} ${esc(l.un || c.un || '')}${c.excesso ? ' <b style="color:#b3261e">a mais</b>' : ''}</span></div>`;
-      return `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td><td>${rec}</td></tr>`;
-    }).join('')}</tbody></table></div>`
-    : '<div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Esta fatura não tem artigos lidos.</div>';
-  el.innerHTML = `<div class="modal" style="width:min(980px,96vw);max-height:92vh;overflow-y:auto">
-    <div class="modal-title">Fatura ${esc(f.numero || '—')}</div>
-    <div class="modal-sub">${esc(f.fornecedor || '')}${f.nif ? ' · NIF ' + esc(f.nif) : ''}${f.data ? ' · ' + esc(fmtPT(f.data)) : ''}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <span class="dd-pill ${estadoFat(f.status)}">${esc(rotuloEstado(f.status))}</span>
-      <span class="dd-pill mute">${eur(Number(f.total))}</span>
-      ${f.centro_custo ? `<span class="dd-pill mute">${esc(f.centro_custo)}</span>` : ''}
-      <span class="dd-pill mute">${linhas.length} artigo${linhas.length === 1 ? '' : 's'}</span>
-      ${refs.length ? `<span class="dd-pill mute">Guias: ${esc(refs.join(', '))}</span>` : ''}</div>
-    ${linhas.length ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b style="font-size:13px">Conferência com as guias</b>${pctTotal != null ? barraPct(pctTotal, pctTotal >= 100 ? '#1f8a4c' : '#c77700') : ''}<span class="mut" style="font-size:12.5px">${!guias.length ? 'Ainda não há guias casadas com esta fatura.' : !lidas.length ? 'As guias casadas ainda não têm os artigos lidos.' : lidas.length < guias.length ? 'Há guias casadas por ler.' : guias.length + ' guia' + (guias.length === 1 ? '' : 's') + ' casada' + (guias.length === 1 ? '' : 's')}</span></div>` : ''}
-    ${tabela}
-    <div class="modal-footer"><button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
-  </div>`;
-  document.body.appendChild(el);
-}
-
-function pillVerif(f) {
-  const v = verificar(f), [t, c] = VERIF_PILL[v.estado] || VERIF_PILL.sem_dados;
-  const n = v.estado === 'divergente' ? ` (${v.div.length})` : v.estado === 'faltam' ? ` (${v.faltam.length})` : '';
-  return `<button type="button" class="dd-pill ${c}" data-gre-verif="${f?.id || ''}" style="border:0;cursor:pointer;font-family:inherit" title="Ver a comparação com a fatura">${t}${n}</button>`;
-}
-
-function verDetalhe(faturaId) {
-  const f = _fat.get(faturaId); if (!f) return;
-  const v = verificar(f);
+      return `<tr><td>${esc(l.ref_forn || '—')}</td><td><b>${esc(l.desc || '—')}</b></td><td class="r">${l.qtd != null ? fmtQtd(l.qtd) : '—'}</td><td>${esc(l.un || '—')}</td><td class="r">${eur(l.total)}</td><td>${rec}</td></tr>`;
+    }).join('')}</tbody></table></div>` : '<div style="padding:12px 14px;border-radius:14px;background:#eef1f6;color:#5d6678">Esta fatura não tem artigos lidos.</div>';
+  const tit = t => `<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678;margin:18px 0 8px">${t}</div>`;
   document.getElementById('modal-gre-verif')?.remove();
   const el = document.createElement('div');
-  el.className = 'modal-bg open'; el.id = 'modal-gre-verif';
-  const [t, c] = VERIF_PILL[v.estado] || VERIF_PILL.sem_dados;
-  let corpo = '';
-  if (v.estado === 'ok') corpo = '<div style="padding:14px;border-radius:14px;background:#dff5e7;color:#166534;font-weight:600">Os materiais e as quantidades das guias coincidem com a fatura.</div>';
-  else if (v.estado === 'divergente') corpo = `<table class="cmp-t" style="margin-top:6px"><thead><tr><th>Material</th><th class="r">Fatura</th><th class="r">Guias</th></tr></thead><tbody>${v.div.map(d => `<tr>
-      <td>${esc(d.desc)}${d.tipo === 'so_fatura' ? '<br><small style="color:#b3261e">Faturado mas não vem nas guias</small>' : d.tipo === 'so_guia' ? '<br><small style="color:#b3261e">Vem nas guias mas não está na fatura</small>' : ''}</td>
-      <td class="r">${d.fatura != null ? fmtQtd(d.fatura) + ' ' + esc(d.un || '') : '—'}</td>
-      <td class="r">${d.guia != null ? fmtQtd(d.guia) + ' ' + esc(d.un || '') : '—'}</td></tr>`).join('')}</tbody></table>`;
-  else if (v.estado === 'faltam') corpo = `<div style="padding:14px;border-radius:14px;background:#fff0d9;color:#a35a08">A fatura refere ${v.faltam.length === 1 ? 'uma guia que ainda não foi associada' : v.faltam.length + ' guias que ainda não foram associadas'}: <b>${esc(v.faltam.join(', '))}</b>.<br>A comparação faz-se quando todas estiverem casadas.</div>`;
-  else if (v.estado === 'sem_guias') corpo = `<div style="padding:14px;border-radius:14px;background:#eef1f6;color:#5d6678">Ainda não há guias associadas a esta fatura${v.refs?.length ? '. Refere: <b>' + esc(v.refs.join(', ')) + '</b>' : ''}.</div>`;
-  else if (v.estado === 'sem_artigos') corpo = '<div style="padding:14px;border-radius:14px;background:#eef1f6;color:#5d6678">A fatura não tem artigos lidos, por isso não há o que comparar.</div>';
-  else if (v.estado === 'sem_leitura') corpo = '<div style="padding:14px;border-radius:14px;background:#eef1f6;color:#5d6678">Alguma guia ainda não tem os materiais lidos. Use «Ler dados em falta» ou abra a guia.</div>';
-  el.innerHTML = `<div class="modal" style="width:min(680px,96vw);max-height:92vh;overflow-y:auto">
-    <div class="modal-title">Fatura ${esc(f.numero || '')}</div>
-    <div class="modal-sub">${esc(f.fornecedor || '')} · ${v.guias?.length || 0} guia${(v.guias?.length || 0) === 1 ? '' : 's'} associada${(v.guias?.length || 0) === 1 ? '' : 's'}: ${esc((v.guias || []).map(g => g.numero || '—').join(', '))}</div>
-    <div style="margin:12px 0;display:flex;align-items:center;gap:10px"><span class="dd-pill ${c}">${t}</span>${v.pct != null ? barraPct(v.pct) : ''}</div>
-    ${corpo}
-    <div class="modal-footer"><button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
+  el.className = 'modal-bg open'; el.id = 'modal-gre-verif'; el.dataset.fatura = f.id;
+  el.innerHTML = `<div class="modal" style="width:min(940px,96vw);max-height:92vh;overflow-y:auto">
+    <div class="modal-title">Fatura ${esc(f.numero || '—')}</div>
+    <div class="modal-sub">${esc(f.fornecedor || '')}${f.data ? ' · ' + esc(fmtPT(f.data)) : ''} · ${eur(Number(f.total))}${f.centro_custo ? ' · ' + esc(f.centro_custo) : ''}</div>
+    <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:${estilo[0]};color:${estilo[1]};font-weight:600;line-height:1.45">${msg}${v.pct != null && refs.length ? `<div style="margin-top:10px;color:#1b2130">${barraPct(v.pct, corSit(s.k))}</div>` : ''}</div>
+    ${refs.length || casadasG.length ? tit('1 · Guias desta fatura') + `<div style="border:1px solid #dde2ea;border-radius:14px;overflow:hidden">${guiaRows.join('')}</div>` + outrasHtml : (outrasHtml ? tit('Guias') + outrasHtml : '')}
+    ${tit((refs.length || casadasG.length ? '2 · ' : '') + 'Artigos e quantidades')}${tabela}
+    <div class="modal-footer">${s.prontas ? `<button class="btn btn-primary" data-gre-cf-all="${f.id}">Casar ${plural(s.prontas, 'guia pronta', 'guias prontas')}</button>` : ''}<button class="btn btn-secondary" data-gre-fechar-verif>Fechar</button></div>
   </div>`;
   document.body.appendChild(el);
 }
 
 function desenhar() {
+  const sug = sugestoes();
   const emFalta = _rows.filter(g => !g.fornecedor && !g.numero && !g.data);
   const hdr = document.getElementById('gre-hdr-act');
-  const porCasarNum = _rows.filter(g => !casada(g) && g.numero).length;
-  if (hdr) hdr.innerHTML = (porCasarNum ? '<button type="button" class="btn btn-secondary btn-sm" data-gre-auto title="Casa as guias com as faturas que referem o mesmo nº de guia">Casar automaticamente</button>' : '') + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
+  if (hdr) hdr.innerHTML = (sug.size ? `<button type="button" class="btn btn-sm" data-gre-auto title="Casa as guias com a fatura que refere o mesmo nº de guia (só quando há uma única fatura)">Casar ${plural(sug.size, 'guia certa', 'guias certas')}</button>` : '') + (emFalta.length ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-ler-todas title="Lê o fornecedor, o nº e a data nas guias que estão em branco">Ler dados em falta (${emFalta.length})</button>` : '');
   const chips = document.getElementById('gre-chips');
-  if (chips) {
-    const por = _rows.filter(g => !casada(g)), cas = _rows.filter(casada);
-    chips.innerHTML = [['por_casar', 'Por casar', por], ['casadas', 'Casadas', cas], ['todas', 'Todas', _rows], ['porfatura', 'Por fatura', [..._fat.values()]], ['faturas', 'Faturas', _todas]]
-      .map(([k, l, a]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-gre-tab="${k}">${l}<b>${a.length}</b></button>`).join('');
-  }
+  if (chips) chips.innerHTML = [['faturas', 'Faturas', _todas.filter(f => POR_TRATAR.includes(situacao(f, sug).k))], ['soltas', 'Guias sem fatura', soltas()]]
+    .map(([k, l, a]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-gre-tab="${k}">${l}<b>${a.length}</b></button>`).join('');
   const box = document.getElementById('gre-mapa'); if (!box) return;
-  if (_tab === 'porfatura') return desenharPorFatura(box);
-  if (_tab === 'faturas') return desenharTodasFaturas(box);
-  const lista = filtrar();
-  if (!lista.length) { box.innerHTML = '<div class="d-empty" style="border:0">Sem guias para mostrar.</div>'; return; }
-  box.innerHTML = `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data da guia</th><th>Fornecedor</th><th>Obra</th><th>Nº da guia</th><th>Fatura</th><th>Verificação</th><th></th></tr></thead>
-    <tbody>${lista.map(g => {
-      const f = _fat.get(g.fatura_id);
-      const pdf = g.pdf_path
-        ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-pdf="${g.id}">Abrir PDF</button>`
-        : `<button type="button" class="btn btn-secondary btn-sm" data-gre-gerar="${g.id}" title="O PDF ainda não foi gerado">Gerar PDF</button>`;
-      const fat = casada(g)
-        ? `<span class="dd-pill ok" title="Casada em ${esc(dataHora(g.casada_em))}">${f ? esc(f.numero || '—') + ' · ' + esc(f.fornecedor || '') : 'Fatura ' + g.fatura_id}</span>`
-        : '<span class="dd-pill mute">Por casar</span>';
-      const acao = casada(g)
-        ? `<button type="button" class="btn btn-secondary btn-sm" data-gre-desf="${g.id}">Desfazer</button>`
-        : `<button type="button" class="btn btn-sm" data-gre-casar="${g.id}">Casar com fatura</button>`;
-      return `<tr data-gre-ver="${g.id}" style="cursor:pointer" title="Clique para ver as fotografias">
-        <td>${g.data ? esc(fmtPT(g.data)) : '<span class="mut" title="Clique na guia para indicar a data de receção">Sem data</span>'}</td>
-        <td>${g.fornecedor ? '<b>' + esc(g.fornecedor) + '</b>' : '<span class="mut">—</span>'}</td>
-        <td>${g.obra_nome ? esc(g.obra_nome) : '<span class="mut">—</span>'}</td>
-        <td>${g.numero ? '<b>' + esc(g.numero) + '</b>' : '<span class="mut">—</span>'}</td>
-        <td>${fat}</td>
-        <td>${casada(g) ? pillVerif(f) : '<span class="mut">—</span>'}</td>
-        <td style="white-space:nowrap;display:flex;gap:6px;justify-content:flex-end">${pdf}${acao}</td>
-      </tr>`;
-    }).join('')}</tbody></table></div>`;
+  if (_tab === 'soltas') desenharSoltas(box, sug); else desenharListaFaturas(box, sug);
+  const m = document.getElementById('modal-gre-verif');
+  if (m?.dataset.fatura) abrirFatura(Number(m.dataset.fatura));
 }
 
 // ── Fotografias ──────────────────────────────────────────────────
@@ -517,22 +507,19 @@ async function casar(guiaId, faturaId) {
   await carregar(); desenhar();
 }
 
-// Casa as guias por casar com a fatura que refere o mesmo nº de guia (e o mesmo fornecedor, quando há NIF)
+// Casa as guias soltas com a fatura que as refere, só quando uma única fatura o faz (certeza total)
 async function casarAutomatico(btn) {
   btn.disabled = true;
   try {
-    await carregarFaturas();
-    let n = 0, ambiguas = 0;
-    for (const g of _rows.filter(x => !casada(x) && x.numero)) {
-            const cands = _faturas.filter(f => (f.guias_ref || []).some(r => mesmaGuia(r, g.numero)) && (!g.nif || !f.nif || g.nif === f.nif));
-      if (cands.length > 1) { ambiguas++; continue; }
-      if (cands.length !== 1) continue;
-      const upd = { fatura_id: cands[0].id, estado: 'casada', casada_em: new Date().toISOString() };
-      if (!g.fornecedor && cands[0].fornecedor) upd.fornecedor = cands[0].fornecedor;
-      const { error } = await sb.from('guias_remessa').update(upd).eq('id', g.id);
+    const sug = sugestoes(); let n = 0;
+    for (const [gid, f] of sug) {
+      const g = _rows.find(x => x.id === gid);
+      const upd = { fatura_id: f.id, estado: 'casada', casada_em: new Date().toISOString() };
+      if (!g?.fornecedor && f.fornecedor) upd.fornecedor = f.fornecedor;
+      const { error } = await sb.from('guias_remessa').update(upd).eq('id', gid);
       if (!error) n++;
     }
-    toast(n ? `${n} guia${n === 1 ? '' : 's'} casada${n === 1 ? '' : 's'} automaticamente ✓${ambiguas ? ` (${ambiguas} ambígua${ambiguas === 1 ? '' : 's'}, ficam para casar à mão)` : ''}` : 'Nenhuma guia encontrou fatura com o mesmo nº de guia');
+    toast(n ? `${plural(n, 'guia casada', 'guias casadas')} automaticamente ✓` : 'Nenhuma guia tem uma fatura que a refira com certeza');
     await carregar(); desenhar();
   } catch (e) { toast('Não foi possível casar automaticamente: ' + String(e.message || e).slice(0, 200)); }
   btn.disabled = false;
@@ -545,17 +532,37 @@ async function desfazer(id) {
   await carregar(); desenhar();
 }
 
+// Casa uma guia com uma fatura (a janela da fatura, se estiver aberta, atualiza-se sozinha)
+async function casarUma(guiaId, faturaId) {
+  const g = _rows.find(x => x.id === guiaId), f = _todas.find(x => x.id === faturaId);
+  const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() };
+  if (!g?.fornecedor && f?.fornecedor) upd.fornecedor = f.fornecedor;
+  const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
+  if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
+  toast('Guia casada com a fatura ✓');
+  await carregar(); desenhar();
+}
+// Casa de uma vez as guias que só esta fatura refere
+async function casarProntas(faturaId) {
+  const ids = [...sugestoes()].filter(([, f]) => f.id === faturaId).map(([id]) => id);
+  if (!ids.length) return;
+  const { error } = await sb.from('guias_remessa').update({ fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString() }).in('id', ids);
+  if (error) { toast('Não foi possível casar: ' + (error.message || error)); return; }
+  toast(`${plural(ids.length, 'guia casada', 'guias casadas')} ✓`);
+  await carregar(); desenhar();
+}
+
 function ligar() {
   if (_ligado) return;
   const sec = document.getElementById('sec-guias');
   if (!sec) return;
   _ligado = true;
   sec.addEventListener('click', e => {
-    const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-verif],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
+    const t = e.target.closest('[data-gre-auto],[data-gre-fat],[data-gre-cf],[data-gre-ler-todas],[data-gre-tab],[data-gre-fest],[data-gre-pdf],[data-gre-gerar],[data-gre-casar],[data-gre-desf],[data-gre-ver]');
     if (!t) return;
     if (t.dataset.greAuto !== undefined) casarAutomatico(t);
-    else if (t.dataset.greFat) verFatura(Number(t.dataset.greFat));
-    else if (t.dataset.greVerif) verDetalhe(Number(t.dataset.greVerif));
+    else if (t.dataset.greFat) abrirFatura(Number(t.dataset.greFat));
+    else if (t.dataset.greCf) { const [g, f] = t.dataset.greCf.split(':').map(Number); casarUma(g, f); }
     else if (t.dataset.greLerTodas !== undefined) lerEmFalta(t);
     else if (t.dataset.greFest) { _fest = t.dataset.greFest; desenhar(); }
     else if (t.dataset.greTab) { _tab = t.dataset.greTab; desenhar(); }
@@ -572,6 +579,14 @@ function ligar() {
 document.addEventListener('click', e => {
   const vm = document.getElementById('modal-gre-verif');
   if (vm && (e.target.closest('[data-gre-fechar-verif]') || e.target === vm)) { vm.remove(); return; }
+  if (vm) {
+    const cf = e.target.closest('[data-gre-cf]'), ca = e.target.closest('[data-gre-cf-all]'), df = e.target.closest('[data-gre-df]'), vr = e.target.closest('[data-gre-ver]'), pf = e.target.closest('[data-gre-pdf]');
+    if (cf) { const [g, f] = cf.dataset.greCf.split(':').map(Number); casarUma(g, f); return; }
+    if (ca) { casarProntas(Number(ca.dataset.greCfAll)); return; }
+    if (df) { desfazer(Number(df.dataset.greDf)); return; }
+    if (vr) { verFotos(Number(vr.dataset.greVer)); return; }
+    if (pf) { abrirPdf(Number(pf.dataset.grePdf)); return; }
+  }
   const fm = document.getElementById('modal-gre-fotos');
   const gd = fm && e.target.closest('[data-gre-guardar]');
   if (gd) { guardarDados(Number(gd.dataset.greGuardar)); return; }
