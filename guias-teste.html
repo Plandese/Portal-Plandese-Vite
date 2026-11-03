@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="icon" href="/plandese_logo.png"/>
+  <title>Guias de Remessa · Teste</title>
+</head>
+<body class="gt-body">
+
+  <!-- Entrada (a sessão do portal é partilhada: se já entrou no portal, não pede nada) -->
+  <div id="gt-login" hidden>
+    <form class="gt-login-box" id="gt-login-form" autocomplete="on">
+      <div class="gt-logo"><i></i><b>Plandese</b></div>
+      <h1>Guias de Remessa</h1>
+      <p>Versão de teste, separada do portal. Entre com o seu utilizador do portal.</p>
+      <div class="gt-erro" id="gt-login-erro" hidden>Utilizador ou palavra-passe incorretos.</div>
+      <label>Utilizador<input id="gt-u" type="text" autocomplete="username" placeholder="nome.apelido"></label>
+      <label>Palavra-passe<input id="gt-p" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+      <button type="submit" class="gt-btn gt-btn-p">Entrar</button>
+    </form>
+  </div>
+
+  <div id="gt-app" hidden>
+    <header class="gt-hdr">
+      <div class="gt-hdr-top">
+        <div class="gt-logo"><i></i><b>Plandese</b></div>
+        <div class="gt-user"><span id="gt-user"></span><button type="button" id="gt-sair">Sair</button></div>
+      </div>
+      <h1>Guias de Remessa</h1>
+      <p>Versão de teste · sistema separado do portal: as faturas e guias daqui não aparecem em mais nenhuma página</p>
+    </header>
+
+    <main class="gt-sheet">
+      <section id="sec-guias">
+        <div class="gt-barra">
+          <div id="gt-acoes" class="gt-acoes">
+            <button type="button" class="btn btn-secondary btn-sm" id="gt-importar" title="Copia para aqui as faturas Secil do portal (só lê; nada no portal é alterado)">Importar faturas Secil</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="gt-carregar" title="Adicionar guias (fotografias ou PDF digitalizado; cada página é uma guia)">Carregar guias</button>
+            <input type="file" id="gt-ficheiros" accept="image/*,application/pdf" multiple hidden>
+          </div>
+          <div id="gre-hdr-act" class="gt-acoes"></div>
+        </div>
+        <div id="gt-prog" class="gt-prog" hidden></div>
+        <div id="gre-chips" class="d-chips"></div>
+        <div class="filter-bar">
+          <input type="text" id="gre-q" placeholder="Pesquisar fatura, fornecedor ou nº da guia…" style="flex:1;min-width:220px"/>
+        </div>
+        <div class="card" id="gre-mapa" style="padding:0;overflow:hidden"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/src/guias-teste.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 // Junta as fotografias de uma guia de remessa num PDF, guarda-o na pasta «Guias» da Dropbox da empresa e lê os dados
 // da guia (fornecedor, nº, data, materiais) com a função «ler-guia» para o escritório não ter de os escrever.
 // Com { so_ler: true } só refaz a leitura dos dados (sem gerar outro PDF).
+// Com { tabela: "gt_guias" } trabalha sobre o sistema de teste separado (guias-teste.html); por omissão, as guias do portal.
 // Corre com a sessão de quem chama (RLS): o encarregado só trata das suas guias; o escritório de qualquer uma.
 // Segredos: DROPBOX_APP_KEY, DROPBOX_REFRESH_TOKEN, (opcional) DROPBOX_APP_SECRET — os mesmos da função «dropbox».
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -14,6 +15,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 
 const BUCKET = "guias-remessa";
 const PASTA_PADRAO = "/David Mósca/11_DCOMPRAS/1.FATURAS APROVADAS_POR APROVAR/00 - PORTAL PLANDESE/Guias";
+const NIF_PLANDESE = "514913827"; // o NIF do cliente também vem impresso na guia: nunca é o do fornecedor
 
 async function accessToken(): Promise<string> {
   const appKey = Deno.env.get("DROPBOX_APP_KEY"), refresh = Deno.env.get("DROPBOX_REFRESH_TOKEN");
@@ -43,10 +45,12 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { guia_id, so_ler } = await req.json();
+    const { guia_id, so_ler, tabela: tb } = await req.json();
     if (!guia_id) return json({ error: "Falta guia_id" }, 400);
+    // «gt_guias» = sistema de teste separado (guias-teste.html); por omissão, as guias do portal
+    const tabela = tb === "gt_guias" ? "gt_guias" : "guias_remessa";
 
-    const { data: g, error: eg } = await sb.from("guias_remessa").select("id,fotos,foto_path,obra_nome,criado_por,criado_em,fornecedor,nif,numero,data,pdf_path").eq("id", guia_id).maybeSingle();
+    const { data: g, error: eg } = await sb.from(tabela).select("id,fotos,foto_path,obra_nome,criado_por,criado_em,fornecedor,nif,numero,data,pdf_path").eq("id", guia_id).maybeSingle();
     if (eg) throw eg;
     if (!g) return json({ error: "Guia não encontrada ou sem permissão" }, 404);
     const fotos: string[] = (Array.isArray(g.fotos) && g.fotos.length ? g.fotos : [g.foto_path]).filter(Boolean);
@@ -79,6 +83,8 @@ Deno.serve(async (req: Request) => {
     if (cfg?.value?.guias) pasta = String(cfg.value.guias).replace(/\/+$/, "");
     else if (cfg?.value?.pendentes) pasta = String(cfg.value.pendentes).replace(/\/[^/]+\/?$/, "") + "/Guias";
 
+    if (tabela === "gt_guias") pasta += "/Teste";
+
     const d = new Date(g.criado_em ?? Date.now());
     const dia = d.toISOString().slice(0, 10), hora = d.toISOString().slice(11, 16).replace(":", "h");
     const nome = [`Guia ${dia} ${hora}`, limpo(g.obra_nome ?? ""), limpo(g.criado_por ?? ""), `#${g.id}`].filter(Boolean).join(" - ") + ".pdf";
@@ -97,7 +103,7 @@ Deno.serve(async (req: Request) => {
     if (!resp.ok) return json({ error: "Dropbox: " + (await resp.text()).slice(0, 400) }, 502);
     path = (await resp.json()).path_display as string;
 
-    const { error: eu } = await sb.from("guias_remessa").update({ pdf_path: path, pdf_em: new Date().toISOString() }).eq("id", g.id);
+    const { error: eu } = await sb.from(tabela).update({ pdf_path: path, pdf_em: new Date().toISOString() }).eq("id", g.id);
     if (eu) throw eu;
     }
 
@@ -118,10 +124,10 @@ Deno.serve(async (req: Request) => {
         };
         if (!g.fornecedor && dl.fornecedor) upd.fornecedor = String(dl.fornecedor);
         const nif = String(dl.nif ?? "").replace(/\D/g, "").slice(-9);
-        if (!g.nif && nif.length === 9) upd.nif = nif;
+        if (!g.nif && nif.length === 9 && nif !== NIF_PLANDESE) upd.nif = nif;
         if (!g.numero && dl.numero) upd.numero = String(dl.numero);
         if (!g.data && /^\d{4}-\d{2}-\d{2}$/.test(String(dl.data ?? ""))) upd.data = dl.data;
-        const { error: el } = await sb.from("guias_remessa").update(upd).eq("id", g.id);
+        const { error: el } = await sb.from(tabela).update(upd).eq("id", g.id);
         lido = !el;
       }
     } catch (e) { console.warn("ler-guia:", e); }

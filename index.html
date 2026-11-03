@@ -1430,10 +1430,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           <span class="nav-label">Faturas Por Aprovar</span>
         </button>
-        <button class="nav-btn" onclick="goTo('guias',this)" id="nav-gre">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
-          <span class="nav-label">Guias de Remessa</span>
-        </button>
         <button class="nav-btn" onclick="goTo('tesouraria',this)" id="nav-tes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
           <span class="nav-label">Tesouraria</span>
@@ -1863,22 +1859,6 @@
           <select id="far-cc" style="min-width:240px"><option value="">Todas as obras</option></select>
         </div>
         <div class="card" id="far-mapa" style="padding:0;overflow:hidden"></div>
-      </section>
-
-      <!-- GUIAS DE REMESSA (escritório) -->
-      <section id="sec-guias" class="section">
-        <div class="pg-hdr">
-          <div>
-            <div class="pg-title">Guias de Remessa</div>
-            <div class="pg-sub">Guias fotografadas pelos encarregados, sincronizadas automaticamente com as faturas do fornecedor</div>
-          </div>
-          <div id="gre-hdr-act" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
-        </div>
-        <div id="gre-chips" class="d-chips"></div>
-        <div class="filter-bar">
-          <input type="text" id="gre-q" placeholder="Pesquisar fatura, fornecedor ou nº da guia…" style="flex:1;min-width:220px"/>
-        </div>
-        <div class="card" id="gre-mapa" style="padding:0;overflow:hidden"></div>
       </section>
 
       <!-- TESOURARIA -->

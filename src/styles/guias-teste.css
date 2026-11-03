@@ -1,0 +1,69 @@
+/* Página separada «Guias de Remessa · Teste» — design novo do portal: cabeçalho azul + folha branca */
+.gt-body{margin:0;min-height:100vh;background:var(--m-brand,#173f9f);font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif;color:var(--m-ink,#1b2130)}
+.gt-body [hidden]{display:none!important}
+.gt-logo{display:flex;align-items:center;gap:9px;color:#fff;font-size:18px;font-weight:800;letter-spacing:-.3px}
+.gt-logo i{width:26px;height:26px;background:#fff;-webkit-mask:var(--m-logo-mask) center/contain no-repeat;mask:var(--m-logo-mask) center/contain no-repeat}
+
+/* entrada */
+#gt-login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.gt-login-box{width:min(420px,100%);background:#fff;border-radius:24px;padding:28px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(8,20,60,.35)}
+.gt-login-box .gt-logo{color:var(--m-brand,#173f9f)}
+.gt-login-box .gt-logo i{background:var(--m-brand,#173f9f)}
+.gt-login-box h1{margin:4px 0 0;font-size:27px;font-weight:800;letter-spacing:-.5px}
+.gt-login-box p{margin:0;font-size:14px;color:var(--m-mute,#5d6678)}
+.gt-login-box label,.gt-body .gt-lbl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678}
+.gt-login-box input{height:50px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:16px;font-family:inherit;color:var(--m-ink,#1b2130);outline:0}
+.gt-login-box input:focus{border-color:var(--m-brand,#173f9f);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.gt-btn{height:52px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);font-weight:600;font-size:16.5px;font-family:inherit;cursor:pointer;background:#fff;color:var(--m-brand,#173f9f)}
+.gt-btn-p{background:var(--m-brand,#173f9f);color:#fff}
+.gt-erro{padding:10px 14px;border-radius:14px;background:#fef3f2;border:1.5px solid #fda29b;color:#b42318;font-size:14px}
+
+/* cabeçalho + folha */
+.gt-hdr{position:relative;color:#fff;padding:22px max(22px,calc((100vw - 1280px)/2 + 22px)) 56px;overflow:hidden}
+.gt-hdr::before{content:'';position:absolute;left:-12%;top:-160%;width:60%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.07)}
+.gt-hdr::after{content:'';position:absolute;right:-8%;bottom:-120%;width:40%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.06)}
+.gt-hdr-top{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.gt-user{display:flex;align-items:center;gap:10px;font-size:13.5px;color:rgba(255,255,255,.9)}
+.gt-user button{height:34px;padding:0 14px;border-radius:99px;border:0;background:rgba(255,255,255,.16);color:#fff;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
+.gt-hdr h1{position:relative;margin:0;font-size:27px;font-weight:800;letter-spacing:-.5px}
+.gt-hdr p{position:relative;margin:4px 0 0;font-size:14px;color:rgba(255,255,255,.84)}
+.gt-sheet{margin-top:-26px;background:#fff;border-radius:24px 24px 0 0;min-height:calc(100vh - 150px);padding:22px max(20px,calc((100vw - 1280px)/2 + 20px)) 40px;position:relative}
+.gt-barra{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.gt-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gt-prog{margin:0 0 14px;padding:10px 14px;border-radius:14px;background:#e4ecfb;color:#173f9f;font-size:13.5px;font-weight:600}
+
+/* componentes usados pelo módulo (independentes do portal) */
+.gt-body .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);background:var(--m-brand,#173f9f);color:#fff;font-weight:600;font-size:13.5px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.gt-body .btn-secondary{background:#fff;color:var(--m-brand,#173f9f)}
+.gt-body .btn-primary{background:var(--m-brand,#173f9f);color:#fff}
+.gt-body .btn-sm{height:34px;padding:0 14px;font-size:13px}
+.gt-body .btn:disabled{opacity:.55;cursor:default}
+.gt-body .d-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.gt-body .d-chip-f{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:99px;border:1.5px solid #dde2ea;background:#fff;color:#1b2130;font-weight:600;font-size:13.5px;font-family:inherit;cursor:pointer}
+.gt-body .d-chip-f b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#eef1f6;font-size:12px}
+.gt-body .d-chip-f.on{background:var(--m-brand,#173f9f);border-color:var(--m-brand,#173f9f);color:#fff}
+.gt-body .d-chip-f.on b{background:rgba(255,255,255,.22);color:#fff}
+.gt-body .filter-bar{display:flex;gap:10px;margin-bottom:14px}
+.gt-body .filter-bar input{height:50px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-size:15px;font-family:inherit;outline:0}
+.gt-body .filter-bar input:focus{border-color:var(--m-brand,#173f9f);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.gt-body .card{background:#fff;border:1px solid #dde2ea;border-radius:22px}
+.gt-body .tbl-wrap{overflow:auto}
+.gt-body .cmp-t{width:100%;border-collapse:collapse;font-size:14px}
+.gt-body .cmp-t th{position:sticky;top:0;background:#f6f8fc;text-align:left;padding:11px 14px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6678;border-bottom:1px solid #dde2ea;white-space:nowrap}
+.gt-body .cmp-t td{padding:13px 14px;border-bottom:1px solid #edf0f5;vertical-align:middle}
+.gt-body .cmp-t tbody tr:hover td{background:#f9fafd}
+.gt-body .r{text-align:right}
+.gt-body .mut{color:#6a7284}
+.gt-body .d-empty{padding:34px 16px;text-align:center;color:#6a7284}
+.gt-body .dd-pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:700;background:#eef1f6;color:#5d6678;white-space:nowrap}
+.gt-body .dd-pill.ok{background:#dff5e7;color:#166534}
+.gt-body .dd-pill.bad{background:#fde4e1;color:#b3261e}
+.gt-body .dd-pill.warn{background:#fff0d9;color:#a35a08}
+.gt-body .dd-pill.info{background:#e4ecfb;color:#173f9f}
+.gt-body .modal-bg{position:fixed;inset:0;z-index:4000;background:rgba(15,23,42,.5);display:grid;place-items:center;padding:16px}
+.gt-body .modal{background:#fff;border-radius:24px;padding:22px 22px 18px;box-shadow:0 30px 80px rgba(8,20,60,.35)}
+.gt-body .modal-title{font-size:20px;font-weight:800;letter-spacing:-.3px}
+.gt-body .modal-sub{margin-top:4px;font-size:13.5px;color:#5d6678}
+.gt-body .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+.gt-body details summary{list-style:none}
+@media (max-width:700px){.gt-hdr h1{font-size:23px}.gt-sheet{padding-left:14px;padding-right:14px}}

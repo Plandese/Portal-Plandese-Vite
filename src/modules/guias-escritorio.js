@@ -124,7 +124,11 @@ const VERIF_PILL = {
   sem_artigos: ['Fatura sem artigos', 'mute'], sem_guias: ['Sem guias', 'mute'], sem_leitura: ['Guia por ler', 'mute'], sem_dados: ['—', 'mute'],
 };
 
-let _rows = [];            // guias_remessa
+// Tabelas em uso: as do portal por omissão; a página de teste (guias-teste.html) aponta para as suas (gt_*)
+const T = { guias: 'guias_remessa', faturas: 'faturas', rpc: 'fn_sincronizar_guias' };
+export function configurarGuias(cfg) { Object.assign(T, cfg); }
+
+let _rows = [];            // guias
 let _fat = new Map();      // id → fatura (só as já casadas)
 let _tab = 'faturas';      // faturas | soltas
 let _fest = 'por_tratar';   // filtro da lista de faturas: por_tratar | div | ok | sem_ref | todas
@@ -141,7 +145,7 @@ const dataHora = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLo
 const casada = g => !!g.fatura_id;
 
 async function carregar() {
-  const { data, error } = await sb.from('guias_remessa')
+  const { data, error } = await sb.from(T.guias)
     .select('id,numero,data,nif,fornecedor,obra_nome,linhas,paginas,pdf_path,fotos,foto_path,criado_por,criado_em,fatura_id,casada_em,sync_auto,sync_score,sync_motivo,sync_nota,sync_bloqueada')
     .order('criado_em', { ascending: false }).limit(1000);
   if (error) throw error;
@@ -151,11 +155,11 @@ async function carregar() {
   const cols = 'id,numero,fornecedor,nif,total,data,status,guias_ref,linhas';
   // faturas com guias casadas + faturas que referem guias (mesmo que ainda não haja nenhuma casada)
   const [a, b] = await Promise.all([
-    ids.length ? sb.from('faturas').select(cols).in('id', ids) : { data: [] },
-    sb.from('faturas').select(cols).ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null').not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
+    ids.length ? sb.from(T.faturas).select(cols).in('id', ids) : { data: [] },
+    sb.from(T.faturas).select(cols).not('guias_ref', 'is', null).order('data', { ascending: false, nullsFirst: false }).limit(1500),
   ]);
   (a.data || []).forEach(f => _fat.set(f.id, f));
-  const t = await sb.from('faturas').select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste').ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null').order('data', { ascending: false, nullsFirst: false }).limit(3000);
+  const t = await sb.from(T.faturas).select('id,numero,fornecedor,nif,total,data,status,guias_ref,linhas,centro_custo,teste').order('data', { ascending: false, nullsFirst: false }).limit(3000);
   _todas = t.data || [];
   (b.data || []).filter(f => Array.isArray(f.guias_ref) && f.guias_ref.length).forEach(f => _fat.set(f.id, f));
 }
@@ -334,7 +338,7 @@ function desenhar() {
 async function guardarDados(id) {
   const m = document.getElementById('modal-gre-fotos'); if (!m) return;
   const upd = { data: m.querySelector('#gre-data').value || null, numero: m.querySelector('#gre-numf').value.trim() || null, fornecedor: m.querySelector('#gre-forn').value.trim() || null };
-  const { error } = await sb.from('guias_remessa').update(upd).eq('id', id);
+  const { error } = await sb.from(T.guias).update(upd).eq('id', id);
   if (error) { toast('Não foi possível guardar: ' + (error.message || error)); return; }
   Object.assign(_rows.find(x => x.id === id) || {}, upd);
   desenhar();
@@ -422,7 +426,7 @@ async function lerEmFalta(btn) {
   for (let i = 0; i < lista.length; i++) {
     btn.textContent = `A ler… ${i + 1}/${lista.length}`;
     try {
-      const r = await sb.functions.invoke('guias-pdf', { body: { guia_id: lista[i].id, so_ler: true } });
+      const r = await sb.functions.invoke('guias-pdf', { body: { guia_id: lista[i].id, so_ler: true, tabela: T.guias } });
       if (!r.error && r.data?.ok && r.data.lido) ok++;
     } catch (e) { console.warn('Guias (ler):', e); }
   }
@@ -433,7 +437,7 @@ async function lerEmFalta(btn) {
 async function gerarPdf(id) {
   toast('A gerar o PDF…');
   try {
-    const r = await sb.functions.invoke('guias-pdf', { body: { guia_id: id } });
+    const r = await sb.functions.invoke('guias-pdf', { body: { guia_id: id, tabela: T.guias } });
     if (r.error || !r.data?.ok) throw new Error(r.data?.error || r.error?.message || 'sem resposta');
     toast('PDF gerado ✓');
     await carregar(); desenhar();
@@ -443,9 +447,9 @@ async function gerarPdf(id) {
 // ── Sincronização manual (para o que o motor deixou pendente) ─────────────────────────────────────────────
 async function carregarFaturas() {
   if (_faturas) return _faturas;
-  const { data, error } = await sb.from('faturas')
+  const { data, error } = await sb.from(T.faturas)
     .select('id,numero,fornecedor,nif,data,total,status,guias_ref')
-    .ilike('fornecedor', '%secil%').or('data.lt.2026-01-01,data.gt.2026-05-31,data.is.null')
+    
     .order('data', { ascending: false, nullsFirst: false }).limit(1500);
   if (error) throw error;
   _faturas = data || [];
@@ -503,7 +507,7 @@ async function casar(guiaId, faturaId) {
   if (!g0?.fornecedor && fat0?.fornecedor) upd.fornecedor = fat0.fornecedor;
   const dt = modal?.querySelector('#gre-dt')?.value;
   if (dt) upd.data = dt;
-  const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
+  const { error } = await sb.from(T.guias).update(upd).eq('id', guiaId);
   if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
   modal?.remove();
   toast('Guia sincronizada com a fatura ✓');
@@ -514,7 +518,7 @@ async function casar(guiaId, faturaId) {
 async function sincronizar(btn) {
   if (btn) btn.disabled = true;
   try {
-    const { data, error } = await sb.rpc('fn_sincronizar_guias');
+    const { data, error } = await sb.rpc(T.rpc);
     if (error) throw error;
     const n = (data?.por_referencia || 0) + (data?.por_conjunto || 0);
     toast(n ? `${plural(n, 'guia sincronizada', 'guias sincronizadas')} automaticamente ✓${data?.pendentes ? ` · ${data.pendentes} pendentes` : ''}` : data?.pendentes ? `Nada de novo: ${data.pendentes} guias continuam pendentes` : 'Tudo sincronizado ✓');
@@ -525,7 +529,7 @@ async function sincronizar(btn) {
 
 async function desfazer(id) {
   if (!confirm('Remover a sincronização desta guia com a fatura? O portal não a volta a sincronizar sozinho.')) return;
-  const { error } = await sb.from('guias_remessa').update({ fatura_id: null, estado: 'por_casar', casada_em: null, sync_auto: false, sync_score: null, sync_motivo: null, sync_nota: null, sync_bloqueada: true }).eq('id', id);
+  const { error } = await sb.from(T.guias).update({ fatura_id: null, estado: 'por_casar', casada_em: null, sync_auto: false, sync_score: null, sync_motivo: null, sync_nota: null, sync_bloqueada: true }).eq('id', id);
   if (error) { toast('Não foi possível remover: ' + (error.message || error)); return; }
   await carregar(); desenhar();
 }
@@ -535,7 +539,7 @@ async function casarUma(guiaId, faturaId) {
   const g = _rows.find(x => x.id === guiaId), f = _todas.find(x => x.id === faturaId);
   const upd = { fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false };
   if (!g?.fornecedor && f?.fornecedor) upd.fornecedor = f.fornecedor;
-  const { error } = await sb.from('guias_remessa').update(upd).eq('id', guiaId);
+  const { error } = await sb.from(T.guias).update(upd).eq('id', guiaId);
   if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
   toast('Guia sincronizada com a fatura ✓');
   await carregar(); desenhar();
@@ -544,7 +548,7 @@ async function casarUma(guiaId, faturaId) {
 async function casarProntas(faturaId) {
   const ids = [...sugestoes()].filter(([, f]) => f.id === faturaId).map(([id]) => id);
   if (!ids.length) return;
-  const { error } = await sb.from('guias_remessa').update({ fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false }).in('id', ids);
+  const { error } = await sb.from(T.guias).update({ fatura_id: faturaId, estado: 'casada', casada_em: new Date().toISOString(), sync_auto: false, sync_score: null, sync_motivo: 'Sincronizada manualmente', sync_nota: null, sync_bloqueada: false }).in('id', ids);
   if (error) { toast('Não foi possível sincronizar: ' + (error.message || error)); return; }
   toast(`${plural(ids.length, 'guia sincronizada', 'guias sincronizadas')} ✓`);
   await carregar(); desenhar();
@@ -604,7 +608,7 @@ document.addEventListener('input', e => {
 // Conferência de UMA fatura (para o ecrã de aprovação do diretor): lê as guias sincronizadas com ela e compara
 export async function conferenciaFatura(dbId, linhas, guiasRef) {
   if (!dbId) return null;
-  const { data, error } = await sb.from('guias_remessa').select('id,numero,linhas,fatura_id').eq('fatura_id', dbId);
+  const { data, error } = await sb.from(T.guias).select('id,numero,linhas,fatura_id').eq('fatura_id', dbId);
   if (error) throw error;
   const v = verificar({ id: dbId, linhas: linhas || [], guias_ref: guiasRef || [] }, data || []);
   const resumo = { faltam: `faltam guias: ${(v.faltam || []).join(', ')}`, divergente: `${(v.div || []).length} divergência(s) nas quantidades`, sem_guias: 'ainda não há guias associadas', sem_leitura: 'há guias por ler' }[v.estado] || '';
@@ -625,7 +629,7 @@ export async function renderGuiasEscritorio() {
   ligar();
   _faturas = null;   // volta a ler as faturas na próxima escolha
   if (!_rows.length) box.innerHTML = '<div class="d-empty" style="border:0">A carregar…</div>';
-  try { try { await sb.rpc('fn_sincronizar_guias'); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); } catch (e) {
+  try { try { await sb.rpc(T.rpc); } catch (e) { console.warn('Sincronizar:', e); } await carregar(); } catch (e) {
     console.warn('Guias:', e);
     box.innerHTML = '<div class="d-empty" style="border:0">Não foi possível carregar: ' + esc(e.message || e) + '</div>';
     return;
