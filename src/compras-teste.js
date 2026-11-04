@@ -9,6 +9,7 @@ import './styles/guias-teste.css';
 import './styles/compras-teste.css';
 import { sb } from './supabase.js';
 import { sincronizarCatalogoArtigos } from './modules/artigos-catalogo.js';
+import { scoreGuia, scoreFatura, decidir, conferir, TOLERANCIA } from './modules/ct-motor.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -92,10 +93,10 @@ async function recarregar() { await carregar(); desenhar(); }
 
 // ═══════════════════ Ecrãs ═══════════════════
 function desenhar() {
-  const n = { pedidos: _pedidos.length, cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: _encomendas.length, guias: _guias.length, faturas: _faturas.length };
-  $('ct-chips').innerHTML = [['pedidos', '1 · Pedidos'], ['cotacoes', '2 · Cotações'], ['encomendas', '3 · Encomendas'], ['guias', '4 · Guias'], ['faturas', '5 · Faturas']]
+  const n = { pedidos: _pedidos.length, cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: _encomendas.length, guias: _guias.length, faturas: _faturas.length, conferencia: _encomendas.length };
+  $('ct-chips').innerHTML = [['pedidos', '1 · Pedidos'], ['cotacoes', '2 · Cotações'], ['encomendas', '3 · Encomendas'], ['guias', '4 · Guias'], ['faturas', '5 · Faturas'], ['conferencia', '6 · Conferência']]
     .map(([k, l]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-tab="${k}">${l}<b>${n[k]}</b></button>`).join('');
-  $('ct-corpo').innerHTML = ({ pedidos: htmlPedidos, cotacoes: htmlCotacoes, encomendas: htmlEncomendas, guias: htmlGuias, faturas: htmlFaturas })[_tab]();
+  $('ct-corpo').innerHTML = ({ pedidos: htmlPedidos, cotacoes: htmlCotacoes, encomendas: htmlEncomendas, guias: htmlGuias, faturas: htmlFaturas, conferencia: htmlConferencia })[_tab]();
 }
 
 function htmlPedidos() {
@@ -342,7 +343,7 @@ async function adjudicar(k) {
   await sb.from('ct_cotacoes').update({ escolhida: false }).eq('pedido_id', p.id);
   await sb.from('ct_cotacoes').update({ escolhida: true }).eq('id', c.id);
   await sb.from('ct_pedidos').update({ estado: 'encomendado' }).eq('id', p.id);
-  await carregar();
+  await sincronizar(true);
   document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
   _tab = 'encomendas'; desenhar();
   toast(`Nota de encomenda ${data.numero} emitida ✓`);
@@ -356,7 +357,7 @@ function verNE(id) {
     <div class="modal-sub">${esc(e.fornecedor)}${e.nif ? ' · NIF ' + esc(e.nif) : ''} · ${esc(e.obra_nome || '—')} · emitida em ${dataPT(e.emitida_em)} · ${pill(ESTADO_NE, e.estado)}</div>
     <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${(e.linhas || []).map(l => `<tr><td>${esc(l.desc)}${l.art_ref ? `<br><small class="mut">${esc(l.art_ref)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}
     <tr class="ct-tot"><td colspan="4"><b>Total (sem IVA)</b></td><td class="r"><b>${eur(e.total)}</b></td></tr></tbody></table>
-    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-ne" data-id="${e.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="imprimir-ne" data-id="${e.id}">Imprimir / PDF</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 820);
+    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-ne" data-id="${e.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="ver-conf" data-id="${e.id}">Conferência</button><button type="button" class="btn btn-secondary" data-act="imprimir-ne" data-id="${e.id}">Imprimir / PDF</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 820);
 }
 function imprimirNE(id) {
   const e = _encomendas.find(x => String(x.id) === String(id)); if (!e) return;
@@ -389,7 +390,7 @@ const BUCKET = 'guias-remessa';
 const NIF_PLANDESE = '514913827';
 const ESTADO_DOC = { por_casar: ['Por ligar', ''], sugerida: ['Sugerida', 'info'], casada: ['Ligada', 'ok'], divergente: ['Divergente', 'bad'] };
 const neNum = id => _encomendas.find(e => e.id === id)?.numero || null;
-const docNE = d => d.encomenda_id ? `<span class="dd-pill ok">${esc(neNum(d.encomenda_id) || '—')}</span>` : '<span class="mut">—</span>';
+const docNE = d => !d.encomenda_id ? '<span class="mut">—</span>' : `<span class="dd-pill ${d.estado === 'sugerida' ? 'info' : 'ok'}" title="${esc(d.sync_motivo || '')}">${d.estado === 'sugerida' ? 'Sugerida · ' : ''}${esc(neNum(d.encomenda_id) || '—')}${d.sync_score != null ? ' · ' + d.sync_score + ' %' : ''}</span>`;
 const semLeitura = d => !d.numero && !(d.linhas || []).length;
 
 let _pdfjs = null;
@@ -510,7 +511,7 @@ async function carregarGuias(files) {
     } catch (err) { falhas++; console.warn('Guia', i + 1, err); }
   }
   toast(`${grupos.length} guia${grupos.length !== 1 ? 's' : ''} carregada${grupos.length !== 1 ? 's' : ''}, ${ok} lida${ok !== 1 ? 's' : ''}${falhas ? ` (${falhas} com problema: abra a guia e use «Reler com IA»)` : ''} ✓`);
-  await recarregar();
+  await sincronizar(true);
 }
 async function verGuia(id) {
   const g = _guias.find(x => String(x.id) === String(id)); if (!g) return;
@@ -519,6 +520,7 @@ async function verGuia(id) {
   el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Guia ${esc(g.numero || '(sem número)')}</div>
     <div class="modal-sub">Enviada por ${esc(PAPEIS[g.enviado_por] || g.enviado_por || '—')} em ${dataPT(g.criado_em)} · <span class="dd-pill ${ESTADO_DOC[g.estado]?.[1] || ''}">${esc(ESTADO_DOC[g.estado]?.[0] || g.estado)}</span> ${g.encomenda_id ? docNE(g) : ''}</div>
     ${(g.avisos || []).length ? `<div class="ct-nota">⚠ ${(g.avisos || []).map(esc).join(' · ')}</div>` : ''}
+    ${htmlLigacao('g', g)}
     <div class="ct-docgrid">
       <div class="ct-fotos">${urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Guia"></a>`).join('') || '<div class="mut">Sem fotografia.</div>'}</div>
       <div>
@@ -583,7 +585,7 @@ async function importarGuias() {
     if (ei) return toast('Importação interrompida: ' + String(ei.message).slice(0, 120));
     n += lote.length;
   }
-  toast(`${n} guias importadas ✓`); await recarregar();
+  toast(`${n} guias importadas ✓`); await sincronizar(true);
 }
 
 // ── Faturas ──
@@ -630,7 +632,7 @@ async function carregarFaturas(files) {
     } catch (err) { falhas++; console.warn('Fatura', f.name, err); toast(`Fatura ${f.name}: ${String(err.message || err).slice(0, 140)}`); await new Promise(r => setTimeout(r, 1800)); }
   }
   toast(`${ok} de ${files.length} faturas carregadas e lidas${falhas ? ` (${falhas} com problema)` : ''} ✓`);
-  await recarregar();
+  await sincronizar(true);
 }
 async function verFatura(id) {
   const f = _faturas.find(x => String(x.id) === String(id)); if (!f) return;
@@ -639,6 +641,7 @@ async function verFatura(id) {
   el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Fatura ${esc(f.numero || '(sem número)')}</div>
     <div class="modal-sub">${esc(f.fornecedor || '—')}${f.nif ? ' · NIF ' + esc(f.nif) : ''} · ${f.data ? dataPT(f.data) : 'sem data'} · <span class="dd-pill ${ESTADO_DOC[f.estado]?.[1] || ''}">${esc(ESTADO_DOC[f.estado]?.[0] || f.estado)}</span> ${f.encomenda_id ? docNE(f) : ''}</div>
     ${(f.avisos || []).length ? `<div class="ct-nota">⚠ ${(f.avisos || []).map(esc).join(' · ')}</div>` : ''}
+    ${htmlLigacao('f', f)}
     <div class="ct-docgrid">
       <div class="ct-fotos">${urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Fatura"></a>`).join('') || '<div class="mut">Sem imagem.</div>'}</div>
       <div>
@@ -657,6 +660,130 @@ async function apagarFatura(id) {
   if (error || !data?.length) return toast('Não foi possível apagar: ' + String(error?.message || 'sem permissão').slice(0, 120));
   document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
   toast('Fatura apagada'); await recarregar();
+}
+
+// ═══════════════════ Sincronização e conferência ═══════════════════
+const tabelaDe = t => (t === 'g' ? 'ct_guias' : 'ct_faturas');
+const listaDe = t => (t === 'g' ? _guias : _faturas);
+const ligadasG = (neId, ignorar) => _guias.filter(g => g.encomenda_id === neId && g.id !== ignorar && (g.estado === 'casada' || g.estado === 'divergente'));
+const pedidoEstadoDe = { emitida: 'encomendado', parcial: 'parcial', completa: 'entregue', faturada: 'faturado' };
+
+let _sincronizando = false;
+async function sincronizar(silencioso) {
+  if (_sincronizando) return;
+  _sincronizando = true;
+  try {
+    await carregar();
+    let nG = 0, nF = 0, sug = 0;
+    const mudou = (d, x) => d.estado !== x.estado || d.encomenda_id !== x.neId || d.sync_score !== x.score || d.sync_motivo !== x.motivo;
+    for (const [t, lista] of [['g', _guias], ['f', _faturas]]) {
+      const pend = lista.filter(d => !d.sync_manual && (d.estado === 'por_casar' || d.estado === 'sugerida')).reverse();   // mais antigos primeiro
+      for (const d of pend) {
+        const cands = _encomendas.map(ne => ({ neId: ne.id, ...(t === 'g' ? scoreGuia(d, ne, ligadasG(ne.id, d.id)) : scoreFatura(d, ne, ligadasG(ne.id))) }));
+        const x = decidir(cands);
+        if (!mudou(d, x)) continue;
+        const { error } = await sb.from(tabelaDe(t)).update({ encomenda_id: x.neId, estado: x.estado, sync_score: x.score, sync_motivo: x.motivo }).eq('id', d.id);
+        if (error) { toast('Não foi possível sincronizar: ' + String(error.message).slice(0, 120)); continue; }
+        Object.assign(d, { encomenda_id: x.neId, estado: x.estado, sync_score: x.score, sync_motivo: x.motivo });
+        if (x.estado === 'casada') { if (t === 'g') nG++; else nF++; } else if (x.estado === 'sugerida') sug++;
+      }
+    }
+    await atualizarEstados();
+    await carregar();
+    desenhar();
+    if (!silencioso || nG || nF || sug) toast(nG || nF || sug ? `Sincronizado: ${nG} guia${nG !== 1 ? 's' : ''} e ${nF} fatura${nF !== 1 ? 's' : ''} ligadas${sug ? `, ${sug} sugestão(ões) para confirmar` : ''} ✓` : 'Nada de novo para ligar.');
+  } finally { _sincronizando = false; }
+}
+// Estado das encomendas/pedidos e marca de divergência nos documentos ligados, a partir da conferência
+async function atualizarEstados() {
+  for (const ne of _encomendas) {
+    const c = conferir(ne, _guias, _faturas);
+    if (c.estado !== ne.estado) { await sb.from('ct_encomendas').update({ estado: c.estado }).eq('id', ne.id); ne.estado = c.estado; }
+    const p = _pedidos.find(x => x.id === ne.pedido_id), alvo = pedidoEstadoDe[c.estado];
+    if (p && alvo && p.estado !== alvo && ['encomendado', 'parcial', 'entregue', 'faturado'].includes(p.estado)) { await sb.from('ct_pedidos').update({ estado: alvo }).eq('id', p.id); p.estado = alvo; }
+    for (const [t, docs] of [['g', _guias], ['f', _faturas]]) {
+      for (const d of docs.filter(x => x.encomenda_id === ne.id && (x.estado === 'casada' || x.estado === 'divergente'))) {
+        const novo = (c.docFlags[t + d.id] || []).length ? 'divergente' : 'casada';
+        if (d.estado !== novo) { await sb.from(tabelaDe(t)).update({ estado: novo }).eq('id', d.id); d.estado = novo; }
+      }
+    }
+  }
+}
+async function ligarDoc(t, id) {
+  const neId = Number($('lig-ne').value);
+  if (!neId) return toast('Escolha a nota de encomenda.');
+  const d = listaDe(t).find(x => String(x.id) === String(id)), ne = _encomendas.find(e => e.id === neId);
+  if (!d || !ne) return;
+  const sc = t === 'g' ? scoreGuia(d, ne, ligadasG(neId, d.id)) : scoreFatura(d, ne, ligadasG(neId));
+  const { error } = await sb.from(tabelaDe(t)).update({ encomenda_id: neId, estado: 'casada', sync_manual: true, sync_score: sc.score, sync_motivo: 'Ligada à mão' + (sc.motivo ? ` (${sc.motivo})` : '') }).eq('id', d.id);
+  if (error) return toast('Não foi possível ligar: ' + String(error.message).slice(0, 120));
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  await sincronizar(true);
+  toast(`Ligada à nota de encomenda ${ne.numero} ✓`);
+}
+async function desligarDoc(t, id) {
+  const { error } = await sb.from(tabelaDe(t)).update({ encomenda_id: null, estado: 'por_casar', sync_manual: true, sync_score: null, sync_motivo: 'Desligada à mão' }).eq('id', id);
+  if (error) return toast('Não foi possível desfazer: ' + String(error.message).slice(0, 120));
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  await sincronizar(true);
+  toast('Ligação desfeita');
+}
+async function autoDoc(t, id) {
+  const { error } = await sb.from(tabelaDe(t)).update({ sync_manual: false }).eq('id', id);
+  if (error) return toast('Não foi possível: ' + String(error.message).slice(0, 120));
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  await sincronizar(false);
+}
+function htmlLigacao(t, d) {
+  const ne = d.encomenda_id ? _encomendas.find(e => e.id === d.encomenda_id) : null;
+  const flags = ne && (d.estado === 'casada' || d.estado === 'divergente') ? (conferir(ne, _guias, _faturas).docFlags[t + d.id] || []) : [];
+  const opts = _encomendas.map(e => `<option value="${e.id}"${e.id === d.encomenda_id ? ' selected' : ''}>${esc(e.numero)} · ${esc(e.fornecedor)} · ${esc(e.obra_nome || '')}</option>`).join('');
+  return `<div class="ct-sec" style="margin-top:14px">Nota de encomenda</div>
+    ${ne ? `<div class="ct-nota">${d.estado === 'sugerida' ? 'Sugestão do portal' : 'Ligada'}: <b>${esc(ne.numero)}</b>${d.sync_score != null ? ` (${d.sync_score} %)` : ''}${d.sync_motivo ? ` — ${esc(d.sync_motivo)}` : ''}${d.sync_manual ? ' · feito à mão' : ''}</div>` : (d.sync_motivo ? `<div class="ct-nota">${esc(d.sync_motivo)}</div>` : '')}
+    ${flags.length ? `<div class="ct-flags">${flags.map(x => `<span class="dd-pill bad">${esc(x)}</span>`).join(' ')}</div>` : ''}
+    <div class="ct-add" style="margin-top:10px"><select id="lig-ne" class="ct-sel"><option value="">— escolher a encomenda —</option>${opts}</select>
+      <button type="button" class="btn btn-primary btn-sm" data-act="ligar-doc" data-t="${t}" data-id="${d.id}">${d.estado === 'sugerida' ? 'Confirmar' : 'Ligar'}</button>
+      ${d.encomenda_id && d.estado !== 'sugerida' ? `<button type="button" class="btn btn-secondary btn-sm" data-act="desligar-doc" data-t="${t}" data-id="${d.id}">Desfazer</button>` : ''}
+      ${d.sync_manual ? `<button type="button" class="btn btn-secondary btn-sm" data-act="auto-doc" data-t="${t}" data-id="${d.id}">Deixar o portal decidir</button>` : ''}</div>`;
+}
+
+const barra = (p, cls = '') => `<div class="ct-prog"><div class="ct-bar ${cls}"><i style="width:${Math.round(Math.min(1, p) * 100)}%"></i></div><b>${Math.round(p * 100)} %</b></div>`;
+function htmlConferencia() {
+  const gPor = _guias.filter(g => g.estado === 'por_casar').length, fPor = _faturas.filter(f => f.estado === 'por_casar').length;
+  const sug = _guias.filter(g => g.estado === 'sugerida').length + _faturas.filter(f => f.estado === 'sugerida').length;
+  const resumo = `<div class="ct-resumo">
+      <div><b>${gPor}</b><span>guia${gPor !== 1 ? 's' : ''} por ligar</span></div><div><b>${fPor}</b><span>fatura${fPor !== 1 ? 's' : ''} por ligar</span></div>
+      <div class="${sug ? 'warn' : ''}"><b>${sug}</b><span>sugest${sug !== 1 ? 'ões' : 'ão'} a confirmar</span></div>
+      <button type="button" class="btn btn-secondary btn-sm" data-act="sync">Sincronizar agora</button></div>`;
+  const linhas = _encomendas.map(ne => {
+    const c = conferir(ne, _guias, _faturas);
+    return `<tr class="clk" data-act="ver-conf" data-id="${ne.id}">
+      <td><b>${esc(ne.numero)}</b><br><small class="mut">${dataPT(ne.emitida_em)}</small></td>
+      <td>${esc(ne.fornecedor)}<br><small class="mut">${esc(ne.obra_nome || '')}</small></td>
+      <td class="r"><b>${eur(ne.total)}</b></td>
+      <td>${barra(c.recPct)}<small class="mut">${c.guias.length} guia${c.guias.length !== 1 ? 's' : ''}</small></td>
+      <td>${barra(c.fatPct, 'f')}<small class="mut">${c.faturas.length} fatura${c.faturas.length !== 1 ? 's' : ''}</small></td>
+      <td>${c.divergencias ? `<span class="dd-pill bad">${c.divergencias} divergência${c.divergencias !== 1 ? 's' : ''}</span>` : (c.guias.length || c.faturas.length ? '<span class="dd-pill ok">Sem divergências</span>' : '<span class="mut">—</span>')}</td>
+      <td>${pill(ESTADO_NE, ne.estado)}</td></tr>`;
+  }).join('');
+  return resumo + `<div class="card ct-card">${_encomendas.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nota de encomenda</th><th>Fornecedor / Obra</th><th class="r">Total</th><th>Recebido</th><th>Faturado</th><th>Conferência</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Sem notas de encomenda para conferir.</div>'}</div>`;
+}
+function verConferencia(id) {
+  const ne = _encomendas.find(x => String(x.id) === String(id)); if (!ne) return;
+  const c = conferir(ne, _guias, _faturas);
+  const cel = (v, q) => v ? `<span class="ct-q ${v > q * (1 + TOLERANCIA) ? 'bad' : v >= q * (1 - TOLERANCIA) ? 'ok' : 'warn'}">${qtdTxt(v)}</span>` : '<span class="mut">0</span>';
+  const doc = (d, t) => `<div class="ct-linha clk" data-act="${t === 'g' ? 'ver-guia' : 'ver-fatura'}" data-id="${d.id}"><span><b>${esc(d.numero || '—')}</b> <small class="mut">${dataPT(d.data)}</small></span><span>${d.estado === 'divergente' ? '<span class="dd-pill bad">Divergente</span>' : '<span class="dd-pill ok">Ligada</span>'}</span></div>`;
+  modal(`<div class="modal-title">Conferência · ${esc(ne.numero)}</div>
+    <div class="modal-sub">${esc(ne.fornecedor)} · ${esc(ne.obra_nome || '—')} · ${pill(ESTADO_NE, ne.estado)}</div>
+    <div class="ct-resumo" style="margin-top:12px"><div><b>${Math.round(c.recPct * 100)} %</b><span>recebido</span></div><div><b>${Math.round(c.fatPct * 100)} %</b><span>faturado</span></div><div class="${c.divergencias ? 'bad' : ''}"><b>${c.divergencias}</b><span>divergência${c.divergencias !== 1 ? 's' : ''}</span></div></div>
+    <table class="cmp-t ct-lt ct-conf-t"><thead><tr><th>Artigo</th><th class="r">Encomendado</th><th class="r">Recebido</th><th class="r">Faturado</th><th class="r">Preço adj.</th><th class="r">Preço fat.</th></tr></thead>
+    <tbody>${c.linhas.map(l => `<tr><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small>${l.flags.length ? `<div class="ct-flags">${l.flags.map(x => `<span class="dd-pill bad">${esc(x)}</span>`).join(' ')}</div>` : ''}</td>
+      <td class="r">${qtdTxt(l.qtd)}</td><td class="r">${cel(l.rec, l.qtd)}</td><td class="r">${cel(l.fat, l.qtd)}</td><td class="r">${eur(l.pu)}</td>
+      <td class="r">${l.puFat != null ? `<span class="ct-q ${Math.abs(l.puFat - l.pu) / (l.pu || 1) > TOLERANCIA ? 'bad' : 'ok'}">${eur(l.puFat)}</span>` : '<span class="mut">—</span>'}</td></tr>`).join('')}</tbody></table>
+    ${c.foraG.length || c.foraF.length ? `<div class="ct-sec">Fora da encomenda</div>${[...c.foraG.map(x => `Guia ${x.guia.numero || ''}: ${x.linha.desc} (${qtdTxt(x.linha.qtd)})`), ...c.foraF.map(x => `Fatura ${x.fatura.numero || ''}: ${x.linha.desc} (${qtdTxt(x.linha.qtd)})`)].map(t => `<div class="ct-linha"><span>${esc(t)}</span></div>`).join('')}` : ''}
+    <div class="ct-sec">Guias ligadas</div>${c.guias.length ? c.guias.map(g => doc(g, 'g')).join('') : '<div class="mut">Nenhuma guia ligada.</div>'}
+    <div class="ct-sec">Faturas ligadas</div>${c.faturas.length ? c.faturas.map(f => doc(f, 'f')).join('') : '<div class="mut">Nenhuma fatura ligada.</div>'}
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="sync">Sincronizar</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 980);
 }
 
 // ═══════════════════ Eventos ═══════════════════
@@ -692,6 +819,11 @@ document.addEventListener('click', e => {
     case 'faturas-carregar': $('ct-ffiles').click(); break;
     case 'ver-fatura': verFatura(id); break;
     case 'apagar-fatura': apagarFatura(id); break;
+    case 'sync': sincronizar(false); break;
+    case 'ver-conf': verConferencia(id); break;
+    case 'ligar-doc': ligarDoc(a.dataset.t, id); break;
+    case 'desligar-doc': desligarDoc(a.dataset.t, id); break;
+    case 'auto-doc': autoDoc(a.dataset.t, id); break;
   }
 });
 document.addEventListener('input', e => {
