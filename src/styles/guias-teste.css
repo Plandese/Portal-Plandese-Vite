@@ -22,7 +22,8 @@
 .gt-hdr{position:relative;color:#fff;padding:22px max(22px,calc((100vw - 1280px)/2 + 22px)) 56px;overflow:hidden}
 .gt-hdr::before{content:'';position:absolute;left:-12%;top:-160%;width:60%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.07)}
 .gt-hdr::after{content:'';position:absolute;right:-8%;bottom:-120%;width:40%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.06)}
-.gt-hdr-top{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.gt-hdr::before,.gt-hdr::after{pointer-events:none}
+.gt-hdr-top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
 .gt-user{display:flex;align-items:center;gap:10px;font-size:13.5px;color:rgba(255,255,255,.9)}
 .gt-user button{height:34px;padding:0 14px;border-radius:99px;border:0;background:rgba(255,255,255,.16);color:#fff;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
 .gt-hdr h1{position:relative;margin:0;font-size:27px;font-weight:800;letter-spacing:-.5px}
