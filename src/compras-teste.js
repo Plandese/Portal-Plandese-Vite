@@ -23,7 +23,7 @@ const toast = m => { const p = $('gt-prog'); p.hidden = false; p.textContent = m
 let _user = null;
 let _papel = 'admin';
 let _tab = 'pedidos';
-let _pedidos = [], _cotacoes = [], _encomendas = [], _obras = [], _fornecedores = [];
+let _pedidos = [], _cotacoes = [], _encomendas = [], _obras = [], _fornecedores = [], _guias = [], _faturas = [];
 
 const PAPEIS = { admin: 'Administrador', diretor_obra: 'Diretor de obra', encarregado: 'Encarregado', compras: 'Compras' };
 const PODE = {
@@ -73,14 +73,17 @@ function confirmar(msg, okTxt = 'Confirmar', perigo = false) {
 
 // ── Dados ──
 async function carregar() {
-  const [p, c, e, o, f] = await Promise.all([
+  const [p, c, e, o, f, g, ft] = await Promise.all([
     sb.from('ct_pedidos').select('*').order('id', { ascending: false }),
     sb.from('ct_cotacoes').select('*').order('id'),
     sb.from('ct_encomendas').select('*').order('id', { ascending: false }),
-    sb.from('obras').select('id,nome,ativa,estado').order('nome'),
+    sb.from('obras').select('id,nome,local,ativa,estado').order('nome'),
     sb.from('fornecedores').select('id,nome,nif,email,email_compras,ativo').order('nome'),
+    sb.from('ct_guias').select('*').order('id', { ascending: false }),
+    sb.from('ct_faturas').select('*').order('id', { ascending: false }),
   ]);
-  for (const r of [p, c, e]) if (r.error) throw r.error;
+  for (const r of [p, c, e, g, ft]) if (r.error) throw r.error;
+  _guias = g.data || []; _faturas = ft.data || [];
   _pedidos = p.data || []; _cotacoes = c.data || []; _encomendas = e.data || [];
   _obras = (o.data || []).filter(x => x.ativa !== false && (x.estado || 'em_curso') === 'em_curso');
   _fornecedores = (f.data || []).filter(x => x.ativo !== false);
@@ -89,10 +92,10 @@ async function recarregar() { await carregar(); desenhar(); }
 
 // ═══════════════════ Ecrãs ═══════════════════
 function desenhar() {
-  const n = { pedidos: _pedidos.length, cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: _encomendas.length };
-  $('ct-chips').innerHTML = [['pedidos', '1 · Pedidos'], ['cotacoes', '2 · Cotações'], ['encomendas', '3 · Encomendas']]
+  const n = { pedidos: _pedidos.length, cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: _encomendas.length, guias: _guias.length, faturas: _faturas.length };
+  $('ct-chips').innerHTML = [['pedidos', '1 · Pedidos'], ['cotacoes', '2 · Cotações'], ['encomendas', '3 · Encomendas'], ['guias', '4 · Guias'], ['faturas', '5 · Faturas']]
     .map(([k, l]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-tab="${k}">${l}<b>${n[k]}</b></button>`).join('');
-  $('ct-corpo').innerHTML = _tab === 'pedidos' ? htmlPedidos() : _tab === 'cotacoes' ? htmlCotacoes() : htmlEncomendas();
+  $('ct-corpo').innerHTML = ({ pedidos: htmlPedidos, cotacoes: htmlCotacoes, encomendas: htmlEncomendas, guias: htmlGuias, faturas: htmlFaturas })[_tab]();
 }
 
 function htmlPedidos() {
@@ -381,6 +384,281 @@ async function apagarNE(id) {
   await recarregar();
 }
 
+// ═══════════════════ Guias e faturas (carregar, ler com IA, ver) ═══════════════════
+const BUCKET = 'guias-remessa';
+const NIF_PLANDESE = '514913827';
+const ESTADO_DOC = { por_casar: ['Por ligar', ''], sugerida: ['Sugerida', 'info'], casada: ['Ligada', 'ok'], divergente: ['Divergente', 'bad'] };
+const neNum = id => _encomendas.find(e => e.id === id)?.numero || null;
+const docNE = d => d.encomenda_id ? `<span class="dd-pill ok">${esc(neNum(d.encomenda_id) || '—')}</span>` : '<span class="mut">—</span>';
+const semLeitura = d => !d.numero && !(d.linhas || []).length;
+
+let _pdfjs = null;
+async function pdfjs() {
+  if (_pdfjs) return _pdfjs;
+  const mod = await import('pdfjs-dist');
+  const lib = mod.getDocument ? mod : (mod.default || mod);
+  try { const W = (await import('pdfjs-dist/build/pdf.worker.min.js?worker')).default; lib.GlobalWorkerOptions.workerPort = new W(); }
+  catch (e) { try { lib.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.js?url')).default; } catch (e2) { /* sem worker */ } }
+  return (_pdfjs = lib);
+}
+const canvasParaJpeg = (cv, q = 0.72) => new Promise(r => cv.toBlob(r, 'image/jpeg', q));
+const ePdf = f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+async function paginasDe(file) {   // cada página (ou a imagem) em JPEG
+  if (ePdf(file)) {
+    const lib = await pdfjs();
+    const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const out = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const pg = await doc.getPage(n), vp = pg.getViewport({ scale: 1.6 });
+      const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+      out.push(await canvasParaJpeg(cv));
+    }
+    return out;
+  }
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1700 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  return [await canvasParaJpeg(cv)];
+}
+const paraBase64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+async function enviarFotos(blobs, prefixo) {
+  const base = `${_user}/${prefixo}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+  const paths = [];
+  for (let k = 0; k < blobs.length; k++) {
+    const path = `${base}-p${k + 1}.jpg`;
+    const up = await sb.storage.from(BUCKET).upload(path, blobs[k], { contentType: 'image/jpeg' });
+    if (up.error) throw up.error;
+    paths.push(path);
+  }
+  return paths;
+}
+async function urlsFotos(paths) {
+  if (!paths?.length) return [];
+  const { data } = await sb.storage.from(BUCKET).createSignedUrls(paths, 3600);
+  return (data || []).map(x => x.signedUrl).filter(Boolean);
+}
+async function erroFuncao(error, data) {
+  let msg = data?.error || error?.message || 'sem resposta';
+  try { const j = await error?.context?.json?.(); if (j?.error) msg = j.error; } catch (e) { /* sem detalhe */ }
+  return msg;
+}
+
+// ── Guias ──
+let _obraGuia = '';
+try { _obraGuia = localStorage.getItem('ct_obra_guia') || ''; } catch (e) { /* sem armazenamento */ }
+let _pdfCadaPagina = true;
+function htmlGuias() {
+  const linhas = _guias.map(g => `<tr class="clk" data-act="ver-guia" data-id="${g.id}">
+      <td><b>${esc(g.numero || (semLeitura(g) ? 'Sem leitura' : '—'))}</b><br><small class="mut">${dataPT(g.criado_em)} · ${esc(PAPEIS[g.enviado_por] || g.enviado_por || '')}</small></td>
+      <td>${esc(g.fornecedor || '—')}<br><small class="mut">${esc(g.nif || '')}</small></td>
+      <td>${g.data ? dataPT(g.data) : '<span class="mut">—</span>'}</td>
+      <td>${esc(g.obra_nome || '—')}</td>
+      <td>${(g.linhas || []).length}</td>
+      <td>${docNE(g)}</td>
+      <td><span class="dd-pill ${ESTADO_DOC[g.estado]?.[1] || ''}">${esc(ESTADO_DOC[g.estado]?.[0] || g.estado)}</span></td></tr>`).join('');
+  return `<div class="ct-acoes">
+      <button type="button" class="btn" data-act="guias-carregar">Carregar guias</button>
+      <input type="file" id="ct-gfiles" accept="image/*,application/pdf" multiple hidden>
+      <label class="ct-inl">Obra<select id="ct-gobra"><option value="">— sem obra —</option>${_obras.map(o => `<option value="${esc(o.id)}"${o.id === _obraGuia ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>
+      <label class="ct-inl ct-chk"><input type="checkbox" id="ct-gpag"${_pdfCadaPagina ? ' checked' : ''}> PDF: cada página é uma guia</label>
+      <span style="flex:1"></span>
+      <button type="button" class="btn btn-secondary btn-sm" data-act="guias-importar" title="Copia para aqui as guias já lidas na página «Guias de Remessa (teste)»">Importar guias do teste anterior</button>
+    </div>
+    <div class="card ct-card">${_guias.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Guia</th><th>Fornecedor</th><th>Data</th><th>Obra</th><th>Artigos</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há guias. O encarregado ou o diretor de obra envia a foto ou o PDF da guia quando o material chega à obra.</div>'}</div>`;
+}
+async function lerGuiaIA(id, blobs) {
+  const { data, error } = await sb.functions.invoke('ler-guia', { body: { paginas: await Promise.all(blobs.map(async b => ({ base64: await paraBase64(b), mediaType: 'image/jpeg' }))) } });
+  const dl = data?.guia;
+  if (error || !dl) throw new Error(await erroFuncao(error, data));
+  const nif = String(dl.nif ?? '').replace(/\D/g, '').slice(-9);
+  const upd = {
+    linhas: (dl.linhas ?? []).map(l => ({ desc: l.descricao ?? '', ref_forn: l.ref_fornecedor ?? '', qtd: Number(l.qtd) || 0, un: l.un ?? '' })),
+    confianca: Number(dl.confianca) || null, avisos: Array.isArray(dl.avisos) ? dl.avisos.filter(Boolean) : [],
+  };
+  if (dl.fornecedor) upd.fornecedor = String(dl.fornecedor);
+  if (nif.length === 9 && nif !== NIF_PLANDESE) upd.nif = nif;
+  if (dl.numero) upd.numero = String(dl.numero);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(dl.data ?? ''))) upd.data = dl.data;
+  const { error: eu } = await sb.from('ct_guias').update(upd).eq('id', id);
+  if (eu) throw eu;
+}
+async function carregarGuias(files) {
+  const obra = _obras.find(o => o.id === $('ct-gobra').value) || null;
+  _obraGuia = obra?.id || ''; try { localStorage.setItem('ct_obra_guia', _obraGuia); } catch (e) { /* sem armazenamento */ }
+  _pdfCadaPagina = $('ct-gpag').checked;
+  const grupos = [];
+  try {
+    for (const f of files) {
+      toast(`A preparar ${f.name}…`);
+      const pgs = await paginasDe(f);
+      if (ePdf(f) && !_pdfCadaPagina) grupos.push(pgs); else pgs.forEach(b => grupos.push([b]));
+    }
+  } catch (err) { return toast('Não foi possível preparar os ficheiros: ' + String(err.message || err).slice(0, 140)); }
+  let ok = 0, falhas = 0;
+  for (let i = 0; i < grupos.length; i++) {
+    toast(`A carregar e ler a guia ${i + 1} de ${grupos.length}…`);
+    try {
+      const paths = await enviarFotos(grupos[i], 'ctg');
+      const ins = await sb.from('ct_guias').insert({
+        obra_id: obra?.id || null, obra_nome: obra?.nome || null, foto_path: paths[0], fotos: paths, paginas: paths.length,
+        enviado_por: _papel, criado_por: _user,
+      }).select('id').single();
+      if (ins.error) throw ins.error;
+      try { await lerGuiaIA(ins.data.id, grupos[i]); ok++; } catch (e) { falhas++; console.warn('Leitura da guia:', e); }
+    } catch (err) { falhas++; console.warn('Guia', i + 1, err); }
+  }
+  toast(`${grupos.length} guia${grupos.length !== 1 ? 's' : ''} carregada${grupos.length !== 1 ? 's' : ''}, ${ok} lida${ok !== 1 ? 's' : ''}${falhas ? ` (${falhas} com problema: abra a guia e use «Reler com IA»)` : ''} ✓`);
+  await recarregar();
+}
+async function verGuia(id) {
+  const g = _guias.find(x => String(x.id) === String(id)); if (!g) return;
+  const el = modal('<div class="d-empty">A abrir…</div>', 1000); el.id = 'modal-guia';
+  const urls = await urlsFotos(g.fotos?.length ? g.fotos : [g.foto_path].filter(Boolean));
+  el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Guia ${esc(g.numero || '(sem número)')}</div>
+    <div class="modal-sub">Enviada por ${esc(PAPEIS[g.enviado_por] || g.enviado_por || '—')} em ${dataPT(g.criado_em)} · <span class="dd-pill ${ESTADO_DOC[g.estado]?.[1] || ''}">${esc(ESTADO_DOC[g.estado]?.[0] || g.estado)}</span> ${g.encomenda_id ? docNE(g) : ''}</div>
+    ${(g.avisos || []).length ? `<div class="ct-nota">⚠ ${(g.avisos || []).map(esc).join(' · ')}</div>` : ''}
+    <div class="ct-docgrid">
+      <div class="ct-fotos">${urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Guia"></a>`).join('') || '<div class="mut">Sem fotografia.</div>'}</div>
+      <div>
+        <div class="ct-form" style="margin-top:0">
+          <label>Fornecedor<input id="gv-forn" type="text" value="${esc(g.fornecedor || '')}"></label>
+          <div class="ct-2"><label>Nº da guia<input id="gv-num" type="text" value="${esc(g.numero || '')}"></label><label>Data<input id="gv-data" type="date" value="${esc(g.data || '')}"></label></div>
+          <div class="ct-2"><label>NIF<input id="gv-nif" type="text" value="${esc(g.nif || '')}"></label>
+          <label>Obra<select id="gv-obra"><option value="">— sem obra —</option>${_obras.map(o => `<option value="${esc(o.id)}"${o.id === g.obra_id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label></div>
+        </div>
+        <div class="ct-sec">Materiais lidos</div>
+        ${(g.linhas || []).length ? `<table class="cmp-t ct-lt"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th></tr></thead><tbody>${g.linhas.map(l => `<tr><td>${esc(l.desc)}${l.ref_forn ? `<br><small class="mut">${esc(l.ref_forn)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td></tr>`).join('')}</tbody></table>` : '<div class="mut">Sem materiais lidos. Use «Reler com IA».</div>'}
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-guia" data-id="${g.id}">Apagar</button><span style="flex:1"></span>
+      <button type="button" class="btn btn-secondary" data-act="reler-guia" data-id="${g.id}">Reler com IA</button>
+      <button type="button" class="btn btn-secondary" data-act="guardar-guia" data-id="${g.id}">Guardar dados</button>
+      <button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`;
+}
+async function guardarGuia(id) {
+  const obra = _obras.find(o => o.id === $('gv-obra').value) || null;
+  const { error } = await sb.from('ct_guias').update({
+    fornecedor: $('gv-forn').value.trim() || null, numero: $('gv-num').value.trim() || null, data: $('gv-data').value || null,
+    nif: $('gv-nif').value.replace(/\D/g, '').slice(-9) || null, obra_id: obra?.id || null, obra_nome: obra?.nome || null,
+  }).eq('id', id);
+  if (error) return toast('Não foi possível guardar: ' + String(error.message).slice(0, 120));
+  toast('Dados da guia guardados ✓');
+  await recarregar(); topo()?.remove();
+}
+async function relerGuia(id) {
+  const g = _guias.find(x => String(x.id) === String(id)); if (!g) return;
+  toast('A ler a guia com IA…');
+  try {
+    const blobs = [];
+    for (const p of (g.fotos?.length ? g.fotos : [g.foto_path])) { const { data, error } = await sb.storage.from(BUCKET).download(p); if (error) throw error; blobs.push(data); }
+    await lerGuiaIA(g.id, blobs);
+    toast('Guia lida ✓');
+  } catch (e) { return toast('Não foi possível ler a guia: ' + String(e.message || e).slice(0, 140)); }
+  await recarregar(); topo()?.remove(); verGuia(id);
+}
+async function apagarGuia(id) {
+  if (!await confirmar('Apagar esta guia?', 'Apagar', true)) return;
+  const { data, error } = await sb.from('ct_guias').delete().eq('id', id).select('id');
+  if (error || !data?.length) return toast('Não foi possível apagar: ' + String(error?.message || 'sem permissão').slice(0, 120));
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  toast('Guia apagada'); await recarregar();
+}
+async function importarGuias() {
+  const { data: gt, error } = await sb.from('gt_guias').select('id,numero,fornecedor,nif,data,obra_nome,linhas,confianca,avisos,foto_path,fotos,paginas,criado_em');
+  if (error) return toast('Não foi possível ler as guias do teste anterior: ' + String(error.message).slice(0, 120));
+  const { data: ja } = await sb.from('ct_guias').select('origem_gt_id').not('origem_gt_id', 'is', null);
+  const feitas = new Set((ja || []).map(x => x.origem_gt_id));
+  const novas = (gt || []).filter(g => !feitas.has(g.id));
+  if (!novas.length) return toast('Não há guias novas para importar.');
+  if (!await confirmar(`Copiar ${novas.length} guia${novas.length !== 1 ? 's' : ''} já lida${novas.length !== 1 ? 's' : ''} do teste anterior? Ficam por ligar às notas de encomenda; as originais não são alteradas.`, 'Importar')) return;
+  let n = 0;
+  for (let i = 0; i < novas.length; i += 40) {
+    const lote = novas.slice(i, i + 40).map(g => ({
+      numero: g.numero, fornecedor: g.fornecedor, nif: g.nif, data: g.data, obra_nome: g.obra_nome, linhas: g.linhas || [], confianca: g.confianca,
+      avisos: g.avisos || [], foto_path: g.foto_path, fotos: g.fotos || [], paginas: g.paginas || 1, origem_gt_id: g.id, criado_por: _user, criado_em: g.criado_em,
+    }));
+    const { error: ei } = await sb.from('ct_guias').insert(lote);
+    if (ei) return toast('Importação interrompida: ' + String(ei.message).slice(0, 120));
+    n += lote.length;
+  }
+  toast(`${n} guias importadas ✓`); await recarregar();
+}
+
+// ── Faturas ──
+function htmlFaturas() {
+  const linhas = _faturas.map(f => `<tr class="clk" data-act="ver-fatura" data-id="${f.id}">
+      <td><b>${esc(f.numero || (semLeitura(f) ? 'Sem leitura' : '—'))}</b><br><small class="mut">${dataPT(f.criado_em)}</small></td>
+      <td>${esc(f.fornecedor || '—')}<br><small class="mut">${esc(f.nif || '')}</small></td>
+      <td>${f.data ? dataPT(f.data) : '<span class="mut">—</span>'}</td>
+      <td>${esc(f.centro_custo || '—')}</td>
+      <td class="r"><b>${f.total != null ? eur(f.total) : '—'}</b><br><small class="mut">${f.base != null ? 'base ' + eur(f.base) : ''}</small></td>
+      <td>${(f.guias_ref || []).length ? esc((f.guias_ref || []).join(', ')) : '<span class="mut">—</span>'}</td>
+      <td>${docNE(f)}</td>
+      <td><span class="dd-pill ${ESTADO_DOC[f.estado]?.[1] || ''}">${esc(ESTADO_DOC[f.estado]?.[0] || f.estado)}</span></td></tr>`).join('');
+  return `<div class="ct-acoes"><button type="button" class="btn" data-act="faturas-carregar">Carregar faturas</button><input type="file" id="ct-ffiles" accept="image/*,application/pdf" multiple hidden>
+      <span class="mut">Cada ficheiro é uma fatura (PDF ou fotografia). O portal lê-a com IA.</span></div>
+    <div class="card ct-card">${_faturas.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Fatura</th><th>Fornecedor</th><th>Data</th><th>Centro de custo</th><th class="r">Total</th><th>Guias citadas</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há faturas. Carregue a fatura do fornecedor depois de as guias estarem registadas.</div>'}</div>`;
+}
+async function carregarFaturas(files) {
+  let ok = 0, falhas = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    toast(`A ler a fatura ${i + 1} de ${files.length} (${f.name})…`);
+    try {
+      const pgs = await paginasDe(f);
+      const mediaType = ePdf(f) ? 'application/pdf' : /\.png$/i.test(f.name) ? 'image/png' : 'image/jpeg';
+      const { data, error } = await sb.functions.invoke('ler-fatura', { body: { base64: await paraBase64(f), mediaType, obras: _obras.map(o => ({ nome: o.nome, local: o.local || '' })) } });
+      const c = data?.fatura;
+      if (error || !c) throw new Error(await erroFuncao(error, data));
+      const n2 = v => (v == null || v === '' || isNaN(Number(v))) ? null : Math.round(Number(v) * 100) / 100;
+      const nif = String(c.nif || '').replace(/\D/g, '').slice(-9);
+      const normNum = String(c.numero || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+      if (normNum && _faturas.some(x => x.numero_norm === normNum && (!nif || !x.nif || x.nif === nif))) { falhas++; toast(`A fatura ${c.numero} já existe.`); await new Promise(r => setTimeout(r, 1800)); continue; }
+      const paths = await enviarFotos(pgs, 'ctf');
+      const { error: ei } = await sb.from('ct_faturas').insert({
+        numero: c.numero || null, fornecedor: c.fornecedor || null, nif: nif.length === 9 && nif !== NIF_PLANDESE ? nif : null,
+        data: /^\d{4}-\d{2}-\d{2}$/.test(String(c.data || '')) ? c.data : null, data_vencimento: /^\d{4}-\d{2}-\d{2}$/.test(String(c.data_vencimento || '')) ? c.data_vencimento : null,
+        base: n2(c.base), iva: n2(c.iva), total: n2(c.total), centro_custo: c.centro_custo || null,
+        linhas: (c.linhas || []).map(l => ({ desc: l.descricao ?? '', ref_forn: l.ref_fornecedor ?? '', qtd: Number(l.qtd) || 0, un: l.un ?? '', pu: n2(l.preco_unit), total: n2(l.total_linha) })),
+        guias_ref: Array.isArray(c.guias_ref) ? c.guias_ref.filter(Boolean) : [], confianca: Number(c.confianca) || null,
+        avisos: Array.isArray(c.avisos) ? c.avisos.filter(Boolean) : [], fotos: paths, ficheiro: f.name, criado_por: _user,
+      });
+      if (ei) throw ei;
+      ok++;
+    } catch (err) { falhas++; console.warn('Fatura', f.name, err); toast(`Fatura ${f.name}: ${String(err.message || err).slice(0, 140)}`); await new Promise(r => setTimeout(r, 1800)); }
+  }
+  toast(`${ok} de ${files.length} faturas carregadas e lidas${falhas ? ` (${falhas} com problema)` : ''} ✓`);
+  await recarregar();
+}
+async function verFatura(id) {
+  const f = _faturas.find(x => String(x.id) === String(id)); if (!f) return;
+  const el = modal('<div class="d-empty">A abrir…</div>', 1000); el.id = 'modal-fatura';
+  const urls = await urlsFotos(f.fotos);
+  el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Fatura ${esc(f.numero || '(sem número)')}</div>
+    <div class="modal-sub">${esc(f.fornecedor || '—')}${f.nif ? ' · NIF ' + esc(f.nif) : ''} · ${f.data ? dataPT(f.data) : 'sem data'} · <span class="dd-pill ${ESTADO_DOC[f.estado]?.[1] || ''}">${esc(ESTADO_DOC[f.estado]?.[0] || f.estado)}</span> ${f.encomenda_id ? docNE(f) : ''}</div>
+    ${(f.avisos || []).length ? `<div class="ct-nota">⚠ ${(f.avisos || []).map(esc).join(' · ')}</div>` : ''}
+    <div class="ct-docgrid">
+      <div class="ct-fotos">${urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Fatura"></a>`).join('') || '<div class="mut">Sem imagem.</div>'}</div>
+      <div>
+        <div class="ct-linha"><span>Base</span><b>${f.base != null ? eur(f.base) : '—'}</b></div><div class="ct-linha"><span>IVA</span><b>${f.iva != null ? eur(f.iva) : '—'}</b></div><div class="ct-linha"><span>Total</span><b>${f.total != null ? eur(f.total) : '—'}</b></div>
+        <div class="ct-linha"><span>Centro de custo</span><span>${esc(f.centro_custo || '—')}</span></div>
+        ${(f.guias_ref || []).length ? `<div class="ct-linha"><span>Guias citadas</span><span>${esc(f.guias_ref.join(', '))}</span></div>` : ''}
+        <div class="ct-sec">Artigos faturados</div>
+        ${(f.linhas || []).length ? `<table class="cmp-t ct-lt"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${f.linhas.map(l => `<tr><td>${esc(l.desc)}${l.ref_forn ? `<br><small class="mut">${esc(l.ref_forn)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${l.pu != null ? eur(l.pu) : '—'}</td><td class="r">${l.total != null ? eur(l.total) : '—'}</td></tr>`).join('')}</tbody></table>` : '<div class="mut">A fatura não tem artigos lidos.</div>'}
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-fatura" data-id="${f.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`;
+}
+async function apagarFatura(id) {
+  if (!await confirmar('Apagar esta fatura?', 'Apagar', true)) return;
+  const { data, error } = await sb.from('ct_faturas').delete().eq('id', id).select('id');
+  if (error || !data?.length) return toast('Não foi possível apagar: ' + String(error?.message || 'sem permissão').slice(0, 120));
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  toast('Fatura apagada'); await recarregar();
+}
+
 // ═══════════════════ Eventos ═══════════════════
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-tab]'); if (t) { _tab = t.dataset.tab; desenhar(); return; }
@@ -405,6 +683,15 @@ document.addEventListener('click', e => {
     case 'ver-ne': verNE(id); break;
     case 'imprimir-ne': imprimirNE(id); break;
     case 'apagar-ne': apagarNE(id); break;
+    case 'guias-carregar': $('ct-gfiles').click(); break;
+    case 'guias-importar': importarGuias(); break;
+    case 'ver-guia': verGuia(id); break;
+    case 'guardar-guia': guardarGuia(id); break;
+    case 'reler-guia': relerGuia(id); break;
+    case 'apagar-guia': apagarGuia(id); break;
+    case 'faturas-carregar': $('ct-ffiles').click(); break;
+    case 'ver-fatura': verFatura(id); break;
+    case 'apagar-fatura': apagarFatura(id); break;
   }
 });
 document.addEventListener('input', e => {
@@ -414,6 +701,12 @@ document.addEventListener('input', e => {
   else if (el.dataset.cp) { const [k, i] = el.dataset.cp.split(':').map(Number); _cm.cots[k].pu[i] = el.value; cotarPintarTotais(); }
   else if (el.dataset.cz != null) _cm.cots[+el.dataset.cz].prazo = el.value;
   else if (el.dataset.cc != null) _cm.cots[+el.dataset.cc].cond = el.value;
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'ct-gfiles' || e.target.id === 'ct-ffiles') {
+    const fs = [...e.target.files]; const g = e.target.id === 'ct-gfiles'; e.target.value = '';
+    if (fs.length) (g ? carregarGuias : carregarFaturas)(fs);
+  }
 });
 $('ct-papel').addEventListener('change', e => { _papel = e.target.value; try { localStorage.setItem('ct_papel', _papel); } catch (x) { /* sem armazenamento */ } desenhar(); });
 
