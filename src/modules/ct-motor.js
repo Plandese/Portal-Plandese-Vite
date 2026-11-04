@@ -8,7 +8,7 @@ export const LIMIAR_SUGESTAO = 40;       // entre isto e o automático fica «su
 
 export const semAc = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const STOP = new Set(['de', 'do', 'da', 'dos', 'das', 'para', 'com', 'em', 'e', 'a', 'o', 'un', 'und', 'unidade', 'tipo', 'ref']);
-export const tokens = t => semAc(t).replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(x => x.length > 1 && !STOP.has(x));
+export const tokens = t => semAc(t).replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2').replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter(x => x.length > 1 && !STOP.has(x));
 export const normNum = v => semAc(v).replace(/[^a-z0-9]/g, '');
 const digitos = v => String(v ?? '').replace(/\D/g, '').slice(-9);
 const dias = (a, b) => Math.round((new Date(a + 'T00:00:00Z') - new Date(b + 'T00:00:00Z')) / 864e5);
@@ -29,7 +29,7 @@ export function atribuir(docLinhas, neLinhas, limiar = 0.5) {
   return (docLinhas || []).map(l => {
     let melhor = -1, ms = 0;
     (neLinhas || []).forEach((n, i) => {
-      let s = similar(l.desc, n.desc);
+      let s = Math.max(similar(l.desc, n.desc), n.desc_forn ? similar(l.desc, n.desc_forn) : 0);
       if (l.ref_forn && n.ref_forn && normNum(l.ref_forn) === normNum(n.ref_forn)) s = Math.max(s, 0.95);
       if (s > ms) { ms = s; melhor = i; }
     });

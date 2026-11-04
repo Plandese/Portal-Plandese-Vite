@@ -47,6 +47,7 @@ function catalogo() {
   _catalogo = { src: window.ARTIGOS_CATALOGO, itens };
   return itens;
 }
+const refTxt = l => (l.art_ref || l.ref_forn) ? `<br><small class="mut">${[l.art_ref, l.ref_forn ? 'ref. fornecedor ' + l.ref_forn : ''].filter(Boolean).map(esc).join(' · ')}</small>` : '';
 const semAc = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 // ── Diálogos ──
@@ -170,7 +171,7 @@ function npResultados() {
 }
 function npLinhas() {
   const box = $('np-linhas'); if (!box) return;
-  box.innerHTML = _np.linhas.length ? `<table class="cmp-t ct-lt"><thead><tr><th>Artigo</th><th style="width:110px">Quantidade</th><th style="width:60px">Un</th><th style="width:40px"></th></tr></thead><tbody>${_np.linhas.map((l, i) => `<tr><td>${esc(l.desc)}${l.art_ref ? `<br><small class="mut">${esc(l.art_ref)}</small>` : ''}</td><td><input class="ct-n" type="text" inputmode="decimal" value="${esc(l.qtd)}" data-nq="${i}"></td><td>${esc(l.un)}</td><td><button type="button" class="ct-x" data-act="np-rem" data-i="${i}" title="Remover">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="mut" style="padding:10px 2px">Ainda sem materiais.</div>';
+  box.innerHTML = _np.linhas.length ? `<table class="cmp-t ct-lt"><thead><tr><th>Artigo</th><th style="width:110px">Quantidade</th><th style="width:60px">Un</th><th style="width:40px"></th></tr></thead><tbody>${_np.linhas.map((l, i) => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td><input class="ct-n" type="text" inputmode="decimal" value="${esc(l.qtd)}" data-nq="${i}"></td><td>${esc(l.un)}</td><td><button type="button" class="ct-x" data-act="np-rem" data-i="${i}" title="Remover">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="mut" style="padding:10px 2px">Ainda sem materiais.</div>';
 }
 async function guardarPedido() {
   const obraId = $('np-obra').value, obra = _obras.find(o => o.id === obraId);
@@ -198,7 +199,7 @@ function verPedido(id) {
   modal(`<div class="modal-title">${esc(p.numero)} · ${esc(p.titulo)}</div>
     <div class="modal-sub">${esc(p.obra_nome || 'Sem obra')} · pedido por ${esc(PAPEIS[p.pedido_por] || p.pedido_por || '—')} em ${dataPT(p.criado_em)} · ${pill(ESTADO_PEDIDO, p.estado)}</div>
     ${p.notas ? `<div class="ct-nota">${esc(p.notas)}</div>` : ''}
-    <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Quantidade</th><th>Un</th></tr></thead><tbody>${(p.linhas || []).map(l => `<tr><td>${esc(l.desc)}${l.art_ref ? `<br><small class="mut">${esc(l.art_ref)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td></tr>`).join('')}</tbody></table>
+    <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Quantidade</th><th>Un</th></tr></thead><tbody>${(p.linhas || []).map(l => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td></tr>`).join('')}</tbody></table>
     ${cs.length ? `<div class="ct-sec">Cotações</div>${cs.map(c => `<div class="ct-linha"><span>${esc(c.fornecedor)}</span><span>${c.respondido_em ? eur(c.total) : '<span class="mut">à espera de preços</span>'}${c.escolhida ? ' <span class="dd-pill ok">Adjudicada</span>' : ''}</span></div>`).join('')}` : ''}
     ${ne ? `<div class="ct-sec">Nota de encomenda</div><div class="ct-linha"><span><b>${esc(ne.numero)}</b> · ${esc(ne.fornecedor)}</span><span>${eur(ne.total)}</span></div>` : ''}
     <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-pedido" data-id="${p.id}">Apagar pedido</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button>${pode('comprar') ? `<button type="button" class="btn btn-primary" data-act="cotar" data-id="${p.id}">${ne ? 'Ver cotações' : 'Cotar'}</button>` : ''}</div>`, 720);
@@ -333,7 +334,7 @@ async function adjudicar(k) {
   if (!itens.length) return toast('Indique os preços deste fornecedor primeiro.');
   const msg = `Adjudicar a ${c.fornecedor} e emitir a nota de encomenda?\n${itens.length} de ${ls.length} artigos · ${eur(pr.total)} (sem IVA).${pr.falta ? ` Os ${pr.falta} artigos sem preço ficam de fora.` : ''}`;
   if (!await confirmar(msg, 'Emitir nota de encomenda')) return;
-  const linhas = itens.map(({ l, pu }) => ({ desc: l.desc, art_ref: l.art_ref || null, un: l.un, qtd: l.qtd, pu, total: Math.round(pu * l.qtd * 100) / 100 }));
+  const linhas = itens.map(({ l, pu }) => ({ desc: l.desc, art_ref: l.art_ref || null, ref_forn: l.ref_forn || null, desc_forn: l.desc_forn || null, un: l.un, qtd: l.qtd, pu, total: Math.round(pu * l.qtd * 100) / 100 }));
   const total = Math.round(linhas.reduce((s, x) => s + x.total, 0) * 100) / 100;
   const { data, error } = await sb.from('ct_encomendas').insert({
     pedido_id: p.id, cotacao_id: c.id, fornecedor_id: c.fornecedor_id, fornecedor: c.fornecedor, nif: c.nif,
@@ -355,7 +356,7 @@ function verNE(id) {
   const e = _encomendas.find(x => String(x.id) === String(id)); if (!e) return;
   modal(`<div class="modal-title">Nota de encomenda ${esc(e.numero)}</div>
     <div class="modal-sub">${esc(e.fornecedor)}${e.nif ? ' · NIF ' + esc(e.nif) : ''} · ${esc(e.obra_nome || '—')} · emitida em ${dataPT(e.emitida_em)} · ${pill(ESTADO_NE, e.estado)}</div>
-    <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${(e.linhas || []).map(l => `<tr><td>${esc(l.desc)}${l.art_ref ? `<br><small class="mut">${esc(l.art_ref)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}
+    <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${(e.linhas || []).map(l => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}
     <tr class="ct-tot"><td colspan="4"><b>Total (sem IVA)</b></td><td class="r"><b>${eur(e.total)}</b></td></tr></tbody></table>
     <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-ne" data-id="${e.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="ver-conf" data-id="${e.id}">Conferência</button><button type="button" class="btn btn-secondary" data-act="imprimir-ne" data-id="${e.id}">Imprimir / PDF</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 820);
 }
