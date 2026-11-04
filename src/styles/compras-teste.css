@@ -1,0 +1,47 @@
+/* Página separada «Compras · Teste» — complementa guias-teste.css (mesmo design novo do portal) */
+.ct-acoes{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.ct-card{padding:0;overflow:hidden}
+.ct-papel{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678}
+.ct-papel select{height:40px;border:1.5px solid #b9c1ce;border-radius:99px;padding:0 14px;font:inherit;font-size:14px;font-weight:600;color:#1b2130;background:#fff;text-transform:none}
+.gt-body .cmp-t tr.clk{cursor:pointer}
+.gt-body .modal-bg.open{overflow:auto}
+.ct-modal{position:relative}
+.ct-conf{white-space:pre-line;font-size:15px;line-height:1.5;margin:4px 0 6px}
+.ct-perigo{background:#b42318!important;border-color:#b42318!important}
+.ct-perigo-o{color:#b42318!important;border-color:#f1b5af!important}
+.ct-form{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.ct-form label,.ct-2 label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678}
+.ct-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ct-form input,.ct-form select,.ct-form textarea,.ct-busca,.ct-add input,.ct-livre input{height:50px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font:inherit;font-size:16px;color:#1b2130;background:#fff;outline:0;box-sizing:border-box;text-transform:none;font-weight:400}
+.ct-form textarea{height:auto;padding:12px 14px}
+.ct-form input:focus,.ct-form select:focus,.ct-form textarea:focus,.ct-busca:focus,.ct-add input:focus,.ct-livre input:focus,.ct-n:focus,.ct-t:focus{border-color:#173f9f;box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.ct-busca{width:100%}
+.ct-sec{margin:20px 0 8px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#173f9f}
+.ct-res{max-height:220px;overflow-y:auto;margin-top:6px;border:1px solid #dde2ea;border-radius:14px}
+.ct-res:empty{display:none}
+.ct-it{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #edf0f5;cursor:pointer;font-size:14px}
+.ct-it:last-child{border-bottom:0}
+.ct-it:hover{background:#f2f6fd}
+.ct-it em{font-style:normal;font-weight:700;color:#173f9f;font-size:12px}
+.ct-livre{display:flex;gap:8px;margin:10px 0 14px}
+.ct-livre input:first-child{flex:1}
+.ct-lt{margin-top:6px}
+.ct-n,.ct-t{height:38px;border:1.5px solid #b9c1ce;border-radius:10px;padding:0 10px;font:inherit;font-size:14px;color:#1b2130;background:#fff;outline:0;box-sizing:border-box}
+.ct-n{width:100%;max-width:120px;text-align:right}
+.ct-t{width:100%;min-width:130px}
+.ct-x{width:30px;height:30px;border-radius:99px;border:1.5px solid #dde2ea;background:#fff;color:#b42318;font-size:18px;line-height:1;cursor:pointer}
+.ct-nota{margin-top:10px;padding:10px 14px;border-radius:14px;background:#f6f8fc;color:#4b5565;font-size:14px}
+.ct-ok{margin-top:12px;padding:12px 16px;border-radius:14px;background:#dff5e7;color:#166534;font-size:14px}
+.ct-linha{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #edf0f5;font-size:14px}
+.ct-forn{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.ct-chipf{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 14px;border-radius:99px;background:#e4ecfb;color:#173f9f;font-weight:600;font-size:13.5px}
+.ct-chipf:not(:has(button)){padding-right:14px}
+.ct-chipf button{width:24px;height:24px;border-radius:99px;border:0;background:rgba(23,63,159,.14);color:#173f9f;font-size:16px;line-height:1;cursor:pointer}
+.ct-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ct-add input{flex:1;min-width:240px}
+.ct-grid th.ct-col,.ct-grid td.ct-col{text-align:right;min-width:150px}
+.ct-grid .best{background:#f0f9f3}
+.ct-grid th.best small{color:#166534;font-weight:700;text-transform:none;letter-spacing:0}
+.ct-sub{font-size:12px;color:#6a7284;margin-top:3px;min-height:15px}
+.ct-grid tr.ct-tot td{border-top:2px solid #dde2ea;font-size:15px}
+@media (max-width:700px){.ct-2{grid-template-columns:1fr}}

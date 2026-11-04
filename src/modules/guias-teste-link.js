@@ -6,9 +6,14 @@
 import { S } from '../state.js';
 
 export function initGuiasTesteLink(){
-  const btn = document.getElementById('nav-guias-teste');
-  if(!btn) return;
-  btn.style.display = S.currentUser?.role === 'admin' ? '' : 'none';
+  ['nav-guias-teste','nav-compras-teste'].forEach(id => {
+    const btn = document.getElementById(id);
+    if(btn) btn.style.display = S.currentUser?.role === 'admin' ? '' : 'none';
+  });
+}
+
+export function abrirComprasTeste(){
+  window.location.href = '/compras-teste.html';
 }
 
 export function abrirGuiasTeste(){

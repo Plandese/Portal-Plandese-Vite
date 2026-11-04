@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="icon" href="/plandese_logo.png"/>
+  <title>Compras · Teste</title>
+</head>
+<body class="gt-body">
+
+  <!-- Entrada (a sessão do portal é partilhada: se já entrou no portal, não pede nada) -->
+  <div id="gt-login" hidden>
+    <form class="gt-login-box" id="gt-login-form" autocomplete="on">
+      <div class="gt-logo"><i></i><b>Plandese</b></div>
+      <h1>Compras</h1>
+      <p>Versão de teste, separada do portal. Entre com o seu utilizador do portal.</p>
+      <div class="gt-erro" id="gt-login-erro" hidden>Utilizador ou palavra-passe incorretos.</div>
+      <label>Utilizador<input id="gt-u" type="text" autocomplete="username" placeholder="nome.apelido"></label>
+      <label>Palavra-passe<input id="gt-p" type="password" autocomplete="current-password" placeholder="••••••••"></label>
+      <button type="submit" class="gt-btn gt-btn-p">Entrar</button>
+    </form>
+  </div>
+
+  <div id="gt-semacesso" class="gt-semacesso" hidden><div><h1>Sem acesso</h1><p>Esta página de teste é só para o administrador.</p><a href="/" class="gt-btn gt-btn-p">Voltar ao portal</a></div></div>
+
+  <div id="gt-app" hidden>
+    <header class="gt-hdr">
+      <div class="gt-hdr-top">
+        <div class="gt-logo"><i></i><b>Plandese</b></div>
+        <div class="gt-user"><a href="/" class="gt-voltar">← Portal</a><span id="gt-user"></span><button type="button" id="gt-sair">Sair</button></div>
+      </div>
+      <h1>Compras</h1>
+      <p>Versão de teste · pedido → cotações → nota de encomenda → guia → fatura. Sistema separado do portal: nada daqui aparece nas outras páginas</p>
+    </header>
+
+    <main class="gt-sheet">
+      <section id="ct-app">
+        <div class="gt-barra">
+          <div id="ct-chips" class="d-chips" style="margin:0"></div>
+          <label class="ct-papel">Agir como
+            <select id="ct-papel">
+              <option value="admin">Administrador (tudo)</option>
+              <option value="diretor_obra">Diretor de obra</option>
+              <option value="encarregado">Encarregado</option>
+              <option value="compras">Compras</option>
+            </select>
+          </label>
+        </div>
+        <div id="gt-prog" class="gt-prog" hidden></div>
+        <div id="ct-corpo"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="gt-toast"></div>
+  <script src="/artigos-data.js"></script>
+  <script type="module" src="/src/compras-teste.js"></script>
+</body>
+</html>

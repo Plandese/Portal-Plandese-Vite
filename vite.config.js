@@ -17,6 +17,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         guiasTeste: resolve(__dirname, 'guias-teste.html'),
+        comprasTeste: resolve(__dirname, 'compras-teste.html'),
       },
     },
   },
