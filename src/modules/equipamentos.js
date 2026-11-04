@@ -313,13 +313,31 @@ function _eqObraRowHtml(eq){
 
 // Parados e em manutenção/oficina primeiro; depois os operacionais
 const _eqOrdemEstado = eq => ({parada:0, manutencao:1, oficina:1})[eq.estado] ?? 2;
+let _eqObraItens=[], _eqObraCat='';
+const _eqSemAc=t=>String(t??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+function _eqObraRender(){
+  const termo=_eqSemAc(document.getElementById('meqf-q')?.value||'').trim();
+  const chips=document.getElementById('meqf-chips');
+  const cats=Object.keys(EQ_CATS).map(k=>[k,_eqObraItens.filter(e=>eqCatNorm(e.categoria)===k).length]).filter(x=>x[1]);
+  if(chips) chips.innerHTML=cats.length>1
+    ? [['', 'Todos', _eqObraItens.length],...cats.map(([k,n])=>[k,EQ_CATS[k].label,n])].map(([k,l,n])=>`<button type="button" data-eqcat="${k}" class="fp-tab${_eqObraCat===k?' active':''}" style="height:34px;padding:0 14px;font-size:12.5px">${eqEsc(l)} <b>${n}</b></button>`).join('')
+    : '';
+  const lista=_eqObraItens.filter(e=>(!_eqObraCat||eqCatNorm(e.categoria)===_eqObraCat)&&(!termo||
+    _eqSemAc([e.nome,e.codigo,e.matricula,e.marcaModelo,e.serie,EQ_CATS[eqCatNorm(e.categoria)].label,EQ_ESTADOS[e.estado]?.label].join(' ')).includes(termo)));
+  document.getElementById('meqo-sub').textContent=lista.length===_eqObraItens.length
+    ? `${lista.length} equipamento${lista.length!==1?'s':''}`
+    : `${lista.length} de ${_eqObraItens.length} equipamentos`;
+  document.getElementById('meqo-list').innerHTML=lista.map(_eqObraRowHtml).join('')||'<div style="padding:18px 4px;color:var(--gray-500)">Nenhum equipamento encontrado.</div>';
+}
+document.addEventListener('input',e=>{ if(e.target.id==='meqf-q') _eqObraRender(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-eqcat]'); if(b&&b.closest('#meqf-chips')){ _eqObraCat=b.dataset.eqcat; _eqObraRender(); } });
 function abrirEqObraDetalhe(i){
   const ob = _eqObraGroups[i]; if(!ob) return;
   document.getElementById('meqo-title').textContent = ob.nome;
-  document.getElementById('meqo-sub').textContent = `${ob.items.length} equipamento${ob.items.length!==1?'s':''}`;
-  document.getElementById('meqo-list').innerHTML = ob.items
-    .sort((a,b)=>_eqOrdemEstado(a)-_eqOrdemEstado(b)||a.nome.localeCompare(b.nome,'pt'))
-    .map(_eqObraRowHtml).join('');
+  _eqObraItens = ob.items.slice().sort((a,b)=>_eqOrdemEstado(a)-_eqOrdemEstado(b)||a.nome.localeCompare(b.nome,'pt'));
+  _eqObraCat='';
+  document.getElementById('meqf-q').value='';
+  _eqObraRender();
   openModal('modal-eq-obra-detalhe');
 }
 
