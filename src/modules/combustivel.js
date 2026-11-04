@@ -274,7 +274,7 @@ function _combRenderApr(){
     const rota=isTransfRow(r)?`${_escHtml(dep)} → <b>${_escHtml(dest)}</b>`:(dep&&dep!==dest?`${_escHtml(dep)} → <b>${_escHtml(dest)}</b>`:`<b>${_escHtml(dest)}</b>`);
     const d=dias(r);
     const acoes=r.aprovacao==='pendente'
-      ?`<button class="btn btn-primary btn-sm" data-cbapr="${r.id}" data-ok="1">Aprovar</button> <button class="btn btn-secondary btn-sm" data-cbapr="${r.id}" data-ok="0">Rejeitar</button>`
+      ?`<button class="btn btn-secondary btn-sm" onclick="abrirCombFormRegisto(null,'${r.id}')">Editar</button> <button class="btn btn-primary btn-sm" data-cbapr="${r.id}" data-ok="1">Aprovar</button> <button class="btn btn-secondary btn-sm" data-cbapr="${r.id}" data-ok="0">Rejeitar</button>`
       :`<button class="btn btn-secondary btn-sm" data-cbreabrir="${r.id}">Repor como pendente</button> <button class="btn btn-secondary btn-sm cb-apagar" data-cbapagar="${r.id}">Apagar</button>`;
     return `<tr><td>${fmtPT(r.data)}</td><td><span class="badge ${cls}" style="font-size:11px">${_escHtml(tipo)}</span>${r.origem==='qr'?' <span class="badge b-gray" style="font-size:11px">QR</span>':''}</td>
       <td>${isTransfRow(r)?'<span style="color:var(--gray-400)">—</span>':_escHtml(r.equipamento_nome||'Depósito de obra')}</td><td>${rota}</td>
@@ -640,7 +640,7 @@ function _combFillFormEquipSelect(selectedId){
 
 async function abrirCombFormRegisto(obraIdPreset,registoId){
   if(!EQUIPAMENTOS.length){ try{ await sbLoadEquipamentos(); }catch(e){} }
-  const r=registoId?_combAllRows.find(x=>String(x.id)===String(registoId)):null;
+  const r=registoId?(_combAllRows.find(x=>String(x.id)===String(registoId))||_combPend.find(x=>String(x.id)===String(registoId))):null;
 
   _combFillFormObraSelect(r?(r.obra_id||''):(obraIdPreset||''));
   _combFillFormDepSelect(r?(depObraId(r)||''):(obraIdPreset||''));
@@ -662,7 +662,8 @@ async function abrirCombFormRegisto(obraIdPreset,registoId){
 }
 
 async function _combAtualizarAposAlteracao(){
-  await _fetchCombRows();
+  await Promise.all([_fetchCombRows(),_fetchCombPend()]);
+  if(document.getElementById('comb-apr-d')) _combRenderApr();
   _renderCombGridFiltrada();
   if(_combDetEquipId&&document.getElementById('modal-comb-equip').classList.contains('open')) _renderCombEquipDetalhe();
   if(_combDetObraId&&document.getElementById('modal-comb-obra').classList.contains('open')){
