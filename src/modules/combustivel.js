@@ -61,6 +61,7 @@ let _combDetObraId=null;
 let _combDetPeriodo='tudo';
 let _combDetAnchor=new Date();
 let _combDetEquip='';
+let _combDetSoBomba=false;
 
 async function _fetchCombRows(){
   const {data,error}=await sb.from('registos_combustivel').select('*').eq('aprovacao','aprovado').order('data',{ascending:false}).order('criado_em',{ascending:false});
@@ -142,6 +143,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   const rg=e.target.closest('#mcob-tbody tr[data-cbreg], #mcoe-tbody tr[data-cbreg]');
   if(rg&&!e.target.closest('button')){ _combAbrirRegDetalhe(rg.dataset.cbreg); return; }
+  const bb=e.target.closest('[data-cbbomba]'); if(bb){ _combDetSoBomba=!_combDetSoBomba; _renderCombDetalhe(); return; }
   const q=e.target.closest('[data-cbeq]'); if(q){ abrirCombEquipDetalhe(q.dataset.cbeq); return; } const b=e.target.closest('[data-cbnav]'); if(b){ _cbOff+=+b.dataset.cbnav; _combRenderGeral(); } });
 
 function _renderCombGridFiltrada(){
@@ -466,6 +468,7 @@ function abrirCombObraDetalhe(obraId){
   _combDetPeriodo='tudo';
   _combDetAnchor=new Date();
   _combDetEquip='';
+  _combDetSoBomba=false;
   _renderCombDetalheHeader();
   openModal('modal-comb-obra');
   _renderCombDetalhe();
@@ -570,20 +573,21 @@ function _renderCombDetalhe(){
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fca5a5;margin-bottom:5px">↑ Saídas do depósito</div>
       <div style="font-size:20px;font-weight:700;color:#dc2626;font-variant-numeric:tabular-nums">${sai.toFixed(1)}L</div>
     </div>`+
-    (bomba?`<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;text-align:center">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">⛽ Bomba (fora do stock)</div>
+    (bomba?`<div data-cbbomba title="${_combDetSoBomba?'Mostrar todos os registos':'Ver só os registos de bomba'}" style="cursor:pointer;background:${_combDetSoBomba?'var(--blue-50)':'var(--gray-50)'};border:${_combDetSoBomba?'1.5px solid var(--blue-500)':'1px solid var(--gray-200)'};border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">⛽ Bomba (fora do stock)${_combDetSoBomba?' · filtro ativo':''}</div>
       <div style="font-size:20px;font-weight:700;color:var(--gray-600);font-variant-numeric:tabular-nums">${bomba.toFixed(1)}L</div>
     </div>`:'');
 
   const tbody=document.getElementById('mcob-tbody');
   const emptyEl=document.getElementById('mcob-empty');
-  if(!periodRows.length){
+  const tabRows=_combDetSoBomba?periodRows.filter(isBombaRow):periodRows;
+  if(!tabRows.length){
     tbody.innerHTML='';
     emptyEl.style.display='';
     return;
   }
   emptyEl.style.display='none';
-  tbody.innerHTML=periodRows.map(r=>{
+  tbody.innerHTML=tabRows.map(r=>{
     const isTr=isTransfRow(r);
     const isEnt=isTr?r.obra_id===_combDetObraId:r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
     const litrosVal=parseFloat(r.litros)||0;
