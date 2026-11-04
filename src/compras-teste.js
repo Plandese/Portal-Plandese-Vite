@@ -313,6 +313,7 @@ function cotarDesenhar() {
     ${tudoCob ? '' : `<tr><td colspan="2"></td>${_cm.cots.map((c, k) => `<td class="ct-col"><button type="button" class="btn btn-secondary btn-sm" data-act="esc-todos" data-k="${k}"${res[k].falta === ls.length ? ' disabled' : ''}>Escolher todos</button></td>`).join('')}</tr>`}
     </tbody></table></div>` : ''}
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button><span style="flex:1"></span>${_cm.cots.length && !tudoCob ? '<button type="button" class="btn btn-secondary" data-act="cot-guardar">Guardar preços</button><button type="button" class="btn btn-primary" data-act="emitir-ne">Emitir notas de encomenda</button>' : ''}</div>`;
+  el.querySelector('.ct-modal').style.width = `min(${Math.max(1100, 340 + _cm.cots.length * 190 + 70)}px,96vw)`;   // a janela cresce com o nº de fornecedores
   cotarPintarEsc();
 }
 // Atualiza só o que depende das escolhas (não mexe nos campos, para não perder o foco)
