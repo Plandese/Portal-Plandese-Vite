@@ -141,10 +141,10 @@ function htmlEncomendas() {
 
 // ═══════════════════ Novo pedido ═══════════════════
 let _np = null;
-function abrirNovoPedido() {
-  _np = { linhas: [] };
-  const el = modal(`<div class="modal-title">Novo pedido de compra</div>
-    <div class="modal-sub">Feito por «${esc(PAPEIS[_papel])}». Escolha a obra e os materiais.</div>
+function abrirNovoPedido(ed) {
+  _np = { linhas: ed ? (ed.linhas || []).map(l => ({ ...l, qtd: String(l.qtd).replace('.', ',') })) : [], id: ed?.id || null };
+  const el = modal(`<div class="modal-title">${ed ? 'Editar pedido ' + esc(ed.numero) : 'Novo pedido de compra'}</div>
+    <div class="modal-sub">${ed ? 'Altere os dados, as quantidades ou os materiais.' : 'Feito por «' + esc(PAPEIS[_papel]) + '». Escolha a obra e os materiais.'}</div>
     <div class="ct-form">
       <label>Obra<select id="np-obra"><option value="">— Escolha a obra —</option>${_obras.map(o => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('')}</select></label>
       <label>Título<input id="np-titulo" type="text" placeholder="Ex.: Tubagem e acessórios para rede de águas"></label>
@@ -157,8 +157,12 @@ function abrirNovoPedido() {
     <div id="np-res" class="ct-res"></div>
     <div class="ct-livre"><input id="np-ld" type="text" placeholder="Ou escreva um artigo que não está no catálogo"><input id="np-lu" type="text" placeholder="un" style="width:70px"><button type="button" class="btn btn-secondary btn-sm" data-act="np-livre">Adicionar</button></div>
     <div id="np-linhas"></div>
-    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Cancelar</button><button type="button" class="btn btn-primary" data-act="np-guardar">Criar pedido</button></div>`, 820);
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Cancelar</button><button type="button" class="btn btn-primary" data-act="np-guardar">${ed ? 'Guardar alterações' : 'Criar pedido'}</button></div>`, 820);
   el.id = 'modal-np';
+  if (ed) {
+    $('np-obra').value = ed.obra_id || ''; $('np-titulo').value = ed.titulo || ''; $('np-urg').value = ed.urgencia || 'Normal';
+    $('np-data').value = ed.data_necessaria || ''; $('np-notas').value = ed.notas || '';
+  }
   npLinhas();
 }
 function npResultados() {
@@ -180,11 +184,24 @@ async function guardarPedido() {
   const linhas = _np.linhas.map(l => ({ ...l, qtd: num(l.qtd) || 0 }));
   if (linhas.some(l => l.qtd <= 0)) return toast('Indique a quantidade de todos os materiais.');
   const titulo = $('np-titulo').value.trim() || `${linhas[0].desc}${linhas.length > 1 ? ` e mais ${linhas.length - 1}` : ''}`;
-  const b = document.querySelector('[data-act="np-guardar"]'); b.disabled = true;
-  const { data, error } = await sb.from('ct_pedidos').insert({
-    obra_id: obra.id, obra_nome: obra.nome, titulo, urgencia: $('np-urg').value, data_necessaria: $('np-data').value || null,
-    notas: $('np-notas').value.trim() || null, linhas, pedido_por: _papel, criado_por: _user,
-  }).select('numero').single();
+  const dados = { obra_id: obra.id, obra_nome: obra.nome, titulo, urgencia: $('np-urg').value, data_necessaria: $('np-data').value || null, notas: $('np-notas').value.trim() || null, linhas };
+  const b = document.querySelector('[data-act="np-guardar"]');
+  if (_np.id) {   // edição
+    const ped = _pedidos.find(x => x.id === _np.id);
+    const chave = ls => JSON.stringify((ls || []).map(l => [l.desc, Number(l.qtd), l.un]));
+    const mudou = chave(ped.linhas) !== chave(linhas);
+    const comPrecos = _cotacoes.filter(c => c.pedido_id === ped.id && c.respondido_em).length;
+    if (mudou && comPrecos && !await confirmar('Alterou os artigos ou as quantidades: os preços já registados nas cotações deste pedido serão apagados (os fornecedores ficam). Continuar?', 'Continuar')) return;
+    b.disabled = true;
+    const { error } = await sb.from('ct_pedidos').update(dados).eq('id', ped.id);
+    if (error) { b.disabled = false; return toast('Não foi possível guardar: ' + String(error.message).slice(0, 140)); }
+    if (mudou) await sb.from('ct_cotacoes').update({ precos: [], total: null, respondido_em: null }).eq('pedido_id', ped.id);
+    fechar($('modal-np'));
+    toast(`Pedido ${ped.numero} atualizado ✓`);
+    return recarregar();
+  }
+  b.disabled = true;
+  const { data, error } = await sb.from('ct_pedidos').insert({ ...dados, pedido_por: _papel, criado_por: _user }).select('numero').single();
   if (error) { b.disabled = false; return toast('Não foi possível criar o pedido: ' + String(error.message).slice(0, 140)); }
   fechar($('modal-np'));
   toast(`Pedido ${data.numero} criado ✓`);
@@ -202,7 +219,7 @@ function verPedido(id) {
     <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Quantidade</th><th>Un</th></tr></thead><tbody>${(p.linhas || []).map(l => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td></tr>`).join('')}</tbody></table>
     ${cs.length ? `<div class="ct-sec">Cotações</div>${cs.map(c => `<div class="ct-linha"><span>${esc(c.fornecedor)}</span><span>${c.respondido_em ? eur(c.total) : '<span class="mut">à espera de preços</span>'}${c.escolhida ? ' <span class="dd-pill ok">Adjudicada</span>' : ''}</span></div>`).join('')}` : ''}
     ${ne ? `<div class="ct-sec">Nota de encomenda</div><div class="ct-linha"><span><b>${esc(ne.numero)}</b> · ${esc(ne.fornecedor)}</span><span>${eur(ne.total)}</span></div>` : ''}
-    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-pedido" data-id="${p.id}">Apagar pedido</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button>${pode('comprar') ? `<button type="button" class="btn btn-primary" data-act="cotar" data-id="${p.id}">${ne ? 'Ver cotações' : 'Cotar'}</button>` : ''}</div>`, 720);
+    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-pedido" data-id="${p.id}">Apagar pedido</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button>${(pode('pedir') || pode('comprar')) ? (ne ? '<button type="button" class="btn btn-secondary" disabled title="Já tem nota de encomenda: apague-a para poder editar o pedido">Editar</button>' : `<button type="button" class="btn btn-secondary" data-act="editar-pedido" data-id="${p.id}">Editar</button>`) : ''}${pode('comprar') ? `<button type="button" class="btn btn-primary" data-act="cotar" data-id="${p.id}">${ne ? 'Ver cotações' : 'Cotar'}</button>` : ''}</div>`, 720);
 }
 async function apagarPedido(id) {
   const p = _pedidos.find(x => String(x.id) === String(id)); if (!p) return;
@@ -798,6 +815,7 @@ document.addEventListener('click', e => {
     case 'novo-pedido': abrirNovoPedido(); break;
     case 'ver-pedido': verPedido(id); break;
     case 'apagar-pedido': apagarPedido(id); break;
+    case 'editar-pedido': { const ped = _pedidos.find(x => String(x.id) === String(id)); if (ped) { document.querySelectorAll('.modal-bg.open').forEach(m => m.remove()); abrirNovoPedido(ped); } break; }
     case 'np-add': { const i = catalogo().find(x => x.ref === a.dataset.ref); if (i) { const ex = _np.linhas.find(l => l.art_ref === i.ref); if (ex) ex.qtd = String((num(ex.qtd) || 0) + 1).replace('.', ','); else _np.linhas.push({ art_ref: i.ref, desc: i.desc, un: i.un, qtd: '1' }); npLinhas(); } break; }
     case 'np-livre': { const d = $('np-ld').value.trim(); if (!d) break; _np.linhas.push({ art_ref: null, desc: d, un: $('np-lu').value.trim() || 'un', qtd: '1' }); $('np-ld').value = ''; $('np-lu').value = ''; npLinhas(); break; }
     case 'np-rem': _np.linhas.splice(+a.dataset.i, 1); npLinhas(); break;
