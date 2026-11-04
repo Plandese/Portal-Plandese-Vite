@@ -359,7 +359,8 @@ document.addEventListener('click',e=>{
 
 // ── Consumo de Equipamentos: um cartão por viatura/máquina com abastecimentos ──
 let _combDetEquipId=null;
-const _isAbastecimento=r=>r.tipo_registo==='viatura'&&r.equipamento_id;
+// Abastecimento de um equipamento: bomba/posto ou saída do depósito de obra com equipamento associado
+const _isAbastecimento=r=>!!r.equipamento_id&&(r.tipo_registo==='viatura'||(r.tipo_registo==='deposito'&&r.movimento==='saida'));
 const _fmtL=n=>n.toFixed(1).replace('.',',')+' L';
 
 // ── Consumo de Equipamentos: lista com pesquisa e "Lista completa" ──
@@ -454,7 +455,7 @@ function _renderCombEquipDetalhe(){
       <td>${_escHtml(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—')}</td>
       <td><span style="font-weight:700;color:#dc2626">${(parseFloat(r.litros)||0).toFixed(1)}L</span></td>
       <td><span class="badge ${r.tipo_combustivel==='Gasóleo'?'b-blue':r.tipo_combustivel==='Gasolina'?'b-orange':'b-gray'}">${_escHtml(r.tipo_combustivel||'—')}</span></td>
-      <td>${_escHtml(r.fornecedor||'—')}</td>
+      <td>${_escHtml(r.fornecedor||(r.tipo_registo==='deposito'?'Depósito · '+depObraNome(r):'—'))}</td>
       <td>${_escHtml(r.encarregado_nome||'—')}</td>
       <td style="color:var(--gray-500);font-size:12px">${_escHtml(r.obs||'—')}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="abrirCombFormRegisto(null,'${r.id}')">Editar</button></td>
