@@ -399,20 +399,18 @@ function renderCombEquipCards(rows){
 }
 
 function _combEquipRowHtml(m){
-  const sub=[m.obras.slice(0,2).join(', ')+(m.obras.length>2?'…':''),m.tipos.join(', ')].filter(Boolean).map(_escHtml).join(' · ');
-  return `<div class="card" style="padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="abrirCombEquipDetalhe('${m.id}')">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="font-weight:700;color:var(--gray-900)">${_escHtml(m.nome)}</div>
-        <div style="font-size:12px;color:var(--gray-500);margin-top:3px">${m.rows.length} abastecimento${m.rows.length!==1?'s':''} · último a ${fmtPT(m.ultimo)}</div>
-        ${sub?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${sub}</div>`:''}
-      </div>
-      <div style="background:var(--blue-50);border:1.5px solid var(--blue-200);border-radius:10px;padding:8px 14px;text-align:center;flex-shrink:0">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:3px">Consumo médio</div>
-        <div style="font-size:18px;font-weight:700;color:${m.media?'var(--blue-700)':'var(--gray-400)'};line-height:1;font-variant-numeric:tabular-nums">${m.media?m.media.txt:'—'}</div>
-        <div style="font-size:10px;color:var(--gray-500);margin-top:4px">${m.media?'':'sem Km/Horas · '}${_fmtL(m.litros)} no total</div>
-      </div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+  const obras=m.obras.slice(0,2).map(o=>`<span class="cq-chip">${_escHtml(o)}</span>`).join('')+(m.obras.length>2?`<span class="cq-chip cq-chip-g">+${m.obras.length-2}</span>`:'');
+  const tipos=m.tipos.map(t=>`<span class="cq-chip cq-chip-g">${_escHtml(t)}</span>`).join('');
+  const n=m.rows.length;
+  return `<div class="card cq" onclick="abrirCombEquipDetalhe('${m.id}')">
+    <div class="cq-top">
+      <div class="cq-nome">${_escHtml(m.nome)}</div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="cq-chips">${obras}${tipos}</div>
+    <div class="cq-foot">
+      <div class="cq-m"><small>Consumo médio</small>${m.media?`<b>${m.media.txt}</b>`:`<b class="cq-nd">—</b><em>sem Km/Horas</em>`}</div>
+      <div class="cq-t"><small>Total</small><b>${_cbN(m.litros)} L</b><em>${n} abastecimento${n!==1?'s':''} · ${fmtPT(m.ultimo)}</em></div>
     </div>
   </div>`;
 }
