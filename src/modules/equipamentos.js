@@ -6,6 +6,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal, openModal } from './navigation.js';
 import { obraEmCurso } from '../config.js';
+import { abrirEqDocs, contarEqDocs } from './eq-docs.js';
 
 let EQUIPAMENTOS  = JSON.parse(localStorage.getItem('plandese_eq')||'[]');
 let EQ_MOVIMENTOS = JSON.parse(localStorage.getItem('plandese_eq_mov')||'[]');
@@ -472,6 +473,9 @@ function _eqBuscaRowHtml(eq){
   </div>`;
 }
 
+function eqAbrirDocs(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); abrirEqDocs(id, eq?eq.nome:''); }
+function eqDocsContar(id){ contarEqDocs(id).then(n=>{ const el=document.getElementById('meqd-docn'); if(el&&n){ el.textContent=n; el.style.display=''; } }).catch(()=>{}); }
+window.eqDocsAtualizou = id => eqDocsContar(id);
 // Janela de detalhe do equipamento: escolher entre QR, manutenção, histórico e edição
 // (as outras janelas abrem por cima desta, que fica por baixo)
 function abrirEqDetalhe(id){
@@ -496,11 +500,13 @@ function abrirEqDetalhe(id){
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm-4 4h2v2h-2zm2 2h2v2h-2zm2-4h2v2h-2zm0 4h2v2h-2z"/></svg>`,'QR Code','Ver e imprimir o código do equipamento',`showQrCode('${eq.id}')`)}
       ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,'Manutenção','Pedidos e registos de manutenção',`openEqManut('${eq.id}')`,pend?`<span class="eq-pend-dot">${pend}</span>`:'')}
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`,'Histórico','Movimentos e localizações anteriores',`showEqHistorico('${eq.id}')`)}
+      ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,'Documentação','Documentos, seguros, manutenções, garantias, sinistros e fotos',`eqAbrirDocs('${eq.id}')`,'<span class="eq-doc-n" id="meqd-docn" style="display:none"></span>')}
       ${opt(`<svg viewBox="0 0 24 24" fill="currentColor" style="width:28px;height:28px"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,'Editar registo','Alterar os dados do equipamento',`editEquipamento('${eq.id}')`)}
       ${opt(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,'Localização',(eq.ultimoLat&&eq.ultimoLng?'<span id="meqd-cidade">A obter cidade…</span>':'Sem localização GPS registada'),`eqVerLocalizacao('${eq.id}')`)}
     </div>`;
   openModal('modal-eq-det');
   if(eq.propriedade==='aluguer') eqAluguerCarregar(eq.id);
+  eqDocsContar(eq.id);
   if(eq.ultimoLat&&eq.ultimoLng) eqCidade(eq.ultimoLat,eq.ultimoLng).then(c=>{ const el=document.getElementById('meqd-cidade'); if(el) el.textContent=c||'Ver no mapa onde está o equipamento'; });
 }
 
@@ -1247,7 +1253,7 @@ export {
   initEqMap, refreshEqMap,
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqQrAbrir, eqQrFechar, eqQrFoto, eqObrasPickerFiltra, eqObrasPickerEscolher,
-  openEqManut, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
+  openEqManut, eqAbrirDocs, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
