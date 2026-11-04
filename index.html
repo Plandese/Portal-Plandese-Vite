@@ -3414,6 +3414,47 @@
   </div>
 </div>
 
+<!-- MODAL FORNECEDOR -->
+<div class="modal-bg" id="modal-fornecedor">
+  <div class="modal" style="width:600px">
+    <div class="modal-title" id="mforn-title">Novo Fornecedor</div>
+    <div class="modal-sub" id="mforn-sub">Preencha os dados do fornecedor</div>
+    <input type="hidden" id="mforn-id"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field" style="grid-column:1/-1"><label>Nome *</label><input type="text" id="mforn-nome" placeholder="Nome completo do fornecedor"/></div>
+      <div class="field"><label>NIF</label><input type="text" id="mforn-nif" placeholder="Ex: 500000000"/></div>
+      <div class="field"><label>Nº de Conta</label><input type="text" id="mforn-conta" placeholder="Ex: 2211100001"/></div>
+      <div class="field"><label>Código Postal</label><input type="text" id="mforn-codpostal" placeholder="Ex: 1000-001"/></div>
+      <div class="field"><label>Localidade</label><input type="text" id="mforn-localidade" placeholder="Ex: Lisboa"/></div>
+      <div class="field" style="grid-column:1/-1"><label>Rua / Morada</label><input type="text" id="mforn-rua" placeholder="Ex: Rua das Flores, nº 1"/></div>
+      <div class="field"><label>Telefone</label><input type="text" id="mforn-telefone" placeholder="Ex: 210 000 000"/></div>
+      <div class="field"><label>Telemóvel</label><input type="text" id="mforn-telemovel" placeholder="Ex: 910 000 000"/></div>
+      <div class="field"><label>Email Geral</label><input type="email" id="mforn-email" placeholder="geral@fornecedor.pt"/></div>
+      <div class="field"><label>Email Compras</label><input type="email" id="mforn-email-compras" placeholder="compras@fornecedor.pt"/></div>
+      <div class="field"><label>Email Comercial</label><input type="email" id="mforn-email-comercial" placeholder="comercial@fornecedor.pt"/></div>
+      <div class="field"><label>Email Contabilidade</label><input type="email" id="mforn-email-contab" placeholder="contab@fornecedor.pt"/></div>
+      <div class="field" style="grid-column:1/-1"><label>Notas</label>
+        <textarea id="mforn-notas" style="resize:vertical;min-height:55px;width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px" placeholder="Observações…"></textarea>
+      </div>
+      <div class="field"><label>Estado</label>
+        <select id="mforn-ativo">
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary" id="mforn-del-btn" style="color:var(--red);border-color:var(--red-bg);display:none" onclick="apagarFornecedor()">Apagar</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="closeModal('modal-fornecedor')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveFornecedor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MAPA COMPARATIVO -->
+
 <!-- MODAL MAPA PICKER -->
 <div class="modal-bg" id="modal-mapa" style="align-items:center;justify-content:center">
   <div class="modal-mapa">
