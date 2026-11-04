@@ -9,7 +9,7 @@ import './styles/guias-teste.css';
 import './styles/compras-teste.css';
 import { sb } from './supabase.js';
 import { sincronizarCatalogoArtigos } from './modules/artigos-catalogo.js';
-import { scoreGuia, scoreFatura, decidir, conferir, TOLERANCIA } from './modules/ct-motor.js';
+import { scoreGuia, scoreFatura, decidir, conferir, alertas, atribuir, mesmoForn, TOLERANCIA } from './modules/ct-motor.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -260,6 +260,7 @@ function cotarDesenhar() {
   const sug = _fornecedores.filter(f => !_cm.cots.some(c => c.fornecedor_id === f.id));
   const res = _cm.cots.map(c => totalCot(c));
   const completos = res.map((r, i) => (r.falta === 0 && r.total > 0) ? i : -1).filter(i => i >= 0);
+  const minLinha = ls.map((_, i) => { const v = _cm.cots.map(c => num(c.pu[i])).filter(x => x != null); return v.length ? Math.min(...v) : null; });
   const melhor = completos.length ? completos.reduce((a, b) => res[a].total <= res[b].total ? a : b) : -1;
   el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Cotações · ${esc(p.numero)}</div>
     <div class="modal-sub">${esc(p.titulo)} · ${esc(p.obra_nome || 'Sem obra')} · ${pill(ESTADO_PEDIDO, p.estado)}</div>
@@ -267,10 +268,11 @@ function cotarDesenhar() {
     <div class="ct-sec">1 · Fornecedores a consultar</div>
     <div class="ct-forn">${_cm.cots.map((c, k) => `<span class="ct-chipf">${esc(c.fornecedor)}${c.enviado_em ? ' <i title="Pedido enviado">✉</i>' : ''}${ne ? '' : `<button type="button" data-act="cot-rem" data-k="${k}" title="Remover">×</button>`}</span>`).join('') || '<span class="mut">Ainda não escolheu fornecedores.</span>'}</div>
     ${ne ? '' : `<div class="ct-add"><input id="cf-q" type="text" placeholder="Procurar fornecedor (nome ou NIF) ou escrever um novo…" autocomplete="off" list="cf-lista"><datalist id="cf-lista">${sug.slice(0, 400).map(f => `<option value="${esc(f.nome)}">${esc(f.nif || '')}</option>`).join('')}</datalist><button type="button" class="btn btn-secondary btn-sm" data-act="cot-add">Adicionar</button>
-      <button type="button" class="btn btn-secondary btn-sm" data-act="cot-enviar"${_cm.cots.length ? '' : ' disabled'}>✉ Pedir cotação por email</button></div>`}
+      <button type="button" class="btn btn-secondary btn-sm" data-act="cot-enviar"${_cm.cots.length ? '' : ' disabled'}>✉ Pedir cotação por email</button>
+      <button type="button" class="btn btn-secondary btn-sm" data-act="cot-sug"${_cm.cots.length ? '' : ' disabled'} title="Preenche os preços em branco com os da última fatura de cada fornecedor">Sugerir preços das últimas faturas</button></div>`}
     ${_cm.cots.length ? `<div class="ct-sec">2 · Preços recebidos (por unidade, sem IVA)</div>
-    <div class="tbl-wrap"><table class="cmp-t ct-grid"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}${k === melhor ? '<br><small>mais barata</small>' : ''}</th>`).join('')}</tr></thead>
-    <tbody>${ls.map((l, i) => `<tr><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small></td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}"><input class="ct-n" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ne ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div></td>`; }).join('')}</tr>`).join('')}
+    <div class="tbl-wrap"><table class="cmp-t ct-grid"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}${k === melhor ? '<br><small>mais barata</small>' : (melhor >= 0 && res[k].falta === 0 && res[melhor].total > 0 ? `<br><small class="mut">+${Math.round((res[k].total / res[melhor].total - 1) * 1000) / 10} % que a mais barata</small>` : '')}</th>`).join('')}</tr></thead>
+    <tbody>${ls.map((l, i) => `<tr><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small></td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}${pu != null && pu === minLinha[i] && _cm.cots.length > 1 ? ' ct-min' : ''}"><input class="ct-n" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ne ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div></td>`; }).join('')}</tr>`).join('')}
     <tr class="ct-tot"><td colspan="2"><b>Total</b></td>${_cm.cots.map((c, k) => `<td class="ct-col${k === melhor ? ' best' : ''}"><b id="ct-t-${k}">${res[k].falta === ls.length ? '—' : eur(res[k].total)}</b>${res[k].falta && res[k].falta < ls.length ? `<br><small class="mut">faltam ${res[k].falta} preço${res[k].falta > 1 ? 's' : ''}</small>` : ''}</td>`).join('')}</tr>
     <tr><td colspan="2" class="mut">Prazo de entrega (dias)</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-n" type="text" inputmode="numeric" value="${esc(c.prazo)}" data-cz="${k}"${ne ? ' disabled' : ''}></td>`).join('')}</tr>
     <tr><td colspan="2" class="mut">Condições</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-t" type="text" value="${esc(c.cond)}" placeholder="Pagamento, validade…" data-cc="${k}"${ne ? ' disabled' : ''}></td>`).join('')}</tr>
@@ -326,6 +328,23 @@ async function cotarGuardar(silencioso) {
   cotarCarregarMem(); cotarDesenhar();
   return true;
 }
+function cotarSugerir() {
+  const ls = _cm.pedido.linhas || []; let n = 0, sem = [];
+  _cm.cots.forEach(c => {
+    const fa = _faturas.filter(f => mesmoForn({ nif: f.nif, fornecedor: f.fornecedor }, { nif: c.nif, fornecedor: c.fornecedor }) >= 0.9).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+    if (!fa.length) { sem.push(c.fornecedor); return; }
+    ls.forEach((l, i) => {
+      if (num(c.pu[i]) != null) return;
+      for (const f of fa) {
+        const ass = atribuir(f.linhas, [l]);
+        const k = ass.findIndex((x, q) => x === 0 && f.linhas[q].pu != null);
+        if (k >= 0) { c.pu[i] = String(f.linhas[k].pu).replace('.', ','); n++; return; }
+      }
+    });
+  });
+  cotarDesenhar();
+  toast(n ? `${n} preço${n !== 1 ? 's' : ''} sugerido${n !== 1 ? 's' : ''} a partir das últimas faturas — confira e carregue em «Guardar preços».` : 'Não há faturas deste fornecedor com preços para estes artigos.');
+}
 async function cotarEnviar() {
   const p = _cm.pedido, ls = p.linhas || [];
   const corpo = `Bom dia,\n\nSolicitamos cotação para o seguinte material (${p.numero}):\n\n` +
@@ -375,7 +394,22 @@ function verNE(id) {
     <div class="modal-sub">${esc(e.fornecedor)}${e.nif ? ' · NIF ' + esc(e.nif) : ''} · ${esc(e.obra_nome || '—')} · emitida em ${dataPT(e.emitida_em)} · ${pill(ESTADO_NE, e.estado)}</div>
     <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${(e.linhas || []).map(l => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${eur(l.pu)}</td><td class="r">${eur(l.total)}</td></tr>`).join('')}
     <tr class="ct-tot"><td colspan="4"><b>Total (sem IVA)</b></td><td class="r"><b>${eur(e.total)}</b></td></tr></tbody></table>
+    <div class="ct-add" style="margin-top:12px"><label class="ct-inl">Data da encomenda<input id="ne-data" type="date" value="${esc(String(e.emitida_em || '').slice(0, 10))}"></label>
+      <button type="button" class="btn btn-secondary btn-sm" data-act="ne-data" data-id="${e.id}">Guardar data</button>
+      <span class="mut">Serve para a ligação das guias (nos testes, use a data real da encomenda).</span></div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-ne" data-id="${e.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="ver-conf" data-id="${e.id}">Conferência</button><button type="button" class="btn btn-secondary" data-act="imprimir-ne" data-id="${e.id}">Imprimir / PDF</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 820);
+}
+async function guardarDataNE(id) {
+  const e = _encomendas.find(x => String(x.id) === String(id)), d = $('ne-data').value;
+  if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('Escolha uma data válida.');
+  const { error } = await sb.from('ct_encomendas').update({ emitida_em: d + 'T12:00:00Z' }).eq('id', e.id);
+  if (error) return toast('Não foi possível guardar: ' + String(error.message).slice(0, 120));
+  // volta a avaliar o que ainda não foi decidido à mão
+  await sb.from('ct_guias').update({ estado: 'por_casar', encomenda_id: null }).eq('estado', 'sugerida').eq('sync_manual', false);
+  await sb.from('ct_faturas').update({ estado: 'por_casar', encomenda_id: null }).eq('estado', 'sugerida').eq('sync_manual', false);
+  document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
+  await sincronizar(true);
+  toast('Data da encomenda guardada ✓');
 }
 function imprimirNE(id) {
   const e = _encomendas.find(x => String(x.id) === String(id)); if (!e) return;
@@ -553,6 +587,7 @@ async function verGuia(id) {
       </div>
     </div>
     <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-guia" data-id="${g.id}">Apagar</button><span style="flex:1"></span>
+      <button type="button" class="btn btn-secondary" data-act="anexar" data-t="g" data-id="${g.id}">${(g.fotos || []).length ? 'Substituir ficheiro' : 'Anexar ficheiro'}</button>
       <button type="button" class="btn btn-secondary" data-act="reler-guia" data-id="${g.id}">Reler com IA</button>
       <button type="button" class="btn btn-secondary" data-act="guardar-guia" data-id="${g.id}">Guardar dados</button>
       <button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`;
@@ -670,7 +705,24 @@ async function verFatura(id) {
         ${(f.linhas || []).length ? `<table class="cmp-t ct-lt"><thead><tr><th>Artigo</th><th class="r">Qtd</th><th>Un</th><th class="r">Preço un.</th><th class="r">Total</th></tr></thead><tbody>${f.linhas.map(l => `<tr><td>${esc(l.desc)}${l.ref_forn ? `<br><small class="mut">${esc(l.ref_forn)}</small>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td><td class="r">${l.pu != null ? eur(l.pu) : '—'}</td><td class="r">${l.total != null ? eur(l.total) : '—'}</td></tr>`).join('')}</tbody></table>` : '<div class="mut">A fatura não tem artigos lidos.</div>'}
       </div>
     </div>
-    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-fatura" data-id="${f.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`;
+    <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-fatura" data-id="${f.id}">Apagar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="anexar" data-t="f" data-id="${f.id}">${(f.fotos || []).length ? 'Substituir ficheiro' : 'Anexar ficheiro'}</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`;
+}
+function anexarFicheiro(t, id) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,application/pdf'; inp.multiple = true;
+  inp.onchange = async () => {
+    const fs = [...inp.files]; if (!fs.length) return;
+    try {
+      toast('A anexar…');
+      const blobs = []; for (const f of fs) blobs.push(...await paginasDe(f));
+      const paths = await enviarFotos(blobs, t === 'g' ? 'ctg' : 'ctf');
+      const upd = t === 'g' ? { fotos: paths, foto_path: paths[0], paginas: paths.length } : { fotos: paths };
+      const { error } = await sb.from(tabelaDe(t)).update(upd).eq('id', id);
+      if (error) throw error;
+      toast('Ficheiro anexado ✓');
+      await recarregar(); document.querySelectorAll('.modal-bg.open').forEach(m => m.remove()); (t === 'g' ? verGuia : verFatura)(id);
+    } catch (err) { toast('Não foi possível anexar: ' + String(err.message || err).slice(0, 140)); }
+  };
+  inp.click();
 }
 async function apagarFatura(id) {
   if (!await confirmar('Apagar esta fatura?', 'Apagar', true)) return;
@@ -766,12 +818,15 @@ function htmlLigacao(t, d) {
 }
 
 const barra = (p, cls = '') => `<div class="ct-prog"><div class="ct-bar ${cls}"><i style="width:${Math.round(Math.min(1, p) * 100)}%"></i></div><b>${Math.round(p * 100)} %</b></div>`;
+const alertasNE = (ne, c) => alertas(ne, c, _cotacoes.find(x => x.id === ne.cotacao_id)?.prazo_dias);
 function htmlConferencia() {
   const gPor = _guias.filter(g => g.estado === 'por_casar').length, fPor = _faturas.filter(f => f.estado === 'por_casar').length;
   const sug = _guias.filter(g => g.estado === 'sugerida').length + _faturas.filter(f => f.estado === 'sugerida').length;
+  const nAl = _encomendas.reduce((s, ne) => s + alertasNE(ne, conferir(ne, _guias, _faturas)).length, 0);
   const resumo = `<div class="ct-resumo">
       <div><b>${gPor}</b><span>guia${gPor !== 1 ? 's' : ''} por ligar</span></div><div><b>${fPor}</b><span>fatura${fPor !== 1 ? 's' : ''} por ligar</span></div>
       <div class="${sug ? 'warn' : ''}"><b>${sug}</b><span>sugest${sug !== 1 ? 'ões' : 'ão'} a confirmar</span></div>
+      <div class="${nAl ? 'bad' : ''}"><b>${nAl}</b><span>alerta${nAl !== 1 ? 's' : ''} de prazo</span></div>
       <button type="button" class="btn btn-secondary btn-sm" data-act="sync">Sincronizar agora</button></div>`;
   const linhas = _encomendas.map(ne => {
     const c = conferir(ne, _guias, _faturas);
@@ -781,10 +836,34 @@ function htmlConferencia() {
       <td class="r"><b>${eur(ne.total)}</b></td>
       <td>${barra(c.recPct)}<small class="mut">${c.guias.length} guia${c.guias.length !== 1 ? 's' : ''}</small></td>
       <td>${barra(c.fatPct, 'f')}<small class="mut">${c.faturas.length} fatura${c.faturas.length !== 1 ? 's' : ''}</small></td>
-      <td>${c.divergencias ? `<span class="dd-pill bad">${c.divergencias} divergência${c.divergencias !== 1 ? 's' : ''}</span>` : (c.guias.length || c.faturas.length ? '<span class="dd-pill ok">Sem divergências</span>' : '<span class="mut">—</span>')}</td>
+      <td>${c.divergencias ? `<span class="dd-pill bad">${c.divergencias} divergência${c.divergencias !== 1 ? 's' : ''}</span>` : (c.guias.length || c.faturas.length ? '<span class="dd-pill ok">Sem divergências</span>' : '<span class="mut">—</span>')}${alertasNE(ne, c).map(a => `<br><span class="dd-pill ${a.cls}">${esc(a.txt)}</span>`).join('')}</td>
       <td>${pill(ESTADO_NE, ne.estado)}</td></tr>`;
   }).join('');
   return resumo + `<div class="card ct-card">${_encomendas.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nota de encomenda</th><th>Fornecedor / Obra</th><th class="r">Total</th><th>Recebido</th><th>Faturado</th><th>Conferência</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Sem notas de encomenda para conferir.</div>'}</div>`;
+}
+function exportarConf(id) {
+  const ne = _encomendas.find(x => String(x.id) === String(id)); if (!ne) return;
+  const c = conferir(ne, _guias, _faturas);
+  const n = v => String(Number(v) || 0).replace('.', ','), q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const linhas = [['Artigo', 'Un', 'Encomendado', 'Recebido', 'Faturado', 'Preço adjudicado', 'Preço faturado', 'Alertas'].map(q).join(';')];
+  c.linhas.forEach(l => linhas.push([q(l.desc), q(l.un), n(l.qtd), n(l.rec), n(l.fat), n(l.pu), l.puFat != null ? n(l.puFat) : '', q(l.flags.join(' | '))].join(';')));
+  linhas.push('', ['Guias ligadas', ...c.guias.map(g => g.numero || '—')].map(q).join(';'), ['Faturas ligadas', ...c.faturas.map(f => f.numero || '—')].map(q).join(';'));
+  const blob = new Blob(['\ufeff' + `${q(ne.numero + ' · ' + ne.fornecedor + ' · ' + (ne.obra_nome || ''))}\r\n` + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `conferencia-${ne.numero}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+function imprimirConf(id) {
+  const ne = _encomendas.find(x => String(x.id) === String(id)); if (!ne) return;
+  const c = conferir(ne, _guias, _faturas);
+  const w = window.open('', '_blank'); if (!w) return toast('O navegador bloqueou a janela de impressão.');
+  w.document.write(`<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Conferência ${esc(ne.numero)}</title><style>
+    body{font-family:system-ui,Arial,sans-serif;color:#1b2130;margin:30px}h1{font-size:20px;margin:0 0 4px}.m{color:#5d6678;font-size:12.5px}
+    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}th{text-align:left;border-bottom:2px solid #173f9f;padding:7px 5px;font-size:10.5px;text-transform:uppercase}
+    td{border-bottom:1px solid #dde2ea;padding:7px 5px}.r{text-align:right}.bad{color:#b42318;font-weight:700}.ok{color:#067647}
+  </style></head><body><h1>Conferência · ${esc(ne.numero)}</h1><div class="m">${esc(ne.fornecedor)} · ${esc(ne.obra_nome || '—')} · total adjudicado ${eur(ne.total)} · recebido ${Math.round(c.recPct * 100)} % · faturado ${Math.round(c.fatPct * 100)} % · ${c.divergencias} divergência(s)</div>
+  <table><thead><tr><th>Artigo</th><th class="r">Encom.</th><th class="r">Recebido</th><th class="r">Faturado</th><th class="r">Preço adj.</th><th class="r">Preço fat.</th><th>Alertas</th></tr></thead><tbody>
+  ${c.linhas.map(l => `<tr><td>${esc(l.desc)}</td><td class="r">${qtdTxt(l.qtd)}</td><td class="r">${qtdTxt(l.rec)}</td><td class="r">${qtdTxt(l.fat)}</td><td class="r">${eur(l.pu)}</td><td class="r">${l.puFat != null ? eur(l.puFat) : '—'}</td><td class="${l.flags.length ? 'bad' : 'ok'}">${l.flags.length ? esc(l.flags.join(' · ')) : 'OK'}</td></tr>`).join('')}</tbody></table>
+  <p class="m">Guias: ${esc(c.guias.map(g => g.numero || '—').join(', ') || 'nenhuma')}<br>Faturas: ${esc(c.faturas.map(f => f.numero || '—').join(', ') || 'nenhuma')}</p></body></html>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
 }
 function verConferencia(id) {
   const ne = _encomendas.find(x => String(x.id) === String(id)); if (!ne) return;
@@ -793,6 +872,7 @@ function verConferencia(id) {
   const doc = (d, t) => `<div class="ct-linha clk" data-act="${t === 'g' ? 'ver-guia' : 'ver-fatura'}" data-id="${d.id}"><span><b>${esc(d.numero || '—')}</b> <small class="mut">${dataPT(d.data)}</small></span><span>${d.estado === 'divergente' ? '<span class="dd-pill bad">Divergente</span>' : '<span class="dd-pill ok">Ligada</span>'}</span></div>`;
   modal(`<div class="modal-title">Conferência · ${esc(ne.numero)}</div>
     <div class="modal-sub">${esc(ne.fornecedor)} · ${esc(ne.obra_nome || '—')} · ${pill(ESTADO_NE, ne.estado)}</div>
+    ${alertasNE(ne, c).map(a => `<div class="ct-nota"><span class="dd-pill ${a.cls}">${esc(a.txt)}</span></div>`).join('')}
     <div class="ct-resumo" style="margin-top:12px"><div><b>${Math.round(c.recPct * 100)} %</b><span>recebido</span></div><div><b>${Math.round(c.fatPct * 100)} %</b><span>faturado</span></div><div class="${c.divergencias ? 'bad' : ''}"><b>${c.divergencias}</b><span>divergência${c.divergencias !== 1 ? 's' : ''}</span></div></div>
     <table class="cmp-t ct-lt ct-conf-t"><thead><tr><th>Artigo</th><th class="r">Encomendado</th><th class="r">Recebido</th><th class="r">Faturado</th><th class="r">Preço adj.</th><th class="r">Preço fat.</th></tr></thead>
     <tbody>${c.linhas.map(l => `<tr><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small>${l.flags.length ? `<div class="ct-flags">${l.flags.map(x => `<span class="dd-pill bad">${esc(x)}</span>`).join(' ')}</div>` : ''}</td>
@@ -801,7 +881,7 @@ function verConferencia(id) {
     ${c.foraG.length || c.foraF.length ? `<div class="ct-sec">Fora da encomenda</div>${[...c.foraG.map(x => `Guia ${x.guia.numero || ''}: ${x.linha.desc} (${qtdTxt(x.linha.qtd)})`), ...c.foraF.map(x => `Fatura ${x.fatura.numero || ''}: ${x.linha.desc} (${qtdTxt(x.linha.qtd)})`)].map(t => `<div class="ct-linha"><span>${esc(t)}</span></div>`).join('')}` : ''}
     <div class="ct-sec">Guias ligadas</div>${c.guias.length ? c.guias.map(g => doc(g, 'g')).join('') : '<div class="mut">Nenhuma guia ligada.</div>'}
     <div class="ct-sec">Faturas ligadas</div>${c.faturas.length ? c.faturas.map(f => doc(f, 'f')).join('') : '<div class="mut">Nenhuma fatura ligada.</div>'}
-    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="sync">Sincronizar</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 980);
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="sync">Sincronizar</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="exp-conf" data-id="${ne.id}">Exportar Excel</button><button type="button" class="btn btn-secondary" data-act="imp-conf" data-id="${ne.id}">Imprimir / PDF</button><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 980);
 }
 
 // ═══════════════════ Eventos ═══════════════════
@@ -824,22 +904,27 @@ document.addEventListener('click', e => {
     case 'cot-add': cotarAdicionar(); break;
     case 'cot-rem': cotarRemover(+a.dataset.k); break;
     case 'cot-enviar': cotarEnviar(); break;
+    case 'cot-sug': cotarSugerir(); break;
     case 'cot-guardar': cotarGuardar(); break;
     case 'adjudicar': adjudicar(+a.dataset.k); break;
     case 'ver-ne': verNE(id); break;
     case 'imprimir-ne': imprimirNE(id); break;
     case 'apagar-ne': apagarNE(id); break;
+    case 'ne-data': guardarDataNE(id); break;
     case 'guias-carregar': $('ct-gfiles').click(); break;
     case 'guias-importar': importarGuias(); break;
     case 'ver-guia': verGuia(id); break;
     case 'guardar-guia': guardarGuia(id); break;
     case 'reler-guia': relerGuia(id); break;
     case 'apagar-guia': apagarGuia(id); break;
+    case 'anexar': anexarFicheiro(a.dataset.t, id); break;
     case 'faturas-carregar': $('ct-ffiles').click(); break;
     case 'ver-fatura': verFatura(id); break;
     case 'apagar-fatura': apagarFatura(id); break;
     case 'sync': sincronizar(false); break;
     case 'ver-conf': verConferencia(id); break;
+    case 'exp-conf': exportarConf(id); break;
+    case 'imp-conf': imprimirConf(id); break;
     case 'ligar-doc': ligarDoc(a.dataset.t, id); break;
     case 'desligar-doc': desligarDoc(a.dataset.t, id); break;
     case 'auto-doc': autoDoc(a.dataset.t, id); break;

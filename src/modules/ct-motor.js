@@ -2,7 +2,8 @@
 //  COMPRAS (TESTE) — motor de sincronização: guia/fatura ↔ nota de encomenda, e conferência
 //  Funções puras (sem acesso a base de dados nem ao ecrã) para se poderem testar à parte.
 // ═══════════════════════════════════════════════════════════════════
-export const TOLERANCIA = 0.02;          // 2 % nas quantidades e nos preços
+export const PENAL_GUIA_ANTERIOR = 0;   // pontos a tirar quando a guia é anterior à encomenda (0 = só aviso; em produção pode ser -10)
+export const TOLERANCIA = 0.02;         // 2 % nas quantidades e nos preços
 export const LIMIAR_AUTO = 75;           // a partir daqui liga sozinho (se houver margem sobre a 2.ª candidata)
 export const LIMIAR_SUGESTAO = 40;       // entre isto e o automático fica «sugerida» para confirmar
 
@@ -71,7 +72,8 @@ export function scoreGuia(g, ne, guiasDaNE) {
   const nd = String(ne.emitida_em || '').slice(0, 10);
   if (g.data && nd) {
     const d = dias(g.data, nd);
-    if (d >= -1) { s += d <= 120 ? 10 : 3; m.push('data'); } else { s -= 10; m.push('guia anterior à encomenda'); }
+    // Guia anterior à encomenda: só um aviso (nos testes as guias são de material já entregue); a data da encomenda é editável
+    if (d >= -1) { s += d <= 120 ? 10 : 3; m.push('data'); } else { s += PENAL_GUIA_ANTERIOR; m.push('guia anterior à encomenda'); }
   } else s += 4;
   const ass = atribuir(g.linhas, ne.linhas);
   const n = (g.linhas || []).length, ok = ass.filter(i => i >= 0).length, frac = n ? ok / n : 0;
@@ -159,4 +161,26 @@ export function conferir(ne, guias, faturas) {
   const estado = fs.length && fatPct >= 1 - TOLERANCIA ? 'faturada' : recPct >= 1 - TOLERANCIA ? 'completa' : (gs.length && recPct > 0) ? 'parcial' : 'emitida';
   const divergencias = linhas.reduce((s, l) => s + l.flags.length, 0) + foraG.length + foraF.length;
   return { linhas, guias: gs, faturas: fs, foraG, foraF, recPct, fatPct, estado, divergencias, docFlags };
+}
+
+// ── Alertas de prazo de uma encomenda (a partir da conferência) ──
+export const DIAS_SEM_GUIA = 15;      // se a cotação não indicar prazo de entrega
+export const DIAS_SEM_FATURA = 30;    // material recebido e ainda não faturado
+export function alertas(ne, c, prazoDias, hoje = new Date().toISOString().slice(0, 10)) {
+  const out = [];
+  const emi = String(ne.emitida_em || '').slice(0, 10);
+  if (!c.guias.length && emi) {
+    const lim = Number(prazoDias) > 0 ? Number(prazoDias) : DIAS_SEM_GUIA, d = dias(hoje, emi);
+    if (d > lim) out.push({ cls: 'bad', txt: `Sem guia há ${d} dias (prazo ${lim})` });
+  }
+  if (c.guias.length && c.recPct > c.fatPct + TOLERANCIA) {
+    const ult = c.guias.map(g => g.data).filter(Boolean).sort().pop();
+    const d = ult ? dias(hoje, ult) : 0;
+    if (d > DIAS_SEM_FATURA) out.push({ cls: 'warn', txt: `Recebido sem fatura há ${d} dias` });
+  }
+  if (c.recPct < 1 - TOLERANCIA && c.guias.length && emi) {
+    const lim = Number(prazoDias) > 0 ? Number(prazoDias) : 0, d = dias(hoje, emi);
+    if (lim && d > lim) out.push({ cls: 'warn', txt: `Entrega incompleta (${Math.round(c.recPct * 100)} %) passado o prazo` });
+  }
+  return out;
 }
