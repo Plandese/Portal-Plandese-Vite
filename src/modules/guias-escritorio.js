@@ -259,13 +259,14 @@ function desenharListaFaturas(box, sug) {
   const lista = todas.filter(({ f, s }) => noFiltro(s.k) && (!q || `${f.fornecedor || ''} ${f.numero || ''} ${(f.guias_ref || []).join(' ')}`.toLowerCase().includes(q)))
     .sort((a, b) => SIT_ORDEM[a.s.k] - SIT_ORDEM[b.s.k] || String(b.f.data || '').localeCompare(String(a.f.data || '')));
   const corpo = lista.length ? `<div class="tbl-wrap"><table class="cmp-t">
-    <thead><tr><th>Data</th><th>Fatura</th><th class="r">Valor</th><th>Guias</th><th>Conferência</th><th>Estado</th><th>Próximo passo</th></tr></thead>
+    <thead><tr><th>Data</th><th>Fatura</th><th>Fornecedor</th><th class="r">Valor</th><th>Guias</th><th>Conferência</th><th>Estado</th><th>Próximo passo</th></tr></thead>
     <tbody>${lista.map(({ f, s }) => {
       const nr = s.v.refs.length, tem = nr - (s.v.faltam || []).length;
       const [t, c] = SIT_PILL[s.k];
       return `<tr data-gre-fat="${f.id}" style="cursor:pointer" title="Clique para abrir a fatura">
         <td>${f.data ? esc(fmtPT(f.data)) : '<span class="mut">—</span>'}</td>
         <td><b>${esc(f.numero || '—')}</b>${f.teste ? ' <span class="dd-pill mute" title="Fatura carregada só para este teste; não aparece nas outras páginas">Teste</span>' : ''}<br><small class="mut">${esc(f.centro_custo || '')}</small></td>
+        <td>${f.fornecedor ? esc(f.fornecedor) : '<span class="mut">—</span>'}</td>
         <td class="r">${eur(Number(f.total))}</td>
         <td>${nr ? `${tem}/${nr}` : s.v.guias.length ? String(s.v.guias.length) : '<span class="mut">—</span>'}</td>
         <td>${s.v.pct != null && (nr || s.v.guias.length) ? barraPct(s.v.pct, corSit(s.k)) : s.v.guias.length ? '<span class="mut" title="A fatura não tem artigos lidos: as guias foram sincronizadas pelo valor">Por valor</span>' : '<span class="mut">—</span>'}</td>
