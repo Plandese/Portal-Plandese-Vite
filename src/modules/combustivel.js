@@ -19,15 +19,18 @@ const depObraNome=r=>r.deposito_obra_nome||r.obra_nome||S.OBRAS.find(o=>o.id===d
 const isEntDepRow=r=>r.tipo_registo==='deposito'&&(r.movimento==='entrada'||!r.movimento);
 // Saída: saída de depósito OU abastecimento directo de viatura
 const isSaidaRow=r=>(r.tipo_registo==='deposito'&&r.movimento==='saida')||r.tipo_registo==='viatura';
+// A obra tem depósito se alguma vez recebeu entradas/saídas no seu depósito ou transferências
+const _obraTemDeposito=id=>_combAllRows.some(r=>depObraId(r)===id||(isTransfRow(r)&&r.obra_id===id));
 const _sumL=(arr,filterFn)=>arr.filter(filterFn).reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
-// Stock do depósito de uma obra: entradas − saídas do depósito − abastecimentos da obra + transferências recebidas − transferências enviadas
+// Abastecimento em bomba/posto: fica registado e conta para custos, mas não sai de nenhum depósito
+const isBombaRow=r=>r.tipo_registo==='viatura';
+// Stock do depósito de uma obra: entradas − saídas do depósito + transferências recebidas − transferências enviadas (a bomba não conta)
 function _stockObra(rows,obraId){
   let st=0;
   rows.forEach(r=>{
     const l=parseFloat(r.litros)||0;
     if(isTransfRow(r)){ if(r.obra_id===obraId) st+=l; if(r.deposito_obra_id===obraId) st-=l; return; }
     if(r.tipo_registo==='deposito'&&depObraId(r)===obraId) st+=isEntDepRow(r)?l:-l;
-    else if(r.tipo_registo==='viatura'&&r.obra_id===obraId) st-=l;
   });
   return st;
 }
@@ -183,14 +186,14 @@ function renderCombObraCards(rows){
   if(!obras.length){grid.innerHTML='';emptyEl.style.display='';return;}
   emptyEl.style.display='none';
 
-  grid.innerHTML=obras.map(ob=>{
+  const cartao=ob=>{
     const hasDep=ob.depRows.length>0;
     const nReg=ob.rows.length;
     const tipos=[...new Set(ob.rows.map(r=>r.tipo_combustivel).filter(Boolean))].join(', ')||'—';
 
     let box;
     if(hasDep){
-      // Stock do depósito: entradas − saídas do depósito (mesmo que o gasóleo tenha ido para outra obra) − abastecimentos de viaturas da obra
+      // Stock do depósito: entradas − saídas do depósito (mesmo que o gasóleo tenha ido para outra obra); a bomba não entra
       const stock=_stockObra(_combAllRows,ob.id);
       const stockColor=stock>=0?'var(--blue-700)':'#b91c1c';
       const stockBg=stock>=0?'var(--blue-50)':'#fef2f2';
@@ -200,9 +203,9 @@ function renderCombObraCards(rows){
         <div style="font-size:22px;font-weight:700;color:${stockColor};line-height:1;font-variant-numeric:tabular-nums">${(stock>=0?'+':'')+stock.toFixed(1)}L</div>
       </div>`;
     }else{
-      const consumo=_sumL(ob.rows,isSaidaRow);
+      const consumo=_sumL(ob.rows,isBombaRow);
       box=`<div style="background:var(--gray-50);border:1.5px dashed var(--gray-200);border-radius:10px;padding:10px 16px;text-align:center;flex-shrink:0">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:4px">Sem depósito</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:4px">Bomba / posto</div>
         <div style="font-size:15px;font-weight:700;color:var(--gray-600);line-height:1">${consumo.toFixed(1)}L</div>
       </div>`;
     }
@@ -211,12 +214,16 @@ function renderCombObraCards(rows){
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escHtml(ob.nome)}</div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${nReg} registo${nReg!==1?'s':''} · ${_escHtml(tipos)}${hasDep?` · consumo da obra ${_sumL(ob.rows,isSaidaRow).toFixed(1)} L`:''}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">${nReg} registo${nReg!==1?'s':''} · ${_escHtml(tipos)}${hasDep?` · saiu do depósito ${_sumL(ob.depRows,r=>r.tipo_registo==='deposito'&&r.movimento==='saida').toFixed(1)} L`:''}${hasDep&&_sumL(ob.rows,isBombaRow)?` · bomba ${_sumL(ob.rows,isBombaRow).toFixed(1)} L (fora do stock)`:''}</div>
         </div>
         ${box}
       </div>
     </div>`;
-  }).join('');
+  };
+  const comDep=obras.filter(o=>o.depRows.length), soBomba=obras.filter(o=>!o.depRows.length);
+  const tit=(t,sub)=>`<div style="grid-column:1/-1;margin:${comDep.length?'10px':'0'} 0 -2px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-600)">${t}</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">${sub}</div></div>`;
+  grid.innerHTML=(comDep.length?tit('Depósitos de obra','O stock conta só entradas, saídas do depósito e transferências.')+comDep.map(cartao).join(''):'')
+    +(soBomba.length?tit('Obras sem depósito','Só abastecimentos em bomba/posto: ficam registados nos custos, sem stock.')+soBomba.map(cartao).join(''):'');
 }
 
 // ── Separadores: Depósitos Obra | Consumo de Equipamentos ──
@@ -473,7 +480,7 @@ function _renderCombDetalheHeader(){
   const nome=rows[0]?.obra_nome||S.OBRAS.find(o=>o.id===_combDetObraId)?.nome||(_combDetObraId==='__sem_obra__'?'Sem obra':_combDetObraId);
   document.getElementById('mcob-title').textContent=nome;
 
-  const hasDep=rows.some(r=>r.tipo_registo==='deposito'||isTransfRow(r));
+  const hasDep=_obraTemDeposito(_combDetObraId);
   document.getElementById('mcob-sub').textContent=`${rows.length} registo${rows.length!==1?'s':''} no total${hasDep?'':' · sem depósito associado'}`;
 
   const stockBox=document.getElementById('mcob-stock-box');
@@ -483,7 +490,7 @@ function _renderCombDetalheHeader(){
     const stockBg=stock>=0?'var(--blue-50)':'#fef2f2';
     const stockBorder=stock>=0?'var(--blue-200)':'#fecaca';
     stockBox.innerHTML=`<div style="background:${stockBg};border:1.5px solid ${stockBorder};border-radius:10px;padding:10px 16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${stockColor};margin-bottom:3px">Stock Real Acumulado</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${stockColor};margin-bottom:3px">Stock do depósito</div>
       <div style="font-size:22px;font-weight:700;color:${stockColor};line-height:1;font-variant-numeric:tabular-nums">${(stock>=0?'+':'')+stock.toFixed(1)}L</div>
     </div>`;
   }else{
@@ -543,23 +550,30 @@ function _renderCombDetalhe(){
     else label.textContent=`${MESES[_combDetAnchor.getMonth()]} ${_combDetAnchor.getFullYear()}`;
   }
 
-  let rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId||(isTransfRow(r)&&r.deposito_obra_id===_combDetObraId));
+  // Inclui também o que saiu do depósito desta obra para outras obras
+  let rows=_combAllRows.filter(r=>(r.obra_id||'__sem_obra__')===_combDetObraId||depObraId(r)===_combDetObraId||(isTransfRow(r)&&r.deposito_obra_id===_combDetObraId));
   if(_combDetEquip) rows=rows.filter(r=>r.equipamento_id===_combDetEquip);
   const periodRows=de?rows.filter(r=>r.data&&r.data>=de&&r.data<=ate):rows;
 
-  const hasDep=rows.some(r=>r.tipo_registo==='deposito');
+  const hasDep=_obraTemDeposito(_combDetObraId);
   const ent=_sumL(periodRows,isEntDepRow);
-  const sai=_sumL(periodRows,isSaidaRow);
+  const sai=_sumL(periodRows,r=>r.tipo_registo==='deposito'&&r.movimento==='saida');
+  const bomba=_sumL(periodRows,isBombaRow);
 
   const resumo=document.getElementById('mcob-resumo');
+  resumo.style.gridTemplateColumns='repeat(auto-fit,minmax(130px,1fr))';
   resumo.innerHTML=(hasDep?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;text-align:center">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#86efac;margin-bottom:5px">↓ Entradas</div>
       <div style="font-size:20px;font-weight:700;color:#16a34a;font-variant-numeric:tabular-nums">${ent.toFixed(1)}L</div>
     </div>`:'<div></div>')+
     `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:center">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fca5a5;margin-bottom:5px">↑ Saídas</div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fca5a5;margin-bottom:5px">↑ Saídas do depósito</div>
       <div style="font-size:20px;font-weight:700;color:#dc2626;font-variant-numeric:tabular-nums">${sai.toFixed(1)}L</div>
-    </div>`;
+    </div>`+
+    (bomba?`<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;text-align:center">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">⛽ Bomba (fora do stock)</div>
+      <div style="font-size:20px;font-weight:700;color:var(--gray-600);font-variant-numeric:tabular-nums">${bomba.toFixed(1)}L</div>
+    </div>`:'');
 
   const tbody=document.getElementById('mcob-tbody');
   const emptyEl=document.getElementById('mcob-empty');
@@ -574,7 +588,9 @@ function _renderCombDetalhe(){
     const isEnt=isTr?r.obra_id===_combDetObraId:r.movimento==='entrada'||(!r.movimento&&r.tipo_registo!=='viatura');
     const litrosVal=parseFloat(r.litros)||0;
     const litrosFormatado=r.litros!=null
-      ?(isEnt
+      ?(isBombaRow(r)
+        ?`<span style="font-weight:700;color:var(--gray-600)">${litrosVal.toFixed(1)}L</span>`
+        :isEnt
         ?`<span style="font-weight:700;color:#16a34a">+${litrosVal.toFixed(1)}L</span>`
         :`<span style="font-weight:700;color:#dc2626">−${litrosVal.toFixed(1)}L</span>`)
       :'—';
@@ -583,8 +599,8 @@ function _renderCombDetalhe(){
       :r.tipo_registo==='deposito'
       ?(isEnt
         ?`<span class="badge b-green" style="font-size:11px">↓ Entrada</span>`
-        :`<span class="badge b-red" style="font-size:11px">↑ Saída</span>`)
-      :`<span class="badge b-gray" style="font-size:11px">Viatura</span>`;
+        :`<span class="badge b-red" style="font-size:11px">↑ Saída${r.obra_id&&r.obra_id!==_combDetObraId?' → '+_escHtml(r.obra_nome||''):''}</span>`)
+      :`<span class="badge b-gray" style="font-size:11px">⛽ Bomba / posto</span>`;
     return `<tr class="clk" data-cbreg="${r.id}">
       <td>${fmtPT(r.data)}</td>
       <td style="font-weight:600">${r.equipamento_nome||'—'}</td>
