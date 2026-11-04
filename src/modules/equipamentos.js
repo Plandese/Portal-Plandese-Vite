@@ -320,7 +320,7 @@ function _eqObraRender(){
   const chips=document.getElementById('meqf-chips');
   const cats=Object.keys(EQ_CATS).map(k=>[k,_eqObraItens.filter(e=>eqCatNorm(e.categoria)===k).length]).filter(x=>x[1]);
   if(chips) chips.innerHTML=cats.length>1
-    ? [['', 'Todos', _eqObraItens.length],...cats.map(([k,n])=>[k,EQ_CATS[k].label,n])].map(([k,l,n])=>`<button type="button" data-eqcat="${k}" class="fp-tab${_eqObraCat===k?' active':''}" style="height:34px;padding:0 14px;font-size:12.5px">${eqEsc(l)} <b>${n}</b></button>`).join('')
+    ? [['', 'Todos', _eqObraItens.length],...cats.map(([k,n])=>[k,EQ_CATS[k].label,n])].map(([k,l,n])=>`<button type="button" data-eqcat="${k}" class="eq-fchip${_eqObraCat===k?' on':''}">${eqEsc(l)} <b>${n}</b></button>`).join('')
     : '';
   const lista=_eqObraItens.filter(e=>(!_eqObraCat||eqCatNorm(e.categoria)===_eqObraCat)&&(!termo||
     _eqSemAc([e.nome,e.codigo,e.matricula,e.marcaModelo,e.serie,EQ_CATS[eqCatNorm(e.categoria)].label,EQ_ESTADOS[e.estado]?.label].join(' ')).includes(termo)));

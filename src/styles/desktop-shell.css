@@ -1435,3 +1435,13 @@ body #admin-app .dw-date{cursor:default!important;border-bottom:0!important}
 .cq-foot em{display:block;font-style:normal;font-size:11px;color:#8a93a5;margin-top:4px}
 .cq-t{text-align:right}
 .cq-t b{color:#1b2130}
+
+/* Painel de equipamentos da obra: pesquisa e filtros por tipologia */
+.eq-fsearch{width:100%;height:50px;padding:0 16px;border:1.5px solid #b9c1ce;border-radius:14px;font:inherit;font-size:16px;color:#1b2130;background:#fff;outline:none;box-sizing:border-box}
+.eq-fsearch:focus{border-color:#173f9f;box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.eq-fchips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 6px}
+.eq-fchip{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border:1.5px solid #dde2ea;border-radius:99px;background:#fff;color:#1b2130;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.eq-fchip b{font-weight:700;font-size:12px;padding:1px 8px;border-radius:99px;background:#eaf0fc;color:#173f9f}
+.eq-fchip:hover{border-color:#173f9f}
+.eq-fchip.on{background:#173f9f;border-color:#173f9f;color:#fff}
+.eq-fchip.on b{background:rgba(255,255,255,.2);color:#fff}
