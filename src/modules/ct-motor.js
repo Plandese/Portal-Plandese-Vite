@@ -99,7 +99,8 @@ export function scoreFatura(fa, ne, guiasDaNE) {
     if (cc === on || (cod && cc.includes(cod))) { s += 10; m.push('obra'); } else return { score: 0, motivo: 'Obra diferente' };
   } else s += 4;
   const refs = (fa.guias_ref || []).map(normNum).filter(Boolean);
-  const citadas = (guiasDaNE || []).filter(g => g.numero_norm && refs.some(r => r === g.numero_norm || (r.length >= 5 && g.numero_norm.length >= 5 && (r.endsWith(g.numero_norm) || g.numero_norm.endsWith(r)))));
+  const fim = v => (String(v).match(/(\d{3,})\D*$/) || [])[1];   // «GR 3261», «Guia de Remessa no. 3261», «GR 2026A2/3261» → 3261
+  const citadas = (guiasDaNE || []).filter(g => g.numero_norm && refs.some(r => r === g.numero_norm || (r.length >= 5 && g.numero_norm.length >= 5 && (r.endsWith(g.numero_norm) || g.numero_norm.endsWith(r))) || (fim(r) && fim(r).length >= 4 && g.numero_norm.endsWith(fim(r)))));
   if (citadas.length) { s += 30; m.push(`cita ${citadas.length} guia${citadas.length > 1 ? 's' : ''} da encomenda`); }
   const ass = atribuir(fa.linhas, ne.linhas);
   const n = (fa.linhas || []).length, ok = ass.filter(i => i >= 0).length, frac = n ? ok / n : 0;
