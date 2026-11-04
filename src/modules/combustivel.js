@@ -362,6 +362,18 @@ let _combDetEquipId=null;
 // Abastecimento de um equipamento: bomba/posto ou saída do depósito de obra com equipamento associado
 const _isAbastecimento=r=>!!r.equipamento_id&&(r.tipo_registo==='viatura'||(r.tipo_registo==='deposito'&&r.movimento==='saida'));
 const _fmtL=n=>n.toFixed(1).replace('.',',')+' L';
+// Consumo médio: litros abastecidos depois da primeira leitura ÷ distância/horas percorridas entre a primeira e a última leitura
+// (km → L/100 km; horas → L/h). Precisa de pelo menos 2 registos com Km/Horas.
+function _consumoMedio(rows){
+  const c=rows.filter(r=>r.contador_valor!=null&&Number.isFinite(parseFloat(r.contador_valor))).map(r=>({v:parseFloat(r.contador_valor),l:parseFloat(r.litros)||0,t:r.contador_tipo}))
+    .sort((a,b)=>a.v-b.v);
+  if(c.length<2) return null;
+  const delta=c[c.length-1].v-c[0].v; if(!(delta>0)) return null;
+  const litros=c.slice(1).reduce((s,x)=>s+x.l,0);
+  const km=c.filter(x=>x.t==='km').length>=c.length/2;
+  const n=v=>v.toFixed(1).replace('.',',');
+  return {txt:km?n(litros/delta*100)+' L/100 km':n(litros/delta)+' L/h', km};
+}
 
 // ── Consumo de Equipamentos: lista com pesquisa e "Lista completa" ──
 let _combEquipLista=[];
@@ -381,7 +393,7 @@ function renderCombEquipCards(rows){
     const nome=eq?.nome||m.nome;
     // Texto pesquisável: tudo o que identifica o equipamento e onde/como abasteceu
     const texto=_semAcentos([nome,eq?.matricula,eq?.marcaModelo,eq?.codigo,eq?.serie,eq?.condutor,obras.join(' '),tipos.join(' '),m.rows.map(r=>r.fornecedor).join(' ')].join(' '));
-    return {...m,nome,obras,tipos,texto,litros:_sumL(m.rows,()=>true),ultimo:m.rows.reduce((d,r)=>r.data>d?r.data:d,'')};
+    return {...m,nome,obras,tipos,texto,media:_consumoMedio(m.rows),litros:_sumL(m.rows,()=>true),ultimo:m.rows.reduce((d,r)=>r.data>d?r.data:d,'')};
   }).sort((a,b)=>b.litros-a.litros);
   _combBuscaMostrar();
 }
@@ -396,8 +408,9 @@ function _combEquipRowHtml(m){
         ${sub?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">${sub}</div>`:''}
       </div>
       <div style="background:var(--blue-50);border:1.5px solid var(--blue-200);border-radius:10px;padding:8px 14px;text-align:center;flex-shrink:0">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:3px">Consumo</div>
-        <div style="font-size:18px;font-weight:700;color:var(--blue-700);line-height:1;font-variant-numeric:tabular-nums">${_fmtL(m.litros)}</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-700);margin-bottom:3px">Consumo médio</div>
+        <div style="font-size:18px;font-weight:700;color:${m.media?'var(--blue-700)':'var(--gray-400)'};line-height:1;font-variant-numeric:tabular-nums">${m.media?m.media.txt:'—'}</div>
+        <div style="font-size:10px;color:var(--gray-500);margin-top:4px">${m.media?'':'sem Km/Horas · '}${_fmtL(m.litros)} no total</div>
       </div>
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
@@ -449,7 +462,7 @@ function _renderCombEquipDetalhe(){
   const box=(lbl,val)=>`<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:10px 14px;text-align:center">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:5px">${lbl}</div>
       <div style="font-size:20px;font-weight:700;color:var(--gray-800);font-variant-numeric:tabular-nums">${val}</div></div>`;
-  document.getElementById('mcoe-resumo').innerHTML=box('Consumo total',_fmtL(total))+box('Abastecimentos',rows.length)+box('Média por abastecimento',rows.length?_fmtL(total/rows.length):'—');
+  document.getElementById('mcoe-resumo').innerHTML=box('Consumo médio',_consumoMedio(rows)?.txt||'—')+box('Consumo total',_fmtL(total))+box('Abastecimentos',rows.length);
   document.getElementById('mcoe-tbody').innerHTML=rows.map(r=>`<tr class="clk" data-cbreg="${r.id}">
       <td>${fmtPT(r.data)}</td>
       <td>${_escHtml(r.obra_nome||S.OBRAS.find(o=>o.id===r.obra_id)?.nome||'—')}</td>
