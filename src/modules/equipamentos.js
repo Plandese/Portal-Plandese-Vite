@@ -1125,6 +1125,11 @@ async function qrGasValidar(){
       return;
     }
     _qrGas={ codigo:cod, obra:data.obra, equipamento:data.equipamento };
+    // Centro de custo: por defeito a obra do código, mas pode ser mudado
+    const selObra=document.getElementById('qr-gas-obra');
+    const obras=(data.obras&&data.obras.length)?data.obras:[data.obra];
+    selObra.innerHTML=obras.map(o=>`<option value="${eqEsc(o.id)}">${eqEsc(o.nome)}</option>`).join('');
+    selObra.value=data.obra.id;
     document.getElementById('qr-gas-eq-nome').textContent=data.equipamento.nome;
     document.getElementById('qr-gas-obra-nome').textContent=data.obra.nome;
     document.getElementById('qr-gas-origem').value='deposito'; qrGasOrigem();
@@ -1162,13 +1167,13 @@ async function qrGasSubmeter(){
     const {data,error}=await sb.rpc('fn_qr_gas_registar',{
       p_equip_id:_qrEquipId, p_codigo:_qrGas.codigo, p_origem:origem, p_litros:litros, p_tipo:g('qr-gas-tipo'),
       p_data:g('qr-gas-data')||null, p_obs:g('qr-gas-obs')||null, p_encarregado:nome, p_fornecedor:origem==='bomba'?(g('qr-gas-forn')||null):null,
-      p_contador:cnt
+      p_contador:cnt, p_obra_destino:g('qr-gas-obra')||null
     });
     if(error) throw error;
-    if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : data?.motivo==='contador' ? 'Valor de horas/quilómetros inválido.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
+    if(!data||!data.ok){ msg.textContent = data?.motivo==='litros' ? 'Quantidade de litros inválida.' : data?.motivo==='contador' ? 'Valor de horas/quilómetros inválido.' : data?.motivo==='obra' ? 'Obra inválida. Escolha outra.' : 'Não foi possível registar. Volte a introduzir o código.'; if(data?.motivo==='codigo'||data?.motivo==='bloqueado') setTimeout(qrGasNovo,1500); return; }
     try{ localStorage.setItem('plandese_enc_nome',JSON.stringify(nome)); }catch(e){}
     document.getElementById('qr-gas-ok-txt').innerHTML=
-      `<strong>${eqEsc(nome)}</strong> registou<br><strong>${litros} L de ${eqEsc(g('qr-gas-tipo'))}</strong><br>em <strong>${eqEsc(_qrGas.equipamento.nome)}</strong><br>Obra: <strong>${eqEsc(_qrGas.obra.nome)}</strong>`+
+      `<strong>${eqEsc(nome)}</strong> registou<br><strong>${litros} L de ${eqEsc(g('qr-gas-tipo'))}</strong><br>em <strong>${eqEsc(_qrGas.equipamento.nome)}</strong><br>Centro de custo: <strong>${eqEsc(document.getElementById('qr-gas-obra').selectedOptions[0]?.textContent||_qrGas.obra.nome)}</strong>`+
       `<br><span style="font-size:11px;color:var(--gray-400);display:block;margin-top:6px">${eqFmtDt(new Date())}</span>`;
     _qrGasMostra('ok');
   }catch(e){ console.warn('qrGasSubmeter:',e); msg.textContent='Erro ao guardar. Verifique a ligação e tente novamente.'; }
