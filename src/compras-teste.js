@@ -258,7 +258,7 @@ function cotarCarregarMem() {
   const ls = _cm.pedido.linhas || [];
   _cm.cots = _cotacoes.filter(c => c.pedido_id === _cm.pedido.id).map(c => ({
     ...c, pu: ls.map((_, i) => { const x = (c.precos || []).find(q => q.linha === i); return x && x.pu != null ? String(x.pu).replace('.', ',') : ''; }),
-    prazo: c.prazo_dias ?? '', cond: c.condicoes || '',
+    prazo: c.prazo_dias ?? '', cond: c.condicoes || '', flags: c.proposta_info?.flags || {}, ia: {},
   }));
   // fornecedor escolhido por artigo (id da cotação): mantém o que o utilizador já escolheu, senão o mais barato
   const ant = _cm.esc || [], man = _cm.manual || [];
@@ -304,14 +304,15 @@ function cotarDesenhar() {
       <button type="button" class="btn btn-secondary btn-sm" data-act="cot-enviar"${_cm.cots.length ? '' : ' disabled'}>✉ Pedir cotação por email</button>
       <button type="button" class="btn btn-secondary btn-sm" data-act="cot-sug"${_cm.cots.length ? '' : ' disabled'} title="Preenche os preços em branco com os da última fatura de cada fornecedor">Sugerir preços das últimas faturas</button></div>`}
     ${_cm.cots.length ? `<div class="ct-sec">2 · Preços recebidos (por unidade, sem IVA) — escolha o fornecedor de cada artigo</div>
-    <div class="tbl-wrap"><table class="cmp-t ct-grid" style="width:max(100%,${340 + _cm.cots.length * 190}px)"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}${k === melhor ? '<br><small>total mais baixo</small>' : (melhor >= 0 && res[k].falta === 0 && res[melhor].total > 0 ? `<br><small class="mut">+${Math.round((res[k].total / res[melhor].total - 1) * 1000) / 10} % no total</small>` : '')}</th>`).join('')}</tr></thead>
-    <tbody>${ls.map((l, i) => { const ja = cob[i]; return `<tr${ja ? ' class="ct-ja"' : ''}><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small>${ja ? `<div class="ct-jaenc">Encomendado: ${esc(ja.numero)} · ${esc(ja.fornecedor)}</div>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}${pu != null && pu === minLinha[i] && _cm.cots.length > 1 ? ' ct-min' : ''}"><input class="ct-n" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ja ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div><label class="ct-esc${_cm.esc[i] === c.id ? ' on' : ''}" id="ct-r-${k}-${i}"><input type="radio" name="esc-${i}" data-esc="${i}:${c.id}"${_cm.esc[i] === c.id ? ' checked' : ''}${ja || pu == null ? ' disabled' : ''}> Escolher</label></td>`; }).join('')}</tr>`; }).join('')}
+    <div class="tbl-wrap"><table class="cmp-t ct-grid" style="width:max(100%,${340 + _cm.cots.length * 190}px)"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}<div class="ct-prop"><button type="button" class="btn btn-secondary btn-sm" data-act="cot-prop" data-k="${k}"${tudoCob ? ' disabled' : ''}>✨ ${(c.proposta_fotos || []).length ? 'Nova proposta' : 'Carregar proposta'}</button>${(c.proposta_fotos || []).length ? `<a href="#" data-act="ver-prop" data-k="${k}">Ver proposta</a>` : ''}</div>${k === melhor ? '<br><small>total mais baixo</small>' : (melhor >= 0 && res[k].falta === 0 && res[melhor].total > 0 ? `<br><small class="mut">+${Math.round((res[k].total / res[melhor].total - 1) * 1000) / 10} % no total</small>` : '')}</th>`).join('')}</tr></thead>
+    <tbody>${ls.map((l, i) => { const ja = cob[i]; return `<tr${ja ? ' class="ct-ja"' : ''}><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small>${ja ? `<div class="ct-jaenc">Encomendado: ${esc(ja.numero)} · ${esc(ja.fornecedor)}</div>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}${pu != null && pu === minLinha[i] && _cm.cots.length > 1 ? ' ct-min' : ''}"><input class="ct-n${c.ia[i] ? ' ct-ia' : ''}" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ja ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div>${(c.flags[i]?.eq === 'aproximada' || c.flags[i]?.obs) ? `<div class="ct-eq${c.flags[i].eq === 'aproximada' ? ' ap' : ''}" title="${esc(c.flags[i].obs || '')}">${c.flags[i].eq === 'aproximada' ? '≈ artigo parecido' : ''}${c.flags[i].obs ? ` · ${esc(c.flags[i].obs)}` : ''}</div>` : ''}<label class="ct-esc${_cm.esc[i] === c.id ? ' on' : ''}" id="ct-r-${k}-${i}"><input type="radio" name="esc-${i}" data-esc="${i}:${c.id}"${_cm.esc[i] === c.id ? ' checked' : ''}${ja || pu == null ? ' disabled' : ''}> Escolher</label></td>`; }).join('')}</tr>`; }).join('')}
     <tr class="ct-tot"><td colspan="2"><b>Total da cotação</b></td>${_cm.cots.map((c, k) => `<td class="ct-col${k === melhor ? ' best' : ''}"><b id="ct-t-${k}">${res[k].falta === ls.length ? '—' : eur(res[k].total)}</b>${res[k].falta && res[k].falta < ls.length ? `<br><small class="mut">faltam ${res[k].falta} preço${res[k].falta > 1 ? 's' : ''}</small>` : ''}</td>`).join('')}</tr>
     <tr class="ct-escrow"><td colspan="2"><b>Escolhido para encomendar</b></td>${_cm.cots.map((c, k) => `<td class="ct-col"><span id="ct-e-${k}"></span></td>`).join('')}</tr>
     <tr><td colspan="2" class="mut">Prazo de entrega (dias)</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-n" type="text" inputmode="numeric" value="${esc(c.prazo)}" data-cz="${k}"></td>`).join('')}</tr>
     <tr><td colspan="2" class="mut">Condições</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-t" type="text" value="${esc(c.cond)}" placeholder="Pagamento, validade…" data-cc="${k}"></td>`).join('')}</tr>
     ${tudoCob ? '' : `<tr><td colspan="2"></td>${_cm.cots.map((c, k) => `<td class="ct-col"><button type="button" class="btn btn-secondary btn-sm" data-act="esc-todos" data-k="${k}"${res[k].falta === ls.length ? ' disabled' : ''}>Escolher todos</button></td>`).join('')}</tr>`}
-    </tbody></table></div>` : ''}
+    </tbody></table></div>
+    ${_cm.cots.filter(c => c.proposta_info).map(c => { const pi = c.proposta_info; return `<div class="ct-nota"><b>${esc(c.fornecedor)}</b> — proposta${pi.numero ? ' ' + esc(pi.numero) : ''}${pi.data ? ' de ' + dataPT(pi.data) : ''}${pi.validade ? ` · validade ${esc(pi.validade)}` : ''}${pi.transporte ? ` · transporte ${pi.transporte === 'incluido' ? 'incluído' : pi.transporte === 'nao_incluido' ? 'não incluído' : 'não indicado'}` : ''}${pi.iva_incluido ? ' · <b>preços com IVA</b>' : ''}${(pi.avisos || []).length ? `<br>⚠ ${pi.avisos.map(esc).join('<br>⚠ ')}` : ''}</div>`; }).join('')}` : ''}
     <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button><span style="flex:1"></span>${_cm.cots.length && !tudoCob ? '<button type="button" class="btn btn-secondary" data-act="cot-guardar">Guardar preços</button><button type="button" class="btn btn-primary" data-act="emitir-ne">Emitir notas de encomenda</button>' : ''}</div>`;
   el.querySelector('.ct-modal').style.width = `min(${Math.max(1100, 340 + _cm.cots.length * 190 + 70)}px,96vw)`;   // a janela cresce com o nº de fornecedores
   cotarPintarEsc();
@@ -375,9 +376,58 @@ async function cotarGuardar(silencioso) {
   }
   const { data } = await sb.from('ct_cotacoes').select('*').eq('pedido_id', _cm.pedido.id).order('id');
   _cotacoes = _cotacoes.filter(c => c.pedido_id !== _cm.pedido.id).concat(data || []);
+  _cm.cots.forEach(c => { c.ia = {}; });
   if (!silencioso) toast('Preços guardados ✓');
   cotarCarregarMem(); cotarDesenhar();
   return true;
+}
+function lerProposta(k) {
+  const c = _cm.cots[k]; if (!c) return;
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const ls = _cm.pedido.linhas || [];
+    try {
+      toast(`A ler a proposta de ${c.fornecedor} com IA… (pode demorar um minuto)`);
+      const mediaType = ePdf(f) ? 'application/pdf' : /\.png$/i.test(f.name) ? 'image/png' : 'image/jpeg';
+      const { data, error } = await sb.functions.invoke('ler-proposta', { body: { base64: await paraBase64(f), mediaType, obra: _cm.pedido.obra_nome || '', artigos: ls.map((l, i) => ({ i, desc: l.desc, un: l.un, qtd: l.qtd })) } });
+      const pr = data?.proposta;
+      if (error || !pr) throw new Error(await erroFuncao(error, data));
+      // preços lidos → grelha (os artigos «exatos» têm prioridade sobre os «aproximados»)
+      const melhor = {};
+      (pr.linhas || []).forEach(x => {
+        const i = Number(x.pedido_linha); if (!(i >= 0 && i < ls.length) || x.pu == null || isNaN(Number(x.pu))) return;
+        const peso = x.equivalencia === 'exata' ? 2 : x.equivalencia === 'aproximada' ? 1 : 0; if (!peso) return;
+        if (!melhor[i] || peso > melhor[i].peso) melhor[i] = { ...x, peso };
+      });
+      let n = 0; const flags = {};
+      Object.entries(melhor).forEach(([i, x]) => {
+        c.pu[i] = String(Math.round(Number(x.pu) * 10000) / 10000).replace('.', ','); c.ia[i] = true; n++;
+        if (x.equivalencia === 'aproximada' || x.observacao) flags[i] = { eq: x.equivalencia, obs: x.observacao || '' };
+      });
+      c.flags = flags;
+      if (Number(pr.prazo_entrega_dias) > 0) c.prazo = String(Math.round(Number(pr.prazo_entrega_dias)));
+      const val = pr.validade_data ? 'até ' + dataPT(pr.validade_data) : Number(pr.validade_dias) > 0 ? pr.validade_dias + ' dias' : '';
+      const cond = [pr.pagamento, val ? 'Validade ' + val : '', pr.transporte === 'incluido' ? 'Transporte incluído' : pr.transporte === 'nao_incluido' ? 'Transporte não incluído' : '', pr.numero ? 'Proposta ' + pr.numero : ''].filter(Boolean).join(' · ');
+      if (cond) c.cond = cond;
+      // guarda o ficheiro (páginas em JPEG) e o que foi lido
+      let paths = c.proposta_fotos || [];
+      try { paths = await enviarFotos(await paginasDe(f), 'ctp'); } catch (e) { console.warn('Proposta: não foi possível guardar o ficheiro', e); }
+      const info = { numero: pr.numero || '', data: pr.data || '', validade: val, transporte: pr.transporte || '', iva_incluido: !!pr.iva_incluido, avisos: (pr.avisos || []).filter(Boolean), confianca: pr.confianca ?? null, flags };
+      await sb.from('ct_cotacoes').update({ proposta_fotos: paths, proposta_ficheiro: f.name, proposta_info: info }).eq('id', c.id);
+      c.proposta_fotos = paths; c.proposta_info = info;
+      const g = _cotacoes.find(x => x.id === c.id); if (g) Object.assign(g, { proposta_fotos: paths, proposta_ficheiro: f.name, proposta_info: info });
+      cotarDesenhar();
+      toast(n ? `Proposta lida: ${n} preço${n !== 1 ? 's' : ''} preenchido${n !== 1 ? 's' : ''} (a amarelo) — confira e carregue em «Guardar preços».` : 'A proposta foi lida, mas não encontrei preços para os artigos deste pedido.');
+    } catch (err) { toast('Não foi possível ler a proposta: ' + String(err.message || err).slice(0, 160)); }
+  };
+  inp.click();
+}
+async function verProposta(k) {
+  const c = _cm.cots[k]; if (!c?.proposta_fotos?.length) return;
+  const urls = await urlsFotos(c.proposta_fotos);
+  const el = modal(`<div class="modal-title">Proposta · ${esc(c.fornecedor)}</div><div class="modal-sub">${esc(c.proposta_ficheiro || '')}</div><div class="ct-fotos" style="margin-top:12px">${urls.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Proposta"></a>`).join('') || '<div class="mut">Sem imagens.</div>'}</div><div class="modal-footer"><button type="button" class="btn btn-primary" data-act="fechar">Fechar</button></div>`, 900);
+  el.style.zIndex = 3000;
 }
 function cotarSugerir() {
   const ls = _cm.pedido.linhas || []; let n = 0, sem = [];
@@ -984,6 +1034,8 @@ document.addEventListener('click', e => {
     case 'cot-rem': cotarRemover(+a.dataset.k); break;
     case 'cot-enviar': cotarEnviar(); break;
     case 'cot-sug': cotarSugerir(); break;
+    case 'cot-prop': lerProposta(+a.dataset.k); break;
+    case 'ver-prop': e.preventDefault(); verProposta(+a.dataset.k); break;
     case 'cot-guardar': cotarGuardar(); break;
     case 'esc-todos': escolherTodos(+a.dataset.k); break;
     case 'emitir-ne': emitirNEs(); break;

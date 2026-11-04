@@ -87,3 +87,9 @@
 .ct-escrow td{background:#f6f8fc;font-size:13px}
 .ct-ja td{opacity:.6}
 .ct-jaenc{margin-top:4px;font-size:12px;color:#067647;font-weight:600}
+
+.ct-prop{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-top:6px;text-transform:none;letter-spacing:0;font-weight:600}
+.ct-prop a{font-size:12px;color:#173f9f}
+.ct-grid .ct-n.ct-ia{background:#fff8e1;border-color:#e0a100}
+.ct-eq{margin-top:4px;font-size:11.5px;line-height:1.3;color:#5d6678;text-align:right;white-space:normal}
+.ct-eq.ap{color:#a35a08;font-weight:600}
