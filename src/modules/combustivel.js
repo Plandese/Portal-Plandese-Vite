@@ -9,6 +9,23 @@ import { EQUIPAMENTOS, sbLoadEquipamentos } from './equipamentos.js';
 import { obraEmCurso } from '../config.js';
 
 const _escHtml = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Confirmação própria (o confirm() nativo é bloqueado nalguns ambientes e falha em silêncio)
+function _cbConfirmar(msg,okTxt='Confirmar',perigo=false){
+  return new Promise(res=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(16,26,48,.45);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:22px;padding:26px 24px 20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(16,26,48,.3)">
+      <div style="font-size:15px;line-height:1.5;color:var(--m-ink,#101a30);margin-bottom:20px">${_escHtml(msg)}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" data-n class="btn btn-secondary">Cancelar</button>
+        <button type="button" data-s class="btn btn-primary"${perigo?' style="background:#b42318;border-color:#b42318"':''}>${_escHtml(okTxt)}</button>
+      </div></div>`;
+    const fim=v=>{ ov.remove(); res(v); };
+    ov.addEventListener('click',e=>{ if(e.target===ov||e.target.closest('[data-n]')) fim(false); else if(e.target.closest('[data-s]')) fim(true); });
+    document.body.appendChild(ov);
+    ov.querySelector('[data-n]').focus();
+  });
+}
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // Entrada no depósito: tipo_registo='deposito' com movimento='entrada' (ou sem movimento)
@@ -298,7 +315,7 @@ function _combRenderApr(){
 }
 async function _combAprDecidir(id,ok){
   if(_combAprBusy) return;
-  if(!ok&&!confirm('Rejeitar este registo? Deixa de contar para o stock e para os custos.')) return;
+  if(!ok&&!await _cbConfirmar('Rejeitar este registo? Deixa de contar para o stock e para os custos.','Rejeitar',true)) return;
   _combAprBusy=true;
   try{
     const {data,error}=await sb.rpc('fn_comb_decidir',{p_id:Number(id),p_aprovar:!!ok});
@@ -322,11 +339,12 @@ async function _combAprReabrir(id){
 }
 async function _combAprApagar(id){
   if(_combAprBusy) return;
-  if(!confirm('Apagar definitivamente este registo rejeitado? Esta ação não pode ser anulada.')) return;
+  if(!await _cbConfirmar('Apagar definitivamente este registo rejeitado? Esta ação não pode ser anulada.','Apagar',true)) return;
   _combAprBusy=true;
   try{
-    const {error}=await sb.from('registos_combustivel').delete().eq('id',id).eq('aprovacao','rejeitado');
+    const {data,error}=await sb.from('registos_combustivel').delete().eq('id',id).eq('aprovacao','rejeitado').select('id');
     if(error) throw error;
+    if(!data||!data.length) throw new Error('sem permissão ou o registo já não existe');
     showToast('Registo apagado');
   }catch(e){ showToast('Erro ao apagar: '+(e.message||e)); }
   _combAprBusy=false;
@@ -769,10 +787,11 @@ async function guardarRegistoCombustivel(){
 async function apagarRegistoCombustivel(){
   const id=document.getElementById('mcf-id').value;
   if(!id) return;
-  if(!confirm('Apagar este registo de combustível?')) return;
+  if(!await _cbConfirmar('Apagar este registo de combustível?','Apagar',true)) return;
   try{
-    const {error}=await sb.from('registos_combustivel').delete().eq('id',id);
+    const {data,error}=await sb.from('registos_combustivel').delete().eq('id',id).select('id');
     if(error) throw error;
+    if(!data||!data.length) throw new Error('sem permissão ou o registo já não existe');
     showToast('Registo apagado');
     closeModal('modal-comb-form');
     await _combAtualizarAposAlteracao();
