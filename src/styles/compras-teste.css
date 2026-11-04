@@ -39,7 +39,10 @@
 .ct-chipf button{width:24px;height:24px;border-radius:99px;border:0;background:rgba(23,63,159,.14);color:#173f9f;font-size:16px;line-height:1;cursor:pointer}
 .ct-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ct-add input{flex:1;min-width:240px}
-.ct-grid th.ct-col,.ct-grid td.ct-col{text-align:right;min-width:150px}
+.ct-grid{table-layout:fixed}
+.ct-grid th:first-child{width:auto}.ct-grid th:nth-child(2){width:80px}
+.ct-grid th.ct-col,.ct-grid td.ct-col{text-align:right;width:190px;min-width:190px;max-width:190px}
+.ct-grid th.ct-col{white-space:normal;overflow-wrap:anywhere;line-height:1.25;vertical-align:bottom}
 .ct-grid .best{background:#f0f9f3}
 .ct-grid th.best small{color:#166534;font-weight:700;text-transform:none;letter-spacing:0}
 .ct-sub{font-size:12px;color:#6a7284;margin-top:3px;min-height:15px}
