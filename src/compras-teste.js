@@ -103,7 +103,8 @@ async function recarregar() { await carregar(); desenhar(); }
 
 // ═══════════════════ Ecrãs ═══════════════════
 function desenhar() {
-  const n = { pedidos: _pedidos.length, cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: _encomendas.length, guias: _guias.length, faturas: _faturas.length, conferencia: _encomendas.length };
+  const v = (tab, l, conc) => _conc[tab] ? l.length : l.filter(x => !conc(x)).length;   // o que está oculto não conta
+  const n = { pedidos: v('pedidos', _pedidos, p => p.estado === 'faturado'), cotacoes: _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao').length, encomendas: v('encomendas', _encomendas, e => e.estado === 'faturada'), guias: v('guias', _guias, g => g.estado === 'casada'), faturas: v('faturas', _faturas, f => f.estado === 'casada'), conferencia: _encomendas.length };
   $('ct-chips').innerHTML = [['pedidos', '1 · Pedidos'], ['cotacoes', '2 · Cotações'], ['encomendas', '3 · Encomendas'], ['guias', '4 · Guias'], ['faturas', '5 · Faturas'], ['conferencia', '6 · Conferência']]
     .map(([k, l]) => `<button type="button" class="d-chip-f${_tab === k ? ' on' : ''}" data-tab="${k}">${l}<b>${n[k]}</b></button>`).join('');
   $('ct-corpo').innerHTML = ({ pedidos: htmlPedidos, cotacoes: htmlCotacoes, encomendas: htmlEncomendas, guias: htmlGuias, faturas: htmlFaturas, conferencia: htmlConferencia })[_tab]();
