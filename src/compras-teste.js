@@ -36,6 +36,15 @@ const pode = a => PODE[a].includes(_papel);
 const ESTADO_PEDIDO = { pedido: ['Pedido', 'info'], cotacao: ['Em cotação', 'warn'], encomendado: ['Encomendado', 'ok'], parcial: ['Receção parcial', 'warn'], entregue: ['Entregue', 'ok'], faturado: ['Faturado', 'ok'] };
 const ESTADO_NE = { emitida: ['Emitida', 'info'], parcial: ['Receção parcial', 'warn'], completa: ['Completa', 'ok'], faturada: ['Faturada', 'ok'] };
 const pill = (map, k) => { const [t, c] = map[k] || [k, '']; return `<span class="dd-pill ${c}">${esc(t)}</span>`; };
+// Concluídos (faturados / ligados) ficam ocultos; «Mostrar concluídos» volta a mostrá-los
+const _conc = {};
+try { Object.assign(_conc, JSON.parse(localStorage.getItem('ct_conc') || '{}')); } catch (e) { /* sem armazenamento */ }
+function concluidos(tab, lista, ehConcluido, rotulo = 'concluídos') {
+  const n = lista.filter(ehConcluido).length;
+  const vis = _conc[tab] ? lista : lista.filter(x => !ehConcluido(x));
+  const barra = n ? `<label class="ct-inl ct-chk ct-conc"><input type="checkbox" data-conc="${tab}"${_conc[tab] ? ' checked' : ''}> Mostrar ${rotulo} (${n})</label>` : '';
+  return { vis, barra, n };
+}
 const URG = { Normal: '', Urgente: 'warn', 'Muito Urgente': 'bad' };
 
 // ── Catálogo de materiais (mesmo do portal) ──
@@ -101,8 +110,9 @@ function desenhar() {
 }
 
 function htmlPedidos() {
-  const acoes = `<div class="ct-acoes">${pode('pedir') ? '<button type="button" class="btn" data-act="novo-pedido">+ Novo pedido de compra</button>' : '<span class="mut">Como «' + esc(PAPEIS[_papel]) + '» não pode criar pedidos.</span>'}</div>`;
-  const linhas = _pedidos.map(p => `<tr class="clk" data-act="ver-pedido" data-id="${p.id}">
+  const cc = concluidos('pedidos', _pedidos, p => p.estado === 'faturado', 'faturados');
+  const acoes = `<div class="ct-acoes">${pode('pedir') ? '<button type="button" class="btn" data-act="novo-pedido">+ Novo pedido de compra</button>' : '<span class="mut">Como «' + esc(PAPEIS[_papel]) + '» não pode criar pedidos.</span>'}<span style="flex:1"></span>${cc.barra}</div>`;
+  const linhas = cc.vis.map(p => `<tr class="clk" data-act="ver-pedido" data-id="${p.id}">
       <td><b>${esc(p.numero)}</b><br><small class="mut">${dataPT(p.criado_em)}</small></td>
       <td>${esc(p.titulo)}<br><small class="mut">${esc(p.obra_nome || 'Sem obra')}</small></td>
       <td>${(p.linhas || []).length}</td>
@@ -110,11 +120,12 @@ function htmlPedidos() {
       <td>${p.data_necessaria ? dataPT(p.data_necessaria) : '<span class="mut">—</span>'}</td>
       <td>${esc(PAPEIS[p.pedido_por] || p.pedido_por || '—')}</td>
       <td>${pill(ESTADO_PEDIDO, p.estado)}</td></tr>`).join('');
-  return acoes + `<div class="card ct-card">${_pedidos.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Pedido / Obra</th><th>Artigos</th><th>Urgência</th><th>Necessário até</th><th>Pedido por</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há pedidos de compra. O diretor de obra (ou o encarregado) começa aqui o circuito.</div>'}</div>`;
+  return acoes + `<div class="card ct-card">${cc.vis.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Pedido / Obra</th><th>Artigos</th><th>Urgência</th><th>Necessário até</th><th>Pedido por</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : _pedidos.length ? '<div class="d-empty">Todos os pedidos estão faturados. Use «Mostrar faturados» para os ver.</div>' : '<div class="d-empty">Ainda não há pedidos de compra. O diretor de obra (ou o encarregado) começa aqui o circuito.</div>'}</div>`;
 }
 
 function htmlCotacoes() {
-  const lista = _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao' || _cotacoes.some(c => c.pedido_id === p.id));
+  const todos = _pedidos.filter(p => p.estado === 'pedido' || p.estado === 'cotacao' || _cotacoes.some(c => c.pedido_id === p.id));
+  const cc = concluidos('cotacoes', todos, p => p.estado === 'faturado', 'faturados'), lista = cc.vis;
   const linhas = lista.map(p => {
     const cs = _cotacoes.filter(c => c.pedido_id === p.id);
     const resp = cs.filter(c => c.respondido_em).length;
@@ -125,18 +136,19 @@ function htmlCotacoes() {
       <td>${ne ? `<span class="dd-pill ok">${esc(ne.numero)}</span> <small class="mut">${esc(ne.fornecedor)}</small>` : '<span class="mut">—</span>'}</td>
       <td>${pill(ESTADO_PEDIDO, p.estado)}</td></tr>`;
   }).join('');
-  return `<div class="card ct-card">${lista.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Pedido / Obra</th><th>Cotações</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Não há pedidos para cotar.</div>'}</div>`;
+  return (cc.barra ? `<div class="ct-acoes"><span style="flex:1"></span>${cc.barra}</div>` : '') + `<div class="card ct-card">${lista.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Pedido / Obra</th><th>Cotações</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Não há pedidos para cotar.</div>'}</div>`;
 }
 
 function htmlEncomendas() {
-  const linhas = _encomendas.map(e => `<tr class="clk" data-act="ver-ne" data-id="${e.id}">
+  const cc = concluidos('encomendas', _encomendas, e => e.estado === 'faturada', 'faturadas');
+  const linhas = cc.vis.map(e => `<tr class="clk" data-act="ver-ne" data-id="${e.id}">
       <td><b>${esc(e.numero)}</b><br><small class="mut">${dataPT(e.emitida_em)}</small></td>
       <td>${esc(e.fornecedor)}<br><small class="mut">${esc(e.nif || '')}</small></td>
       <td>${esc(e.obra_nome || '—')}</td>
       <td>${(e.linhas || []).length}</td>
       <td class="r"><b>${eur(e.total)}</b></td>
       <td>${pill(ESTADO_NE, e.estado)}</td></tr>`).join('');
-  return `<div class="card ct-card">${_encomendas.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Obra</th><th>Artigos</th><th class="r">Total (s/ IVA)</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há notas de encomenda. Elas nascem ao adjudicar uma cotação.</div>'}</div>`;
+  return (cc.barra ? `<div class="ct-acoes"><span style="flex:1"></span>${cc.barra}</div>` : '') + `<div class="card ct-card">${cc.vis.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Obra</th><th>Artigos</th><th class="r">Total (s/ IVA)</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : _encomendas.length ? '<div class="d-empty">Todas as notas de encomenda estão faturadas. Use «Mostrar faturadas» para as ver.</div>' : '<div class="d-empty">Ainda não há notas de encomenda. Elas nascem ao adjudicar uma cotação.</div>'}</div>`;
 }
 
 // ═══════════════════ Novo pedido ═══════════════════
@@ -503,7 +515,8 @@ let _obraGuia = '';
 try { _obraGuia = localStorage.getItem('ct_obra_guia') || ''; } catch (e) { /* sem armazenamento */ }
 let _pdfCadaPagina = true;
 function htmlGuias() {
-  const linhas = _guias.map(g => `<tr class="clk" data-act="ver-guia" data-id="${g.id}">
+  const cc = concluidos('guias', _guias, g => g.estado === 'casada', 'ligadas');
+  const linhas = cc.vis.map(g => `<tr class="clk" data-act="ver-guia" data-id="${g.id}">
       <td><b>${esc(g.numero || (semLeitura(g) ? 'Sem leitura' : '—'))}</b><br><small class="mut">${dataPT(g.criado_em)} · ${esc(PAPEIS[g.enviado_por] || g.enviado_por || '')}</small></td>
       <td>${esc(g.fornecedor || '—')}<br><small class="mut">${esc(g.nif || '')}</small></td>
       <td>${g.data ? dataPT(g.data) : '<span class="mut">—</span>'}</td>
@@ -516,10 +529,10 @@ function htmlGuias() {
       <input type="file" id="ct-gfiles" accept="image/*,application/pdf" multiple hidden>
       <label class="ct-inl">Obra<select id="ct-gobra"><option value="">— sem obra —</option>${_obras.map(o => `<option value="${esc(o.id)}"${o.id === _obraGuia ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>
       <label class="ct-inl ct-chk"><input type="checkbox" id="ct-gpag"${_pdfCadaPagina ? ' checked' : ''}> PDF: cada página é uma guia</label>
-      <span style="flex:1"></span>
+      <span style="flex:1"></span>${cc.barra}
       <button type="button" class="btn btn-secondary btn-sm" data-act="guias-importar" title="Copia para aqui as guias já lidas na página «Guias de Remessa (teste)»">Importar guias do teste anterior</button>
     </div>
-    <div class="card ct-card">${_guias.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Guia</th><th>Fornecedor</th><th>Data</th><th>Obra</th><th>Artigos</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há guias. O encarregado ou o diretor de obra envia a foto ou o PDF da guia quando o material chega à obra.</div>'}</div>`;
+    <div class="card ct-card">${cc.vis.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Guia</th><th>Fornecedor</th><th>Data</th><th>Obra</th><th>Artigos</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : _guias.length ? '<div class="d-empty">Todas as guias já estão ligadas. Use «Mostrar ligadas» para as ver.</div>' : '<div class="d-empty">Ainda não há guias. O encarregado ou o diretor de obra envia a foto ou o PDF da guia quando o material chega à obra.</div>'}</div>`;
 }
 async function lerGuiaIA(id, blobs) {
   const { data, error } = await sb.functions.invoke('ler-guia', { body: { paginas: await Promise.all(blobs.map(async b => ({ base64: await paraBase64(b), mediaType: 'image/jpeg' }))) } });
@@ -643,7 +656,8 @@ async function importarGuias() {
 
 // ── Faturas ──
 function htmlFaturas() {
-  const linhas = _faturas.map(f => `<tr class="clk" data-act="ver-fatura" data-id="${f.id}">
+  const cc = concluidos('faturas', _faturas, f => f.estado === 'casada', 'ligadas');
+  const linhas = cc.vis.map(f => `<tr class="clk" data-act="ver-fatura" data-id="${f.id}">
       <td><b>${esc(f.numero || (semLeitura(f) ? 'Sem leitura' : '—'))}</b><br><small class="mut">${dataPT(f.criado_em)}</small></td>
       <td>${esc(f.fornecedor || '—')}<br><small class="mut">${esc(f.nif || '')}</small></td>
       <td>${f.data ? dataPT(f.data) : '<span class="mut">—</span>'}</td>
@@ -653,8 +667,8 @@ function htmlFaturas() {
       <td>${docNE(f)}</td>
       <td><span class="dd-pill ${ESTADO_DOC[f.estado]?.[1] || ''}">${esc(ESTADO_DOC[f.estado]?.[0] || f.estado)}</span></td></tr>`).join('');
   return `<div class="ct-acoes"><button type="button" class="btn" data-act="faturas-carregar">Carregar faturas</button><input type="file" id="ct-ffiles" accept="image/*,application/pdf" multiple hidden>
-      <span class="mut">Cada ficheiro é uma fatura (PDF ou fotografia). O portal lê-a com IA.</span></div>
-    <div class="card ct-card">${_faturas.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Fatura</th><th>Fornecedor</th><th>Data</th><th>Centro de custo</th><th class="r">Total</th><th>Guias citadas</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Ainda não há faturas. Carregue a fatura do fornecedor depois de as guias estarem registadas.</div>'}</div>`;
+      <span class="mut">Cada ficheiro é uma fatura (PDF ou fotografia). O portal lê-a com IA.</span><span style="flex:1"></span>${cc.barra}</div>
+    <div class="card ct-card">${cc.vis.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Fatura</th><th>Fornecedor</th><th>Data</th><th>Centro de custo</th><th class="r">Total</th><th>Guias citadas</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : _faturas.length ? '<div class="d-empty">Todas as faturas já estão ligadas. Use «Mostrar ligadas» para as ver.</div>' : '<div class="d-empty">Ainda não há faturas. Carregue a fatura do fornecedor depois de as guias estarem registadas.</div>'}</div>`;
 }
 async function carregarFaturas(files) {
   let ok = 0, falhas = 0;
@@ -939,6 +953,7 @@ document.addEventListener('input', e => {
   else if (el.dataset.cc != null) _cm.cots[+el.dataset.cc].cond = el.value;
 });
 document.addEventListener('change', e => {
+  if (e.target.dataset.conc) { _conc[e.target.dataset.conc] = e.target.checked; try { localStorage.setItem('ct_conc', JSON.stringify(_conc)); } catch (x) { /* sem armazenamento */ } desenhar(); return; }
   if (e.target.id === 'ct-gfiles' || e.target.id === 'ct-ffiles') {
     const fs = [...e.target.files]; const g = e.target.id === 'ct-gfiles'; e.target.value = '';
     if (fs.length) (g ? carregarGuias : carregarFaturas)(fs);
