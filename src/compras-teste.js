@@ -633,7 +633,7 @@ function htmlGuias() {
       <td>${docNE(g)}</td>
       <td><span class="dd-pill ${ESTADO_DOC[g.estado]?.[1] || ''}">${esc(ESTADO_DOC[g.estado]?.[0] || g.estado)}</span></td></tr>`).join('');
   return `<div class="ct-acoes">
-      <button type="button" class="btn" data-act="guias-carregar">Carregar guias</button>
+      <div class="ct-drop" data-act="guias-carregar" data-drop="g" tabindex="0" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span><b>Carregar guias</b> · arraste PDF ou fotos para aqui</span></div>
       <input type="file" id="ct-gfiles" accept="image/*,application/pdf" multiple hidden>
       <label class="ct-inl">Obra<select id="ct-gobra"><option value="">— sem obra —</option>${_obras.map(o => `<option value="${esc(o.id)}"${o.id === _obraGuia ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>
       <label class="ct-inl ct-chk"><input type="checkbox" id="ct-gpag"${_pdfCadaPagina ? ' checked' : ''}> PDF: cada página é uma guia</label>
@@ -774,7 +774,7 @@ function htmlFaturas() {
       <td>${(f.guias_ref || []).length ? esc((f.guias_ref || []).join(', ')) : '<span class="mut">—</span>'}</td>
       <td>${docNE(f)}</td>
       <td><span class="dd-pill ${ESTADO_DOC[f.estado]?.[1] || ''}">${esc(ESTADO_DOC[f.estado]?.[0] || f.estado)}</span></td></tr>`).join('');
-  return `<div class="ct-acoes"><button type="button" class="btn" data-act="faturas-carregar">Carregar faturas</button><input type="file" id="ct-ffiles" accept="image/*,application/pdf" multiple hidden>
+  return `<div class="ct-acoes"><div class="ct-drop" data-act="faturas-carregar" data-drop="f" tabindex="0" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg><span><b>Carregar faturas</b> · arraste PDF ou fotos para aqui</span></div><input type="file" id="ct-ffiles" accept="image/*,application/pdf" multiple hidden>
       <span class="mut">Cada ficheiro é uma fatura (PDF ou fotografia). O portal lê-a com IA.</span><span style="flex:1"></span>${cc.barra}</div>
     <div class="card ct-card">${cc.vis.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Fatura</th><th>Fornecedor</th><th>Data</th><th>Centro de custo</th><th class="r">Total</th><th>Guias citadas</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : _faturas.length ? '<div class="d-empty">Todas as faturas já estão ligadas. Use «Mostrar ligadas» para as ver.</div>' : '<div class="d-empty">Ainda não há faturas. Carregue a fatura do fornecedor depois de as guias estarem registadas.</div>'}</div>`;
 }
@@ -1062,6 +1062,17 @@ document.addEventListener('click', e => {
     case 'auto-doc': autoDoc(a.dataset.t, id); break;
   }
 });
+// Largar ficheiros na zona de descarga (guias e faturas)
+['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { const z = e.target.closest?.('.ct-drop'); if (z) { e.preventDefault(); z.classList.add('over'); } }));
+document.addEventListener('dragleave', e => { e.target.closest?.('.ct-drop')?.classList.remove('over'); });
+document.addEventListener('drop', e => {
+  const z = e.target.closest?.('.ct-drop'); if (!z) return;
+  e.preventDefault(); z.classList.remove('over');
+  const fs = [...(e.dataTransfer?.files || [])].filter(f => ePdf(f) || /^image\//.test(f.type));
+  if (!fs.length) return toast('Largue ficheiros PDF ou fotografias.');
+  (z.dataset.drop === 'g' ? carregarGuias : carregarFaturas)(fs);
+});
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('ct-drop')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.id === 'np-q') npResultados();

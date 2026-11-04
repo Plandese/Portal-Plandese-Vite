@@ -93,3 +93,9 @@
 .ct-grid .ct-n.ct-ia{background:#fff8e1;border-color:#e0a100}
 .ct-eq{margin-top:4px;font-size:11.5px;line-height:1.3;color:#5d6678;text-align:right;white-space:normal}
 .ct-eq.ap{color:#a35a08;font-weight:600}
+
+.ct-drop{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:1.5px dashed #9fb0d6;border-radius:99px;background:#f6f8fd;color:#173f9f;font-size:13.5px;cursor:pointer;transition:.15s}
+.ct-drop svg{width:18px;height:18px;flex:none}
+.ct-drop:hover,.ct-drop:focus-visible,.ct-drop.over{border-color:#173f9f;background:#e9effb;outline:0}
+.ct-drop.over{border-style:solid;box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.ct-drop b{font-weight:700}
