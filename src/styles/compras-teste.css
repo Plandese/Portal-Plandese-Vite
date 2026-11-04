@@ -80,3 +80,10 @@
 .ct-grid td.ct-min .ct-sub{color:#067647;font-weight:600}
 
 .ct-conc{margin-left:auto}
+
+.ct-esc{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:6px;font-size:12px;color:#5d6678;cursor:pointer}
+.ct-esc input{width:16px;height:16px;accent-color:#173f9f;margin:0}
+.ct-esc.on{color:#173f9f;font-weight:700}
+.ct-escrow td{background:#f6f8fc;font-size:13px}
+.ct-ja td{opacity:.6}
+.ct-jaenc{margin-top:4px;font-size:12px;color:#067647;font-weight:600}

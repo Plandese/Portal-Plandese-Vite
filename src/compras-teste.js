@@ -130,11 +130,11 @@ function htmlCotacoes() {
   const linhas = lista.map(p => {
     const cs = _cotacoes.filter(c => c.pedido_id === p.id);
     const resp = cs.filter(c => c.respondido_em).length;
-    const ne = _encomendas.find(e => e.pedido_id === p.id);
+    const nes = _encomendas.filter(e => e.pedido_id === p.id);
     return `<tr class="clk" data-act="cotar" data-id="${p.id}">
       <td><b>${esc(p.numero)}</b></td><td>${esc(p.titulo)}<br><small class="mut">${esc(p.obra_nome || 'Sem obra')}</small></td>
       <td>${cs.length ? `${cs.length} fornecedor${cs.length !== 1 ? 'es' : ''} · ${resp} com preços` : '<span class="mut">Sem pedidos de cotação</span>'}</td>
-      <td>${ne ? `<span class="dd-pill ok">${esc(ne.numero)}</span> <small class="mut">${esc(ne.fornecedor)}</small>` : '<span class="mut">—</span>'}</td>
+      <td>${nes.length ? nes.map(ne => `<div><span class="dd-pill ok">${esc(ne.numero)}</span> <small class="mut">${esc(ne.fornecedor)}</small></div>`).join('') : '<span class="mut">—</span>'}</td>
       <td>${pill(ESTADO_PEDIDO, p.estado)}</td></tr>`;
   }).join('');
   return (cc.barra ? `<div class="ct-acoes"><span style="flex:1"></span>${cc.barra}</div>` : '') + `<div class="card ct-card">${lista.length ? `<div class="tbl-wrap"><table class="cmp-t"><thead><tr><th>Nº</th><th>Pedido / Obra</th><th>Cotações</th><th>Nota de encomenda</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<div class="d-empty">Não há pedidos para cotar.</div>'}</div>`;
@@ -225,13 +225,13 @@ async function guardarPedido() {
 function verPedido(id) {
   const p = _pedidos.find(x => String(x.id) === String(id)); if (!p) return;
   const cs = _cotacoes.filter(c => c.pedido_id === p.id);
-  const ne = _encomendas.find(e => e.pedido_id === p.id);
+  const nes = _encomendas.filter(e => e.pedido_id === p.id), ne = nes[0];
   modal(`<div class="modal-title">${esc(p.numero)} · ${esc(p.titulo)}</div>
     <div class="modal-sub">${esc(p.obra_nome || 'Sem obra')} · pedido por ${esc(PAPEIS[p.pedido_por] || p.pedido_por || '—')} em ${dataPT(p.criado_em)} · ${pill(ESTADO_PEDIDO, p.estado)}</div>
     ${p.notas ? `<div class="ct-nota">${esc(p.notas)}</div>` : ''}
     <table class="cmp-t ct-lt" style="margin-top:12px"><thead><tr><th>Artigo</th><th class="r">Quantidade</th><th>Un</th></tr></thead><tbody>${(p.linhas || []).map(l => `<tr><td>${esc(l.desc)}${refTxt(l)}</td><td class="r">${qtdTxt(l.qtd)}</td><td>${esc(l.un)}</td></tr>`).join('')}</tbody></table>
     ${cs.length ? `<div class="ct-sec">Cotações</div>${cs.map(c => `<div class="ct-linha"><span>${esc(c.fornecedor)}</span><span>${c.respondido_em ? eur(c.total) : '<span class="mut">à espera de preços</span>'}${c.escolhida ? ' <span class="dd-pill ok">Adjudicada</span>' : ''}</span></div>`).join('')}` : ''}
-    ${ne ? `<div class="ct-sec">Nota de encomenda</div><div class="ct-linha"><span><b>${esc(ne.numero)}</b> · ${esc(ne.fornecedor)}</span><span>${eur(ne.total)}</span></div>` : ''}
+    ${nes.length ? `<div class="ct-sec">Nota${nes.length > 1 ? 's' : ''} de encomenda</div>${nes.map(n => `<div class="ct-linha"><span><b>${esc(n.numero)}</b> · ${esc(n.fornecedor)} · ${(n.linhas || []).length} artigo${(n.linhas || []).length !== 1 ? 's' : ''}</span><span>${eur(n.total)}</span></div>`).join('')}` : ''}
     <div class="modal-footer"><button type="button" class="btn btn-secondary ct-perigo-o" data-act="apagar-pedido" data-id="${p.id}">Apagar pedido</button><span style="flex:1"></span><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button>${(pode('pedir') || pode('comprar')) ? (ne ? '<button type="button" class="btn btn-secondary" disabled title="Já tem nota de encomenda: apague-a para poder editar o pedido">Editar</button>' : `<button type="button" class="btn btn-secondary" data-act="editar-pedido" data-id="${p.id}">Editar</button>`) : ''}${pode('comprar') ? `<button type="button" class="btn btn-primary" data-act="cotar" data-id="${p.id}">${ne ? 'Ver cotações' : 'Cotar'}</button>` : ''}</div>`, 720);
 }
 async function apagarPedido(id) {
@@ -255,10 +255,29 @@ async function abrirCotar(id) {
   cotarDesenhar();
 }
 function cotarCarregarMem() {
+  const ls = _cm.pedido.linhas || [];
   _cm.cots = _cotacoes.filter(c => c.pedido_id === _cm.pedido.id).map(c => ({
-    ...c, pu: (_cm.pedido.linhas || []).map((_, i) => { const x = (c.precos || []).find(q => q.linha === i); return x && x.pu != null ? String(x.pu).replace('.', ',') : ''; }),
+    ...c, pu: ls.map((_, i) => { const x = (c.precos || []).find(q => q.linha === i); return x && x.pu != null ? String(x.pu).replace('.', ',') : ''; }),
     prazo: c.prazo_dias ?? '', cond: c.condicoes || '',
   }));
+  // fornecedor escolhido por artigo (id da cotação): mantém o que o utilizador já escolheu, senão o mais barato
+  const ant = _cm.esc || [], man = _cm.manual || [];
+  _cm.manual = ls.map((_, i) => !!man[i]);
+  _cm.esc = ls.map((_, i) => (_cm.manual[i] && _cm.cots.some(c => c.id === ant[i] && num(c.pu[i]) != null)) ? ant[i] : maisBarata(i));
+}
+function maisBarata(i) {
+  let melhor = null, mp = Infinity;
+  (_cm.cots || []).forEach(c => { const pu = num(c.pu[i]); if (pu != null && pu < mp) { mp = pu; melhor = c.id; } });
+  return melhor;
+}
+// artigos do pedido que já foram encomendados (índice → nota de encomenda)
+function linhasCobertas() {
+  const m = {};
+  _encomendas.filter(e => e.pedido_id === _cm.pedido.id).forEach(e => (e.linhas || []).forEach(nl => {
+    const i = (_cm.pedido.linhas || []).findIndex((l, i2) => !m[i2] && l.desc === nl.desc && (l.art_ref || null) === (nl.art_ref || null));
+    if (i >= 0) m[i] = e;
+  }));
+  return m;
 }
 function totalCot(c) {
   const ls = _cm.pedido.linhas || [];
@@ -269,29 +288,47 @@ function totalCot(c) {
 function cotarDesenhar() {
   const el = $('modal-cot'); if (!el) return;
   const p = _cm.pedido, ls = p.linhas || [];
-  const ne = _encomendas.find(e => e.pedido_id === p.id);
+  const nes = _encomendas.filter(e => e.pedido_id === p.id), cob = linhasCobertas();
+  const nCob = Object.keys(cob).length, tudoCob = ls.length > 0 && nCob === ls.length;
   const sug = _fornecedores.filter(f => !_cm.cots.some(c => c.fornecedor_id === f.id));
   const res = _cm.cots.map(c => totalCot(c));
   const completos = res.map((r, i) => (r.falta === 0 && r.total > 0) ? i : -1).filter(i => i >= 0);
-  const minLinha = ls.map((_, i) => { const v = _cm.cots.map(c => num(c.pu[i])).filter(x => x != null); return v.length ? Math.min(...v) : null; });
   const melhor = completos.length ? completos.reduce((a, b) => res[a].total <= res[b].total ? a : b) : -1;
+  const minLinha = ls.map((_, i) => { const v = _cm.cots.map(c => num(c.pu[i])).filter(x => x != null); return v.length ? Math.min(...v) : null; });
   el.querySelector('.ct-modal').innerHTML = `<div class="modal-title">Cotações · ${esc(p.numero)}</div>
     <div class="modal-sub">${esc(p.titulo)} · ${esc(p.obra_nome || 'Sem obra')} · ${pill(ESTADO_PEDIDO, p.estado)}</div>
-    ${ne ? `<div class="ct-ok">Adjudicado: nota de encomenda <b>${esc(ne.numero)}</b> a ${esc(ne.fornecedor)} (${eur(ne.total)}).</div>` : ''}
+    ${nes.length ? `<div class="ct-ok">Já encomendado: ${nes.map(n => `<b>${esc(n.numero)}</b> a ${esc(n.fornecedor)} (${eur(n.total)})`).join(' · ')}${tudoCob ? '' : ` — faltam ${ls.length - nCob} artigo${ls.length - nCob !== 1 ? 's' : ''}.`}</div>` : ''}
     <div class="ct-sec">1 · Fornecedores a consultar</div>
-    <div class="ct-forn">${_cm.cots.map((c, k) => `<span class="ct-chipf">${esc(c.fornecedor)}${c.enviado_em ? ' <i title="Pedido enviado">✉</i>' : ''}${ne ? '' : `<button type="button" data-act="cot-rem" data-k="${k}" title="Remover">×</button>`}</span>`).join('') || '<span class="mut">Ainda não escolheu fornecedores.</span>'}</div>
-    ${ne ? '' : `<div class="ct-add"><input id="cf-q" type="text" placeholder="Procurar fornecedor (nome ou NIF) ou escrever um novo…" autocomplete="off" list="cf-lista"><datalist id="cf-lista">${sug.slice(0, 400).map(f => `<option value="${esc(f.nome)}">${esc(f.nif || '')}</option>`).join('')}</datalist><button type="button" class="btn btn-secondary btn-sm" data-act="cot-add">Adicionar</button>
+    <div class="ct-forn">${_cm.cots.map((c, k) => `<span class="ct-chipf">${esc(c.fornecedor)}${c.enviado_em ? ' <i title="Pedido enviado">✉</i>' : ''}${c.escolhida ? '' : `<button type="button" data-act="cot-rem" data-k="${k}" title="Remover">×</button>`}</span>`).join('') || '<span class="mut">Ainda não escolheu fornecedores.</span>'}</div>
+    ${tudoCob ? '' : `<div class="ct-add"><input id="cf-q" type="text" placeholder="Procurar fornecedor (nome ou NIF) ou escrever um novo…" autocomplete="off" list="cf-lista"><datalist id="cf-lista">${sug.slice(0, 400).map(f => `<option value="${esc(f.nome)}">${esc(f.nif || '')}</option>`).join('')}</datalist><button type="button" class="btn btn-secondary btn-sm" data-act="cot-add">Adicionar</button>
       <button type="button" class="btn btn-secondary btn-sm" data-act="cot-enviar"${_cm.cots.length ? '' : ' disabled'}>✉ Pedir cotação por email</button>
       <button type="button" class="btn btn-secondary btn-sm" data-act="cot-sug"${_cm.cots.length ? '' : ' disabled'} title="Preenche os preços em branco com os da última fatura de cada fornecedor">Sugerir preços das últimas faturas</button></div>`}
-    ${_cm.cots.length ? `<div class="ct-sec">2 · Preços recebidos (por unidade, sem IVA)</div>
-    <div class="tbl-wrap"><table class="cmp-t ct-grid" style="width:max(100%,${340 + _cm.cots.length * 190}px)"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}${k === melhor ? '<br><small>mais barata</small>' : (melhor >= 0 && res[k].falta === 0 && res[melhor].total > 0 ? `<br><small class="mut">+${Math.round((res[k].total / res[melhor].total - 1) * 1000) / 10} % que a mais barata</small>` : '')}</th>`).join('')}</tr></thead>
-    <tbody>${ls.map((l, i) => `<tr><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small></td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}${pu != null && pu === minLinha[i] && _cm.cots.length > 1 ? ' ct-min' : ''}"><input class="ct-n" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ne ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div></td>`; }).join('')}</tr>`).join('')}
-    <tr class="ct-tot"><td colspan="2"><b>Total</b></td>${_cm.cots.map((c, k) => `<td class="ct-col${k === melhor ? ' best' : ''}"><b id="ct-t-${k}">${res[k].falta === ls.length ? '—' : eur(res[k].total)}</b>${res[k].falta && res[k].falta < ls.length ? `<br><small class="mut">faltam ${res[k].falta} preço${res[k].falta > 1 ? 's' : ''}</small>` : ''}</td>`).join('')}</tr>
-    <tr><td colspan="2" class="mut">Prazo de entrega (dias)</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-n" type="text" inputmode="numeric" value="${esc(c.prazo)}" data-cz="${k}"${ne ? ' disabled' : ''}></td>`).join('')}</tr>
-    <tr><td colspan="2" class="mut">Condições</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-t" type="text" value="${esc(c.cond)}" placeholder="Pagamento, validade…" data-cc="${k}"${ne ? ' disabled' : ''}></td>`).join('')}</tr>
-    ${ne ? '' : `<tr><td colspan="2"></td>${_cm.cots.map((c, k) => `<td class="ct-col"><button type="button" class="btn btn-primary btn-sm" data-act="adjudicar" data-k="${k}"${res[k].falta === ls.length ? ' disabled' : ''}>Adjudicar</button></td>`).join('')}</tr>`}
+    ${_cm.cots.length ? `<div class="ct-sec">2 · Preços recebidos (por unidade, sem IVA) — escolha o fornecedor de cada artigo</div>
+    <div class="tbl-wrap"><table class="cmp-t ct-grid" style="width:max(100%,${340 + _cm.cots.length * 190}px)"><thead><tr><th>Artigo</th><th class="r">Qtd</th>${_cm.cots.map((c, k) => `<th class="ct-col${k === melhor ? ' best' : ''}">${esc(c.fornecedor)}${k === melhor ? '<br><small>total mais baixo</small>' : (melhor >= 0 && res[k].falta === 0 && res[melhor].total > 0 ? `<br><small class="mut">+${Math.round((res[k].total / res[melhor].total - 1) * 1000) / 10} % no total</small>` : '')}</th>`).join('')}</tr></thead>
+    <tbody>${ls.map((l, i) => { const ja = cob[i]; return `<tr${ja ? ' class="ct-ja"' : ''}><td>${esc(l.desc)}<br><small class="mut">${esc(l.un)}</small>${ja ? `<div class="ct-jaenc">Encomendado: ${esc(ja.numero)} · ${esc(ja.fornecedor)}</div>` : ''}</td><td class="r">${qtdTxt(l.qtd)}</td>${_cm.cots.map((c, k) => { const pu = num(c.pu[i]); return `<td class="ct-col${k === melhor ? ' best' : ''}${pu != null && pu === minLinha[i] && _cm.cots.length > 1 ? ' ct-min' : ''}"><input class="ct-n" type="text" inputmode="decimal" placeholder="0,00" value="${esc(c.pu[i])}" data-cp="${k}:${i}"${ja ? ' disabled' : ''}><div class="ct-sub" id="ct-s-${k}-${i}">${pu != null ? eur(pu * l.qtd) : ''}</div><label class="ct-esc${_cm.esc[i] === c.id ? ' on' : ''}" id="ct-r-${k}-${i}"><input type="radio" name="esc-${i}" data-esc="${i}:${c.id}"${_cm.esc[i] === c.id ? ' checked' : ''}${ja || pu == null ? ' disabled' : ''}> Escolher</label></td>`; }).join('')}</tr>`; }).join('')}
+    <tr class="ct-tot"><td colspan="2"><b>Total da cotação</b></td>${_cm.cots.map((c, k) => `<td class="ct-col${k === melhor ? ' best' : ''}"><b id="ct-t-${k}">${res[k].falta === ls.length ? '—' : eur(res[k].total)}</b>${res[k].falta && res[k].falta < ls.length ? `<br><small class="mut">faltam ${res[k].falta} preço${res[k].falta > 1 ? 's' : ''}</small>` : ''}</td>`).join('')}</tr>
+    <tr class="ct-escrow"><td colspan="2"><b>Escolhido para encomendar</b></td>${_cm.cots.map((c, k) => `<td class="ct-col"><span id="ct-e-${k}"></span></td>`).join('')}</tr>
+    <tr><td colspan="2" class="mut">Prazo de entrega (dias)</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-n" type="text" inputmode="numeric" value="${esc(c.prazo)}" data-cz="${k}"></td>`).join('')}</tr>
+    <tr><td colspan="2" class="mut">Condições</td>${_cm.cots.map((c, k) => `<td class="ct-col"><input class="ct-t" type="text" value="${esc(c.cond)}" placeholder="Pagamento, validade…" data-cc="${k}"></td>`).join('')}</tr>
+    ${tudoCob ? '' : `<tr><td colspan="2"></td>${_cm.cots.map((c, k) => `<td class="ct-col"><button type="button" class="btn btn-secondary btn-sm" data-act="esc-todos" data-k="${k}"${res[k].falta === ls.length ? ' disabled' : ''}>Escolher todos</button></td>`).join('')}</tr>`}
     </tbody></table></div>` : ''}
-    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button>${_cm.cots.length && !ne ? '<button type="button" class="btn btn-primary" data-act="cot-guardar">Guardar preços</button>' : ''}</div>`;
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-act="fechar">Fechar</button><span style="flex:1"></span>${_cm.cots.length && !tudoCob ? '<button type="button" class="btn btn-secondary" data-act="cot-guardar">Guardar preços</button><button type="button" class="btn btn-primary" data-act="emitir-ne">Emitir notas de encomenda</button>' : ''}</div>`;
+  cotarPintarEsc();
+}
+// Atualiza só o que depende das escolhas (não mexe nos campos, para não perder o foco)
+function cotarPintarEsc() {
+  const ls = _cm.pedido.linhas || [], cob = linhasCobertas();
+  const por = {};
+  ls.forEach((l, i) => {
+    _cm.cots.forEach((c, k) => {
+      const pu = num(c.pu[i]), r = $(`ct-r-${k}-${i}`); if (!r) return;
+      const rad = r.querySelector('input'); rad.disabled = !!cob[i] || pu == null; rad.checked = _cm.esc[i] === c.id; r.classList.toggle('on', rad.checked);
+    });
+    if (cob[i]) return;
+    const c = _cm.cots.find(x => x.id === _cm.esc[i]), pu = c ? num(c.pu[i]) : null;
+    if (c && pu != null) { const g = por[c.id] ||= { n: 0, t: 0 }; g.n++; g.t += pu * l.qtd; }
+  });
+  _cm.cots.forEach((c, k) => { const e = $(`ct-e-${k}`); if (e) e.innerHTML = por[c.id] ? `<b>${por[c.id].n} artigo${por[c.id].n !== 1 ? 's' : ''}</b><br><small>${eur(por[c.id].t)}</small>` : '<span class="mut">—</span>'; });
 }
 function cotarPintarTotais() {
   const ls = _cm.pedido.linhas || [];
@@ -355,6 +392,7 @@ function cotarSugerir() {
       }
     });
   });
+  _cm.cots.length && (_cm.esc = (_cm.pedido.linhas || []).map((_, i) => _cm.manual[i] ? _cm.esc[i] : maisBarata(i)));
   cotarDesenhar();
   toast(n ? `${n} preço${n !== 1 ? 's' : ''} sugerido${n !== 1 ? 's' : ''} a partir das últimas faturas — confira e carregue em «Guardar preços».` : 'Não há faturas deste fornecedor com preços para estes artigos.');
 }
@@ -375,29 +413,44 @@ async function cotarEnviar() {
   cotarCarregarMem(); cotarDesenhar(); desenhar();
   toast('Pedido de cotação marcado como enviado ✓');
 }
-async function adjudicar(k) {
-  const c = _cm.cots[k], p = _cm.pedido, ls = p.linhas || [];
+function escolherTodos(k) {
+  const c = _cm.cots[k], cob = linhasCobertas();
+  (_cm.pedido.linhas || []).forEach((_, i) => { if (!cob[i] && num(c.pu[i]) != null) { _cm.esc[i] = c.id; _cm.manual[i] = true; } });
+  cotarPintarEsc();
+}
+async function emitirNEs() {
   if (!await cotarGuardar(true)) return;
-  const pr = totalCot(c);
-  const itens = ls.map((l, i) => ({ l, pu: num(c.pu[i]) })).filter(x => x.pu != null && x.pu >= 0);
-  if (!itens.length) return toast('Indique os preços deste fornecedor primeiro.');
-  const msg = `Adjudicar a ${c.fornecedor} e emitir a nota de encomenda?\n${itens.length} de ${ls.length} artigos · ${eur(pr.total)} (sem IVA).${pr.falta ? ` Os ${pr.falta} artigos sem preço ficam de fora.` : ''}`;
-  if (!await confirmar(msg, 'Emitir nota de encomenda')) return;
-  const linhas = itens.map(({ l, pu }) => ({ desc: l.desc, art_ref: l.art_ref || null, ref_forn: l.ref_forn || null, desc_forn: l.desc_forn || null, un: l.un, qtd: l.qtd, pu, total: Math.round(pu * l.qtd * 100) / 100 }));
-  const total = Math.round(linhas.reduce((s, x) => s + x.total, 0) * 100) / 100;
-  const { data, error } = await sb.from('ct_encomendas').insert({
-    pedido_id: p.id, cotacao_id: c.id, fornecedor_id: c.fornecedor_id, fornecedor: c.fornecedor, nif: c.nif,
-    obra_id: p.obra_id, obra_nome: p.obra_nome, linhas, total, criado_por: _user,
-  }).select('*').single();
-  if (error) return toast('Não foi possível emitir a nota de encomenda: ' + String(error.message).slice(0, 140));
-  await sb.from('ct_cotacoes').update({ escolhida: false }).eq('pedido_id', p.id);
-  await sb.from('ct_cotacoes').update({ escolhida: true }).eq('id', c.id);
-  await sb.from('ct_pedidos').update({ estado: 'encomendado' }).eq('id', p.id);
+  const p = _cm.pedido, ls = p.linhas || [], cob = linhasCobertas();
+  const grupos = new Map(); let nSem = 0;
+  ls.forEach((l, i) => {
+    if (cob[i]) return;
+    const c = _cm.cots.find(x => x.id === _cm.esc[i]), pu = c ? num(c.pu[i]) : null;
+    if (!c || pu == null || pu < 0) { nSem++; return; }
+    if (!grupos.has(c.id)) grupos.set(c.id, { c, itens: [] });
+    grupos.get(c.id).itens.push({ l, pu });
+  });
+  if (!grupos.size) return toast('Escolha, em cada artigo, o fornecedor a que vai encomendar.');
+  const tot = g => g.itens.reduce((s, x) => s + x.pu * x.l.qtd, 0);
+  const msg = `Emitir ${grupos.size} nota${grupos.size !== 1 ? 's' : ''} de encomenda?\n` + [...grupos.values()].map(g => `• ${g.c.fornecedor}: ${g.itens.length} artigo${g.itens.length !== 1 ? 's' : ''} · ${eur(tot(g))}`).join('\n') + (nSem ? `\n${nSem} artigo${nSem !== 1 ? 's' : ''} fica${nSem !== 1 ? 'm' : ''} por encomendar.` : '');
+  if (!await confirmar(msg, 'Emitir notas de encomenda')) return;
+  const feitas = [];
+  for (const g of grupos.values()) {
+    const linhas = g.itens.map(({ l, pu }) => ({ desc: l.desc, art_ref: l.art_ref || null, ref_forn: l.ref_forn || null, desc_forn: l.desc_forn || null, un: l.un, qtd: l.qtd, pu, total: Math.round(pu * l.qtd * 100) / 100 }));
+    const total = Math.round(linhas.reduce((s, x) => s + x.total, 0) * 100) / 100;
+    const { data, error } = await sb.from('ct_encomendas').insert({
+      pedido_id: p.id, cotacao_id: g.c.id, fornecedor_id: g.c.fornecedor_id, fornecedor: g.c.fornecedor, nif: g.c.nif,
+      obra_id: p.obra_id, obra_nome: p.obra_nome, linhas, total, criado_por: _user,
+    }).select('*').single();
+    if (error) { toast('Não foi possível emitir a nota de encomenda: ' + String(error.message).slice(0, 140)); break; }
+    feitas.push(data.numero);
+    await sb.from('ct_cotacoes').update({ escolhida: true }).eq('id', g.c.id);
+  }
+  if (!feitas.length) return;
+  await sb.from('ct_pedidos').update({ estado: nSem ? 'cotacao' : 'encomendado' }).eq('id', p.id);
   await sincronizar(true);
   document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
   _tab = 'encomendas'; desenhar();
-  toast(`Nota de encomenda ${data.numero} emitida ✓`);
-  verNE(data.id);
+  toast(`${feitas.length === 1 ? 'Nota de encomenda' : 'Notas de encomenda'} ${feitas.join(', ')} emitida${feitas.length !== 1 ? 's' : ''} ✓`);
 }
 
 // ═══════════════════ Notas de encomenda ═══════════════════
@@ -444,7 +497,10 @@ async function apagarNE(id) {
   if (!await confirmar(`Apagar a nota de encomenda ${e.numero}? O pedido volta ao estado «Em cotação».`, 'Apagar', true)) return;
   const { data, error } = await sb.from('ct_encomendas').delete().eq('id', e.id).select('id');
   if (error || !data?.length) return toast('Não foi possível apagar: ' + String(error?.message || 'sem permissão').slice(0, 120));
-  if (e.pedido_id) { await sb.from('ct_cotacoes').update({ escolhida: false }).eq('pedido_id', e.pedido_id); await sb.from('ct_pedidos').update({ estado: 'cotacao' }).eq('id', e.pedido_id); }
+  if (e.pedido_id) {
+    if (e.cotacao_id && !_encomendas.some(x => x.id !== e.id && x.cotacao_id === e.cotacao_id)) await sb.from('ct_cotacoes').update({ escolhida: false }).eq('id', e.cotacao_id);
+    await sb.from('ct_pedidos').update({ estado: 'cotacao' }).eq('id', e.pedido_id);
+  }
   document.querySelectorAll('.modal-bg.open').forEach(m => m.remove());
   toast('Nota de encomenda apagada');
   await recarregar();
@@ -774,6 +830,7 @@ async function sincronizar(silencioso) {
       }
     }
     await atualizarEstados();
+    await estadoPedidos();
     await carregar();
     desenhar();
     if (!silencioso || nG || nF || sug) toast(nG || nF || sug ? `Sincronizado: ${nG} guia${nG !== 1 ? 's' : ''} e ${nF} fatura${nF !== 1 ? 's' : ''} ligadas${sug ? `, ${sug} sugestão(ões) para confirmar` : ''} ✓` : 'Nada de novo para ligar.');
@@ -784,14 +841,20 @@ async function atualizarEstados() {
   for (const ne of _encomendas) {
     const c = conferir(ne, _guias, _faturas);
     if (c.estado !== ne.estado) { await sb.from('ct_encomendas').update({ estado: c.estado }).eq('id', ne.id); ne.estado = c.estado; }
-    const p = _pedidos.find(x => x.id === ne.pedido_id), alvo = pedidoEstadoDe[c.estado];
-    if (p && alvo && p.estado !== alvo && ['encomendado', 'parcial', 'entregue', 'faturado'].includes(p.estado)) { await sb.from('ct_pedidos').update({ estado: alvo }).eq('id', p.id); p.estado = alvo; }
     for (const [t, docs] of [['g', _guias], ['f', _faturas]]) {
       for (const d of docs.filter(x => x.encomenda_id === ne.id && (x.estado === 'casada' || x.estado === 'divergente'))) {
         const novo = (c.docFlags[t + d.id] || []).length ? 'divergente' : 'casada';
         if (d.estado !== novo) { await sb.from(tabelaDe(t)).update({ estado: novo }).eq('id', d.id); d.estado = novo; }
       }
     }
+  }
+}
+async function estadoPedidos() {
+  for (const p of _pedidos) {
+    if (!['encomendado', 'parcial', 'entregue', 'faturado'].includes(p.estado)) continue;   // «Em cotação» = ainda faltam artigos por encomendar
+    const nes = _encomendas.filter(e => e.pedido_id === p.id); if (!nes.length) continue;
+    const alvo = nes.every(e => e.estado === 'faturada') ? 'faturado' : nes.every(e => e.estado === 'faturada' || e.estado === 'completa') ? 'entregue' : nes.some(e => e.estado !== 'emitida') ? 'parcial' : 'encomendado';
+    if (p.estado !== alvo) { await sb.from('ct_pedidos').update({ estado: alvo }).eq('id', p.id); p.estado = alvo; }
   }
 }
 async function ligarDoc(t, id) {
@@ -921,7 +984,8 @@ document.addEventListener('click', e => {
     case 'cot-enviar': cotarEnviar(); break;
     case 'cot-sug': cotarSugerir(); break;
     case 'cot-guardar': cotarGuardar(); break;
-    case 'adjudicar': adjudicar(+a.dataset.k); break;
+    case 'esc-todos': escolherTodos(+a.dataset.k); break;
+    case 'emitir-ne': emitirNEs(); break;
     case 'ver-ne': verNE(id); break;
     case 'imprimir-ne': imprimirNE(id); break;
     case 'apagar-ne': apagarNE(id); break;
@@ -949,11 +1013,12 @@ document.addEventListener('input', e => {
   const el = e.target;
   if (el.id === 'np-q') npResultados();
   else if (el.dataset.nq != null) { _np.linhas[+el.dataset.nq].qtd = el.value; }
-  else if (el.dataset.cp) { const [k, i] = el.dataset.cp.split(':').map(Number); _cm.cots[k].pu[i] = el.value; cotarPintarTotais(); }
+  else if (el.dataset.cp) { const [k, i] = el.dataset.cp.split(':').map(Number); _cm.cots[k].pu[i] = el.value; if (!_cm.manual[i] || !_cm.cots.some(c => c.id === _cm.esc[i] && num(c.pu[i]) != null)) { _cm.manual[i] = false; _cm.esc[i] = maisBarata(i); } cotarPintarTotais(); cotarPintarEsc(); }
   else if (el.dataset.cz != null) _cm.cots[+el.dataset.cz].prazo = el.value;
   else if (el.dataset.cc != null) _cm.cots[+el.dataset.cc].cond = el.value;
 });
 document.addEventListener('change', e => {
+  if (e.target.dataset.esc) { const [i, cid] = e.target.dataset.esc.split(':').map(Number); _cm.esc[i] = cid; _cm.manual[i] = true; cotarPintarEsc(); return; }
   if (e.target.dataset.conc) { _conc[e.target.dataset.conc] = e.target.checked; try { localStorage.setItem('ct_conc', JSON.stringify(_conc)); } catch (x) { /* sem armazenamento */ } desenhar(); return; }
   if (e.target.id === 'ct-gfiles' || e.target.id === 'ct-ffiles') {
     const fs = [...e.target.files]; const g = e.target.id === 'ct-gfiles'; e.target.value = '';
