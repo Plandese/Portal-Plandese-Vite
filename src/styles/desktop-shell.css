@@ -1445,3 +1445,11 @@ body #admin-app .dw-date{cursor:default!important;border-bottom:0!important}
 .eq-fchip:hover{border-color:#173f9f}
 .eq-fchip.on{background:#173f9f;border-color:#173f9f;color:#fff}
 .eq-fchip.on b{background:rgba(255,255,255,.2);color:#fff}
+
+/* Controlo de Obras: interruptor pequeno para ativar/desativar obra na análise */
+.co-tog{display:inline-block;vertical-align:middle;width:30px;height:18px;border-radius:99px;background:#c5ccd9;position:relative;cursor:pointer;transition:background .15s;flex:none}
+.co-tog i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.co-tog.on{background:var(--m-brand,#173f9f)}
+.co-tog.on i{left:14px}
+.co-tbl tr.off td:not(:last-child),.co-ob.off>*:not(.co-ob-top){opacity:.45}
+.co-ob.off .co-ob-top>*:not(span:last-child){opacity:.45}

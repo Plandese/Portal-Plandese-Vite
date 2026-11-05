@@ -28,6 +28,7 @@ const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replac
 
 // O099 (CC Estrutura central) é um centro de custos, não uma empreitada
 const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.test(o.nome||''));
+const obraOn = id => !(CO.extra[id]||{}).desativada;
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
 const noPeriodo = r => (!CO.de || r.mes>=CO.de) && (!CO.ate || r.mes<=CO.ate);
@@ -119,9 +120,11 @@ function coRenderList(){
   const el = document.getElementById('co-root');
   const obras = obrasAtivas();
   if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
-  const total = coBalancoCalc(obras.map(withExtra), mensalEf(), periodo());
-  const card = (id, cor, cod, nome, c, meses, sim) => `<button class="co-ob" style="--dot:${cor}" onclick="coAbrir('${id}')">
-      <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span>${sim?'<span class="co-sim-tag" style="margin-left:auto">SIMULADO</span>':''}</div>
+  const todas = obras; const on = todas.filter(o=>obraOn(o.id));
+  const sw = id => `<span class="co-tog ${obraOn(id)?'on':''}" role="switch" aria-checked="${obraOn(id)}" tabindex="0" title="${obraOn(id)?'Incluída na análise — clicar para desativar':'Desativada — clicar para ativar'}" onclick="event.stopPropagation();coAtivar('${id}')"><i></i></span>`;
+  const total = coBalancoCalc(on.map(withExtra), mensalEf(), periodo());
+  const card = (id, cor, cod, nome, c, meses, sim, tog) => `<button class="co-ob${tog&&!obraOn(id)?' off':''}" style="--dot:${cor}" onclick="coAbrir('${id}')">
+      <div class="co-ob-top"><span class="co-ob-dot"></span><span class="co-ob-cod">${esc(cod)}</span>${sim?'<span class="co-sim-tag" style="margin-left:auto">SIMULADO</span>':''}${tog?`<span style="margin-left:${sim?'8px':'auto'}">${sw(id)}</span>`:''}</div>
       <div class="co-ob-nome">${esc(nome)}</div>
       <div class="co-ob-saldo">${meses?eur0(c.saldo):'—'}</div>
       <div class="co-ob-sub">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span> margem · `:''}${meses} ${meses===1?'mês':'meses'}</div>
@@ -129,24 +132,32 @@ function coRenderList(){
     </button>`;
   const cards = obras.map((o,i) => {
     const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
-    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])));
+    return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])), true);
   }).join('');
-  const ids = new Set(obras.map(o=>o.id));
+  const ids = new Set(on.map(o=>o.id));
   if(coVista()==='lista'){
-    const lin = (id, cor, cod, nome, c, meses, sim, tot) => `<tr class="${tot?'tot':''}" onclick="coAbrir('${id}')" title="Abrir balanço">
+    const lin = (id, cor, cod, nome, c, meses, sim, tot) => `<tr class="${tot?'tot':(obraOn(id)?'':'off')}" onclick="coAbrir('${id}')" title="Abrir balanço">
       <td><span class="co-ob-dot" style="background:${cor}"></span><span class="co-ob-cod">${esc(cod)}</span> <b>${esc(nome)}</b>${sim?' <span class="co-sim-tag">SIMULADO</span>':''}</td>
       <td class="r">${meses||'—'}</td><td class="r">${meses?eur0(c.provTot):'—'}</td><td class="r">${meses?eur0(c.custosTot):'—'}</td>
       <td class="r ${meses?(c.saldo>=0?'pos':'neg'):''}"><b>${meses?eur0(c.saldo):'—'}</b></td>
-      <td class="r">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span>`:'—'}</td></tr>`;
+      <td class="r">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span>`:'—'}</td><td class="r">${tot?'':sw(id)}</td></tr>`;
     const nMeses = new Set(CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size;
-    const corpo = lin('ALL','var(--gray-900)','TODAS',obras.length+' obras em curso',total,nMeses,simN(simIds(obras)),true) + obras.map((o,i) => {
+    const corpo = lin('ALL','var(--gray-900)','TODAS',on.length+' obras em curso',total,nMeses,simN(simIds(on)),true) + obras.map((o,i) => {
       const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
       return lin(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])), false);
     }).join('');
-    el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-tbl-wrap"><table class="co-tbl"><thead><tr><th>Empreitada</th><th class="r">Meses</th><th class="r">Proveitos</th><th class="r">Custos</th><th class="r">Saldo</th><th class="r">Margem</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
+    el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-tbl-wrap"><table class="co-tbl"><thead><tr><th>Empreitada</th><th class="r">Meses</th><th class="r">Proveitos</th><th class="r">Custos</th><th class="r">Saldo</th><th class="r">Margem</th><th class="r" title="Incluir na análise">Ativa</th></tr></thead><tbody>${corpo}</tbody></table></div>`;
     return;
   }
-  el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',obras.length+' obras em curso',total,new Set(CO.mensal.filter(r=>obras.some(o=>o.id===r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size, simN(simIds(obras))).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+  el.innerHTML = `${coPeriodoBar(ids, true)}<div class="co-list">${card('ALL','var(--gray-900)','TODAS AS EMPREITADAS',on.length+' obras em curso',total,new Set(CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size, simN(simIds(on))).replace('class="co-ob"','class="co-ob total"')}${cards}</div>`;
+}
+
+async function coAtivar(id){
+  const novo = !obraOn(id);
+  const { error } = await sb.from('co_obra').upsert({ obra_id:id, desativada:!novo, atualizado:new Date().toISOString() }, { onConflict:'obra_id' });
+  if(error){ console.warn('co_obra', error); showToast('Sem permissão ou erro ao guardar'); return; }
+  CO.extra[id] = { ...(CO.extra[id]||{ obra_id:id }), desativada:!novo };
+  coRenderList();
 }
 
 // Existências em obra: um valor único por empreitada (co_obra.existencias), abate aos custos.
@@ -500,6 +511,6 @@ Atenção: os valores do Excel são multiplicados por ${String(fator).replace('.
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coAtivar, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
   coGuardarCelula, coAdicionarMes, coApagarMes, coVista, coDetTipo,
 };
