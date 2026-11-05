@@ -28,6 +28,9 @@ const num = v => { const n = parseFloat(String(v).replace(/[€\s ]/g,'').replac
 
 // O099 (CC Estrutura central) é um centro de custos, não uma empreitada
 const obrasAtivas = () => S.OBRAS.filter(o => o.ativa !== false && !/^O099/.test(o.nome||''));
+const nOff = () => obrasAtivas().filter(o=>!obraOn(o.id)).length;
+const ocultarOff = () => { try{ return localStorage.getItem('co_ocultar_off')!=='0'; }catch(e){ return true; } };
+function coOcultarToggle(){ try{ localStorage.setItem('co_ocultar_off', ocultarOff()?'0':'1'); }catch(e){} coRenderList(); }
 const obraOn = id => !(CO.extra[id]||{}).desativada;
 const split = nome => { const m = String(nome||'').match(/^(O\d+)\s*[-–]\s*(.+)$/); return m ? { cod:m[1], nome:m[2] } : { cod:'', nome:nome||'' }; };
 const withExtra = o => ({ id:o.id, nome:o.nome, extra:CO.extra[o.id]||{} });
@@ -78,9 +81,10 @@ function coPeriodoBar(ids, comVista){
   const ms = [...new Set(CO.mensal.filter(r=>ids.has(r.obra_id)).map(r=>r.mes))].sort();
   const opt = (sel, vazio) => `<option value="">${vazio}</option>` + ms.map(m=>`<option value="${m}"${m===sel?' selected':''}>${mesLong(m)}</option>`).join('');
   const per = ms.length<2 ? '' : `<span>${isMobile()?'De':'Analisar de'}</span><select onchange="coPeriodo('de',this.value)">${opt(CO.de,'início')}</select><span>até</span><select onchange="coPeriodo('ate',this.value)">${opt(CO.ate,'último mês')}</select>${(CO.de||CO.ate) && !isMobile()?`<button onclick="coPeriodo('reset')">Limpar</button>`:''}`;
-  const vista = (comVista && !isMobile()) ? coVistaToggle() : '';
+  const oc = (comVista && nOff()) ? `<button type="button" class="${ocultarOff()?'on':''}" aria-pressed="${ocultarOff()}" onclick="coOcultarToggle()" title="Mostrar ou esconder as obras desativadas">${ocultarOff()?'Mostrar':'Ocultar'} desativadas (${nOff()})</button>` : '';
+  const vista = ((comVista && !isMobile()) ? coVistaToggle() : '') ;
   const upd = (!pastasSuportado() || isMobile()) ? '' : `<span style="${vista?'':'margin-left:auto;'}display:flex;gap:6px"><button id="co-upd-btn" onclick="coAtualizar()" title="Lê os ficheiros das pastas das obras (custos e autos de medição) e atualiza tudo">↻ Atualizar tudo</button><button onclick="coAtualizar(false,'custos')" title="Atualiza só os custos (ficheiros de custos); não mexe nos proveitos">↻ Custos</button><button onclick="coAtualizar(false,'proveitos')" title="Atualiza só os proveitos (autos de medição e listagem); não mexe nos custos">↻ Proveitos</button><button onclick="coAtualizar(true)" title="Escolher outra pasta raiz">Pasta…</button></span>`;
-  return (per||upd||vista) ? `<div class="co-per">${per}${vista}${upd}</div><div id="co-upd-log"></div>` : '';
+  return (per||upd||vista||oc) ? `<div class="co-per">${per}${oc}${vista}${upd}</div><div id="co-upd-log"></div>` : '';
 }
 function coVista(v){
   if(v===undefined){
@@ -120,7 +124,7 @@ function coRenderList(){
   const el = document.getElementById('co-root');
   const obras = obrasAtivas();
   if(!obras.length){ el.innerHTML = '<div class="co-empty">Sem obras ativas. Adicione obras na secção Administração.</div>'; return; }
-  const todas = obras; const on = todas.filter(o=>obraOn(o.id));
+  const todas = obras; const vis = ocultarOff() ? obras.filter(o=>obraOn(o.id)) : obras; const on = todas.filter(o=>obraOn(o.id));
   const sw = id => `<span class="co-tog ${obraOn(id)?'on':''}" role="switch" aria-checked="${obraOn(id)}" tabindex="0" title="${obraOn(id)?'Incluída na análise — clicar para desativar':'Desativada — clicar para ativar'}" onclick="event.stopPropagation();coAtivar('${id}')"><i></i></span>`;
   const total = coBalancoCalc(on.map(withExtra), mensalEf(), periodo());
   const card = (id, cor, cod, nome, c, meses, sim, tog) => `<button class="co-ob${tog&&!obraOn(id)?' off':''}" style="--dot:${cor}" onclick="coAbrir('${id}')">
@@ -130,7 +134,7 @@ function coRenderList(){
       <div class="co-ob-sub">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span> margem · `:''}${meses} ${meses===1?'mês':'meses'}</div>
       <div class="co-ob-lin"><span>Proveitos <b>${eur0(c.provTot)}</b></span><span>Custos <b>${eur0(c.custosTot)}</b></span></div>
     </button>`;
-  const cards = obras.map((o,i) => {
+  const cards = vis.map(o => { const i = obras.indexOf(o);
     const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
     return card(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])), true);
   }).join('');
@@ -142,7 +146,7 @@ function coRenderList(){
       <td class="r ${meses?(c.saldo>=0?'pos':'neg'):''}"><b>${meses?eur0(c.saldo):'—'}</b></td>
       <td class="r">${meses&&c.margem!==null?`<span class="co-pill ${c.saldo>=0?'good':'bad'}">${c.saldo>=0?'▲':'▼'} ${pct(c.margem)}</span>`:'—'}</td><td class="r">${tot?'':sw(id)}</td></tr>`;
     const nMeses = new Set(CO.mensal.filter(r=>ids.has(r.obra_id) && noPeriodo(r)).map(r=>r.mes)).size;
-    const corpo = lin('ALL','var(--gray-900)','TODAS',on.length+' obras em curso',total,nMeses,simN(simIds(on)),true) + obras.map((o,i) => {
+    const corpo = lin('ALL','var(--gray-900)','TODAS',on.length+' obras em curso',total,nMeses,simN(simIds(on)),true) + vis.map(o => { const i = obras.indexOf(o);
       const c = coBalancoCalc([withExtra(o)], mensalEf(), periodo()), sp = split(o.nome);
       return lin(o.id, CORES[i%CORES.length], sp.cod||'Obra', sp.nome, c, CO.mensal.filter(r=>r.obra_id===o.id && noPeriodo(r)).length, simN(new Set([o.id])), false);
     }).join('');
@@ -511,6 +515,6 @@ Atenção: os valores do Excel são multiplicados por ${String(fator).replace('.
 }
 
 export {
-  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coAtivar, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
+  renderControloObras, coAbrir, coVoltar, coEditar, coGuardarObra, coImportar, coFicheiro, coPeriodo, coAtivar, coOcultarToggle, coGuardarSede, coGuardarExist, coRelatorio, coAtualizar, coSimToggle, coSimApagar,
   coGuardarCelula, coAdicionarMes, coApagarMes, coVista, coDetTipo,
 };
