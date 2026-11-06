@@ -74,6 +74,7 @@ import { renderPainel, abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, p
 import { initAtividade } from './modules/atividade.js';
 import { abrirPersonalizarPainel, fecharPersonalizarPainel, pcustToggle, pcustZona, pcustMover, pcustGuardar, pcustRepor } from './modules/painel-atencao.js';
 import { initPainelRedim } from './modules/painel-redim.js';
+import { initNecessidades, necessidadesHandlers } from './modules/necessidades.js';
 import { sbLoadFornecedores, renderFornecedores, openModalFornecedor, saveFornecedor, apagarFornecedor, exportFornecedoresXLSX, fornPag, editarFornecedor } from './modules/fornecedores.js';
 
 
@@ -190,6 +191,9 @@ Object.assign(window, {
   // MOA
   applyMOAFilter, navMOASemana, exportMOAExcel, moaFechoCarregar, moaFechoExport, moaFechoTaxa,
   moaEditRow, moaSaveRow, moaAnularRow, _moaClosePopover, moaEditCell, moaPickReg, moaSelectDia, moaAbrirResumo, adicionarTodosAnteriorAlug, aprovarDiaMOA, retirarAprovacaoMOA,
+
+  // Necessidades de obra
+  ...necessidadesHandlers,
 
   // Obras
   renderObras, saveObra, editObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista,
@@ -412,6 +416,7 @@ window.savePerfil = async function () {
     if (id === 'tesouraria')   { renderTesouraria(); }
     if (id === 'guias')        { renderGuiasEscritorio(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); }
+    if (id === 'necessidades') { initNecessidades(); }
     if (id === 'equipamentos') { initEquipamentos(); }
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }

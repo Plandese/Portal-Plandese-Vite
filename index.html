@@ -1408,6 +1408,10 @@
           <span class="nav-label">Pedidos de compra</span>
           <span class="nb" id="nb-cmp">0</span>
         </button>
+        <button class="nav-btn" onclick="goTo('necessidades',this)" id="nav-necessidades">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="nav-label">Necessidades de obra</span>
+        </button>
         <button class="nav-btn" onclick="goTo('fornecedores',this)" id="nav-fornecedores">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><line x1="4" y1="6" x2="4" y2="6.01"/><line x1="4" y1="12" x2="4" y2="12.01"/><line x1="4" y1="18" x2="4" y2="18.01"/></svg>
           <span class="nav-label">Lista de Fornecedores</span>
@@ -2194,6 +2198,9 @@
         <div id="cmp-view-area"></div>
         <div id="cmp-empty" class="fat-empty" style="display:none"></div>
       </section>
+
+      <!-- NECESSIDADES DE OBRA -->
+      <section id="sec-necessidades" class="section"><div id="nec-root"></div></section>
 
       <!-- LISTA DE FORNECEDORES -->
       <section id="sec-fornecedores" class="section">

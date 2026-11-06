@@ -168,7 +168,7 @@ export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
 const SECTION_LABELS = {
   'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','ponto-escritorio':'Ponto do Escritório','colaboradores':'Colaboradores',
-  'compras':'Compras','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria','guias':'Guias de Remessa',
+  'compras':'Compras','necessidades':'Necessidades de obra','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria','guias':'Guias de Remessa',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
   'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',

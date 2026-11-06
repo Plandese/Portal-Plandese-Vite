@@ -1,0 +1,67 @@
+/* Necessidades de obra — design novo do portal */
+#sec-necessidades{--nb:#173f9f}
+.nec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.nec-head h1{font-size:26px;font-weight:800;color:#1b2130;margin:0}
+.nec-head p{margin:4px 0 0;color:#5d6678;font-size:14px;max-width:560px}
+.nec-sem{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid #dde2ea;border-radius:99px;padding:6px 8px}
+.nec-sem div{text-align:center;min-width:130px}
+.nec-sem small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#5d6678;font-weight:700}
+.nec-sem b{font-size:15px;color:#1b2130}
+.nec-ic{width:34px;height:34px;border-radius:50%;border:0;background:#eaf0fc;color:#173f9f;font-size:20px;font-weight:700;cursor:pointer}
+.nec-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.nec-kpi{background:#fff;border:1px solid #dde2ea;border-radius:22px;padding:14px 18px;border-left:5px solid #173f9f}
+.nec-kpi small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5d6678}
+.nec-kpi b{display:block;font-size:28px;font-weight:800;color:#1b2130;line-height:1.2}
+.nec-kpi span{font-size:12px;color:#5d6678}
+.nec-kpi.ambar{border-left-color:#d98a00}.nec-kpi.verm{border-left-color:#c62828}.nec-kpi.verde{border-left-color:#1e8e4e}
+.nec-prazo{border-radius:22px;padding:14px 18px;margin-bottom:14px;font-size:14px;background:#eaf0fc;color:#173f9f}
+.nec-prazo.hoje{background:#fff4dc;color:#8a5a00}.nec-prazo.fora{background:#fde8e8;color:#a31f1f}
+.nec-sem-reg{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;color:#1b2130;font-size:13px}
+.nec-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.nec-tabs{display:flex;background:#eaf0fc;border-radius:99px;padding:4px}
+.nec-tabs button{border:0;background:transparent;border-radius:99px;padding:8px 16px;font:inherit;font-size:13.5px;font-weight:600;color:#173f9f;cursor:pointer}
+.nec-tabs button.on{background:#173f9f;color:#fff}
+.nec-in{height:40px;border:1.5px solid #b9c1ce;border-radius:99px;padding:0 14px;font:inherit;font-size:14px;background:#fff;color:#1b2130;min-width:0}
+.nec-in:focus,.nec-f input:focus,.nec-f select:focus,.nec-f textarea:focus{outline:0;border-color:#173f9f;box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.nec-btn{height:44px;border:1.5px solid #173f9f;background:#173f9f;color:#fff;border-radius:99px;padding:0 20px;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.nec-btn.sec{background:#fff;color:#173f9f}
+.nec-btn:disabled{opacity:.6}
+.nec-obra{background:#fff;border:1px solid #dde2ea;border-radius:22px;margin-bottom:14px;overflow:hidden}
+.nec-obra>header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;background:#f6f8fc;border-bottom:1px solid #edf0f5}
+.nec-obra h2{font-size:17px;font-weight:800;margin:0;color:#1b2130}
+.nec-obra header small{color:#5d6678;font-size:12.5px}
+.nec-lin{display:flex;justify-content:space-between;gap:14px;padding:13px 18px;border-bottom:1px solid #edf0f5}
+.nec-lin:last-child{border-bottom:0}.nec-lin.canc{opacity:.5}
+.nec-lin-main{min-width:0;flex:1}
+.nec-lin-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14.5px;color:#1b2130}
+.nec-qtd{color:#173f9f;font-weight:700}
+.nec-lin-s{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:12.5px;color:#5d6678}
+.nec-obs{margin-top:6px;font-size:13px;color:#3b4456}
+.nec-resp{margin-top:6px;font-size:13px;background:#eaf0fc;border-radius:12px;padding:6px 10px;color:#173f9f}
+.nec-lin-acc{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.nec-lnk{border:0;background:none;color:#173f9f;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:2px 0}.nec-lnk.verm{color:#c62828}
+.nec-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
+.nec-pill.azul{background:#e1e9fb;color:#173f9f}.nec-pill.roxo{background:#efe6fb;color:#6a2fb3}
+.nec-pill.verde{background:#dff3e7;color:#17783f}.nec-pill.ambar{background:#fff0cf;color:#8a5a00}
+.nec-pill.verm{background:#fde1e1;color:#a31f1f}.nec-pill.cinza{background:#edf0f5;color:#4a5365}
+.nec-est{border:0;border-radius:99px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.nec-est.azul{background:#e1e9fb;color:#173f9f}.nec-est.roxo{background:#efe6fb;color:#6a2fb3}.nec-est.verde{background:#dff3e7;color:#17783f}
+.nec-est.ambar{background:#fff0cf;color:#8a5a00}.nec-est.cinza{background:#edf0f5;color:#4a5365}
+.nec-vazio{padding:18px;color:#5d6678;font-size:13.5px}.nec-vazio.grande{text-align:center;padding:40px}
+/* janela */
+.nec-ov{position:fixed;inset:0;background:rgba(20,30,55,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.nec-modal{background:#fff;border-radius:24px;width:min(560px,100%);max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.nec-mh{background:#173f9f;color:#fff;padding:20px 24px}.nec-mh h3{margin:0;font-size:22px;font-weight:800}.nec-mh small{opacity:.85;font-size:13.5px}
+.nec-mb{padding:18px 24px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.nec-mf{display:flex;gap:10px;justify-content:flex-end;padding:14px 24px;border-top:1px solid #edf0f5}
+.nec-f{display:flex;flex-direction:column;gap:5px}.nec-f>span{font-size:12px;font-weight:700;text-transform:uppercase;color:#5d6678}
+.nec-f input,.nec-f select,.nec-f textarea{border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;height:50px;font:inherit;font-size:16px;background:#fff;color:#1b2130;width:100%;box-sizing:border-box}
+.nec-f textarea{height:auto;padding:12px 14px}
+.nec-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.nec-chips{display:flex;flex-wrap:wrap;gap:6px}
+.nec-chips button{border:1.5px solid #b9c1ce;background:#fff;border-radius:99px;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;color:#3b4456;cursor:pointer}
+.nec-chips button.on{background:#173f9f;border-color:#173f9f;color:#fff}
+@media(max-width:760px){
+  .nec-kpis{grid-template-columns:1fr 1fr}.nec-lin{flex-direction:column}.nec-lin-acc{flex-direction:row;flex-wrap:wrap;align-items:center}
+  .nec-2{grid-template-columns:1fr}.nec-in{flex:1 1 140px}.nec-head h1{font-size:23px}
+}

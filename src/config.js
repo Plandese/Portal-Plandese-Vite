@@ -91,6 +91,7 @@ export const ROLE_ACCESS = {
 export const NOTIF_SECTIONS = {
   'historico':    'Folha de Ponto',
   'compras':      'Compras',
+  'necessidades': 'Necessidades de obra',
   'faturas':      'Faturas',
   'faturas-aprovar': 'Faturas Por Aprovar',
   'tesouraria':   'Tesouraria',
@@ -108,7 +109,7 @@ export const NOTIF_SECTIONS = {
 // e para a matriz de "Permissões de Acesso" em Gerir Utilizadores.
 export const NAV_CHAPTERS = [
   {id:'rh',   label:'Recursos Humanos',          sections:['historico','fecho-mes','mapa-ferias','ponto-escritorio','colaboradores']},
-  {id:'cmp',  label:'Compras',                   sections:['compras']},
+  {id:'cmp',  label:'Compras',                   sections:['compras','necessidades']},
   {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','guias','tesouraria']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
   {id:'prod', label:'Produção',                  sections:['producao','existencias','precos-unitarios','pendentes-tavira']},
