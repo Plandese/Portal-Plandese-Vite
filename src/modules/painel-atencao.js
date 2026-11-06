@@ -8,6 +8,7 @@ import { S, R } from '../state.js';
 import { obraVisivelPara, obraEmCurso } from '../config.js';
 import { canAccessSection } from './permissions.js';
 import { podeAprovarObra } from './ponto.js';
+import { ehAprovadorFaturas } from './faturas.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -56,7 +57,7 @@ export async function carregarPainelDados(forcar = false) {
     q(podePonto, () => lerTudo(() => sb.from('aprovacoes_ponto').select('obra_id,data').gte('data', ymd(somaDias(hojeD, -14))).order('data')), []),
     q(podePonto, async () => { const { data, error } = await sb.from('registos_ponto').select('colab_numero,obra_id,tipo').eq('data', hoje); if (error) throw error; return data || []; }, []),
     q(podeCmp, async () => { const { data, error } = await sb.from('pedidos_compra').select('id,estado,urgencia,obra_id'); if (error) throw error; return data || []; }, []),
-    q(podeFat || podeApr || podeTes, async () => { const { data, error } = await sb.from('faturas').select('id,status,data_pag,total').in('status', ['extraida', 'rever', 'pendente_aprovacao', 'aguarda_diretor', 'aprovada']).eq('teste', false); if (error) throw error; return data || []; }, []),
+    q(podeFat || podeApr || podeTes, async () => { const { data, error } = await sb.from('faturas').select('id,status,data_pag,total,centro_custo').in('status', ['extraida', 'rever', 'pendente_aprovacao', 'aguarda_diretor', 'aprovada']).eq('teste', false); if (error) throw error; return data || []; }, []),
     q(podeEq, async () => { const { data, error } = await sb.from('equipamentos').select('id,estado,ultimo_registo'); if (error) throw error; return data || []; }, []),
     q(podeEq, async () => { const { data, error } = await sb.from('eq_manutencoes').select('id').eq('estado', 'pendente'); if (error) throw error; return data || []; }, []),
     q(podeComb, async () => { const { data, error } = await sb.from('registos_combustivel').select('data,litros,obra_id,obra_nome,aprovacao').gte('data', seg); if (error) throw error; return data || []; }, []),
@@ -77,7 +78,10 @@ export async function carregarPainelDados(forcar = false) {
 
   const hojeMais5 = ymd(somaDias(hojeD, 5));
   const porValidar = faturas.filter(f => ['extraida', 'rever', 'pendente_aprovacao'].includes(f.status));
-  const porAprovar = faturas.filter(f => f.status === 'aguarda_diretor');
+  // Faturas por aprovar: cada diretor só conta as das suas obras (como na página «Faturas por aprovar»)
+  const minhasObras = (S.currentUser?.role === 'admin' || S.currentUser?.role === 'financeiro' || ehAprovadorFaturas(null)) ? null
+    : new Set(S.OBRAS.filter(o => o.diretor_id === S.currentUser?.key || (o.diretores_extra || []).includes(S.currentUser?.key)).map(o => o.nome));
+  const porAprovar = faturas.filter(f => f.status === 'aguarda_diretor' && (!minhasObras || minhasObras.has(f.centro_custo)));
   const aPagar = faturas.filter(f => f.status === 'aprovada' && f.data_pag);
   const vencidas = aPagar.filter(f => f.data_pag < hoje);
   const aVencer = aPagar.filter(f => f.data_pag >= hoje && f.data_pag <= hojeMais5);
@@ -117,10 +121,23 @@ export async function carregarPainelDados(forcar = false) {
 export function invalidarPainelDados() { _cache = null; }
 
 // ── "O que precisa da minha atenção" ────────────────────────────────────────
+// Quem tem de agir em cada tipo de linha (chave = d.acesso). Para mudar a quem aparece, editar aqui.
+const RESPONSAVEL = {
+  ponto: ['admin', 'diretor_obra'],       // aprovar dias de ponto (o diretor só das suas obras)
+  apr: ['admin', 'diretor_obra'],         // faturas por aprovar (o diretor só das suas obras)
+  tes: ['financeiro'],                    // faturas vencidas / a vencer
+  fat: ['financeiro'],                    // faturas por validar
+  cmp: ['compras'],                       // pedidos de compra por aprovar
+  comb: ['admin', 'diretor_obra'],        // registos de gasóleo por aprovar
+  eq: ['admin'],                          // equipamentos parados, manutenções, sem localização
+};
+
 function itensAtencao(d) {
   const it = [];
   const add = (nivel, ic, txt, sec) => it.push({ nivel, ic, txt, sec });
-  const a = d.acesso;
+  // Só aparece o que cada perfil tem de resolver (ter acesso à página não chega)
+  const role = S.currentUser?.role;
+  const a = Object.fromEntries(Object.entries(d.acesso).map(([k, v]) => [k, v && (RESPONSAVEL[k] || []).includes(role)]));
   if (a.ponto && d.pontoPend) add('warn', 'ponto', `${pl(d.pontoPend, 'dia de ponto', 'dias de ponto')} por aprovar`, 'historico');
   if (a.apr && d.fatAprovar) add('warn', 'fatura', `${pl(d.fatAprovar, 'fatura', 'faturas')} por aprovar`, 'faturas-aprovar');
   if (a.tes && d.fatVenc) add('bad', 'aviso', `${pl(d.fatVenc, 'fatura vencida', 'faturas vencidas')} (${eur(d.fatVencEur)})`, 'tesouraria');
