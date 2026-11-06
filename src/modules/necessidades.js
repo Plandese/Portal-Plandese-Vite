@@ -183,7 +183,8 @@ function vistaObra() {
   const temFiltro = _filtro.cat || _filtro.est || _filtro.urg || _filtro.q;
   const blocos = obras.map(o => {
     const rs = lista.filter(x => x.obra_id === o.id);
-    if (!rs.length && (gere() || temFiltro)) return '';
+    // só o perfil Compras (que não regista) esconde as obras sem linhas; quem pode registar vê sempre o botão
+    if (!rs.length && (temFiltro || !ehDiretorDe(o.id))) return '';
     const urgentes = rs.filter(x => x.urgencia !== 'normal' && x.estado !== 'entregue' && x.estado !== 'cancelado').length;
     return `<section class="nec-obra">
       <header>
