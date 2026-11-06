@@ -58,8 +58,8 @@ export async function carregarPainelDados(forcar = false) {
     q(podePonto, async () => { const { data, error } = await sb.from('registos_ponto').select('colab_numero,obra_id,tipo').eq('data', hoje); if (error) throw error; return data || []; }, []),
     q(podeCmp, async () => { const { data, error } = await sb.from('pedidos_compra').select('id,estado,urgencia,obra_id'); if (error) throw error; return data || []; }, []),
     q(podeFat || podeApr || podeTes, async () => { const { data, error } = await sb.from('faturas').select('id,status,data_pag,total,centro_custo').in('status', ['extraida', 'rever', 'pendente_aprovacao', 'aguarda_diretor', 'aprovada']).eq('teste', false); if (error) throw error; return data || []; }, []),
-    q(podeEq, async () => { const { data, error } = await sb.from('equipamentos').select('id,estado,ultimo_registo'); if (error) throw error; return data || []; }, []),
-    q(podeEq, async () => { const { data, error } = await sb.from('eq_manutencoes').select('id').eq('estado', 'pendente'); if (error) throw error; return data || []; }, []),
+    q(podeEq, async () => { const { data, error } = await sb.from('equipamentos').select('id,estado,ultimo_registo,ultimo_local'); if (error) throw error; return data || []; }, []),
+    q(podeEq, async () => { const { data, error } = await sb.from('eq_manutencoes').select('id,equip_id').eq('estado', 'pendente'); if (error) throw error; return data || []; }, []),
     q(podeComb, async () => { const { data, error } = await sb.from('registos_combustivel').select('data,litros,obra_id,obra_nome,aprovacao').gte('data', seg); if (error) throw error; return data || []; }, []),
   ]);
 
@@ -87,8 +87,20 @@ export async function carregarPainelDados(forcar = false) {
   const aVencer = aPagar.filter(f => f.data_pag >= hoje && f.data_pag <= hojeMais5);
   const somaTot = l => l.reduce((s, f) => s + (parseFloat(f.total) || 0), 0);
 
+  // Equipamentos e manutenções: o diretor só vê os que estão nas suas obras (ligação pelo código/nome do último local)
+  const normN = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const codObra = n => { const m = /^\s*[O0]?\s*(\d{1,7})\b/i.exec(n || ''); return m ? parseInt(m[1], 10) : null; };
+  const obrasDoUtil = S.OBRAS.filter(o => obraVisivelPara(S.currentUser, S.OBRAS, o.id));
+  const eqNasMinhas = e => {
+    if (S.currentUser?.role !== 'diretor_obra') return true;
+    const c = codObra(e.ultimo_local);
+    return obrasDoUtil.some(o => (c != null && codObra(o.nome) === c) || normN(o.nome) === normN(e.ultimo_local));
+  };
+  const equipsMeus = equips.filter(eqNasMinhas), idsMeus = new Set(equipsMeus.map(e => e.id));
+  const manutMeus = manut.filter(m => S.currentUser?.role !== 'diretor_obra' || idsMeus.has(m.equip_id));
+
   const limite30 = Date.now() - 30 * 864e5;
-  const semLocal = equips.filter(e => e.ultimo_registo && new Date(e.ultimo_registo).getTime() < limite30).length;
+  const semLocal = equipsMeus.filter(e => e.ultimo_registo && new Date(e.ultimo_registo).getTime() < limite30).length;
 
   const presentes = new Set(regsHoje.filter(r => ['Presença', 'Normal', 'Hora Extra'].includes(r.tipo || 'Presença') && obraVisivelPara(S.currentUser, S.OBRAS, r.obra_id)).map(r => r.colab_numero));
   const obrasComPonto = new Set(regsHoje.filter(r => r.obra_id).map(r => r.obra_id));
@@ -108,9 +120,9 @@ export async function carregarPainelDados(forcar = false) {
     pedPend: pendPed.length, pedUrg: urgentes,
     fatValidar: porValidar.length, fatAprovar: porAprovar.length,
     fatVenc: vencidas.length, fatVencEur: somaTot(vencidas), fatProx: aVencer.length, fatProxEur: somaTot(aVencer),
-    eqParados: equips.filter(e => ['parada', 'oficina'].includes(e.estado)).length,
-    manutPend: manut.length, semLocal,
-    combPend: comb.filter(r => r.aprovacao === 'pendente').length,
+    eqParados: equipsMeus.filter(e => ['parada', 'oficina'].includes(e.estado)).length,
+    manutPend: manutMeus.length, semLocal,
+    combPend: comb.filter(r => r.aprovacao === 'pendente' && obraVisivelPara(S.currentUser, S.OBRAS, r.obra_id)).length,
     litrosSemana: [...litrosPorObra.values()].reduce((s, v) => s + v, 0),
     litrosPorObra: [...litrosPorObra.entries()].sort((x, y) => y[1] - x[1]),
   };
@@ -129,7 +141,7 @@ const RESPONSAVEL = {
   fat: ['financeiro'],                    // faturas por validar
   cmp: ['compras'],                       // pedidos de compra por aprovar
   comb: ['admin', 'diretor_obra'],        // registos de gasóleo por aprovar
-  eq: ['admin'],                          // equipamentos parados, manutenções, sem localização
+  eq: ['admin', 'diretor_obra'],          // equipamentos parados, manutenções, sem localização (o diretor só nas suas obras)
 };
 
 function itensAtencao(d) {
