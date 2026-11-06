@@ -1391,9 +1391,9 @@ async function initMOAFilters(){
   // Semana atual por omissão (igual à MO Plandese)
   const fs=document.getElementById('moa-f-semana');
   if(fs&&!fs.value) fs.value=fmt(new Date());
-  // Registar trabalhadores: admin e diretores de obra (o encarregado regista na app dele)
+  // Registar trabalhadores: visível para todos os utilizadores
   const btnReg=document.getElementById('moa-btn-registar');
-  if(btnReg) btnReg.style.display=['admin','diretor_obra'].includes(S.currentUser?.role)?'':'none';
+  if(btnReg) btnReg.style.display='';
   // Preencher empresas no filtro do admin
   const es=document.getElementById('moa-f-empresa');
   if(es){
