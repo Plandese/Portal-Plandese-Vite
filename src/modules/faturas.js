@@ -716,7 +716,9 @@ async function carregarFaturas(){
       .select('*').eq('teste', false).order('criado_em', { ascending: false }).limit(500);
     if(error) throw error;
     if(data){
-      FATURAS = data.map(_rowToFat);
+      // Mantém o id local de cada fatura entre recargas: se o modal estiver aberto, o botão Apagar/Guardar continua a encontrá-la
+      const idPorDb = new Map(FATURAS.filter(x => x._dbId).map(x => [x._dbId, x.id]));
+      FATURAS = data.map(r => { const f = _rowToFat(r); if(idPorDb.has(f._dbId)) f.id = idPorDb.get(f._dbId); return f; });
       renderFaturas(); atualizaKPIs();
       verificarFicheirosDropbox();
     }
@@ -1284,6 +1286,7 @@ function saveFatura(){
 async function apagarFatura(){
   const id = parseInt(document.getElementById('mf-id').value,10);
   const fat = FATURAS.find(f=>f.id===id);
+  if(!fat){ showToast('Fatura não encontrada — feche e volte a abrir a ficha'); return; }
   if(!confirm('Apagar esta fatura?' + (fat?.dropboxPath ? ' — o ficheiro também será apagado da Dropbox.' : ''))) return;
   if(fat?._dbId && !(await sbDeleteFatura(fat._dbId))){
     showToast('Não foi possível apagar a fatura (sem permissão ou erro de ligação)');
