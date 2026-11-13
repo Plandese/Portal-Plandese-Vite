@@ -51,6 +51,9 @@ const roleOffOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].off) || DEF
 const TF_CONFIG_KEY = 'telas_finais_acesso';
 const TF_DEFAULT = ['admin','david.mosca','rui.alves'];
 let _tf = null;
+// Módulo Clientes (Balanço de Faturação / Carteira): admin + lista de usernames em app_config/clientes_acesso (servidor: fn_clientes_acesso)
+const CLI_CONFIG_KEY = 'clientes_acesso';
+let _cli = [];
 let _ovr = loadOverridesLocal();
 
 function loadOverridesLocal(){
@@ -67,10 +70,11 @@ export async function loadPermissionsFromServer(){
   let result = null;
   try {
     const { data, error } = await sb.from('app_config')
-      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY, TF_CONFIG_KEY]);
+      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY, TF_CONFIG_KEY, CLI_CONFIG_KEY]);
     if(error) throw error;
     (data||[]).forEach(row=>{
       if(row.key === TF_CONFIG_KEY && Array.isArray(row.value)){ _tf = row.value; return; }
+      if(row.key === CLI_CONFIG_KEY && Array.isArray(row.value)){ _cli = row.value; return; }
       if(!row.value || typeof row.value !== 'object') return;
       if(row.key === PERM_CONFIG_KEY){
         try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(row.value)); } catch(e){}
@@ -369,11 +373,11 @@ const SECTION_ROLES = {
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };
 
-// Páginas só do administrador (fora da matriz de permissões). O servidor aplica o mesmo limite por RLS.
+// Páginas do módulo Clientes (fora da matriz de permissões): administrador + utilizadores autorizados. O servidor aplica o mesmo limite por RLS.
 export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
 
 export function roleCanAccessSection(role, sec, username){
-  if(ADMIN_ONLY_SECTIONS.includes(sec)) return role === 'admin';
+  if(ADMIN_ONLY_SECTIONS.includes(sec)) return role === 'admin' || (!!username && _cli.includes(username));
   if(role === 'admin') return true;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   const uo = username ? _ovr.users[username] : null;
@@ -403,7 +407,7 @@ export function applyRolePermissions(role){
   document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(el=>{ el.style.display=''; });
   allSecs.forEach(sec=>{ document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display=''; }); });
   // Páginas só do administrador (data-solo): escondidas a todos os outros perfis
-  const soloOk = role === 'admin';
+  const soloOk = role === 'admin' || (!!user && _cli.includes(user));
   document.querySelectorAll('[data-solo]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   document.querySelectorAll('.nav-subgrp[data-sub="cli"]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   if(role === 'admin') return; // admin vê tudo
