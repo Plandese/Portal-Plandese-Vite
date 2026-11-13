@@ -113,7 +113,9 @@ async function processQueueItem(item){
     let dbxPath = '';
     await carregarPastasFaturas();
     if(dropboxIsConnected()){
-      try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${item.name}`); }
+      // nome sem caracteres que a Dropbox recusa (\ / : * ? " < > |) nem ponto/espaço no fim
+      const nomeSeguro = String(item.name||'fatura.pdf').replace(/[\\\/:*?"<>|]+/g,'_').replace(/[. ]+$/,'') || 'fatura.pdf';
+      try{ dbxPath = await dropboxUploadTeam(item._file, `${_pastaPendentes()}/${nomeSeguro}`); }
       catch(e){ console.warn('Upload Dropbox falhou:', e); showToast('Fatura lida, mas não foi possível guardar o ficheiro na Dropbox: ' + e.message); }
     } else showToast('Dropbox desligada — a fatura fica sem ficheiro e não poderá ser carimbada ao aprovar');
     await registarFaturaLida(fat, dbxPath);
@@ -1355,11 +1357,14 @@ async function moverFaturaLancada(dbId, lancada){
   await carregarPastasFaturas();
   let f = FATURAS.find(x => x._dbId === dbId);
   if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
-  const atual = f?.dropboxPath;
-  if(!atual) return null;
+  if(!f) throw new Error('fatura não encontrada no portal (recarregue a página)');
+  const atual = f.dropboxPath;
+  if(!atual) throw new Error('esta fatura não tem ficheiro na Dropbox (foi aprovada sem ficheiro)');
   const de   = lancada ? _pastaAprovadas() : _pastaLancadas();
   const para = lancada ? _pastaLancadas()  : _pastaAprovadas();
-  if(!_sob(atual, de)) return null;
+  if(_sob(atual, para)) return null;   // já está na pasta certa
+  // Fora da pasta esperada: move na mesma (antes falhava em silêncio e o ficheiro ficava onde estava)
+  if(!_sob(atual, de)) console.warn('Lançada: ficheiro fora da pasta esperada, move-se na mesma:', atual, '→', para);
   const novo = await dropboxMoveTeam(atual, `${para}/${await _pastaDoFornecedor(f)}/${atual.split('/').pop()}`);
   const link = await dropboxLinkTeam(novo);
   _docCache.delete(atual);
@@ -1781,7 +1786,8 @@ async function concluirAprovacao(f, cc, pos){
   // só fecha o detalhe se ainda for desta fatura (o utilizador pode ter aberto outra entretanto)
   if(parseInt(document.getElementById('mf-id')?.value, 10) === f.id) closeModal('modal-fat');
   _refrescarTesouraria();
-  showToast(`Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`);
+  showToast(f.dropboxPath ? `Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`
+    : `Fatura aprovada — ${f.centroCusto}. ATENÇÃO: não tem ficheiro na Dropbox, por isso não foi criada pasta nem carimbo`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas', obra:f.centroCusto });
   return true;
 }

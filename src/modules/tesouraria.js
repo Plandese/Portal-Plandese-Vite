@@ -430,6 +430,7 @@ async function alternarCentralGest(id) {
   try {
     const novo = await moverFaturaLancada(id, nova);
     if (novo) { r.dropbox_path = novo; toast(nova ? 'Fatura movida para a pasta das lançadas ✓' : 'Fatura devolvida à pasta das aprovadas ✓'); }
+    else toast(nova ? 'Marcada como lançada (o ficheiro já estava na pasta das lançadas)' : 'Desmarcada (o ficheiro já estava na pasta das aprovadas)');
   } catch (e) { console.warn('CentralGest (mover ficheiro):', e); toast('Marcada, mas não foi possível mover o ficheiro na Dropbox: ' + String(e?.message || e).slice(0, 300)); }
 }
 
