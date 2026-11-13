@@ -99,13 +99,15 @@ function _naFila(fn){
   _filaEscrita = p.catch(() => {});
   return p;
 }
+const ESPERAS = [2000, 4000, 8000, 15000, 20000, 30000, 30000];   // ~109 s no total
 async function _comRepeticao(fn){
   for(let i = 0; ; i++){
     try{ return await fn(); }
     catch(e){
       const limite = /HTTP 429|too_many_write_operations|too_many_requests/i.test(String(e?.message || e));
-      if(!limite || i >= 5) throw e;
-      await _dorme(1500 * 2 ** i);   // 1,5 s · 3 s · 6 s · 12 s · 24 s
+      if(!limite || i >= ESPERAS.length) throw e;
+      if(typeof window.showToast === 'function') window.showToast(`A Dropbox está ocupada — a tentar de novo (${i + 1}/${ESPERAS.length})…`);
+      await _dorme(ESPERAS[i]);
     }
   }
 }
