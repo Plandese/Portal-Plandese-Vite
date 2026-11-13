@@ -160,7 +160,8 @@ function desenhar() {
   // botões do cabeçalho (só para quem gere as propostas)
   const hdr = document.getElementById('tes-hdr-act');
   if (hdr) {
-    hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="ver-cg" title="Compara as faturas marcadas como lançadas com a pasta das lançadas na Dropbox (não altera as marcas)">Verificar lançadas</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="sync-cg" title="Marca como lançadas as faturas que já estão na pasta das lançadas">Sincronizar lançadas</button>' : '')
+    hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button>' : '')
+      + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="ver-cg" title="Compara as faturas marcadas como lançadas com a pasta das lançadas na Dropbox (não altera as marcas)">Verificar lançadas</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="sync-cg" title="Marca como lançadas as faturas que já estão na pasta das lançadas">Sincronizar lançadas</button>'
       + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar Excel</button>'
       + (document.getElementById('tes-cc')?.value ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="zip">Descarregar faturas (ZIP)</button>' : '');
   }

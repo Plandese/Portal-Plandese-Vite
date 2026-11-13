@@ -1377,7 +1377,6 @@ async function moverFaturaLancada(dbId, lancada){
 // Compatibiliza o que já foi lançado à mão: ficheiros que estão na pasta das lançadas ficam marcados
 // como lançados no portal e os soltos na raiz passam para «Lançadas/<fornecedor>/».
 async function sincronizarLancadas(){
-  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores'); return; }
   await carregarPastasFaturas();
   let raiz = _pastas?.lancadas ? _lim(_pastas.lancadas) : '';
   try{
@@ -1460,7 +1459,6 @@ Marcar como lançadas e organizar?`)) return;
 // Verifica se o que está marcado como lançado bate certo com a Dropbox. NUNCA altera a marca «lançada»:
 // só compara com a pasta das lançadas e, se o admin confirmar, corrige o caminho ou move o ficheiro.
 async function verificarLancadas(){
-  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores'); return; }
   await carregarPastasFaturas();
   const raiz = _pastaLancadas();
   const nfc = p => String(p||'').normalize('NFC').toLowerCase();
