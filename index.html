@@ -1425,6 +1425,8 @@
         <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="nav-group" data-grp="fin">
+        <button class="nav-sub" data-sub="forn" onclick="toggleNavSub('forn')" type="button"><span>Fornecedores</span><svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="nav-subgrp" data-sub="forn">
         <button class="nav-btn" onclick="goTo('faturas',this)" id="nav-fat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span class="nav-label">Inserção de Faturas</span>
@@ -1438,6 +1440,18 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
           <span class="nav-label">Tesouraria</span>
         </button>
+        </div>
+        <button class="nav-sub" data-solo data-sub="cli" onclick="toggleNavSub('cli')" type="button"><span>Clientes</span><svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <div class="nav-subgrp" data-sub="cli">
+        <button class="nav-btn" data-solo onclick="goTo('balanco-fat',this)" id="nav-balfat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Balanço de Faturação</span>
+        </button>
+        <button class="nav-btn" data-solo onclick="goTo('carteira',this)" id="nav-carteira">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          <span class="nav-label">Carteira de Encomendas</span>
+        </button>
+        </div>
       </div>
 
       <button class="nav-lbl" data-grp="log" onclick="toggleNavGrp('log')" type="button">
@@ -1871,6 +1885,27 @@
           <select id="far-cc" style="min-width:240px"><option value="">Todas as obras</option></select>
         </div>
         <div class="card" id="far-mapa" style="padding:0;overflow:hidden"></div>
+      </section>
+
+      <!-- CLIENTES — páginas restritas a um utilizador (ver permissions.js) -->
+      <section id="sec-balanco-fat" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Balanço de Faturação</div>
+            <div class="pg-sub">Faturação já executada, por mês e por centro de custo</div>
+          </div>
+        </div>
+        <div id="balfat-body"></div>
+      </section>
+
+      <section id="sec-carteira" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Carteira de Encomendas</div>
+            <div class="pg-sub">Empreitadas por faturar</div>
+          </div>
+        </div>
+        <div id="carteira-body"></div>
       </section>
 
       <!-- TESOURARIA -->

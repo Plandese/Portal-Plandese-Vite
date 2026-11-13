@@ -164,7 +164,24 @@ export function toggleNavGrp(key){
   }
 }
 
+// Sub-capítulos (ex.: Financeiro → Fornecedores / Clientes): fechados por defeito, abrem ao clicar
+export function toggleNavSub(key){
+  const lbl = document.querySelector('.nav-sub[data-sub="'+key+'"]');
+  const grp = document.querySelector('.nav-subgrp[data-sub="'+key+'"]');
+  if(!lbl||!grp) return;
+  const willOpen = !grp.classList.contains('open');
+  grp.classList.toggle('open', willOpen);
+  lbl.classList.toggle('open', willOpen);
+}
+
 export function syncNavGroups(){
+  // abre o sub-capítulo que contém o ecrã ativo
+  document.querySelectorAll('.sidebar .nav-subgrp').forEach(sg=>{
+    if(sg.querySelector('.nav-btn.active')){
+      sg.classList.add('open');
+      document.querySelector('.nav-sub[data-sub="'+sg.getAttribute('data-sub')+'"]')?.classList.add('open');
+    }
+  });
   document.querySelectorAll('.sidebar .nav-group').forEach(grp=>{
     const key = grp.getAttribute('data-grp');
     const lbl = document.querySelector('.nav-lbl[data-grp="'+key+'"]');

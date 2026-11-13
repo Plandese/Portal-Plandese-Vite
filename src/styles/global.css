@@ -289,6 +289,13 @@ body{font-family:var(--font);color:var(--gray-900);height:100%;overflow:hidden;f
   position:relative;
 }
 .nav-group .nav-btn{margin-left:6px}
+/* Sub-capítulos dentro de um grupo (ex.: Financeiro → Fornecedores / Clientes) */
+.nav-sub{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;font-family:var(--font);text-align:left;padding:10px 10px 6px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.nav-sub .nav-chevron{width:12px;height:12px;transition:transform .22s}
+.nav-sub.open .nav-chevron{transform:rotate(180deg)}
+.nav-subgrp{display:none;flex-direction:column;gap:2px}
+.nav-subgrp.open{display:flex}
+.nav-sub-vazio{padding:4px 10px 6px 14px;font-size:12.5px;font-style:italic;color:rgba(255,255,255,.25)}
 .nav-group .nav-btn::before{
   content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;
   background:rgba(255,255,255,.1);border-radius:2px;

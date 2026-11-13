@@ -1,0 +1,36 @@
+/* Clientes — Balanço de faturação e Carteira de encomendas (páginas restritas) */
+.cc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px}
+.cc-kpi{background:#fff;border:1.5px solid #e3e7ee;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.cc-kpi span{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678}
+.cc-kpi b{font-size:22px;font-weight:800;color:#1b2130;line-height:1.2}
+.cc-kpi em{font-style:normal;font-size:13px;color:#5d6678}
+.cc-card{padding:0;overflow:hidden;margin-bottom:16px;border-radius:22px}
+.cc-tit{padding:16px 18px 6px;font-size:15px;font-weight:800;color:#1b2130}
+.cc-mute{color:#8a93a6;font-weight:500;font-size:13px}
+.cc-tab{width:100%;border-collapse:collapse;font-size:14px}
+.cc-tab th{padding:10px 18px;text-align:left;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678;border-bottom:1.5px solid #e3e7ee;background:#fafbfd}
+.cc-tab td{padding:11px 18px;border-bottom:1px solid #eef1f6;color:#1b2130}
+.cc-tab .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cc-tab tfoot td{border-top:1.5px solid #d5dae3;border-bottom:none;background:#fafbfd}
+.cc-mes{cursor:pointer}
+.cc-mes:hover td{background:#f3f6fb}
+.cc-mes.open td{background:#eef3fc}
+.cc-chev{display:inline-block;width:14px;color:var(--m-brand,#173f9f);font-weight:800;transition:transform .15s}
+.cc-mes.open .cc-chev{transform:rotate(90deg)}
+.cc-barra{width:34%;min-width:120px}
+.cc-barra i{display:block;height:10px;border-radius:99px;background:var(--m-brand,#173f9f);opacity:.85}
+.cc-det>td{padding:0!important;background:#f7f9fd}
+.cc-sub{width:100%;border-collapse:collapse;font-size:13.5px}
+.cc-sub th{padding:8px 18px 8px 40px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5d6678;text-align:left;background:none;border-bottom:1px solid #dde3ee}
+.cc-sub th.r{text-align:right}
+.cc-sub td{padding:8px 18px 8px 40px;border-bottom:1px solid #e6ebf3}
+.cc-sub td.r{text-align:right;font-variant-numeric:tabular-nums}
+.cc-vazio{padding:40px 16px;text-align:center;color:#5d6678}
+.cc-nota{font-size:12.5px;color:#8a93a6;margin:-6px 4px 16px}
+@media(max-width:700px){
+  .cc-barra{display:none}
+  .cc-card{overflow-x:auto}
+  .cc-tab th,.cc-tab td{padding:10px 12px}
+  .cc-sub th,.cc-sub td{padding-left:14px;padding-right:12px}
+  .cc-kpi b{font-size:19px}
+}

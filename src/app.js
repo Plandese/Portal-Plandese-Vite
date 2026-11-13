@@ -10,7 +10,7 @@ import { carregarDados } from './db.js';
 import { mostrarDiag, applyDeviceClass, doLogin, doLogout, showDeviceChooser, setDeviceMode, getDeviceMode, tentarSessaoGuardada, validarPassword, trocarPropriaPassword, togglePasswordVisibility } from './modules/auth.js';
 
 // Navigation
-import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, syncNavGroups, flashAlert } from './modules/navigation.js';
+import { showToast, switchFPTab, initAdmin, populateFilterSelects, openModal, closeModal, goTo, refreshPortal, toggleNavGrp, toggleNavSub, syncNavGroups, flashAlert } from './modules/navigation.js';
 
 // Ponto admin
 import { abrirResumoPonto, fecharResumo, resumoNav } from './modules/resumo-colab.js';
@@ -34,6 +34,7 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 
 // Faturas
 import { renderTesouraria } from './modules/tesouraria.js';
+import { renderBalancoFat, renderCarteira } from './modules/clientes-carteira.js';
 import { renderGuiasEscritorio } from './modules/guias-escritorio.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
 import './modules/guias.js';
@@ -176,7 +177,7 @@ Object.assign(window, {
   // Navegação admin
   abrirEstadoObra, fecharGavetaObra, abrirObraNoControlo, painelMudarSemana, painelSetObra,
   abrirPersonalizarPainel, fecharPersonalizarPainel, pcustToggle, pcustZona, pcustMover, pcustGuardar, pcustRepor,
-  goTo, toggleNavGrp, refreshPortal,
+  goTo, toggleNavGrp, toggleNavSub, refreshPortal,
   agenteToggle,
 
   // Modais genéricos
@@ -414,6 +415,8 @@ window.savePerfil = async function () {
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
     if (id === 'faturas-aprovar') { renderFaturasAprovar({ reset: true }); }
     if (id === 'tesouraria')   { renderTesouraria(); }
+    if (id === 'balanco-fat')  { renderBalancoFat(); }
+    if (id === 'carteira')     { renderCarteira(); }
     if (id === 'guias')        { renderGuiasEscritorio(); }
     if (id === 'compras')      { populaCmpObras(); renderCompras(); }
     if (id === 'necessidades') { initNecessidades(); }

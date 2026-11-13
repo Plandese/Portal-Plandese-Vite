@@ -369,7 +369,11 @@ const SECTION_ROLES = {
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };
 
+// Páginas só do administrador (fora da matriz de permissões). O servidor aplica o mesmo limite por RLS.
+export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
+
 export function roleCanAccessSection(role, sec, username){
+  if(ADMIN_ONLY_SECTIONS.includes(sec)) return role === 'admin';
   if(role === 'admin') return true;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   const uo = username ? _ovr.users[username] : null;
@@ -398,6 +402,10 @@ export function applyRolePermissions(role){
   // repor tudo visível antes de reaplicar (necessário ao trocar de utilizador sem recarregar a página)
   document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(el=>{ el.style.display=''; });
   allSecs.forEach(sec=>{ document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display=''; }); });
+  // Páginas só do administrador (data-solo): escondidas a todos os outros perfis
+  const soloOk = role === 'admin';
+  document.querySelectorAll('[data-solo]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
+  document.querySelectorAll('.nav-subgrp[data-sub="cli"]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   if(role === 'admin') return; // admin vê tudo
   if(!ROLE_ACCESS[role]) return;
   // Esconder capítulos inteiros (grupo + toggle) sem nenhuma página permitida
