@@ -432,7 +432,15 @@ async function alternarCentralGest(id) {
     const novo = await moverFaturaLancada(id, nova);
     if (novo) { r.dropbox_path = novo; toast(nova ? 'Fatura movida para a pasta das lançadas ✓' : 'Fatura devolvida à pasta das aprovadas ✓'); }
     else toast(nova ? 'Marcada como lançada (o ficheiro já estava na pasta das lançadas)' : 'Desmarcada (o ficheiro já estava na pasta das aprovadas)');
-  } catch (e) { console.warn('CentralGest (mover ficheiro):', e); toast('Marcada, mas não foi possível mover o ficheiro na Dropbox: ' + String(e?.message || e).slice(0, 300)); }
+  } catch (e) {
+    console.warn('CentralGest (mover ficheiro):', e);
+    // janela que fica no ecrã (um toast some em segundos e passa despercebido)
+    alert('A fatura ficou marcada, mas o ficheiro NÃO mudou de pasta na Dropbox.\n\nMotivo: ' + String(e?.message || e).slice(0, 400)
+      + '\n\nFatura: ' + (r.fornecedor || '?') + ' ' + (r.numero || '')
+      + '\nFicheiro: ' + (r.dropbox_path || '(sem ficheiro)')
+      + '\nUtilizador: ' + (S.currentUser?.key || '?') + ' (' + (S.currentUser?.role || '?') + ')'
+      + '\n\nPode corrigir depois com o botão «Verificar lançadas».');
+  }
 }
 
 // Descarrega num ZIP (abre no WinRAR) os ficheiros das faturas do filtro atual
