@@ -62,15 +62,17 @@ export async function dropboxInit(){
 
 export async function dropboxUpload(file, destPath){
   const buf = file instanceof ArrayBuffer ? file : await file.arrayBuffer();
-  const resp = await _call(CONTENT + 'files/upload', {
-    headers: {
-      'Dropbox-API-Arg': _asciiJson({ path: destPath, mode: 'add', autorename: true, mute: false }),
-      'Content-Type':    'application/octet-stream',
-    },
-    body: buf,
-  });
-  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
-  return (await resp.json()).path_display;
+  return _naFila(() => _comRepeticao(async () => {
+    const resp = await _call(CONTENT + 'files/upload', {
+      headers: {
+        'Dropbox-API-Arg': _asciiJson({ path: destPath, mode: 'add', autorename: true, mute: false }),
+        'Content-Type':    'application/octet-stream',
+      },
+      body: buf,
+    });
+    if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
+    return (await resp.json()).path_display;
+  }));
 }
 
 export function dropboxFatPath(fat, fileName, aprovada = false){
@@ -88,10 +90,34 @@ export function dropboxFatPath(fat, fileName, aprovada = false){
   return `/04_DP/Faturas/${ym}/${name}${ext}`;
 }
 
+// A Dropbox responde 429 («too_many_write_operations») quando há várias escritas seguidas na mesma pasta partilhada.
+// As escritas passam por uma fila (uma de cada vez) e repetem-se com espera crescente.
+const _dorme = ms => new Promise(r => setTimeout(r, ms));
+let _filaEscrita = Promise.resolve();
+function _naFila(fn){
+  const p = _filaEscrita.then(fn, fn);
+  _filaEscrita = p.catch(() => {});
+  return p;
+}
+async function _comRepeticao(fn){
+  for(let i = 0; ; i++){
+    try{ return await fn(); }
+    catch(e){
+      const limite = /HTTP 429|too_many_write_operations|too_many_requests/i.test(String(e?.message || e));
+      if(!limite || i >= 5) throw e;
+      await _dorme(1500 * 2 ** i);   // 1,5 s · 3 s · 6 s · 12 s · 24 s
+    }
+  }
+}
+const _ESCRITA = /^files\/(move_v2|delete_v2|upload)/;
+
 async function _rpc(endpoint, body, team = true){
-  const resp = await _call(API + endpoint, { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), team });
-  if(!resp.ok) throw new Error(`Dropbox ${endpoint}: ` + await _msg(resp));
-  return resp.json();
+  const run = () => _comRepeticao(async () => {
+    const resp = await _call(API + endpoint, { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), team });
+    if(!resp.ok) throw new Error(`Dropbox ${endpoint}: ` + await _msg(resp));
+    return resp.json();
+  });
+  return _ESCRITA.test(endpoint) ? _naFila(run) : run();
 }
 
 export async function dropboxGetSharedLink(path){
@@ -187,16 +213,19 @@ export async function dropboxDownload(path){
 }
 
 export async function dropboxUploadTeam(blob, path){
-  const resp = await _call(CONTENT + 'files/upload', {
-    headers: {
-      'Dropbox-API-Arg': _asciiJson({ path, mode: 'add', autorename: true, mute: false }),
-      'Content-Type': 'application/octet-stream',
-    },
-    body: await blob.arrayBuffer(),
-    team: true,
-  });
-  if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
-  return (await resp.json()).path_display;
+  const buf = await blob.arrayBuffer();
+  return _naFila(() => _comRepeticao(async () => {
+    const resp = await _call(CONTENT + 'files/upload', {
+      headers: {
+        'Dropbox-API-Arg': _asciiJson({ path, mode: 'add', autorename: true, mute: false }),
+        'Content-Type': 'application/octet-stream',
+      },
+      body: buf,
+      team: true,
+    });
+    if(!resp.ok) throw new Error('Dropbox upload falhou: ' + await _msg(resp));
+    return (await resp.json()).path_display;
+  }));
 }
 
 export async function dropboxMoveTeam(fromPath, toPath){
