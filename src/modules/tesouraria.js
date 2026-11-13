@@ -146,7 +146,7 @@ function desenharBarra() {
   const btn = [];
   if (_podePropor && novas) btn.push(`<button type="button" class="btn btn-sm tes-b-prop" data-tes-act="propor">Propor a pagamento (${novas})</button>`);
   if (_podePropor && minhas) btn.push(`<button type="button" class="btn btn-secondary btn-sm" data-tes-act="retirar">Retirar proposta (${minhas})</button>`);
-  if (ehAdmin()) btn.push(`<button type="button" class="btn btn-sm tes-b-pago" data-tes-act="pago">Marcar como pago (${sel.length})</button>`);
+  if (_podePropor || ehAdmin()) btn.push(`<button type="button" class="btn btn-sm tes-b-pago" data-tes-act="pago">Marcar como pago (${sel.length})</button>`);
   btn.push('<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar">Exportar</button>');
   btn.push('<button type="button" class="btn btn-secondary btn-sm" data-tes-act="limpar">Limpar</button>');
   bar.style.display = 'flex';
