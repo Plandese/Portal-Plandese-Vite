@@ -144,36 +144,42 @@ export async function renderCarteira() {
   try { await carregar(); } catch (err) { el.innerHTML = erroHTML(err); return; }
   if (!_enc.length) { el.innerHTML = '<div class="cc-vazio">Sem encomendas em carteira.</div>'; return; }
 
-  const tot = _enc.reduce((s, r) => s + num(r.valor_sem_iva), 0);
+  // Faturação adicionada no portal (descontada_carteira) abate ao valor por faturar do respetivo CC
+  const faturado = cc => cc ? _fat.filter(f => f.descontada_carteira && f.cc === cc).reduce((s, f) => s + num(f.montante_sem_iva), 0) : 0;
+  const lin = _enc.map(r => { const f = faturado(r.cc); return { ...r, fat: f, falta: num(r.valor_sem_iva) - f }; });
+  const tot = lin.reduce((s, r) => s + r.falta, 0);
+  const totFat = lin.reduce((s, r) => s + r.fat, 0);
   const prazoMax = Math.max(...(_enc.map(r => num(r.prazo_meses))));
-  const maior = _enc.reduce((a, b) => num(b.valor_sem_iva) > num(a.valor_sem_iva) ? b : a);
+  const maior = lin.reduce((a, b) => b.falta > a.falta ? b : a);
 
   const kpis = `
     <div class="cc-kpis">
-      <div class="cc-kpi"><span>Carteira total (s/ IVA)</span><b>${eur(tot)}</b></div>
+      <div class="cc-kpi"><span>Por faturar (s/ IVA)</span><b>${eur(tot)}</b></div>
       <div class="cc-kpi"><span>Empreitadas em carteira</span><b>${_enc.length}</b></div>
-      <div class="cc-kpi"><span>Maior empreitada</span><b>${esc(maior.empreitada)}</b><em>${eur(maior.valor_sem_iva)}</em></div>
+      <div class="cc-kpi"><span>Maior por faturar</span><b>${esc(maior.empreitada)}</b><em>${eur(maior.falta)}</em></div>
       <div class="cc-kpi"><span>Prazo mais longo</span><b>${String(prazoMax).replace('.', ',')} meses</b></div>
     </div>`;
 
-  const linhas = _enc.map(r => `<tr>
+  const linhas = lin.map(r => `<tr>
       <td>${r.ano}</td>
       <td>${esc(r.cc) || '<span class="cc-mute">—</span>'}</td>
       <td><b>${esc(r.empreitada)}</b></td>
       <td>${esc(r.cliente)}</td>
-      <td class="r"><b>${eur(r.valor_sem_iva)}</b></td>
+      <td class="r">${eur(r.valor_sem_iva)}</td>
+      <td class="r">${r.fat ? '− ' + eur(r.fat) : '<span class="cc-mute">—</span>'}</td>
+      <td class="r"><b>${eur(r.falta)}</b></td>
       <td class="r">${r.prazo_meses == null ? '—' : String(Number(r.prazo_meses)).replace('.', ',')}</td>
     </tr>`).join('');
 
   el.innerHTML = kpis + `
     <div class="card cc-card">
       <table class="cc-tab">
-        <thead><tr><th>Ano</th><th>CC</th><th>Empreitada</th><th>Cliente</th><th class="r">Valor (s/ IVA)</th><th class="r">Prazo (meses)</th></tr></thead>
+        <thead><tr><th>Ano</th><th>CC</th><th>Empreitada</th><th>Cliente</th><th class="r">Valor do mapa</th><th class="r">Faturado depois</th><th class="r">Por faturar (s/ IVA)</th><th class="r">Prazo (meses)</th></tr></thead>
         <tbody>${linhas}</tbody>
-        <tfoot><tr><td colspan="4"><b>Total</b></td><td class="r"><b>${eur(tot)}</b></td><td></td></tr></tfoot>
+        <tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b>${totFat ? '− ' + eur(totFat) : '—'}</b></td><td class="r"><b>${eur(tot)}</b></td><td></td></tr></tfoot>
       </table>
     </div>
-    <div class="cc-nota">Valor por faturar de cada empreitada (sem IVA), conforme o mapa da carteira de encomendas.</div>`;
+    <div class="cc-nota">Valor do mapa da carteira de encomendas (sem IVA), menos a faturação adicionada no Balanço de Faturação ao mesmo centro de custo.</div>`;
 }
 
 
@@ -241,7 +247,7 @@ function abrirFormFat() {
     const dt = new Date(d + 'T12:00:00');
     const ano = mes > dt.getMonth() + 1 ? dt.getFullYear() - 1 : dt.getFullYear();
     $('ccf-ok').disabled = true;
-    const { error } = await sb.from('carteira_faturacao').insert({ ano, mes, cc, montante_sem_iva: s, montante_com_iva: c, data_emissao: d });
+    const { error } = await sb.from('carteira_faturacao').insert({ ano, mes, cc, montante_sem_iva: s, montante_com_iva: c, data_emissao: d, descontada_carteira: true });
     if (error) { $('ccf-err').textContent = 'Não foi possível guardar: ' + error.message; $('ccf-err').hidden = false; $('ccf-ok').disabled = false; return; }
     fechar();
     _abertos.add(mes);
