@@ -7,7 +7,7 @@
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
-import { abrirFaturaPorDbId, faturaSemFicheiro, moverFaturaLancada, sincronizarLancadas } from './faturas.js';
+import { abrirFaturaPorDbId, faturaSemFicheiro, moverFaturaLancada, sincronizarLancadas, verificarLancadas } from './faturas.js';
 import { dropboxDownload } from './dropbox.js';
 import { conferenciasFaturas } from './guias-escritorio.js';
 
@@ -160,7 +160,7 @@ function desenhar() {
   // botões do cabeçalho (só para quem gere as propostas)
   const hdr = document.getElementById('tes-hdr-act');
   if (hdr) {
-    hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="sync-cg" title="Marca como lançadas as faturas que já estão na pasta das lançadas">Sincronizar lançadas</button>' : '')
+    hdr.innerHTML = (ehAdmin() ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="quem">Quem propõe…</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="ver-cg" title="Compara as faturas marcadas como lançadas com a pasta das lançadas na Dropbox (não altera as marcas)">Verificar lançadas</button><button type="button" class="btn btn-secondary btn-sm" data-tes-act="sync-cg" title="Marca como lançadas as faturas que já estão na pasta das lançadas">Sincronizar lançadas</button>' : '')
       + '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="exportar-prop">Exportar Excel</button>'
       + (document.getElementById('tes-cc')?.value ? '<button type="button" class="btn btn-secondary btn-sm" data-tes-act="zip">Descarregar faturas (ZIP)</button>' : '');
   }
@@ -510,6 +510,7 @@ document.addEventListener('click', e => {
     else if (act === 'limpar') { _sel.clear(); desenhar(); }
     else if (act === 'exportar') exportar(_rows.filter(r => _sel.has(r.id)), 'faturas_selecionadas');
     else if (act === 'exportar-prop') exportar(_rows, 'tesouraria');
+    else if (act === 'ver-cg') { a.disabled = true; verificarLancadas().finally(() => { a.disabled = false; }); }
     else if (act === 'sync-cg') { a.disabled = true; sincronizarLancadas().finally(() => { a.disabled = false; }); }
     else if (act === 'limpar-meses') { _meses.data = ''; _meses.data_pag = ''; _estCol = ''; desenhar(); }
     else if (act === 'zip') descarregarZip(a);

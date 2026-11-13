@@ -1457,6 +1457,66 @@ Marcar como lançadas e organizar?`)) return;
   } catch(e){ console.warn('Sincronizar lançadas:', e); alert('Não foi possível sincronizar: ' + (e.message || e)); }
 }
 
+// Verifica se o que está marcado como lançado bate certo com a Dropbox. NUNCA altera a marca «lançada»:
+// só compara com a pasta das lançadas e, se o admin confirmar, corrige o caminho ou move o ficheiro.
+async function verificarLancadas(){
+  if(S.currentUser?.role !== 'admin'){ showToast('Apenas administradores'); return; }
+  await carregarPastasFaturas();
+  const raiz = _pastaLancadas();
+  const nfc = p => String(p||'').normalize('NFC').toLowerCase();
+  const base = p => nfc(String(p).split('/').pop());
+  try{
+    showToast('A verificar as faturas lançadas…');
+    const { data: rows, error } = await sb.from('faturas')
+      .select('id,fornecedor,numero,dropbox_path').eq('centralgest_lancada', true).limit(5000);
+    if(error) throw error;
+    let ficheiros;
+    try{ ficheiros = (await dropboxListAll(raiz, true)).filter(e => e['.tag'] === 'file'); }
+    catch(e){
+      if(/not_found/.test(String(e.message))){ alert('A pasta das lançadas «' + raiz + '» não existe na Dropbox.\n' + rows.length + ' faturas estão marcadas como lançadas.'); return; }
+      throw e;
+    }
+    const noDbx = new Map(ficheiros.map(e => [nfc(e.path_display), e]));
+    const porNome = new Map();
+    ficheiros.forEach(e => { const k = base(e.path_display); porNome.set(k, [...(porNome.get(k)||[]), e]); });
+
+    const ok = [], semCaminho = [], caminhoErrado = [], fora = [], emFalta = [];
+    for(const r of rows){
+      const p = r.dropbox_path || '';
+      if(!p){ semCaminho.push(r); continue; }
+      if(noDbx.has(nfc(p))){ ok.push(r); continue; }
+      const cands = porNome.get(base(p)) || [];
+      if(cands.length === 1){ r._real = cands[0].path_display; caminhoErrado.push(r); continue; }   // está nas lançadas, mas o portal aponta para outro caminho
+      if(_sob(p, raiz)) emFalta.push(r);   // devia estar nas lançadas e não está
+      else fora.push(r);                    // marcada como lançada mas o ficheiro está noutra pasta
+    }
+    const nome = r => `${r.fornecedor || '?'} ${r.numero || ''}`.trim();
+    const lista = (t, a) => a.length ? `\n\n${t} (${a.length}):\n` + a.slice(0, 8).map(r => '  · ' + nome(r)).join('\n') + (a.length > 8 ? `\n  … e mais ${a.length - 8}` : '') : '';
+    const msg = `Faturas marcadas como lançadas: ${rows.length}\nPasta das lançadas: ${raiz}\n\n✔ Certas (ficheiro na pasta das lançadas): ${ok.length}`
+      + lista('Ficheiro está nas lançadas mas o portal guarda outro caminho', caminhoErrado)
+      + lista('Ficheiro fora da pasta das lançadas', fora)
+      + lista('Ficheiro em falta na Dropbox (apagado ou movido)', emFalta)
+      + lista('Sem ficheiro associado', semCaminho)
+      + '\n\nNenhuma marca «lançada» é alterada.';
+    const aCorrigir = caminhoErrado.length + fora.length;
+    if(!aCorrigir){ alert(msg); return; }
+    if(!confirm(msg + `\n\nCorrigir agora?\n· ${caminhoErrado.length} só atualizam o caminho no portal\n· ${fora.length} ficheiros são movidos para «Lançadas/<fornecedor>»`)) return;
+
+    let atualizadas = 0, movidas = 0, falhas = 0;
+    for(const r of caminhoErrado){
+      const { error: er } = await sb.from('faturas').update({ dropbox_path: r._real }).eq('id', r.id);
+      if(er){ console.warn('Corrigir caminho', r.id, er); falhas++; } else atualizadas++;
+    }
+    for(const r of fora){
+      try{ if(await moverFaturaLancada(r.id, true)) movidas++; }
+      catch(e){ console.warn('Mover para lançadas', r.id, e); falhas++; }
+    }
+    await carregarFaturas();
+    _refrescarTesouraria();
+    alert(`Verificação concluída.\n· ${atualizadas} caminhos corrigidos\n· ${movidas} ficheiros movidos${falhas ? `\n· ${falhas} falhas (ver consola)` : ''}\nAs marcas «lançada» ficaram todas como estavam.`);
+  } catch(e){ console.warn('Verificar lançadas:', e); alert('Não foi possível verificar: ' + (e.message || e)); }
+}
+
 // Aprovadores globais de faturas (além dos diretores de cada obra): usernames em app_config.faturas_aprovadores
 let _aprovadoresFat = [];
 async function carregarAprovadoresFaturas(){
@@ -2202,5 +2262,5 @@ export {
   _fssFatInputChange,
   aprovarFatura, rejeitarFatura,
   importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas, abrirArtigosFatura,
-  carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada, sincronizarLancadas,
+  carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada, sincronizarLancadas, verificarLancadas,
 };
