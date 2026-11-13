@@ -1357,6 +1357,12 @@ async function moverFaturaLancada(dbId, lancada){
   await carregarPastasFaturas();
   let f = FATURAS.find(x => x._dbId === dbId);
   if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
+  if(!f){
+    // a lista só traz as 500 faturas mais recentes: as mais antigas (que a Tesouraria também mostra) lêem-se direto da base
+    const { data: row, error: er } = await sb.from('faturas').select('*').eq('id', dbId).maybeSingle();
+    if(er) throw er;
+    if(row) f = _rowToFat(row);
+  }
   if(!f) throw new Error('fatura não encontrada no portal (recarregue a página)');
   const atual = f.dropboxPath;
   if(!atual) throw new Error('esta fatura não tem ficheiro na Dropbox (foi aprovada sem ficheiro)');
