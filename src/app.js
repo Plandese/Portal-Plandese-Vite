@@ -38,6 +38,7 @@ import { renderTesouraria } from './modules/tesouraria.js';
 import { renderBalancoFat, renderCarteira } from './modules/clientes-carteira.js';
 import { renderGuiasEscritorio } from './modules/guias-escritorio.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
+import { renderEstruturaCentral } from './modules/estrutura-central.js';
 import './modules/guias.js';
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirArtigosFatura } from './modules/faturas.js';
 import { handlersArtigos } from './modules/faturas-artigos.js';
@@ -119,7 +120,7 @@ Object.assign(R, {
   applyStoredPermissions, applyRolePermissions, loadPermissionsFromServer, renderPermMatrix,
   initNotifications, emitEvent, ntfOnInsert, renderCalWidget,
   ensurePushSubscription, initPushPrompt, applyPendingSection,
-  renderPainel, renderFaturas, renderTesouraria, renderGuiasEscritorio, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
+  renderPainel, renderFaturas, renderTesouraria, renderEstruturaCentral, renderGuiasEscritorio, renderFaturasAprovar, ocultarFaturaPorAprovar, renderCompras, renderObras,
   renderColabs, renderUsers, renderEquipamentos, mcPreencheUtilizadores, renderPontoEsc,
   loadCombustivelAdmin, renderControloObras,
   renderFechoMes, applyFilter, renderEmpresasMOA,
@@ -417,6 +418,7 @@ window.savePerfil = async function () {
     if (id === 'faturas')      { seedFaturasDemo(); setupFatDropzone(); carregarTemplatesFaturas(); renderFaturas(); atualizaKPIs(); }
     if (id === 'faturas-aprovar') { renderFaturasAprovar({ reset: true }); }
     if (id === 'tesouraria')   { renderTesouraria(); }
+    if (id === 'estrutura-central') { renderEstruturaCentral(); }
     if (id === 'balanco-fat')  { renderBalancoFat(); }
     if (id === 'carteira')     { renderCarteira(); }
     if (id === 'guias')        { renderGuiasEscritorio(); }

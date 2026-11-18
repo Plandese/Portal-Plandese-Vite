@@ -172,7 +172,7 @@ export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
 const SECTION_LABELS = {
   'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','ponto-escritorio':'Ponto do Escritório','colaboradores':'Colaboradores',
-  'compras':'Compras','necessidades':'Necessidades de obra','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria','guias':'Guias de Remessa',
+  'compras':'Compras','necessidades':'Necessidades de obra','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria','estrutura-central':'Estrutura Central','guias':'Guias de Remessa',
   'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
   'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
   'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',
@@ -369,6 +369,7 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos
 const SECTION_ROLES = {
   'faturas':         ['admin','financeiro','diretor_obra'],
   'tesouraria':      ['admin','financeiro','diretor_obra'],
+  'estrutura-central': ['admin','financeiro'],   // faturas do CC Estrutura central: só a área financeira
   'guias':           ['admin'],   // em testes: só o administrador
   'faturas-aprovar': ['admin','financeiro','diretor_obra'],
 };
@@ -410,6 +411,7 @@ export function applyRolePermissions(role){
   const soloOk = role === 'admin' || (!!user && _cli.includes(user));
   document.querySelectorAll('[data-solo]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   document.querySelectorAll('.nav-subgrp[data-sub="cli"]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
+  document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el=>{ el.style.display=''; });
   if(role === 'admin') return; // admin vê tudo
   if(!ROLE_ACCESS[role]) return;
   // Esconder capítulos inteiros (grupo + toggle) sem nenhuma página permitida
@@ -422,6 +424,10 @@ export function applyRolePermissions(role){
     if(roleCanAccessSection(role, sec, user)) return;
     document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display='none'; });
   });
+  // Sub-capítulo Estrutura Central: some por inteiro (título incluído) para quem não tem a página
+  if(!roleCanAccessSection(role, 'estrutura-central', user)){
+    document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el=>{ el.style.display='none'; });
+  }
   // Esconder atalhos da barra de navegação inferior (mobile) e das definições cuja página não é permitida
   document.querySelectorAll('.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(btn=>{
     const m = btn.getAttribute('onclick').match(/goTo\('([^']+)'/);
