@@ -2369,6 +2369,16 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             Localização
           </button>
+          <button class="fp-tab" id="eq-tab-btn-recolha" onclick="switchEqView('recolha')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Recolha EQ
+            <span class="nb" id="eq-tab-recolha-nb" hidden></span>
+          </button>
+        </div>
+
+        <!-- ═══ VISTA: RECOLHA EQ — equipamentos de aluguer com recolha pedida e ainda não recolhidos ═══ -->
+        <div id="eq-view-recolha" style="display:none">
+          <div id="eq-recolha-lista"></div>
         </div>
 
         <!-- ═══ VISTA: LISTA ═══ -->

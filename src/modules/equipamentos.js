@@ -14,6 +14,7 @@ let EQ_MANUT = [];
 let _eqMap = null, _eqMapMarkers = [], _eqMapMarkerById = {}, _editingEqId = null, _eqManutId = null;
 let _qrGpsLat = null, _qrGpsLng = null, _qrEquipId = null;
 let _eqView = 'lista', _eqObraGroups = [];
+let _eqRecolha = [], _eqRecolhaLido = 0;
 
 // ═══════════════════════════════════════
 //  EQUIPAMENTOS E LOGÍSTICA
@@ -240,12 +241,14 @@ function updateEqKPIs(){
   const nPendManut = EQ_MANUT.filter(m=>m.estado==='pendente' && equipIds.has(m.equipId)).length;
   const nbManut = document.getElementById('eq-tab-manut-nb');
   if(nbManut){ nbManut.hidden = !nPendManut; nbManut.textContent = nPendManut; }
+  // contador do separador «Recolha EQ» (no máximo uma leitura por minuto)
+  if(Date.now()-_eqRecolhaLido>60000) eqRecolhaCarregar({soContar:true});
 }
 
 // ── Vistas (Lista / Por Obra / Manutenção) ─
 function switchEqView(view){
   _eqView = view;
-  ['lista','obra','manut','loc'].forEach(v=>{
+  ['lista','obra','manut','loc','recolha'].forEach(v=>{
     const panel = document.getElementById('eq-view-'+v);
     const btn   = document.getElementById('eq-tab-btn-'+v);
     if(panel) panel.style.display = v===view ? '' : 'none';
@@ -253,6 +256,7 @@ function switchEqView(view){
   });
   if(view==='obra')  renderEqPorObra();
   if(view==='manut') renderEqManutBoard();
+  if(view==='recolha') eqRecolhaCarregar();
   if(view==='loc'){ if(!_eqMap) initEqMap(); else { _eqMap.invalidateSize(); refreshEqMap(); } }
 }
 
@@ -561,6 +565,68 @@ async function eqAluguerClick(id){
   }
   if(r&&r.error){ console.warn('eqAluguerClick:',r.error); showToast('Não foi possível guardar o pedido de recolha'); return; }
   eqAluguerCarregar(id);
+  eqRecolhaCarregar({soContar:_eqView!=='recolha'});
+}
+
+// ── Separador «Recolha EQ»: equipamentos com recolha pedida ao fornecedor e ainda não recolhidos ──
+async function eqRecolhaCarregar(opts={}){
+  _eqRecolhaLido = Date.now();
+  const box = document.getElementById('eq-recolha-lista');
+  if(!opts.soContar && box && !_eqRecolha.length) box.innerHTML='<div class="d-empty">A carregar…</div>';
+  try{
+    const {data,error}=await sb.from('eq_alugueres').select('*')
+      .not('pedido_recolha_em','is',null).is('recolhido_em',null)
+      .order('pedido_recolha_em',{ascending:true});
+    if(error) throw error;
+    _eqRecolha = data||[];
+  }catch(e){
+    console.warn('eqRecolhaCarregar:',e);
+    if(!opts.soContar && box) box.innerHTML='<div class="d-empty">Não foi possível carregar as recolhas.</div>';
+    return;
+  }
+  const nb=document.getElementById('eq-tab-recolha-nb');
+  if(nb){ nb.hidden=!_eqRecolha.length; nb.textContent=_eqRecolha.length; }
+  if(!opts.soContar || _eqView==='recolha') renderEqRecolha();
+}
+function renderEqRecolha(){
+  const box=document.getElementById('eq-recolha-lista'); if(!box) return;
+  if(!_eqRecolha.length){ box.innerHTML='<div class="d-empty">Não há equipamentos à espera de recolha.</div>'; return; }
+  const hoje=_eqHoje();
+  const itens=_eqRecolha.map(r=>{
+    const eq=EQUIPAMENTOS.find(e=>e.id===r.equip_id)||{id:r.equip_id,nome:'Equipamento removido',categoria:'equipamento'};
+    const espera=Math.max(0,_eqDias(r.pedido_recolha_em,hoje)-(r.pedido_recolha_em===hoje?1:0));
+    return {r,eq,espera};
+  });
+  const esperaTag=d=>`<span class="eq-prop-tag ${d>=7?'eq-rec-mau':d>=3?'eq-rec-aten':'eq-rec-ok'}">${d===0?'Pedida hoje':d+(d===1?' dia':' dias')}</span>`;
+  const btn=r=>`<button type="button" class="eq-rec-btn" onclick="event.stopPropagation();eqRecolhaFeita(${r.id})">Já recolhido</button>`;
+  if(_eqDesk()){
+    box.innerHTML=`<div class="eq-tbl-wrap"><table class="eq-tbl"><thead><tr><th>Equipamento</th><th>Código / Matrícula</th><th>Fornecedor</th><th>Obra</th><th>Entregue</th><th>Recolha pedida</th><th>À espera</th><th></th></tr></thead><tbody>${
+      itens.map(({r,eq,espera})=>`<tr onclick="abrirEqDetalhe('${eq.id}')">
+        <td><span class="eq-t-nome"><span class="d-ic sm">${_EQ_IC[eqCatNorm(eq.categoria)]}</span><b title="${eqEsc(eq.nome)}">${eqEsc(eq.nome)}</b></span></td>
+        <td>${[eq.codigo,eq.matricula].filter(Boolean).map(eqEsc).join(' · ')||'—'}</td>
+        <td>${eqEsc(eq.fornecedor||'—')}</td>
+        <td>${eqEsc(r.obra_nome||eqObraNome(eq)||'—')}</td>
+        <td>${_eqFd(r.entrega_em)}</td><td>${_eqFd(r.pedido_recolha_em)}</td>
+        <td>${esperaTag(espera)}</td><td style="text-align:right">${btn(r)}</td></tr>`).join('')
+    }</tbody></table></div>`;
+  } else {
+    box.innerHTML=itens.map(({r,eq,espera})=>`<div class="eq-rec-card" onclick="abrirEqDetalhe('${eq.id}')">
+      <div class="eq-rec-top"><b>${eqEsc(eq.nome)}</b>${esperaTag(espera)}</div>
+      <div class="eq-rec-sub">${[eq.fornecedor,r.obra_nome||eqObraNome(eq)].filter(Boolean).map(eqEsc).join(' · ')||'—'}</div>
+      <div class="eq-rec-sub">Recolha pedida em ${_eqFd(r.pedido_recolha_em)}</div>
+      ${btn(r)}
+    </div>`).join('');
+  }
+}
+async function eqRecolhaFeita(rowId){
+  const it=_eqRecolha.find(x=>x.id===rowId); if(!it) return;
+  const eq=EQUIPAMENTOS.find(e=>e.id===it.equip_id);
+  if(!confirm(`Confirmar que ${eq?eq.nome:'o equipamento'} já foi recolhido pelo fornecedor?`)) return;
+  const {error}=await sb.from('eq_alugueres').update({recolhido_em:_eqHoje()}).eq('id',rowId);
+  if(error){ console.warn('eqRecolhaFeita:',error); showToast('Não foi possível marcar como recolhido'); return; }
+  showToast('Recolha registada');
+  if(EQ_ALUGUERES[it.equip_id]) eqAluguerCarregar(it.equip_id);
+  eqRecolhaCarregar();
 }
 
 // ── Ler o QR code de um equipamento (câmara ao vivo ou fotografia) e abrir as suas opções ──
@@ -1254,7 +1320,7 @@ export {
   openEqModal, editEquipamento, saveEquipamento, apagarEquipamento,
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqQrAbrir, eqQrFechar, eqQrFoto, eqObrasPickerFiltra, eqObrasPickerEscolher,
   openEqManut, eqAbrirDocs, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
-  switchEqView, renderEqPorObra, abrirEqObraDetalhe,
+  switchEqView, renderEqPorObra, abrirEqObraDetalhe, eqRecolhaFeita,
   renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
   initEquipamentos, initQrRegistration, qrRegistarLeitura, submitQrRegistration,

@@ -2269,3 +2269,16 @@ body.device-mobile .pr-resize{display:none}
 .eq-alu-hist tfoot td{font-weight:700;background:#f6f8fb}
 .eq-alu-em{color:#6d28d9;font-weight:600}
 .eq-qr-btn svg{width:16px;height:16px;flex:none}
+
+/* Separador «Recolha EQ» */
+.eq-rec-ok{background:#dcfce7;color:#15803d}
+.eq-rec-aten{background:#fef3c7;color:#92400e}
+.eq-rec-mau{background:#fde8e8;color:#b3261e}
+.eq-rec-btn{height:36px;padding:0 16px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);background:#fff;color:var(--m-brand,#173f9f);font:600 13.5px/1 inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.eq-rec-btn:hover{background:var(--m-brand,#173f9f);color:#fff}
+.eq-rec-card{background:#fff;border:1.5px solid #e3e7ee;border-radius:18px;padding:14px 16px;margin-bottom:10px;cursor:pointer}
+.eq-rec-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.eq-rec-top b{font-size:15px;color:var(--m-ink,#1b2130)}
+.eq-rec-sub{font-size:13px;color:#5d6678;margin-top:2px}
+.eq-rec-card .eq-rec-btn{margin-top:12px;width:100%;height:44px}
+#eq-view-recolha .d-empty{padding:28px;text-align:center;color:#5d6678;font-size:14px}
