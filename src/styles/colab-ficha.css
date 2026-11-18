@@ -1,0 +1,38 @@
+/* Ficha do colaborador — gaveta com validades, dados e documentos da Dropbox (design novo) */
+.cf-drawer{width:min(580px,100%)}
+.cf-link{color:var(--m-brand,#173f9f);font-weight:600;text-decoration:none}
+.cf-link:hover{text-decoration:underline}
+.cf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cf-f{margin-bottom:12px}
+.cf-f label{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678;margin-bottom:6px}
+.cf-f input[type=text],.cf-f input[type=date],.cf-f input[type=email],.cf-f select{width:100%;height:50px;padding:0 14px;border:1.5px solid #b9c1ce;border-radius:14px;background:#fff;font:inherit;font-size:16px;color:var(--m-ink,#1b2130);box-sizing:border-box}
+.cf-f input:focus,.cf-f select:focus{outline:0;border-color:var(--m-brand,#173f9f);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.cf-pasta{font-size:12.5px;color:#5d6678;background:#f6f8fc;border:1.5px solid #dde2ea;border-radius:12px;padding:8px 12px;margin:2px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-doc{cursor:pointer;border-radius:12px;padding-left:8px;padding-right:8px}
+.cf-doc:hover{background:#f6f8fc}
+.cf-doc.cad .dd-tx b{color:#6a7284}
+.cf-ico{flex:none;width:38px;height:38px;border-radius:50%;background:#eaf0fc;color:#173f9f;display:grid;place-items:center}
+.cf-doc.cad .cf-ico{background:#eef1f6;color:#7b8497}
+.cf-ico svg{width:19px;height:19px}
+.cf-doc .dd-tx b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-up{padding:16px;border:1.5px solid #dde2ea;border-radius:22px;background:#f6f8fc}
+.cf-drop{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:22px 14px;margin-bottom:12px;border:2px dashed #b9c1ce;border-radius:18px;background:#fff;color:#5d6678;font-size:14px;font-weight:600;cursor:pointer;word-break:break-all}
+.cf-drop svg{width:28px;height:28px;color:#173f9f}
+.cf-drop input{display:none}
+.cf-drop:hover,.cf-drop.over{border-color:#173f9f;background:#eaf0fc}
+.cf-drop.on{border-style:solid;border-color:#173f9f;color:#173f9f}
+.cf-chk{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;margin:0 0 14px;cursor:pointer}
+.cf-chk input{width:18px;height:18px;accent-color:#173f9f}
+.cf-send{width:100%;justify-content:center;min-height:52px}
+.cf-send:disabled{opacity:.6;cursor:default}
+@media (max-width:520px){.cf-grid{grid-template-columns:1fr}.cf-drawer{border-radius:0}.cf-drawer .dd-h{border-radius:0}.cf-drawer .dd-b{border-radius:26px 26px 0 0}}
+
+/* visualizador de documentos */
+#cf-viewer{position:fixed;inset:0;z-index:9800;background:#1b2130;display:flex;flex-direction:column}
+.cf-v-h{flex:none;display:flex;align-items:center;gap:10px;padding:12px 16px;background:#173f9f;color:#fff}
+.cf-v-h b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.cf-v-h .btn{border-radius:99px;text-decoration:none;white-space:nowrap}
+.cf-v-h .btn-primary{background:#fff;color:#173f9f;border:0}
+#cf-viewer iframe{flex:1;border:0;background:#fff;width:100%}
+.cf-v-img{flex:1;overflow:auto;display:grid;place-items:center;padding:16px}
+.cf-v-img img{max-width:100%;max-height:100%}
