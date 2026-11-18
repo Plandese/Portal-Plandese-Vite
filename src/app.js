@@ -18,7 +18,7 @@ import { applyFilter, navSemana, renderHistSemana, exportMensal, exportHistSeman
 
 // Obras, Colaboradores, Utilizadores
 import { renderObras, editObra, saveObra, toggleObra, novaObra, obrToggleHideInativas, obrSetVista, moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra } from './modules/obras.js';
-import { abrirFichaColab, fecharFichaColab, fichaEditar, fichaCancelar, fichaGuardar, fichaTipoChange, fichaFicheiroEscolhido, fichaEnviar, fichaAbrirDoc } from './modules/colaboradores-ficha.js';
+import { abrirFichaColab, fecharFichaColab, fichaEditar, fichaCancelar, fichaGuardar, fichaTipoChange, fichaFicheiroEscolhido, fichaEnviar, fichaAbrirDoc, fichaImprimirEPI } from './modules/colaboradores-ficha.js';
 import { renderColabs, editColab, saveColab, toggleColab, colabToggleHideInativos, colabSetVista, mcPreencheUtilizadores } from './modules/colaboradores.js';
 import { renderPontoEsc, peNavMes, peEscolher, peBrush, peClickDia, pePreencher, peLimparMes, peSetPct, peAbrirPessoa } from './modules/ponto-escritorio.js';
 import { renderUsers, editUser, saveUser, renderEncModsCheckboxes, onUserRoleChange } from './modules/utilizadores.js';
@@ -203,7 +203,7 @@ Object.assign(window, {
   moRefreshExtraAdds, moAddDiretorExtra, moRemoveDiretorExtra, moAddEncarregadoExtra, moRemoveEncarregadoExtra,
 
   // Colaboradores
-  abrirFichaColab, fecharFichaColab, fichaEditar, fichaCancelar, fichaGuardar, fichaTipoChange, fichaFicheiroEscolhido, fichaEnviar, fichaAbrirDoc,
+  abrirFichaColab, fecharFichaColab, fichaEditar, fichaCancelar, fichaGuardar, fichaTipoChange, fichaFicheiroEscolhido, fichaEnviar, fichaAbrirDoc, fichaImprimirEPI,
   renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos, colabSetVista,
 
   // Folha de ponto do escritório

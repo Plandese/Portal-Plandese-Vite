@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
+import { imprimirFolhaEPI } from './epi-folha.js';
 import { dropboxListAll, dropboxDownload, dropboxUploadTeam, dropboxMoveTeam } from './dropbox.js';
 
 const BASE = '/David Mósca/09_Documentação_OBRA/00_PRODUÇÃO/Colaboradores';
@@ -153,6 +154,16 @@ function _campo(id, rotulo, valor, tipo = 'text', extra = ''){
   return `<div class="cf-f"><label for="${id}">${esc(rotulo)}</label><input id="${id}" type="${tipo}" value="${esc(valor || '')}" ${extra}/></div>`;
 }
 
+const _btnEPI = `<button type="button" class="cf-epi-btn" onclick="fichaImprimirEPI()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  Imprimir folha de distribuição de EPI</button>`;
+
+// Folha de distribuição de EPI preenchida com nome, nº interno, função e a data de hoje
+export function fichaImprimirEPI(){
+  const c = _colab(_n); if(!c) return;
+  imprimirFolhaEPI({ nome: c.nome, numero: c.n, funcao: c.func });
+}
+
 function _render(){
   const dr = document.getElementById('colab-drawer'); if(!dr || _n == null) return;
   const c = _colab(_n); if(!c) return;
@@ -161,7 +172,7 @@ function _render(){
   const idTxt = f.id_tipo ? `${ID_TIPOS[f.id_tipo] || f.id_tipo}${f.id_numero ? ' · ' + f.id_numero : ''}` : '';
   let corpo;
   if(_semAcesso){
-    corpo = '<div class="dd-vazio">Não tem permissão para ver os dados pessoais e as validades deste colaborador (capítulo Recursos Humanos).</div>';
+    corpo = '<div class="dd-vazio">Não tem permissão para ver os dados pessoais e as validades deste colaborador (capítulo Recursos Humanos).</div>' + _btnEPI;
   } else if(!_carregado){
     corpo = '<div class="dd-vazio">A carregar…</div>';
   } else if(_editar){
@@ -184,6 +195,7 @@ function _render(){
       ${_linhaVal('Identificação', f.id_validade ? `Válida até ${fmtData(f.id_validade)}` : 'Sem data de validade', e.id)}
       ${_linhaVal('Ficha de aptidão (FA)', f.fa_data ? `Exame a ${fmtData(f.fa_data)}${e.fa.ate ? ` · válida até ${fmtData(e.fa.ate)}` : ''}` : 'Sem data de exame', e.fa)}
       ${_linhaVal('EPI', f.epi_data ? `Entregue a ${fmtData(f.epi_data)}${e.epi.ate ? ` · renovar até ${fmtData(e.epi.ate)}` : ''}` : 'Sem data de entrega', e.epi)}
+      ${_btnEPI}
       <h4>Dados</h4>
       ${_info('Data de nascimento', fmtData(nasc) === '—' ? '' : fmtData(nasc))}
       ${_info('Nacionalidade', f.nacionalidade)}
