@@ -83,6 +83,19 @@ function estados(n){
     epi: { ...estadoAte(epi.ate), ate: epi.ate, nota: epi.nota },
   };
 }
+// Validades de todos os colaboradores ativos (para a página «Avisos de validades»)
+export async function validadesColaboradores(){
+  await carregarFichas();
+  if(_semAcesso) return null;
+  const out = [];
+  (S.COLABORADORES || []).filter(c => c.ativo).forEach(c => {
+    if(!_fichas.has(c.n)) return;
+    const e = estados(c.n);
+    [['id', e.id], ['fa', e.fa], ['epi', e.epi]].forEach(([tipo, x]) => { if(x.ate) out.push({ numero: c.n, nome: c.nome, tipo, ate: x.ate }); });
+  });
+  return out;
+}
+
 // Etiqueta resumo para a lista: pior estado das 3 validades
 export function colabValPill(n){
   if(!_carregado || _semAcesso) return '';

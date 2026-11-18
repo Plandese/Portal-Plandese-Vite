@@ -13,6 +13,7 @@ import './styles/guias.css';
 import './styles/necessidades.css';
 import './styles/clientes-carteira.css';
 import './styles/colab-ficha.css';
+import './styles/avisos-validades.css';
 
 // Separador aberto com uma versão antiga do portal: depois de um deploy, os ficheiros com hash antigo já não
 // existem e os módulos carregados a pedido (pdf, carimbo…) falham. Recarrega a página uma vez para apanhar a versão nova.
