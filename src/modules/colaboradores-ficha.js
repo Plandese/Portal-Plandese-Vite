@@ -113,6 +113,7 @@ const caminho = rel => `${BASE}/${rel}`;
 const nomeSeguro = s => String(s).replace(/[\\/:*?"<>|]/g, '_').trim();
 
 // ───────── gaveta ─────────
+let _verCad = false;
 let _n = null, _editar = false, _docs = [], _docsErro = '', _docsCarregando = false, _enviando = false;
 
 function _drawer(){
@@ -133,7 +134,7 @@ export function fecharFichaColab(){
 
 export async function abrirFichaColab(n){
   const c = _colab(n); if(!c) return;
-  _n = n; _editar = false; _docs = []; _docsErro = ''; _enviando = false;
+  _n = n; _editar = false; _docs = []; _docsErro = ''; _enviando = false; _verCad = false;
   _drawer();
   _render();
   requestAnimationFrame(() => {
@@ -225,11 +226,17 @@ function _htmlDocs(f){
   if(_docsCarregando) lista = '<div class="dd-vazio">A ler a pasta da Dropbox…</div>';
   else if(_docsErro) lista = `<div class="dd-vazio" style="color:#b3261e">${esc(_docsErro)}</div>`;
   else if(!_docs.length) lista = '<div class="dd-vazio">Ainda não há documentos nesta pasta.</div>';
-  else lista = _docs.map((d, i) => `<div class="dd-row cf-doc${d.caducado ? ' cad' : ''}" onclick="fichaAbrirDoc(${i})" role="button" tabindex="0">
+  else {
+    // os documentos da pasta «Caducados» ficam escondidos até se carregar no botão
+    const nCad = _docs.filter(d => d.caducado).length;
+    const linhas = _docs.map((d, i) => (d.caducado && !_verCad) ? '' : `<div class="dd-row cf-doc${d.caducado ? ' cad' : ''}" onclick="fichaAbrirDoc(${i})" role="button" tabindex="0">
       <span class="cf-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
       <div class="dd-tx"><b>${esc(d.nome)}</b><small>${d.caducado ? 'Caducados · ' : ''}${d.tamanho ? Math.max(1, Math.round(d.tamanho / 1024)) + ' KB' : ''}${d.data ? ' · ' + fmtData(d.data.slice(0, 10)) : ''}</small></div>
       ${d.caducado ? pill('Caducado', 'mute') : ''}
     </div>`).join('');
+    lista = (linhas || '<div class="dd-vazio">Não há documentos em vigor nesta pasta.</div>')
+      + (nCad ? `<button type="button" class="cf-cad-btn" onclick="fichaVerCaducados()">${_verCad ? 'Ocultar documentos caducados' : `Ver documentos caducados (${nCad})`}</button>` : '');
+  }
   const opts = Object.entries(DOC_TIPOS).map(([k, v]) => `<option value="${k}">${esc(v.nome)}</option>`).join('');
   return `
     <h4>Documentos na Dropbox</h4>
@@ -274,6 +281,7 @@ async function _carregarDocs(){
   _docsCarregando = false;
   if(_n === n) _atualizaDocs();
 }
+export function fichaVerCaducados(){ _verCad = !_verCad; _atualizaDocs(); }
 function _atualizaDocs(){
   // refaz só a lista, para não perder o que o utilizador já escolheu no formulário de envio
   const alvo = document.getElementById('cf-docs'); if(!alvo){ _render(); return; }
