@@ -45,6 +45,8 @@ create policy ler on public.avisos_validades_enviados for select to authenticate
   using (fn_cap('rh') and not fn_sec_all_off(array['colaboradores']));
 grant select on public.avisos_validades_enviados to authenticated;
 -- só a Edge Function (service role) escreve nesta tabela
+grant all on public.avisos_validades_config, public.avisos_validades_enviados to service_role;
+grant usage, select on sequence public.avisos_validades_enviados_id_seq to service_role;
 
 -- ── Agendamento diário (08:00 UTC) ──
 -- A chave que autoriza o pg_cron a chamar a função fica no Vault (nome «avisos_validades_cron_key»);
