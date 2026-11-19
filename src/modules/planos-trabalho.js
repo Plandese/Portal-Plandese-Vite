@@ -51,6 +51,9 @@ const ICO = {
   mpp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M7 10h11M5 15h7M10 20h10"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
+  enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  parar: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -389,6 +392,7 @@ async function abrirPlano(id) {
       </div>
       <span id="plt-estado" class="plt-pill ok">Guardado</span>
       <div class="plt-top-acoes">
+        <button type="button" class="plt-btn pri sm" data-acao="ia" title="Pedir alterações ou fazer perguntas ao assistente de IA">${ICO.ia}Assistente</button>
         <button type="button" class="plt-btn sec sm" data-acao="xls">${ICO.xls}Excel</button>
         <button type="button" class="plt-btn sec sm" data-acao="xml" title="Ficheiro XML que o MS Project abre (Ficheiro → Abrir)">${ICO.mpp}MS Project</button>
         <button type="button" class="plt-btn sec sm" data-acao="definicoes">${ICO.cfg}Definições</button>
@@ -896,8 +900,9 @@ function ligarTeclado() {
     if (b.dataset.zoom) { _ui.zoom = b.dataset.zoom; const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto; return pintarGantt(); }
     const a = b.dataset.acao;
     if (a === 'novo') return abrirNovo();
-    if (a === 'voltar') { gravar(); _plano = null; _R = null; return renderPlanosTrabalho(); }
+    if (a === 'voltar') { fecharIA(); gravar(); _plano = null; _R = null; return renderPlanosTrabalho(); }
     if (a === 'definicoes') return abrirDefinicoes();
+    if (a === 'ia') return abrirIA();
     if (a === 'xls') return exportarExcel();
     if (a === 'xml') return exportarMSProject();
     acao(a);
@@ -1330,4 +1335,403 @@ ${tarefas}
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   showToast('Ficheiro para o MS Project descarregado (abrir com Ficheiro → Abrir)');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ASSISTENTE DE IA DO PLANO (Edge Function agente-planos)
+//  O agente recebe o plano calculado e devolve propostas (operações); nada muda sem «Aplicar».
+//  Todas as operações de uma proposta são aplicadas como UM passo de anular (Ctrl+Z).
+// ═══════════════════════════════════════════════════════════════════
+const URL_IA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agente-planos`;
+const ANON_IA = import.meta.env.VITE_SUPABASE_KEY;
+let _ia = { planoId: null, msgs: [], ctrl: null };
+const SUGESTOES_IA = [
+  'Que tarefas estão no caminho crítico e onde há mais folga?',
+  'Como posso encurtar o prazo em duas semanas?',
+  'Não se trabalha entre 24/12 e 1/1: ajusta as tarefas afetadas',
+  'Acrescenta um marco de receção provisória 5 dias úteis depois da conclusão',
+];
+
+// Resumo do plano (texto) enviado ao agente: tabela com o que se vê no Gantt
+function resumoParaIA() {
+  const r = _R, T = _plano.tarefas;
+  const ds = o => diso(diaDe(o));
+  const tot = r.valor.reduce((s, v, i) => s + (r.pai[i] === -1 ? v : 0), 0);
+  const cab = [
+    `Plano: ${_plano.nome}`,
+    `Obra: ${nomeObra(_plano.obra_id) || '—'}`,
+    `Data de início (consignação): ${_plano.data_inicio} · calendário: ${_plano.calendario === '6' ? 'segunda a sábado' : 'segunda a sexta'} (sem feriados nacionais)`,
+    T.length ? `Conclusão calculada: ${ds(r.PF)} · prazo ${r.PF - r.S0 + 1} dias úteis (${diaDe(r.PF) - diaDe(r.S0) + 1} dias de calendário) · valor total ${tot.toFixed(2)} €` : 'O plano ainda não tem tarefas.',
+    r.ciclo ? 'ATENÇÃO: há ligações em ciclo, as datas não são fiáveis.' : '',
+    _ui.sel.size ? `Tarefas selecionadas pelo utilizador: ${selOrd().map(i => i + 1).join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+  const linhas = T.map((t, i) => [
+    i + 1, r.edt[i], t.nivel,
+    (r.resumo[i] ? '[RESUMO] ' : '') + (r.ms[i] ? '[MARCO] ' : '') + t.nome,
+    durDe(i), ds(r.es[i]), ds(r.ef[i]), txtPred(i) || '—', r.pct[i],
+    r.valor[i] ? r.valor[i].toFixed(2) : '', r.resumo[i] ? '' : Math.max(0, r.folga[i]),
+    !r.resumo[i] && r.folga[i] <= 0 ? 'sim' : '',
+    t.cod || '', t.inicioMin || '', (t.notas || '').replace(/\s+/g, ' ').slice(0, 140),
+  ].join(' | '));
+  return `${cab}\n\nTAREFAS\nID | EDT | nível | nome | duração (d.ú.) | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | notas\n${linhas.join('\n')}`;
+}
+
+function abrirIA() {
+  if (!_plano) return;
+  if (_ia.planoId !== _plano.id) { _ia.ctrl?.abort(); _ia = { planoId: _plano.id, msgs: [], ctrl: null }; }
+  let el = $('plt-ia');
+  if (!el) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <aside class="plt-ia" id="plt-ia" aria-label="Assistente do plano">
+        <div class="plt-ia-h">
+          <span class="plt-ia-ic">${ICO.ia}</span>
+          <div class="plt-ia-ht"><small>Planos de Trabalho</small><b>Assistente do plano</b></div>
+          <button type="button" class="plt-ia-x" data-ia="fechar" aria-label="Fechar">${ICO.x}</button>
+        </div>
+        <div class="plt-ia-b" id="plt-ia-b"></div>
+        <form class="plt-ia-f" id="plt-ia-form">
+          <textarea id="plt-ia-in" rows="2" placeholder="Pede uma alteração ou faz uma pergunta sobre o plano…"></textarea>
+          <button type="submit" class="plt-ia-env" id="plt-ia-env" aria-label="Enviar">${ICO.enviar}</button>
+        </form>
+      </aside>`);
+    el = $('plt-ia');
+    el.addEventListener('click', e => {
+      const b = e.target.closest('[data-ia]'); if (!b) return;
+      const a = b.dataset.ia;
+      if (a === 'fechar') return fecharIA();
+      if (a === 'sug') return enviarIA(b.textContent);
+      if (a === 'aplicar') return aplicarProposta(+b.dataset.k);
+      if (a === 'cancelar') { const m = _ia.msgs[+b.dataset.k]; if (m?.proposta) { m.proposta.estado = 'cancelada'; pintarIA(); } return; }
+      if (a === 'anular') { anular(); const m = _ia.msgs[+b.dataset.k]; if (m?.proposta) { m.proposta.estado = 'anulada'; pintarIA(); } return; }
+    });
+    $('plt-ia-form').addEventListener('submit', e => { e.preventDefault(); if (_ia.ctrl) return _ia.ctrl.abort(); enviarIA($('plt-ia-in').value); });
+    $('plt-ia-in').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('plt-ia-form').requestSubmit(); } });
+  }
+  el.classList.add('open');
+  document.body.classList.add('plt-ia-aberto');
+  pintarIA();
+  setTimeout(() => $('plt-ia-in')?.focus(), 50);
+}
+function fecharIA() {
+  $('plt-ia')?.classList.remove('open');
+  document.body.classList.remove('plt-ia-aberto');
+}
+
+// Markdown mínimo: **negrito**, títulos (#), listas, tabelas simples, parágrafos
+function mdIA(t) {
+  const linhas = esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split('\n');
+  let out = '', lista = false, tab = null;
+  const fechaLista = () => { if (lista) { out += '</ul>'; lista = false; } };
+  const fechaTab = () => { if (tab) { out += `<div class="plt-ia-tab"><table>${tab.map((c, k) => `<tr>${c.map(x => k ? `<td>${x}</td>` : `<th>${x}</th>`).join('')}</tr>`).join('')}</table></div>`; tab = null; } };
+  for (const l of linhas) {
+    if (/^\s*\|.*\|\s*$/.test(l)) {
+      fechaLista();
+      if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue;   // linha separadora |---|
+      (tab = tab || []).push(l.trim().slice(1, -1).split('|').map(x => x.trim()));
+      continue;
+    }
+    fechaTab();
+    const h = l.match(/^\s*#{1,6}\s+(.*)$/);
+    if (h) { fechaLista(); out += `<p class="plt-ia-tit">${h[1]}</p>`; continue; }
+    const m = l.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)$/);
+    if (m) { if (!lista) { out += '<ul>'; lista = true; } out += `<li>${m[1]}</li>`; continue; }
+    fechaLista();
+    out += l.trim() ? `<p>${l}</p>` : '';
+  }
+  fechaTab(); fechaLista();
+  return out;
+}
+
+function pintarIA() {
+  const b = $('plt-ia-b'); if (!b) return;
+  const env = $('plt-ia-env');
+  if (env) { env.innerHTML = _ia.ctrl ? ICO.parar : ICO.enviar; env.classList.toggle('stop', !!_ia.ctrl); env.setAttribute('aria-label', _ia.ctrl ? 'Parar' : 'Enviar'); }
+  if (!_ia.msgs.length) {
+    b.innerHTML = `<div class="plt-ia-vazio">
+      <p>Pede-me alterações ao plano em linguagem natural — eu preparo as operações e tu confirmas com <b>Aplicar</b> (anulável com Ctrl+Z). Também respondo a perguntas sobre prazos, folgas e o caminho crítico.</p>
+      <div class="plt-ia-sugs">${SUGESTOES_IA.map(s => `<button type="button" class="plt-ia-sug" data-ia="sug">${esc(s)}</button>`).join('')}</div>
+    </div>`;
+    return;
+  }
+  b.innerHTML = _ia.msgs.map((m, k) => {
+    if (m.role === 'user') return `<div class="plt-ia-m eu">${esc(m.content).replace(/\n/g, '<br>')}</div>`;
+    let h = '';
+    if (m.content) h += `<div class="plt-ia-m ia">${mdIA(m.content)}</div>`;
+    if (m.ferr) h += `<div class="plt-ia-ferr"><span class="plt-ia-spin"></span>${esc(m.ferr)}…</div>`;
+    if (m.proposta) h += cartaoProposta(m.proposta, k);
+    if (m.erro) h += `<div class="plt-ia-erro">${esc(m.erro)}</div>`;
+    if (!m.content && !m.ferr && !m.proposta && !m.erro && _ia.ctrl) h += `<div class="plt-ia-ferr"><span class="plt-ia-spin"></span>A pensar…</div>`;
+    return h;
+  }).join('');
+  b.scrollTop = b.scrollHeight;
+}
+
+// ── Descrição das operações (para o cartão) ──
+function descreverOps(p) {
+  const novos = {};
+  p.operacoes.forEach(o => { if (o.op === 'adicionar' && o.ref) novos[String(o.ref).toUpperCase()] = o.nome; });
+  const nm = ref => {
+    if (ref == null || ref === '') return '?';
+    const s = String(ref).trim(), m = s.match(/^N(\d+)$/i);
+    if (m) return `«${esc(novos['N' + m[1]] || s)}» (nova)`;
+    const n = parseInt(s, 10);
+    return p.nomes[n - 1] != null ? `${n} · «${esc(p.nomes[n - 1])}»` : `${esc(s)} (?)`;
+  };
+  const lig = (tipo, lag) => `${tipo || 'TI'}${lag ? (lag > 0 ? ' +' : ' ') + lag + ' d.ú.' : ''}`;
+  const dt = iso => (iso ? iso.split('-').reverse().join('/') : '');
+  return p.operacoes.map(o => {
+    switch (o.op) {
+      case 'adicionar': {
+        const onde = o.dentro_de ? ` dentro de ${nm(o.dentro_de)}` : o.depois_de ? ` a seguir a ${nm(o.depois_de)}` : ' no fim';
+        const pr = (o.pred || []).length ? ` · depois de ${o.pred.map(x => `${nm(x.id)} (${lig(x.tipo, x.desfasamento)})`).join(', ')}` : '';
+        return `<b>Nova</b> «${esc(o.nome)}» — ${o.dur === 0 ? 'marco' : (o.dur ?? 1) + ' d.ú.'}${onde}${pr}${o.valor ? ` · ${eur0(o.valor)}` : ''}${o.inicio_min ? ` · não antes de ${dt(o.inicio_min)}` : ''}`;
+      }
+      case 'editar': {
+        const c = [];
+        if (o.nome) c.push(`nome → «${esc(o.nome)}»`);
+        if (o.dur != null) c.push(o.dur === 0 ? 'passa a marco' : `duração → ${o.dur} d.ú.`);
+        if (o.inicio_min === '') c.push('sem restrição de início');
+        else if (o.inicio_min) c.push(`não iniciar antes de ${dt(o.inicio_min)}`);
+        if (o.pct != null) c.push(`${o.pct}% concluída`);
+        if (o.valor != null) c.push(`valor → ${eur0(o.valor)}`);
+        if (o.notas != null) c.push('notas');
+        return `${nm(o.id)}: ${c.join(', ') || 'sem alterações'}`;
+      }
+      case 'predecessoras': return `${nm(o.id)}: predecessoras → ${(o.pred || []).length ? o.pred.map(x => `${nm(x.id)} (${lig(x.tipo, x.desfasamento)})`).join(', ') : 'nenhuma'}`;
+      case 'ligar': return `<b>Ligar</b> ${nm(o.de)} → ${nm(o.para)} (${lig(o.tipo, o.desfasamento)})`;
+      case 'desligar': return `<b>Retirar ligação</b> ${nm(o.de)} → ${nm(o.para)}`;
+      case 'eliminar': return `<b>Eliminar</b> ${nm(o.id)} (e subtarefas)`;
+      case 'mover': return `<b>Mover</b> ${nm(o.id)} ${o.dentro_de ? 'para dentro de ' + nm(o.dentro_de) : 'para a seguir a ' + nm(o.depois_de)}`;
+      case 'nivel': return `${Number(o.delta) > 0 ? '<b>Avançar</b>' : '<b>Recuar</b>'} nível de ${nm(o.id)}`;
+      case 'plano': {
+        const c = [];
+        if (o.data_inicio) c.push(`início → ${dt(o.data_inicio)}`);
+        if (o.calendario) c.push(o.calendario === '6' ? 'calendário segunda a sábado' : 'calendário segunda a sexta');
+        if (o.nome_plano) c.push(`nome → «${esc(o.nome_plano)}»`);
+        return `<b>Plano</b>: ${c.join(', ')}`;
+      }
+      default: return esc(o.op);
+    }
+  });
+}
+
+function cartaoProposta(p, k) {
+  const itens = descreverOps(p);
+  const pend = p.estado === 'pendente';
+  const n = p.resultado?.feitas;
+  const est = {
+    aplicada: `<span class="plt-pill ok">Aplicada${n ? ` · ${n} ${n === 1 ? 'alteração' : 'alterações'}` : ''}</span>`,
+    cancelada: '<span class="plt-pill mute">Cancelada</span>',
+    anulada: '<span class="plt-pill mute">Anulada</span>',
+    obsoleta: '<span class="plt-pill warn">O plano mudou — pede de novo</span>',
+  }[p.estado] || '';
+  const erros = p.resultado?.erros?.length ? `<div class="plt-ia-perr">Não foi possível aplicar:<ul>${p.resultado.erros.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>` : '';
+  return `<div class="plt-ia-card ${pend ? '' : 'feito'}">
+    <div class="plt-ia-card-h"><b>${esc(p.resumo)}</b><small>${itens.length} ${itens.length === 1 ? 'alteração' : 'alterações'}</small></div>
+    <ol class="plt-ia-ops">${itens.map(t => `<li>${t}</li>`).join('')}</ol>
+    ${erros}
+    <div class="plt-ia-card-f">${pend
+      ? `<button type="button" class="plt-btn sec sm" data-ia="cancelar" data-k="${k}">Cancelar</button><button type="button" class="plt-btn pri sm" data-ia="aplicar" data-k="${k}">Aplicar</button>`
+      : est + (p.estado === 'aplicada' ? `<button type="button" class="plt-btn sec sm" data-ia="anular" data-k="${k}">Anular</button>` : '')}</div>
+  </div>`;
+}
+
+// ── Conversa ──
+async function enviarIA(texto) {
+  texto = String(texto || '').trim();
+  if (!texto || _ia.ctrl || !_plano) return;
+  $('plt-ia-in').value = '';
+  calcular();
+  // propostas por decidir deixam de valer quando se faz um novo pedido
+  _ia.msgs.forEach(m => { if (m.proposta?.estado === 'pendente') m.proposta.estado = 'cancelada'; });
+  _ia.msgs.push({ role: 'user', content: texto });
+  const atual = { role: 'assistant', content: '', ferr: '', proposta: null, erro: '' };
+  _ia.msgs.push(atual);
+  // o que o agente viu: linha (ID) → tarefa, para aplicar certo mesmo que se mexa no plano entretanto
+  const ids = _plano.tarefas.map(t => t.id), nomes = _plano.tarefas.map(t => t.nome);
+  const historico = _ia.msgs.slice(0, -1).map(m => {
+    if (m.role === 'user') return { role: 'user', content: m.content };
+    let c = m.content || '';
+    if (m.proposta) c += `\n\n[Proposta «${m.proposta.resumo}» com ${m.proposta.operacoes.length} operações — ${m.proposta.estado}${m.proposta.resultado?.erros?.length ? `; erros: ${m.proposta.resultado.erros.join('; ')}` : ''}]`;
+    return { role: 'assistant', content: c.trim() };
+  }).filter(m => m.content);
+  _ia.ctrl = new AbortController();
+  pintarIA();
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('Sessão expirada. Volte a iniciar sessão.');
+    const r = await fetch(URL_IA, {
+      method: 'POST', signal: _ia.ctrl.signal,
+      headers: { Authorization: 'Bearer ' + token, apikey: ANON_IA, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mensagens: historico, plano: resumoParaIA() }),
+    });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ('Erro ' + r.status)); }
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const linha = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!linha) continue;
+        let ev; try { ev = JSON.parse(linha); } catch (_) { continue; }
+        if (ev.type === 'texto') { atual.content += ev.texto; atual.ferr = ''; }
+        else if (ev.type === 'ferramenta') { atual.ferr = ev.rotulo || ev.nome; if (atual.content && !/\n\n$/.test(atual.content)) atual.content += '\n\n'; }
+        else if (ev.type === 'propostas') { atual.ferr = ''; atual.proposta = { resumo: ev.resumo, operacoes: ev.operacoes || [], ids, nomes, estado: 'pendente', resultado: null }; }
+        else if (ev.type === 'erro') { atual.erro = ev.mensagem; atual.ferr = ''; }
+        pintarIA();
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') atual.content += atual.content ? '\n\n(interrompido)' : '(interrompido)';
+    else atual.erro = String(e.message || e);
+  } finally {
+    atual.ferr = '';
+    if (!atual.content && !atual.proposta && !atual.erro) atual.erro = 'Sem resposta do assistente.';
+    _ia.ctrl = null;
+    pintarIA();
+  }
+}
+
+function aplicarProposta(k) {
+  const m = _ia.msgs[k], p = m?.proposta;
+  if (!p || p.estado !== 'pendente' || !_plano) return;
+  if (_ia.planoId !== _plano.id) { p.estado = 'obsoleta'; pintarIA(); return; }
+  p.resultado = aplicarOperacoes(p.operacoes, p.ids);
+  p.estado = p.resultado.feitas ? 'aplicada' : 'cancelada';
+  const n = p.resultado.feitas;
+  if (n) showToast(`${n} ${n === 1 ? 'alteração aplicada' : 'alterações aplicadas'} — Ctrl+Z para anular`);
+  pintarIA();
+}
+
+// Aplica as operações do agente como um único passo de anular
+function aplicarOperacoes(ops, ids) {
+  const erros = [];
+  let feitas = 0, mudouPlano = false;
+  const antes = JSON.stringify(_plano.tarefas);
+  const antesPlano = { data_inicio: _plano.data_inicio, calendario: _plano.calendario, nome: _plano.nome };
+  const T = _plano.tarefas;
+  const novos = {};
+  const uidDe = ref => {
+    if (ref == null || ref === '') return null;
+    const s = String(ref).trim(), m = s.match(/^N(\d+)$/i);
+    if (m) return novos['N' + m[1]] || null;
+    const n = parseInt(s, 10);
+    return Number.isFinite(n) ? (ids[n - 1] || null) : null;
+  };
+  const pos = u => (u ? T.findIndex(t => t.id === u) : -1);
+  const precisa = ref => { const i = pos(uidDe(ref)); if (i < 0) throw new Error(`tarefa ${ref} não encontrada`); return i; };
+  const fim = i => { let k = i; while (k + 1 < T.length && T[k + 1].nivel > T[i].nivel) k++; return k; };
+  const eResumo = i => i + 1 < T.length && T[i + 1].nivel > T[i].nivel;
+  const tipoDe = t => TIPO_IN[String(t || 'TI').toUpperCase()] || 'FS';
+  const limpaNome = n => String(n).replace(/\[(MARCO|RESUMO)\]\s*/gi, '').trim().slice(0, 200);
+  const predsDe = (lista, self) => {
+    const out = [];
+    for (const x of lista || []) {
+      const u = uidDe(x.id);
+      if (!u || pos(u) < 0) throw new Error(`predecessora ${x.id} não encontrada`);
+      if (u === self || out.some(y => y.id === u)) continue;
+      out.push({ id: u, tipo: tipoDe(x.tipo), lag: parseInt(x.desfasamento, 10) || 0 });
+    }
+    return out;
+  };
+  ops.forEach((o, k) => {
+    try {
+      switch (o.op) {
+        case 'adicionar': {
+          let p = T.length, nv = 0;
+          if (o.dentro_de) { const a = precisa(o.dentro_de); p = fim(a) + 1; nv = T[a].nivel + 1; }
+          else if (o.depois_de) { const a = precisa(o.depois_de); p = fim(a) + 1; nv = T[a].nivel; }
+          const t = novaTarefa(limpaNome(o.nome), nv, o.dur != null ? Math.max(0, parseInt(o.dur, 10) || 0) : 1);
+          if (o.inicio_min) t.inicioMin = o.inicio_min;
+          if (o.valor != null) t.valor = Number(o.valor) || 0;
+          if (o.notas) t.notas = String(o.notas);
+          if (o.pred) t.pred = predsDe(o.pred, t.id);
+          T.splice(p, 0, t);
+          if (o.ref) novos[String(o.ref).trim().toUpperCase()] = t.id;
+          break;
+        }
+        case 'editar': {
+          const i = precisa(o.id), t = T[i];
+          if (o.dur != null && eResumo(i)) throw new Error('não se muda a duração de uma tarefa de resumo');
+          if (o.nome) t.nome = limpaNome(o.nome);
+          if (o.dur != null) t.dur = Math.max(0, parseInt(o.dur, 10) || 0);
+          if (o.inicio_min != null) t.inicioMin = o.inicio_min || null;
+          if (o.pct != null) t.pct = Math.max(0, Math.min(100, parseInt(o.pct, 10) || 0));
+          if (o.valor != null) t.valor = Number(o.valor) || 0;
+          if (o.notas != null) t.notas = String(o.notas);
+          break;
+        }
+        case 'predecessoras': { const i = precisa(o.id); T[i].pred = predsDe(o.pred, T[i].id); break; }
+        case 'ligar': {
+          const a = uidDe(o.de); if (pos(a) < 0) throw new Error(`tarefa ${o.de} não encontrada`);
+          const t = T[precisa(o.para)]; if (t.id === a) throw new Error('uma tarefa não se liga a si própria');
+          t.pred = (t.pred || []).filter(x => x.id !== a);
+          t.pred.push({ id: a, tipo: tipoDe(o.tipo), lag: parseInt(o.desfasamento, 10) || 0 });
+          break;
+        }
+        case 'desligar': {
+          const a = uidDe(o.de), t = T[precisa(o.para)];
+          const n0 = (t.pred || []).length;
+          t.pred = (t.pred || []).filter(x => x.id !== a);
+          if (t.pred.length === n0) throw new Error('essa ligação não existe');
+          break;
+        }
+        case 'eliminar': {
+          const i = precisa(o.id), e = fim(i);
+          const fora = new Set(T.slice(i, e + 1).map(t => t.id));
+          T.splice(i, e - i + 1);
+          T.forEach(t => { t.pred = (t.pred || []).filter(x => !fora.has(x.id)); });
+          break;
+        }
+        case 'mover': {
+          const i = precisa(o.id), e = fim(i);
+          const alvoU = uidDe(o.dentro_de || o.depois_de);
+          if (pos(alvoU) < 0) throw new Error(`tarefa ${o.dentro_de || o.depois_de} não encontrada`);
+          if (T.slice(i, e + 1).some(t => t.id === alvoU)) throw new Error('não se move uma tarefa para dentro de si própria');
+          const bloco = T.splice(i, e - i + 1);
+          const a = pos(alvoU), p = fim(a) + 1, nv = T[a].nivel + (o.dentro_de ? 1 : 0), d = nv - bloco[0].nivel;
+          bloco.forEach(t => { t.nivel += d; });
+          T.splice(p, 0, ...bloco);
+          break;
+        }
+        case 'nivel': {
+          const i = precisa(o.id), e = fim(i), d = Number(o.delta) > 0 ? 1 : -1;
+          if (d > 0 && (i === 0 || T[i - 1].nivel < T[i].nivel)) throw new Error('a primeira tarefa de um grupo não pode avançar de nível');
+          if (d < 0 && T[i].nivel === 0) throw new Error('a tarefa já está no primeiro nível');
+          for (let q = i; q <= e; q++) T[q].nivel += d;
+          break;
+        }
+        case 'plano': {
+          if (o.data_inicio) { _plano.data_inicio = o.data_inicio; mudouPlano = true; }
+          if (o.calendario === '5' || o.calendario === '6') { _plano.calendario = o.calendario; mudouPlano = true; }
+          if (o.nome_plano) _plano.nome = String(o.nome_plano).trim().slice(0, 200);
+          break;
+        }
+        default: throw new Error('operação desconhecida');
+      }
+      feitas++;
+    } catch (e) {
+      erros.push(`${k + 1}.ª (${o.op}): ${e.message || e}`);
+    }
+  });
+  // níveis coerentes (nunca saltar mais do que um nível)
+  for (let i = 0; i < T.length; i++) {
+    const max = i === 0 ? 0 : T[i - 1].nivel + 1;
+    if (T[i].nivel > max) T[i].nivel = max;
+    if (T[i].nivel < 0) T[i].nivel = 0;
+  }
+  if (mudouPlano) montarCalendario();
+  limparLigacoesResumo();
+  if (feitas) {
+    _undo.push(antes); if (_undo.length > 60) _undo.shift();
+    _redo = [];
+    _ui.sel.clear();
+    depoisDeMudar();
+    if (mudouPlano) showToast(`Datas do plano alteradas (antes: início ${antesPlano.data_inicio}) — o Ctrl+Z não repõe o início nem o calendário`);
+  }
+  return { feitas, erros };
 }
