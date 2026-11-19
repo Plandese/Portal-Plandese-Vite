@@ -126,7 +126,40 @@ function montar() {
     toggleFav(s.dataset.star);
   }, true);
 
+  ligarMenuMini(side);
   ligarPesquisa();
+}
+
+// ── Menu lateral minimizável: só ícones (abre por cima ao passar o rato) ou fixo aberto ──
+// Preferência guardada neste computador (localStorage d_nav_mini).
+const ICO_NAV = {
+  fechar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M16 15l-3-3 3-3"/></svg>',
+  abrir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M14 9l3 3-3 3"/></svg>',
+};
+function ligarMenuMini(side) {
+  if ($('d-nav-tog')) return;
+  const tog = document.createElement('button');
+  tog.type = 'button'; tog.className = 'd-nav-tog'; tog.id = 'd-nav-tog';
+  side.prepend(tog);
+  const pintar = () => {
+    const mini = document.body.classList.contains('d-nav-mini');
+    tog.innerHTML = `${mini ? ICO_NAV.abrir : ICO_NAV.fechar}<span>${mini ? 'Fixar menu' : 'Minimizar menu'}</span>`;
+    tog.title = mini ? 'Fixar o menu aberto' : 'Minimizar o menu (só ícones) para ganhar espaço';
+    tog.setAttribute('aria-pressed', String(mini));
+  };
+  let mini = false;
+  try { mini = localStorage.getItem('d_nav_mini') === '1'; } catch (e) { /* sem armazenamento */ }
+  document.body.classList.toggle('d-nav-mini', mini);
+  tog.addEventListener('click', () => {
+    const m = !document.body.classList.contains('d-nav-mini');
+    document.body.classList.toggle('d-nav-mini', m);
+    try { localStorage.setItem('d_nav_mini', m ? '1' : '0'); } catch (e) { /* sem armazenamento */ }
+    // logo depois de minimizar o rato ainda está em cima do menu: só volta a abrir ao passar de novo
+    if (m) side.dataset.semHover = '1';
+    pintar();
+  });
+  side.addEventListener('mouseleave', () => { delete side.dataset.semHover; });
+  pintar();
 }
 
 // ── Menu do utilizador (painel das definições) como no mockup: Móvel | PC, ícones em traço e rótulos novos ──

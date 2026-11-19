@@ -1457,3 +1457,19 @@ body #admin-app .dw-date{cursor:default!important;border-bottom:0!important}
 .co-tog.on i{left:14px}
 .co-tbl tr.off td:not(:last-child),.co-ob.off>*:not(.co-ob-top){opacity:.45}
 .co-ob.off .co-ob-top>*:not(span:last-child){opacity:.45}
+
+/* ───────── Menu lateral minimizável (só ícones; abre por cima ao passar o rato) ───────── */
+.d-nav-tog{display:none}
+body.device-desktop:not(.enc-mode) #admin-app .d-nav-tog{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;margin:0 0 8px;padding:6px 6px 6px 12px;border:0;border-radius:12px;background:none;font-family:inherit;font-size:13px;font-weight:600;color:#6a7284;cursor:pointer;text-align:left;white-space:nowrap}
+body.device-desktop:not(.enc-mode) #admin-app .d-nav-tog:hover{background:#f3f6fb;color:var(--d-ink)}
+body.device-desktop:not(.enc-mode) #admin-app .d-nav-tog svg{width:22px;height:22px;flex:none}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app > .admin-body{grid-template-columns:78px minmax(0,1fr)}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar{position:relative;z-index:40;width:78px;padding:24px 13px 0;transition:width .18s ease,box-shadow .18s ease}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:hover:not([data-sem-hover]){width:var(--d-nav-w);padding:24px 14px 0;box-shadow:18px 0 44px rgba(10,28,90,.2);transition-delay:.2s}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar .nav-label{white-space:nowrap}
+/* fechado: só os ícones */
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) :is(.nav-label,.nav-lbl-txt,.nav-chevron,.d-star,.nav-sub,.nav-sub-vazio,.d-favs-h,.d-nav-tog span){display:none}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) :is(.nav-btn,.nav-lbl,.d-nav-tog){justify-content:center;gap:0;padding-left:0;padding-right:0}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .nav-btn.active::before{left:-13px}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .d-favs{margin-top:8px;padding-top:8px;border-top:1px solid var(--d-line2)}
+body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .nav-btn .nb:not([hidden]){position:absolute;top:7px;right:9px;min-width:10px;width:10px;height:10px;padding:0;font-size:0;border:2px solid #fff;box-sizing:content-box}
