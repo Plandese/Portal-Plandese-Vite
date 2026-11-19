@@ -365,3 +365,9 @@ body.plt-ia-fora .plt-ia,body.plt-ia-fora .plt-ia-mini{display:none!important}
 .plt-mapa-leg i,.plt-mapa-dot{display:inline-block;width:11px;height:11px;border-radius:3px;flex:none}
 .plt-mapa-dot{margin-right:8px;vertical-align:-1px}
 .plt-fin-h span b{color:var(--d-ink,#1b2130)}
+
+/* menu das colunas (mostrar / ocultar) */
+.plt-menu-chk .plt-chk{flex:none;width:20px;height:20px;border-radius:6px;border:2px solid #b9c1ce;display:grid;place-items:center;color:transparent}
+.plt-menu-chk .plt-chk svg{width:13px;height:13px;color:inherit}
+.plt-menu-chk.on .plt-chk{background:var(--d-brand,#173f9f);border-color:var(--d-brand,#173f9f);color:#fff}
+.plt-gh > div{cursor:context-menu}

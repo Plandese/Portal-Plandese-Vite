@@ -61,6 +61,9 @@ const ICO = {
   juntar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h7M14 12h7M7 8l4 4-4 4M17 8l-4 4 4 4"/></svg>',
   visto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   desfazer100: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  colunas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>',
+  olho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  olhoX: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.4 0 10 8 10 8a17.6 17.6 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 8 10 8a9.7 9.7 0 0 0 5.4-1.6M3 3l18 18M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
   minimizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 17h12"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
@@ -503,7 +506,58 @@ const COLS = [
   { k: 'pct', t: '%', w: 54 },
   { k: 'valor', t: 'Valor', w: 112 },
 ];
-const GRID_W = COLS.reduce((s, c) => s + c.w, 0);
+// Colunas ocultas (preferência deste computador). O nº e o nome da tarefa estão sempre visíveis.
+const LS_COLS = 'plt_cols_ocultas';
+const COLS_FIXAS = ['id', 'nome'];
+let _colsOcultas = new Set((() => { try { return JSON.parse(localStorage.getItem(LS_COLS) || '[]'); } catch (e) { return []; } })().filter(k => !COLS_FIXAS.includes(k)));
+const colsVisiveis = () => COLS.filter(c => !_colsOcultas.has(c.k));
+const gridW = () => colsVisiveis().reduce((s, c) => s + c.w, 0);
+const cabecalhoGrelha = () => colsVisiveis().map(c => `<div class="c-${c.k}" data-col="${c.k}" style="width:${c.w}px" title="Botão direito: ocultar colunas">${c.t}</div>`).join('');
+function estiloColunas() {
+  let st = $('plt-cols-css');
+  if (!st) { st = document.createElement('style'); st.id = 'plt-cols-css'; document.head.appendChild(st); }
+  st.textContent = [..._colsOcultas].map(k => `#plt-gb .plt-r > .c-${k}{display:none}`).join(' ');
+}
+// aplica as colunas visíveis sem redesenhar o gráfico (mantém o scroll)
+function aplicarColunas(antes) {
+  try { localStorage.setItem(LS_COLS, JSON.stringify([..._colsOcultas])); } catch (e) { /* sem armazenamento */ }
+  estiloColunas();
+  const gh = document.querySelector('#plt-grid .plt-gh'), gb = $('plt-gb'), g = $('plt-grid');
+  if (!gh || !gb || !g) return;
+  gh.innerHTML = cabecalhoGrelha();
+  gh.style.width = gb.style.width = gridW() + 'px';
+  const w = g.offsetWidth;
+  g.style.width = Math.max(220, Math.min(w >= antes - 2 ? gridW() : w, gridW())) + 'px';
+  try { localStorage.setItem(LS_SPLIT, g.offsetWidth); } catch (e) { /* sem armazenamento */ }
+}
+function abrirMenuColunas(anchor, x, y, kHdr) {
+  fecharMenu();
+  const op = COLS.filter(c => !COLS_FIXAS.includes(c.k));
+  const tit = k => (COLS.find(c => c.k === k) || {}).t || k;
+  let h = '';
+  if (kHdr && !COLS_FIXAS.includes(kHdr)) h += `<button type="button" class="plt-menu-i" data-ocultar="${kHdr}">${ICO.olhoX}<span>Ocultar «${tit(kHdr)}»</span></button><div class="plt-menu-sep"></div>`;
+  h += '<div class="plt-menu-h">Colunas visíveis</div>';
+  h += op.map(c => `<button type="button" class="plt-menu-i plt-menu-chk ${_colsOcultas.has(c.k) ? '' : 'on'}" data-col="${c.k}"><span class="plt-chk">${ICO.visto}</span><span>${c.t}</span></button>`).join('');
+  h += `<div class="plt-menu-sep"></div><button type="button" class="plt-menu-i" data-todas="1">${ICO.olho}<span>Mostrar todas</span></button>`;
+  document.body.insertAdjacentHTML('beforeend', `<div class="plt-menu" id="plt-menu" role="menu">${h}</div>`);
+  const m = $('plt-menu');
+  if (anchor) { const r = anchor.getBoundingClientRect(); x = r.left; y = r.bottom + 6; }
+  m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + 'px';
+  m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + 'px';
+  m.addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    const antes = gridW();
+    if (b.dataset.col) {
+      const k = b.dataset.col;
+      if (_colsOcultas.has(k)) _colsOcultas.delete(k); else _colsOcultas.add(k);
+      b.classList.toggle('on', !_colsOcultas.has(k));
+      return aplicarColunas(antes);                     // o menu fica aberto para escolher várias
+    }
+    if (b.dataset.ocultar) _colsOcultas.add(b.dataset.ocultar);
+    if (b.dataset.todas) _colsOcultas.clear();
+    fecharMenu(); aplicarColunas(antes);
+  });
+}
 
 function escala() {
   const r = _R, px = ZOOM[_ui.zoom];
@@ -515,8 +569,9 @@ function escala() {
 }
 
 function pintarGantt() {
+  estiloColunas();
   const v = $('plt-vista');
-  const splitW = Math.max(220, Math.min(GRID_W, +(localStorage.getItem(LS_SPLIT) || 620)));
+  const splitW = Math.max(220, Math.min(gridW(), +(localStorage.getItem(LS_SPLIT) || 620)));
   const zb = z => `<button type="button" class="plt-seg-b ${_ui.zoom === z ? 'on' : ''}" data-zoom="${z}">${{ dia: 'Dias', semana: 'Semanas', mes: 'Meses' }[z]}</button>`;
   const tb = (acao, ic, txt, tit) => `<button type="button" class="plt-tb-b" data-acao="${acao}" title="${esc(tit || txt)}">${ic}<span>${txt}</span></button>`;
   const tbi = (acao, ic, tit) => `<button type="button" class="plt-tb-b ic" data-acao="${acao}" title="${esc(tit)}">${ic}</button>`;
@@ -537,6 +592,8 @@ function pintarGantt() {
       <span class="plt-tb-sep"></span>
       ${tbi('anular', ICO.undo, 'Anular (Ctrl+Z)')}
       ${tbi('refazer', ICO.redo, 'Refazer (Ctrl+Y)')}
+      <span class="plt-tb-sep"></span>
+      ${tb('colunas', ICO.colunas, 'Colunas', 'Mostrar ou ocultar colunas da tabela')}
       <span class="plt-tb-fill"></span>
       <button type="button" class="plt-tb-b ${_ui.critico ? 'on' : ''}" data-acao="critico" title="Realçar o caminho crítico">${ICO.crit}<span>Caminho crítico</span></button>
       ${tbi('hoje', ICO.hoje, 'Ir para hoje')}
@@ -544,8 +601,8 @@ function pintarGantt() {
     </div>
     <div class="plt-gantt" id="plt-gantt">
       <div class="plt-grid" id="plt-grid" style="width:${splitW}px">
-        <div class="plt-gh" style="width:${GRID_W}px">${COLS.map(c => `<div class="c-${c.k}" style="width:${c.w}px">${c.t}</div>`).join('')}</div>
-        <div class="plt-gb" id="plt-gb" style="width:${GRID_W}px"></div>
+        <div class="plt-gh" style="width:${gridW()}px">${cabecalhoGrelha()}</div>
+        <div class="plt-gb" id="plt-gb" style="width:${gridW()}px"></div>
       </div>
       <div class="plt-split" id="plt-split" title="Arrastar para redimensionar"></div>
       <div class="plt-chart" id="plt-chart"></div>
@@ -958,7 +1015,7 @@ function ligarGantt() {
   $('plt-split').addEventListener('pointerdown', e => {
     const x0 = e.clientX, w0 = g.offsetWidth;
     e.target.setPointerCapture(e.pointerId);
-    const mv = ev => { g.style.width = Math.max(220, Math.min(GRID_W, w0 + ev.clientX - x0)) + 'px'; };
+    const mv = ev => { g.style.width = Math.max(220, Math.min(gridW(), w0 + ev.clientX - x0)) + 'px'; };
     const up = () => { e.target.removeEventListener('pointermove', mv); e.target.removeEventListener('pointerup', up); try { localStorage.setItem(LS_SPLIT, g.offsetWidth); } catch (er) {} };
     e.target.addEventListener('pointermove', mv); e.target.addEventListener('pointerup', up);
   });
@@ -1030,6 +1087,11 @@ function ligarGantt() {
     abrirMenuBarra(i, null, e.clientX, e.clientY);
   });
   ch.addEventListener('scroll', fecharMenu);
+  // botão direito no cabeçalho da tabela: ocultar esta coluna / escolher colunas
+  g.querySelector('.plt-gh').addEventListener('contextmenu', e => {
+    e.preventDefault();
+    abrirMenuColunas(null, e.clientX, e.clientY, e.target.closest('[data-col]')?.dataset.col);
+  });
   g.addEventListener('scroll', fecharMenu);
 }
 
@@ -1093,7 +1155,7 @@ function abrirMenuBarra(i, dia, x, y) {
   });
 }
 // fecha o menu ao clicar fora (mousedown, antes de qualquer re-render), com Esc ou ao sair da janela
-document.addEventListener('mousedown', e => { if (!e.target.closest('#plt-menu')) fecharMenu(); });
+document.addEventListener('mousedown', e => { if (!e.target.closest('#plt-menu, [data-acao="colunas"]')) fecharMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
 window.addEventListener('blur', fecharMenu);
 window.addEventListener('resize', fecharMenu);
@@ -1199,6 +1261,7 @@ function ligarTeclado() {
     if (a === 'voltar') { fecharIA(); gravar(); _plano = null; _R = null; return renderPlanosTrabalho(); }
     if (a === 'definicoes') return abrirDefinicoes();
     if (a === 'equipas') return abrirEquipas();
+    if (a === 'colunas') return $('plt-menu') ? fecharMenu() : abrirMenuColunas(b);
     if (a === 'atribuir') return abrirAtribuir(selOrd().filter(eFolhaAtribuivel));
     if (a === 'ia') return abrirIA();
     if (a === 'xls') return exportarExcel();
