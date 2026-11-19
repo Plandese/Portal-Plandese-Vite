@@ -97,6 +97,8 @@ COMO FUNCIONA O PLANO
 - Barra partida em fases (como «Dividir tarefa» do MS Project): a mesma tarefa é executada em várias fases, cada uma com a sua duração e, antes dela, uma pausa em dias úteis (pausa 0 = fases seguidas, sem paragem). A duração da tarefa é o trabalho total (soma das fases); a barra ocupa trabalho + pausas. Na tabela, as tarefas partidas trazem nas notas «[barra partida: …]».
 - Para partir uma barra, mudar as fases ou voltar a juntá-la usa a operação "fases" (com a lista completa das fases). «Partir em N partes iguais» = N fases com a duração repartida o mais igual possível (a soma tem de dar a duração atual, salvo se pedirem outra) e, se não indicarem paragens, pausa 0. Usa subtarefas (adicionar) só quando pedirem tarefas separadas, com nomes, ligações ou valores próprios. Tarefas de resumo e marcos não se partem.
 - Equipas de trabalho: o plano tem equipas (secção «EQUIPAS DO PLANO»), cada uma com mão de obra (categoria e quantidade) e equipamentos (tipo e quantidade). Atribuem-se às tarefas (não aos resumos nem aos marcos), com o nº de equipas iguais (n). Daí saem os mapas de mão de obra e de equipamento do portal (máximo diário, média e homens-dia por semana ou mês), que podes comentar a partir das equipas atribuídas e das datas.
+- Pessoal e equipamento fixo de obra (secção «PESSOAL E EQUIPAMENTO FIXO DE OBRA»): quem está em obra durante toda a empreitada ou um período — por exemplo o encarregado, a carrinha de apoio, o contentor de estaleiro. Não se atribui a tarefas e conta nos mapas em todos os dias úteis do período. O encarregado deve estar aqui e não dentro das equipas de trabalho, para não ser contado a dobrar. Cria-se com "definir_equipa" e fixa = true (de/ate opcionais, AAAA-MM-DD; sem datas = toda a obra).
+- Subempreiteiros (secção «SUBEMPREITEIROS»): empresas que executam trabalhos que não são feitos pela Plandese. Cria-os com "definir_subempreiteiro" (nome, especialidade, contactos) e indica quem executa cada tarefa com "subempreiteiro" (nome do subempreiteiro, ou "Plandese" para voltar a meios próprios). Na coluna «equipas» da tabela, «Sub: X» indica a tarefa subempreitada. Pode ser útil indicar a percentagem do valor subempreitado.
 - Para criar ou mudar a composição de uma equipa usa "definir_equipa" (pelo nome; se já existir, substitui a lista que enviares). Para atribuir equipas a uma tarefa usa "equipas" com a lista completa (pelos nomes das equipas, que têm de existir ou ser criadas antes na mesma proposta). Composições que proponhas são estimativas correntes em obra e deves dizê-lo.
 
 O QUE FAZES
@@ -134,12 +136,12 @@ const TOOLS: any[] = [
             properties: {
               op: {
                 type: "string",
-                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "plano"],
-                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos) | equipas: atribui equipas à tarefa id | plano: dados gerais do plano",
+                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano"],
+                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano",
               },
               id: { type: "string", description: "Tarefa alvo (editar, predecessoras, eliminar, mover, nivel): ID da tabela (\"14\") ou ref de tarefa nova (\"N1\")." },
               ref: { type: "string", description: "adicionar: ref da nova tarefa (N1, N2…), para usar nas operações seguintes." },
-              nome: { type: "string", description: "adicionar/editar: nome da tarefa." },
+              nome: { type: "string", description: "adicionar/editar: nome da tarefa · definir_equipa: nome da equipa · definir_subempreiteiro: nome da empresa · subempreiteiro: nome do subempreiteiro que executa (ou \"Plandese\")." },
               dur: { type: "integer", minimum: 0, description: "adicionar/editar: duração em dias úteis (0 = marco). Não usar em tarefas de resumo." },
               depois_de: { type: "string", description: "adicionar/mover: fica logo a seguir a esta tarefa (e às subtarefas dela), ao mesmo nível. ID ou ref." },
               dentro_de: { type: "string", description: "adicionar/mover: passa a ser a última subtarefa desta tarefa. ID ou ref." },
@@ -168,6 +170,13 @@ const TOOLS: any[] = [
               data_inicio: { type: "string", description: "plano: nova data de início (consignação) AAAA-MM-DD." },
               calendario: { type: "string", enum: ["5", "6"], description: "plano: 5 = segunda a sexta, 6 = segunda a sábado." },
               nome_plano: { type: "string", description: "plano: novo nome do plano." },
+              fixa: { type: "boolean", description: "definir_equipa: true = pessoal/equipamento fixo de obra (não se atribui a tarefas); false = equipa de trabalho." },
+              de: { type: "string", description: "definir_equipa com fixa: início da presença em obra AAAA-MM-DD (\"\" = início da obra)." },
+              ate: { type: "string", description: "definir_equipa com fixa: fim da presença em obra AAAA-MM-DD (\"\" = fim da obra)." },
+              especialidade: { type: "string", description: "definir_subempreiteiro: especialidade / trabalhos (ex.: Pavimentação betuminosa)." },
+              contacto: { type: "string", description: "definir_subempreiteiro: pessoa de contacto." },
+              telefone: { type: "string", description: "definir_subempreiteiro: telefone." },
+              email: { type: "string", description: "definir_subempreiteiro: email." },
               mao_de_obra: {
                 type: "array",
                 description: "definir_equipa: lista completa da mão de obra da equipa.",
@@ -213,7 +222,7 @@ const TOOLS: any[] = [
 ];
 const ROTULOS: Record<string, string> = { propor_alteracoes: "A preparar as alterações", calcular: "A fazer contas" };
 
-const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "plano"]);
+const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano"]);
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Validação do que o modelo pediu (com eager_input_streaming o servidor não valida o input)
 function validarProposta(input: any): { resumo: string; operacoes: any[] } {
@@ -234,6 +243,8 @@ function validarProposta(input: any): { resumo: string; operacoes: any[] } {
       if (o.mao_de_obra != null && !Array.isArray(o.mao_de_obra)) throw new Error(`Operação ${k + 1}: mao_de_obra tem de ser uma lista.`);
       if (o.equipamentos != null && !Array.isArray(o.equipamentos)) throw new Error(`Operação ${k + 1}: equipamentos tem de ser uma lista.`);
     }
+    if (o.op === "definir_subempreiteiro") precisa("nome");
+    if (o.op === "subempreiteiro") precisa("id");
     if (o.op === "equipas") {
       precisa("id");
       if (!Array.isArray(o.equipas)) throw new Error(`Operação ${k + 1}: equipas precisa da lista de equipas.`);

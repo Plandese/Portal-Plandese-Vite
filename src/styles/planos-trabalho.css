@@ -371,3 +371,33 @@ body.plt-ia-fora .plt-ia,body.plt-ia-fora .plt-ia-mini{display:none!important}
 .plt-menu-chk .plt-chk svg{width:13px;height:13px;color:inherit}
 .plt-menu-chk.on .plt-chk{background:var(--d-brand,#173f9f);border-color:var(--d-brand,#173f9f);color:#fff}
 .plt-gh > div{cursor:context-menu}
+
+/* ═══ Pessoal fixo de obra e subempreiteiros ═══ */
+.plt-eqc-grupo{display:flex;align-items:center;gap:8px;margin:18px 2px 4px!important}
+.plt-eqc-grupo:first-child{margin-top:0!important}
+.plt-eqc-grupo svg{width:16px;height:16px;color:var(--d-brand,#173f9f)}
+.plt-eqc.fixa{background:#fffaf0;border-color:#f1dfb8}
+.plt-eqc-tipo{margin:4px 0 2px}
+.plt-eqc-tipo .plt-seg-b{height:32px;font-size:12.5px}
+.plt-eqc-per{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin:10px 0 2px}
+.plt-eqc-per label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678}
+.plt-eqc-per input{height:40px;border:1.5px solid #b9c1ce;border-radius:12px;padding:0 10px;font-family:inherit;font-size:14px;color:var(--d-ink,#1b2130);background:#fff}
+.plt-eqc-per small{flex-basis:100%;font-size:12px;color:#8a93a5}
+.plt-eq-pill.sub{--c:#8e5bd8;gap:4px}
+.plt-eq-pill.sub svg{width:12px;height:12px;flex:none}
+.plt-exec{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.plt-exec-op{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:150px;padding:10px 14px;border:1.5px solid #dde2ea;border-radius:16px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;color:var(--d-ink,#1b2130)}
+.plt-exec-op b{font-size:14.5px}
+.plt-exec-op small{font-size:12px;color:#5d6678}
+.plt-exec-op:hover{border-color:#9fb1d8}
+.plt-exec-op.on{border-color:var(--d-brand,#173f9f);background:#eef3ff;box-shadow:0 0 0 3px rgba(23,63,159,.1)}
+.plt-exec-op.sub.on{border-color:#8e5bd8;background:#f4eefd;box-shadow:0 0 0 3px rgba(142,91,216,.14)}
+.plt-sub-card{padding-bottom:4px}
+.plt-sub-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px 12px}
+.plt-sub-ic{flex:none;width:44px;height:44px;border-radius:50%;background:#f1eafd;color:#8e5bd8;display:grid;place-items:center}
+.plt-sub-ic svg{width:22px;height:22px}
+.plt-sub-tx{flex:1;min-width:200px}
+.plt-sub-tx b{display:block;font-size:16.5px}
+.plt-sub-tx small{display:block;font-size:12.5px;color:#5d6678;margin-top:2px}
+.plt-sub-tab td,.plt-sub-tab th{text-align:left}
+.plt-sub-tab .v{text-align:right}
