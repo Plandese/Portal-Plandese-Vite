@@ -156,7 +156,7 @@ const eUtil = n => _C.wd[ordC(n)] === n;
 
 // ───────────────────────── cálculo (CPM) ─────────────────────────
 // ── Fases: barra partida (como «Dividir tarefa» do MS Project) ──
-// t.fases = [{ dur, pausa, nome? }] — pausa = dias úteis parados antes da fase (a 1.ª tem 0).
+// t.fases = [{ dur, pausa, nome? }] — pausa = dias úteis parados antes da fase (a 1.ª tem 0; 0 nas outras = fases seguidas).
 // t.dur é sempre o trabalho total (soma das fases); a barra ocupa trabalho + pausas.
 const temFases = t => Array.isArray(t.fases) && t.fases.length > 1;
 function normFases(t, eResumo) {
@@ -166,7 +166,6 @@ function normFases(t, eResumo) {
   for (const f of t.fases) {
     const d = Math.max(0, parseInt(f.dur, 10) || 0), p = Math.max(0, parseInt(f.pausa, 10) || 0);
     if (!d) continue;
-    if (out.length && p === 0) { out[out.length - 1].dur += d; continue; }   // sem pausa = mesma fase
     out.push({ dur: d, pausa: out.length ? p : 0, ...(f.nome ? { nome: String(f.nome).slice(0, 80) } : {}) });
   }
   if (out.length < 2) { if (out.length) t.dur = out[0].dur; delete t.fases; return; }
@@ -990,7 +989,7 @@ function ligarGantt() {
       if (!dd || valor == null) return;
       mudar(() => {
         if (modo === 'mover') t.inicioMin = diso(valor);
-        else if (modo === 'fase') t.fases[k].pausa = valor;               // pausa 0 junta-a à fase anterior
+        else if (modo === 'fase') t.fases[k].pausa = valor;               // pausa 0 = fase seguida à anterior
         else if (k >= 0) { t.fases[k].dur = valor; t.dur = t.fases.reduce((s, f) => s + f.dur, 0); }
         else definirDur(t, valor);
       });
@@ -1823,6 +1822,12 @@ function descreverOps(p) {
       case 'eliminar': return `<b>Eliminar</b> ${nm(o.id)} (e subtarefas)`;
       case 'mover': return `<b>Mover</b> ${nm(o.id)} ${o.dentro_de ? 'para dentro de ' + nm(o.dentro_de) : 'para a seguir a ' + nm(o.depois_de)}`;
       case 'nivel': return `${Number(o.delta) > 0 ? '<b>Avançar</b>' : '<b>Recuar</b>'} nível de ${nm(o.id)}`;
+      case 'fases': {
+        const l = Array.isArray(o.fases) ? o.fases : [];
+        if (l.length < 2) return `${nm(o.id)}: <b>barra contínua</b> (juntar as fases)`;
+        const tot = l.reduce((a, f) => a + (parseInt(f.dur, 10) || 0), 0);
+        return `<b>Partir</b> ${nm(o.id)} em ${l.length} fases (${tot} d.ú. de trabalho): ${l.map((f, k) => `${k && f.pausa ? `pausa ${f.pausa} d.ú. → ` : ''}${f.nome ? esc(f.nome) + ' ' : ''}${f.dur} d.ú.`).join(' · ')}`;
+      }
       case 'plano': {
         const c = [];
         if (o.data_inicio) c.push(`início → ${dt(o.data_inicio)}`);
@@ -2024,6 +2029,17 @@ function aplicarOperacoes(ops, ids) {
           if (d > 0 && (i === 0 || T[i - 1].nivel < T[i].nivel)) throw new Error('a primeira tarefa de um grupo não pode avançar de nível');
           if (d < 0 && T[i].nivel === 0) throw new Error('a tarefa já está no primeiro nível');
           for (let q = i; q <= e; q++) T[q].nivel += d;
+          break;
+        }
+        case 'fases': {
+          const i = precisa(o.id), t = T[i];
+          if (eResumo(i)) throw new Error('uma tarefa de resumo não se parte');
+          const lista = (Array.isArray(o.fases) ? o.fases : []).map((f, k) => ({
+            dur: Math.max(1, parseInt(f.dur, 10) || 1), pausa: k ? Math.max(0, parseInt(f.pausa, 10) || 0) : 0,
+            ...(f.nome ? { nome: String(f.nome).trim().slice(0, 80) } : {}),
+          }));
+          if (lista.length < 2) { delete t.fases; if (lista.length) t.dur = lista[0].dur; }
+          else { t.fases = lista; t.dur = lista.reduce((a, f) => a + f.dur, 0); }
           break;
         }
         case 'plano': {

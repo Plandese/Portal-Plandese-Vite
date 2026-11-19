@@ -94,6 +94,8 @@ COMO FUNCIONA O PLANO
 - Ligações: TI (fim→início, a habitual), II (início→início), TT (fim→fim), IT (início→fim), com desfasamento em dias úteis (positivo = espera, negativo = sobreposição). Uma tarefa não pode ligar-se ao seu próprio resumo nem às suas subtarefas.
 - O portal recalcula as datas a partir das durações e ligações. Para impor uma data usa inicio_min («não iniciar antes de»), só quando houver motivo (data imposta, paragem, disponibilidade de equipa ou material). Para retirar uma restrição, inicio_min = "".
 - O valor (€) vem do articulado. Não o alteres sem te pedirem; se dividires uma tarefa, reparte o valor e mantém o total.
+- Barra partida em fases (como «Dividir tarefa» do MS Project): a mesma tarefa é executada em várias fases, cada uma com a sua duração e, antes dela, uma pausa em dias úteis (pausa 0 = fases seguidas, sem paragem). A duração da tarefa é o trabalho total (soma das fases); a barra ocupa trabalho + pausas. Na tabela, as tarefas partidas trazem nas notas «[barra partida: …]».
+- Para partir uma barra, mudar as fases ou voltar a juntá-la usa a operação "fases" (com a lista completa das fases). «Partir em N partes iguais» = N fases com a duração repartida o mais igual possível (a soma tem de dar a duração atual, salvo se pedirem outra) e, se não indicarem paragens, pausa 0. Usa subtarefas (adicionar) só quando pedirem tarefas separadas, com nomes, ligações ou valores próprios. Tarefas de resumo e marcos não se partem.
 
 O QUE FAZES
 - Perguntas sobre o plano (prazo, caminho crítico, folgas, o que se executa num mês, faturação prevista): responde a partir de <plano_atual> com números concretos. Para contas usa "calcular".
@@ -130,8 +132,8 @@ const TOOLS: any[] = [
             properties: {
               op: {
                 type: "string",
-                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "plano"],
-                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | plano: dados gerais do plano",
+                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "plano"],
+                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | plano: dados gerais do plano",
               },
               id: { type: "string", description: "Tarefa alvo (editar, predecessoras, eliminar, mover, nivel): ID da tabela (\"14\") ou ref de tarefa nova (\"N1\")." },
               ref: { type: "string", description: "adicionar: ref da nova tarefa (N1, N2…), para usar nas operações seguintes." },
@@ -164,6 +166,19 @@ const TOOLS: any[] = [
               data_inicio: { type: "string", description: "plano: nova data de início (consignação) AAAA-MM-DD." },
               calendario: { type: "string", enum: ["5", "6"], description: "plano: 5 = segunda a sexta, 6 = segunda a sábado." },
               nome_plano: { type: "string", description: "plano: novo nome do plano." },
+              fases: {
+                type: "array",
+                description: "fases: lista COMPLETA das fases da tarefa id, por ordem (2 ou mais para partir a barra; lista vazia = barra contínua). A soma das durações passa a ser a duração da tarefa.",
+                items: {
+                  type: "object",
+                  properties: {
+                    dur: { type: "integer", minimum: 1, description: "duração da fase em dias úteis" },
+                    pausa: { type: "integer", minimum: 0, description: "dias úteis parados antes desta fase (0 na 1.ª e quando as fases são seguidas)" },
+                    nome: { type: "string", description: "nome da fase (opcional), ex.: «Troço A»" },
+                  },
+                  required: ["dur"],
+                },
+              },
             },
             required: ["op"],
           },
@@ -181,7 +196,7 @@ const TOOLS: any[] = [
 ];
 const ROTULOS: Record<string, string> = { propor_alteracoes: "A preparar as alterações", calcular: "A fazer contas" };
 
-const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "plano"]);
+const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "plano"]);
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Validação do que o modelo pediu (com eager_input_streaming o servidor não valida o input)
 function validarProposta(input: any): { resumo: string; operacoes: any[] } {
@@ -197,6 +212,12 @@ function validarProposta(input: any): { resumo: string; operacoes: any[] } {
     if (o.op === "ligar" || o.op === "desligar") precisa("de", "para");
     if (o.op === "nivel" && ![1, -1].includes(Number(o.delta))) throw new Error(`Operação ${k + 1}: delta deve ser 1 ou -1.`);
     if (o.op === "mover" && !o.depois_de && !o.dentro_de) throw new Error(`Operação ${k + 1}: mover precisa de depois_de ou dentro_de.`);
+    if (o.op === "fases") {
+      precisa("id");
+      if (!Array.isArray(o.fases)) throw new Error(`Operação ${k + 1}: fases precisa da lista de fases.`);
+      if (o.fases.length > 50) throw new Error(`Operação ${k + 1}: demasiadas fases (máx. 50).`);
+      if (o.fases.some((f: any) => !(Number(f?.dur) >= 1) || Number(f?.pausa ?? 0) < 0)) throw new Error(`Operação ${k + 1}: cada fase precisa de duração ≥ 1 e pausa ≥ 0.`);
+    }
     if (o.inicio_min && !RE_DATA.test(o.inicio_min)) throw new Error(`Operação ${k + 1}: inicio_min deve ser AAAA-MM-DD.`);
     if (o.data_inicio && !RE_DATA.test(o.data_inicio)) throw new Error(`Operação ${k + 1}: data_inicio deve ser AAAA-MM-DD.`);
     if (o.dur != null && (!Number.isFinite(Number(o.dur)) || Number(o.dur) < 0)) throw new Error(`Operação ${k + 1}: duração inválida.`);
