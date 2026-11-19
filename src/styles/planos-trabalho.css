@@ -204,7 +204,6 @@
 /* ═══ Assistente de IA do plano — painel lateral não modal (o Gantt continua visível) ═══ */
 .plt-ia{--p-brand:var(--d-brand,#173f9f);position:fixed;top:14px;right:14px;bottom:14px;width:420px;max-width:calc(100vw - 28px);z-index:9400;display:flex;flex-direction:column;background:#fff;border-radius:24px;box-shadow:0 18px 60px rgba(10,28,90,.28);transform:translateX(calc(100% + 30px));transition:transform .28s cubic-bezier(.2,.8,.2,1);color:var(--d-ink,#1b2130);overflow:hidden}
 .plt-ia.open{transform:none}
-body.plt-ia-aberto #sec-planos-trabalho{margin-right:432px}
 .plt-ia-h{position:relative;flex:none;display:flex;align-items:center;gap:12px;padding:18px 18px 36px;background:var(--p-brand);color:#fff;overflow:hidden}
 .plt-ia-h::before{content:'';position:absolute;right:-60px;top:-90px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08)}
 .plt-ia-h > *{position:relative}
@@ -249,9 +248,23 @@ body.plt-ia-aberto #sec-planos-trabalho{margin-right:432px}
 .plt-ia-env:hover{background:var(--d-brand-d,#143786)}
 .plt-ia-env.stop{background:#b3261e}
 .plt-ia-env svg{width:20px;height:20px}
-@media (max-width:1100px){ body.plt-ia-aberto #sec-planos-trabalho{margin-right:0} }
 .plt-ia-m .plt-ia-tit{font-weight:700;margin-top:6px}
 .plt-ia-tab{overflow-x:auto;margin:4px 0 8px}
 .plt-ia-tab table{border-collapse:collapse;font-size:12.5px;width:100%}
 .plt-ia-tab th,.plt-ia-tab td{padding:4px 6px;border-bottom:1px solid #dfe4ec;text-align:left;vertical-align:top}
 .plt-ia-tab th{font-weight:700;color:#5d6678}
+
+/* painel sobreposto ao plano; minimizado fica um indicador ao lado do botão do assistente geral */
+.plt-ia-h .plt-ia-x + .plt-ia-x{margin-left:-6px}
+.plt-ia-mini{position:fixed;right:88px;bottom:22px;z-index:9400;display:none;align-items:center;gap:10px;height:54px;padding:0 20px 0 14px;border:0;border-radius:99px;background:var(--d-brand,#173f9f);color:#fff;font-family:inherit;font-size:14.5px;font-weight:600;box-shadow:0 10px 30px rgba(10,28,90,.3);cursor:pointer}
+.plt-ia-mini.open{display:inline-flex;animation:plt-mini-in .22s ease-out}
+.plt-ia-mini:hover{background:var(--d-brand-d,#143786)}
+.plt-ia-mini-ic{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center}
+.plt-ia-mini-ic svg{width:17px;height:17px}
+.plt-ia-mini .plt-ia-spin{width:18px;height:18px;margin:0 6px;border-color:rgba(255,255,255,.35);border-top-color:#fff}
+.plt-ia-mini.novo{background:#166534}
+.plt-ia-mini.erro{background:#b3261e}
+.plt-ia-mini-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:plt-pisca 1.2s ease-in-out infinite}
+@keyframes plt-pisca{50%{opacity:.25}}
+@keyframes plt-mini-in{from{transform:translateY(12px);opacity:0}}
+body.plt-ia-fora .plt-ia,body.plt-ia-fora .plt-ia-mini{display:none!important}

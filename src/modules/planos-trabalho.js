@@ -54,6 +54,7 @@ const ICO = {
   ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   parar: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  minimizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 17h12"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -1344,7 +1345,7 @@ ${tarefas}
 // ═══════════════════════════════════════════════════════════════════
 const URL_IA = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agente-planos`;
 const ANON_IA = import.meta.env.VITE_SUPABASE_KEY;
-let _ia = { planoId: null, msgs: [], ctrl: null };
+let _ia = { planoId: null, msgs: [], ctrl: null, min: false, novo: false };
 const SUGESTOES_IA = [
   'Que tarefas estão no caminho crítico e onde há mais folga?',
   'Como posso encurtar o prazo em duas semanas?',
@@ -1378,7 +1379,7 @@ function resumoParaIA() {
 
 function abrirIA() {
   if (!_plano) return;
-  if (_ia.planoId !== _plano.id) { _ia.ctrl?.abort(); _ia = { planoId: _plano.id, msgs: [], ctrl: null }; }
+  if (_ia.planoId !== _plano.id) { _ia.ctrl?.abort(); _ia = { planoId: _plano.id, msgs: [], ctrl: null, min: false, novo: false }; }
   let el = $('plt-ia');
   if (!el) {
     document.body.insertAdjacentHTML('beforeend', `
@@ -1386,7 +1387,8 @@ function abrirIA() {
         <div class="plt-ia-h">
           <span class="plt-ia-ic">${ICO.ia}</span>
           <div class="plt-ia-ht"><small>Planos de Trabalho</small><b>Assistente do plano</b></div>
-          <button type="button" class="plt-ia-x" data-ia="fechar" aria-label="Fechar">${ICO.x}</button>
+          <button type="button" class="plt-ia-x" data-ia="minimizar" aria-label="Minimizar" title="Minimizar (continua a trabalhar)">${ICO.minimizar}</button>
+          <button type="button" class="plt-ia-x" data-ia="fechar" aria-label="Fechar" title="Fechar">${ICO.x}</button>
         </div>
         <div class="plt-ia-b" id="plt-ia-b"></div>
         <form class="plt-ia-f" id="plt-ia-form">
@@ -1399,6 +1401,7 @@ function abrirIA() {
       const b = e.target.closest('[data-ia]'); if (!b) return;
       const a = b.dataset.ia;
       if (a === 'fechar') return fecharIA();
+      if (a === 'minimizar') return minimizarIA();
       if (a === 'sug') return enviarIA(b.textContent);
       if (a === 'aplicar') return aplicarProposta(+b.dataset.k);
       if (a === 'cancelar') { const m = _ia.msgs[+b.dataset.k]; if (m?.proposta) { m.proposta.estado = 'cancelada'; pintarIA(); } return; }
@@ -1407,14 +1410,51 @@ function abrirIA() {
     $('plt-ia-form').addEventListener('submit', e => { e.preventDefault(); if (_ia.ctrl) return _ia.ctrl.abort(); enviarIA($('plt-ia-in').value); });
     $('plt-ia-in').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('plt-ia-form').requestSubmit(); } });
   }
+  vigiarSeccaoIA();
+  _ia.min = false; _ia.novo = false;
   el.classList.add('open');
-  document.body.classList.add('plt-ia-aberto');
+  pintarMiniIA();
   pintarIA();
   setTimeout(() => $('plt-ia-in')?.focus(), 50);
 }
 function fecharIA() {
+  _ia.min = false;
   $('plt-ia')?.classList.remove('open');
-  document.body.classList.remove('plt-ia-aberto');
+  pintarMiniIA();
+}
+// Minimizar: o painel sai do ecrã mas o pedido continua; fica um indicador junto ao canto
+function minimizarIA() {
+  _ia.min = true; _ia.novo = false;
+  $('plt-ia')?.classList.remove('open');
+  pintarMiniIA();
+}
+function pintarMiniIA() {
+  let m = $('plt-ia-mini');
+  if (!_ia.min) { m?.classList.remove('open'); return; }
+  if (!m) {
+    document.body.insertAdjacentHTML('beforeend', '<button type="button" class="plt-ia-mini" id="plt-ia-mini" title="Abrir o assistente do plano"></button>');
+    m = $('plt-ia-mini');
+    m.addEventListener('click', () => abrirIA());
+  }
+  const ult = [..._ia.msgs].reverse().find(x => x.role === 'assistant');
+  let txt, cls = '';
+  if (_ia.ctrl) { txt = 'O assistente está a trabalhar…'; cls = 'a'; }
+  else if (_ia.novo && ult?.proposta?.estado === 'pendente') { txt = 'Proposta pronta para aplicar'; cls = 'novo'; }
+  else if (_ia.novo && ult?.erro) { txt = 'O assistente não conseguiu responder'; cls = 'erro'; }
+  else if (_ia.novo) { txt = 'Resposta pronta'; cls = 'novo'; }
+  else txt = 'Assistente do plano';
+  m.className = 'plt-ia-mini open ' + cls;
+  m.innerHTML = `${cls === 'a' ? '<span class="plt-ia-spin"></span>' : `<span class="plt-ia-mini-ic">${ICO.ia}</span>`}<span>${txt}</span>${cls === 'novo' || cls === 'erro' ? '<i class="plt-ia-mini-dot"></i>' : ''}`;
+}
+// O painel e o indicador vivem no <body>: escondem-se quando se sai da página dos planos
+let _vigiaIA = false;
+function vigiarSeccaoIA() {
+  if (_vigiaIA) return;
+  const sec = $('sec-planos-trabalho'); if (!sec) return;
+  _vigiaIA = true;
+  const ver = () => document.body.classList.toggle('plt-ia-fora', !sec.classList.contains('active'));
+  new MutationObserver(ver).observe(sec, { attributes: true, attributeFilter: ['class'] });
+  ver();
 }
 
 // Markdown mínimo: **negrito**, títulos (#), listas, tabelas simples, parágrafos
@@ -1443,6 +1483,7 @@ function mdIA(t) {
 }
 
 function pintarIA() {
+  if (_ia.min) pintarMiniIA();
   const b = $('plt-ia-b'); if (!b) return;
   const env = $('plt-ia-env');
   if (env) { env.innerHTML = _ia.ctrl ? ICO.parar : ICO.enviar; env.classList.toggle('stop', !!_ia.ctrl); env.setAttribute('aria-label', _ia.ctrl ? 'Parar' : 'Enviar'); }
@@ -1592,6 +1633,7 @@ async function enviarIA(texto) {
     atual.ferr = '';
     if (!atual.content && !atual.proposta && !atual.erro) atual.erro = 'Sem resposta do assistente.';
     _ia.ctrl = null;
+    if (_ia.min) _ia.novo = true;
     pintarIA();
   }
 }
