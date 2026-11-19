@@ -54,6 +54,8 @@ const ICO = {
   ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   parar: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  equipas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.2a3.5 3.5 0 0 1 0 6.6M18.5 14.2A6.5 6.5 0 0 1 21.5 20"/></svg>',
+  maquina: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="15" width="13" height="5" rx="2.5"/><path d="M4 15v-4h7v4M11 11l5-7 4 3M20 7l1 6h-3"/></svg>',
   pincel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2.5 0-4.2 1.7-4.2 4.2 0 1.3-.8 2.6-2.5 3.3 1.3 1.2 3.2 1.5 4.8 1.5 3 0 5.1-2.2 4.7-5.6"/></svg>',
   tesoura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>',
   juntar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h7M14 12h7M7 8l4 4-4 4M17 8l-4 4 4 4"/></svg>',
@@ -113,7 +115,7 @@ async function gravar() {
   _estado = 'a'; pintarEstado();
   const { error } = await sb.from('planos_trabalho').upsert({
     id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio,
-    calendario: p.calendario, tarefas: p.tarefas, updated_at: p.updated_at,
+    calendario: p.calendario, tarefas: p.tarefas, equipas: Array.isArray(p.equipas) ? p.equipas : [], updated_at: p.updated_at,
   });
   _estado = error ? 'erro' : 'ok';
   if (error) console.error('planos_trabalho:', error);
@@ -428,6 +430,7 @@ async function abrirPlano(id) {
   await carregarFeriados();
   const p = _planos.find(x => x.id === id); if (!p) return;
   if (!Array.isArray(p.tarefas)) p.tarefas = [];
+  if (!Array.isArray(p.equipas)) p.equipas = [];
   if (_plano !== p) { _undo = []; _redo = []; _ui.sel.clear(); _ui.vista = 'gantt'; }
   _plano = p;
   montarCalendario(); calcular();
@@ -444,6 +447,7 @@ async function abrirPlano(id) {
         <button type="button" class="plt-btn pri sm" data-acao="ia" title="Pedir alterações ou fazer perguntas ao assistente de IA">${ICO.ia}Assistente</button>
         <button type="button" class="plt-btn sec sm" data-acao="xls">${ICO.xls}Excel</button>
         <button type="button" class="plt-btn sec sm" data-acao="xml" title="Ficheiro XML que o MS Project abre (Ficheiro → Abrir)">${ICO.mpp}MS Project</button>
+        <button type="button" class="plt-btn sec sm" data-acao="equipas" title="Equipas de trabalho: mão de obra e equipamentos">${ICO.equipas}Equipas</button>
         <button type="button" class="plt-btn sec sm" data-acao="definicoes">${ICO.cfg}Definições</button>
       </div>
     </div>
@@ -451,6 +455,8 @@ async function abrirPlano(id) {
     <div class="plt-tabs">
       <button type="button" class="plt-tab" data-vista="gantt">Gráfico de Gantt</button>
       <button type="button" class="plt-tab" data-vista="fin">Cronograma financeiro</button>
+      <button type="button" class="plt-tab" data-vista="mo">Mão de obra</button>
+      <button type="button" class="plt-tab" data-vista="eq">Equipamentos</button>
     </div>
     <div id="plt-vista"></div>`;
   pintarEstado();
@@ -462,7 +468,9 @@ function pintarPlano() {
   $('plt-titulo').textContent = _plano.nome;
   document.querySelectorAll('.plt-tab').forEach(b => b.classList.toggle('on', b.dataset.vista === _ui.vista));
   pintarKpis();
-  if (_ui.vista === 'fin') pintarFinanceiro(); else pintarGantt();
+  if (_ui.vista === 'fin') pintarFinanceiro();
+  else if (_ui.vista === 'mo' || _ui.vista === 'eq') pintarMapaRecursos(_ui.vista);
+  else pintarGantt();
 }
 
 function pintarKpis() {
@@ -491,6 +499,7 @@ const COLS = [
   { k: 'ini', t: 'Início', w: 84 },
   { k: 'fim', t: 'Fim', w: 84 },
   { k: 'pred', t: 'Predecessoras', w: 104 },
+  { k: 'eq', t: 'Equipas', w: 150 },
   { k: 'pct', t: '%', w: 54 },
   { k: 'valor', t: 'Valor', w: 112 },
 ];
@@ -563,6 +572,7 @@ function pintarGrelha() {
       <div class="c-ini"><input data-f="ini" value="${fmtD(diaDe(r.es[i]))}" ${ro}/></div>
       <div class="c-fim"><input data-f="fim" value="${fmtD(diaDe(r.ef[i]))}" ${ro || (r.ms[i] ? 'readonly tabindex="-1"' : '')}/></div>
       <div class="c-pred"><input data-f="pred" value="${esc(txtPred(i))}"/></div>
+      <div class="c-eq ${rs || r.ms[i] ? 'ro' : ''}" ${rs || r.ms[i] ? '' : `data-eq="${i}" title="Clique para atribuir equipas"`}>${celulaEquipas(t, i)}</div>
       <div class="c-pct"><input data-f="pct" value="${r.pct[i]}%" ${ro}/></div>
       <div class="c-valor"><input data-f="valor" value="${r.valor[i] ? eur0(r.valor[i]) : ''}" ${ro}/></div>
     </div>`;
@@ -708,7 +718,7 @@ const CORES_BARRA = [
 ];
 const ROTULOS_BARRA = [
   ['', 'Automático (nome; data nos marcos)'], ['nome', 'Nome da tarefa'], ['nome_datas', 'Nome e datas'],
-  ['datas', 'Datas de início e fim'], ['dur', 'Duração'], ['pct', '% concluída'], ['nenhum', 'Nenhum'],
+  ['datas', 'Datas de início e fim'], ['dur', 'Duração'], ['pct', '% concluída'], ['equipas', 'Equipas'], ['nome_equipas', 'Nome e equipas'], ['nenhum', 'Nenhum'],
 ];
 const corValida = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 function escurecer(hex, f = 0.75) {
@@ -724,6 +734,8 @@ function textoBarra(t, i, a, b, auto) {
     case 'nome_datas': return `${esc(t.nome)} <span class="plt-lbl-dt">${fmtD(a)} – ${fmtD(b)}</span>`;
     case 'dur': return txtDur(durDe(i));
     case 'pct': return _R.pct[i] + '%';
+    case 'equipas': return esc(nomesEquipas(t)) || auto;
+    case 'nome_equipas': return `${esc(t.nome)}${nomesEquipas(t) ? ` <span class="plt-lbl-dt">${esc(nomesEquipas(t))}</span>` : ''}`;
     default: return auto;
   }
 }
@@ -914,6 +926,8 @@ function ligarGantt() {
     else if (!_ui.sel.has(i) || _ui.sel.size > 1) selecionar(i);
   });
   gb.addEventListener('click', e => {
+    const ce = e.target.closest('[data-eq]');
+    if (ce && !(e.shiftKey || e.ctrlKey || e.metaKey)) return abrirAtribuir([+ce.dataset.eq]);
     const tg = e.target.closest('.plt-tg'); if (!tg) return;
     const t = _plano.tarefas[+tg.dataset.tg]; t.fechado = !t.fechado;
     calcular(); pintarGrelha(); pintarGrafico(); agendarGravar();
@@ -1038,6 +1052,7 @@ function abrirMenuBarra(i, dia, x, y) {
   let h = `<div class="plt-menu-h">${esc(t.nome)}</div>`;
   h += it('info', ICO.info, 'Definições da tarefa…');
   h += it('barra', ICO.pincel, folha ? 'Aparência e fases da barra…' : 'Aparência da barra…');
+  if (folha) { const n = _ui.sel.has(i) ? selOrd().filter(eFolhaAtribuivel).length : 1; h += it('equipas', ICO.equipas, n > 1 ? `Atribuir equipas a ${n} tarefas…` : 'Atribuir equipas…'); }
   if (folha && t.dur >= 2) {
     h += '<div class="plt-menu-sep"></div>';
     h += partir ? it('partir', ICO.tesoura, `Partir a barra a ${fmtD(partir.dia)}`)
@@ -1060,6 +1075,7 @@ function abrirMenuBarra(i, dia, x, y) {
     switch (b.dataset.m) {
       case 'info': abrirTarefa(i); break;
       case 'barra': abrirBarra(i); break;
+      case 'equipas': abrirAtribuir(_ui.sel.has(i) && _ui.sel.size > 1 ? selOrd().filter(eFolhaAtribuivel) : [i]); break;
       case 'partir':
         mudar(() => {
           if (!temFases(t)) t.fases = [{ dur: t.dur, pausa: 0 }];
@@ -1172,7 +1188,9 @@ function ligarTeclado() {
   if (_keysOk) return; _keysOk = true;
   const body = $('plt-body');
   body.addEventListener('click', e => {
-    const b = e.target.closest('[data-acao],[data-abrir],[data-vista],[data-zoom]'); if (!b) return;
+    const b = e.target.closest('[data-acao],[data-abrir],[data-vista],[data-zoom],[data-mapa-per],[data-mapa-val]'); if (!b) return;
+    if (b.dataset.mapaPer) { _ui.mapaPer = b.dataset.mapaPer; return pintarPlano(); }
+    if (b.dataset.mapaVal) { _ui.mapaVal = b.dataset.mapaVal; return pintarPlano(); }
     if (b.dataset.abrir) return abrirPlano(b.dataset.abrir);
     if (b.dataset.vista) { _ui.vista = b.dataset.vista; return pintarPlano(); }
     if (b.dataset.zoom) { _ui.zoom = b.dataset.zoom; const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto; return pintarGantt(); }
@@ -1180,6 +1198,8 @@ function ligarTeclado() {
     if (a === 'novo') return abrirNovo();
     if (a === 'voltar') { fecharIA(); gravar(); _plano = null; _R = null; return renderPlanosTrabalho(); }
     if (a === 'definicoes') return abrirDefinicoes();
+    if (a === 'equipas') return abrirEquipas();
+    if (a === 'atribuir') return abrirAtribuir(selOrd().filter(eFolhaAtribuivel));
     if (a === 'ia') return abrirIA();
     if (a === 'xls') return exportarExcel();
     if (a === 'xml') return exportarMSProject();
@@ -1375,10 +1395,10 @@ async function criarPlano() {
       ligacoes: $('pn-lig').value,
     });
   }
-  const p = { id: uid(), obra_id: _novo.obra || null, nome, data_inicio: ini, calendario: $('pn-cal').value, tarefas, updated_at: new Date().toISOString() };
+  const p = { id: uid(), obra_id: _novo.obra || null, nome, data_inicio: ini, calendario: $('pn-cal').value, tarefas, equipas: [], updated_at: new Date().toISOString() };
   const btn = document.querySelector('#plt-drawer [data-g="criar"]'); btn.disabled = true; btn.textContent = 'A criar…';
   if (!_modoLocal) {
-    const { error } = await sb.from('planos_trabalho').insert({ id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio, calendario: p.calendario, tarefas: p.tarefas });
+    const { error } = await sb.from('planos_trabalho').insert({ id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio, calendario: p.calendario, tarefas: p.tarefas, equipas: [] });
     if (error) {
       if (tabelaEmFalta(error)) { _modoLocal = true; _planos = lsLer(); }
       else { btn.disabled = false; btn.textContent = 'Criar plano'; return showToast('Erro ao criar: ' + error.message); }
@@ -1568,6 +1588,12 @@ function exportarExcel() {
     ws2['!cols'] = [{ wch: 8 }, { wch: 50 }, { wch: 14 }, ...lista.map(() => ({ wch: 12 }))];
     XLSX.utils.book_append_sheet(wb, ws2, 'Cronograma financeiro');
   }
+  ['mo', 'eq'].forEach(tp => { const m = mapaRecursos(tp, 'mes'); if (!m.cats.length) return;
+    const f = [[tp === 'mo' ? 'Categoria' : 'Equipamento', ...m.periodos.map(x => x.rotulo + ' (máx.)'), 'Máximo', 'Total (dias)']];
+    m.cats.forEach(c => f.push([c, ...m.periodos.map(x => x.max.get(c) || 0), m.maxCat.get(c) || 0, m.totCat.get(c) || 0]));
+    f.push(['Total (simultâneo)', ...m.periodos.map(x => x.maxTot), m.maxGeral, m.totGeral]);
+    const w3 = XLSX.utils.aoa_to_sheet(f); w3['!cols'] = [{ wch: 30 }, ...m.periodos.map(() => ({ wch: 13 })), { wch: 10 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, w3, tp === 'mo' ? 'Mapa de mão de obra' : 'Mapa de equipamento'); });
   XLSX.writeFile(wb, `${nomeFicheiro()}.xlsx`);
 }
 
@@ -1649,10 +1675,12 @@ function resumoParaIA() {
     durDe(i), ds(r.es[i]), ds(r.ef[i]), txtPred(i) || '—', r.pct[i],
     r.valor[i] ? r.valor[i].toFixed(2) : '', r.resumo[i] ? '' : Math.max(0, r.folga[i]),
     !r.resumo[i] && r.folga[i] <= 0 ? 'sim' : '',
-    t.cod || '', t.inicioMin || '',
+    t.cod || '', t.inicioMin || '', nomesEquipas(t) || '—',
     (temFases(t) ? `[barra partida: ${t.fases.map((f, k) => (k ? `pausa ${f.pausa} d.ú. → ` : '') + `${f.nome ? f.nome + ' ' : ''}${f.dur} d.ú.`).join(' → ')}] ` : '') + (t.notas || '').replace(/\s+/g, ' ').slice(0, 140),
   ].join(' | '));
-  return `${cab}\n\nTAREFAS\nID | EDT | nível | nome | duração (d.ú.) | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | notas\n${linhas.join('\n')}`;
+  const eqs = equipasDoPlano();
+  const secEq = eqs.length ? `EQUIPAS DO PLANO (nome: composição)\n${eqs.map(e => `- ${e.nome}: ${resumoComp(e) || 'sem composição'}`).join('\n')}` : 'EQUIPAS DO PLANO: nenhuma definida.';
+  return `${cab}\n\n${secEq}\n\nTAREFAS\nID | EDT | nível | nome | duração (d.ú.) | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | equipas | notas\n${linhas.join('\n')}`;
 }
 
 function abrirIA() {
@@ -1822,6 +1850,8 @@ function descreverOps(p) {
       case 'eliminar': return `<b>Eliminar</b> ${nm(o.id)} (e subtarefas)`;
       case 'mover': return `<b>Mover</b> ${nm(o.id)} ${o.dentro_de ? 'para dentro de ' + nm(o.dentro_de) : 'para a seguir a ' + nm(o.depois_de)}`;
       case 'nivel': return `${Number(o.delta) > 0 ? '<b>Avançar</b>' : '<b>Recuar</b>'} nível de ${nm(o.id)}`;
+      case 'definir_equipa': return `<b>Equipa</b> «${esc(o.nome)}»: ${[...(o.mao_de_obra || []).map(x => `${x.qtd} ${esc(x.categoria)}`), ...(o.equipamentos || []).map(x => `${x.qtd} ${esc(x.tipo)}`)].join(', ') || 'sem alterações à composição'}`;
+      case 'equipas': return `${nm(o.id)}: equipas → ${(o.equipas || []).length ? o.equipas.map(x => `${esc(x.nome)}${x.n > 1 ? ' ×' + x.n : ''}`).join(', ') : 'nenhuma'}`;
       case 'fases': {
         const l = Array.isArray(o.fases) ? o.fases : [];
         if (l.length < 2) return `${nm(o.id)}: <b>barra contínua</b> (juntar as fases)`;
@@ -2042,6 +2072,27 @@ function aplicarOperacoes(ops, ids) {
           else { t.fases = lista; t.dur = lista.reduce((a, f) => a + f.dur, 0); }
           break;
         }
+        case 'definir_equipa': {
+          const nome = String(o.nome || '').trim().slice(0, 80);
+          if (!nome) throw new Error('falta o nome da equipa');
+          const eqs = equipasDoPlano();
+          let e = eqs.find(x => x.nome.toLowerCase() === nome.toLowerCase());
+          if (!e) { e = { id: uid(), nome, cor: CORES_EQUIPA[eqs.length % CORES_EQUIPA.length], mo: [], eq: [] }; eqs.push(e); }
+          if (Array.isArray(o.mao_de_obra)) e.mo = o.mao_de_obra.filter(x => x && x.categoria && +x.qtd > 0).map(x => ({ cat: String(x.categoria).trim().slice(0, 60), qtd: Math.round(+x.qtd) }));
+          if (Array.isArray(o.equipamentos)) e.eq = o.equipamentos.filter(x => x && x.tipo && +x.qtd > 0).map(x => ({ tipo: String(x.tipo).trim().slice(0, 60), qtd: Math.round(+x.qtd) }));
+          break;
+        }
+        case 'equipas': {
+          const i = precisa(o.id), t = T[i];
+          if (eResumo(i)) throw new Error('as equipas atribuem-se às tarefas, não aos resumos');
+          const lista = (Array.isArray(o.equipas) ? o.equipas : []).map(x => {
+            const e = equipasDoPlano().find(y => y.nome.toLowerCase() === String(x.nome || '').trim().toLowerCase());
+            if (!e) throw new Error(`não existe a equipa «${x.nome}»`);
+            return { id: e.id, n: Math.max(1, Math.min(20, parseInt(x.n, 10) || 1)) };
+          });
+          if (lista.length) t.equipas = lista; else delete t.equipas;
+          break;
+        }
         case 'plano': {
           if (o.data_inicio) { _plano.data_inicio = o.data_inicio; mudouPlano = true; }
           if (o.calendario === '5' || o.calendario === '6') { _plano.calendario = o.calendario; mudouPlano = true; }
@@ -2071,4 +2122,273 @@ function aplicarOperacoes(ops, ids) {
     if (mudouPlano) showToast(`Datas do plano alteradas (antes: início ${antesPlano.data_inicio}) — o Ctrl+Z não repõe o início nem o calendário`);
   }
   return { feitas, erros };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EQUIPAS DE TRABALHO, MAPA DE MÃO DE OBRA E MAPA DE EQUIPAMENTO
+//  _plano.equipas = [{ id, nome, cor, mo: [{ cat, qtd }], eq: [{ tipo, qtd }] }]
+//  Cada tarefa: t.equipas = [{ id, n }] (n = nº de equipas iguais na tarefa).
+//  Os mapas somam, em cada dia de trabalho da tarefa (sem as pausas das fases), a composição das equipas.
+// ═══════════════════════════════════════════════════════════════════
+const MO_SUGESTOES = ['Encarregado', 'Chefe de equipa', 'Pedreiro', 'Servente', 'Canalizador', 'Calceteiro', 'Carpinteiro de cofragem', 'Armador de ferro', 'Eletricista', 'Serralheiro', 'Pintor', 'Manobrador', 'Motorista', 'Topógrafo', 'Técnico de segurança'];
+const EQ_SUGESTOES = ['Retroescavadora', 'Giratória', 'Mini-giratória', 'Mini-pá carregadora', 'Pá carregadora', 'Camião basculante', 'Camião grua', 'Dumper', 'Cilindro', 'Placa vibratória', 'Saltitão', 'Martelo pneumático', 'Compressor', 'Gerador', 'Bomba de água', 'Serra de corte de pavimento', 'Betoneira', 'Grua', 'Plataforma elevatória', 'Carrinha de apoio'];
+const CORES_EQUIPA = ['#5b86e5', '#43a047', '#f08c2e', '#8e5bd8', '#1fa3a3', '#e05252', '#e6b422', '#8a93a5'];
+const MODELOS_EQUIPA = [
+  { nome: 'Valas e tubagem', mo: [['Encarregado', 1], ['Manobrador', 1], ['Canalizador', 1], ['Servente', 2]], eq: [['Retroescavadora', 1], ['Camião basculante', 1], ['Placa vibratória', 1]] },
+  { nome: 'Ligações e acessórios', mo: [['Canalizador', 2], ['Servente', 1]], eq: [['Mini-giratória', 1], ['Carrinha de apoio', 1]] },
+  { nome: 'Construção civil', mo: [['Pedreiro', 2], ['Servente', 2]], eq: [['Betoneira', 1], ['Carrinha de apoio', 1]] },
+  { nome: 'Pavimentação', mo: [['Calceteiro', 1], ['Manobrador', 2], ['Servente', 2]], eq: [['Pá carregadora', 1], ['Cilindro', 1], ['Camião basculante', 1]] },
+  { nome: 'Estaleiro e apoio', mo: [['Encarregado', 1], ['Servente', 1]], eq: [['Carrinha de apoio', 1]] },
+];
+const equipasDoPlano = () => (Array.isArray(_plano.equipas) ? _plano.equipas : (_plano.equipas = []));
+const equipaPorId = id => equipasDoPlano().find(e => e.id === id);
+const atribDe = t => (Array.isArray(t.equipas) ? t.equipas : []).filter(a => equipaPorId(a.id));
+const eFolhaAtribuivel = i => _R && !_R.resumo[i] && !_R.ms[i];
+const nomesEquipas = t => atribDe(t).map(a => equipaPorId(a.id).nome + (a.n > 1 ? ' ×' + a.n : '')).join(', ');
+const resumoComp = e => [
+  ...(e.mo || []).filter(x => x.cat && x.qtd > 0).map(x => `${x.qtd} ${x.cat}`),
+  ...(e.eq || []).filter(x => x.tipo && x.qtd > 0).map(x => `${x.qtd} ${x.tipo}`),
+].join(', ');
+
+function celulaEquipas(t, i) {
+  if (_R.resumo[i]) {
+    // resumo: equipas usadas nas subtarefas (só leitura)
+    const ids = new Set(_R.folhas[i].flatMap(c => atribDe(_plano.tarefas[c]).map(a => a.id)));
+    return ids.size ? `<span class="plt-eq-mais">${ids.size} equipa${ids.size > 1 ? 's' : ''}</span>` : '';
+  }
+  if (_R.ms[i]) return '';
+  const at = atribDe(t);
+  if (!at.length) return '<span class="plt-eq-vazio">+ equipa</span>';
+  return at.map(a => { const e = equipaPorId(a.id); return `<span class="plt-eq-pill" style="--c:${e.cor || '#5b86e5'}" title="${esc(e.nome)}: ${esc(resumoComp(e))}">${esc(e.nome)}${a.n > 1 ? ' ×' + a.n : ''}</span>`; }).join('');
+}
+
+// listas de sugestões (datalist) para categorias e equipamentos
+function garantirListas() {
+  if ($('plt-dl-mo')) return;
+  const funcs = [...new Set((S.COLABORADORES || []).filter(c => c.ativo !== false && c.func).map(c => String(c.func).trim()))];
+  const mo = [...new Set([...MO_SUGESTOES, ...funcs])].sort((a, b) => a.localeCompare(b, 'pt'));
+  document.body.insertAdjacentHTML('beforeend', `<datalist id="plt-dl-mo">${mo.map(x => `<option value="${esc(x)}">`).join('')}</datalist><datalist id="plt-dl-eq">${EQ_SUGESTOES.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`);
+}
+
+// ── Painel «Equipas de trabalho» ──
+function abrirEquipas() {
+  garantirListas();
+  const rasc = JSON.parse(JSON.stringify(equipasDoPlano()));
+  const usos = id => _plano.tarefas.filter(t => atribDe(t).some(a => a.id === id)).length;
+  const linha = (k, tipo, x, j) => `<div class="plt-eqc-l">
+      <input class="plt-eqc-cat" list="plt-dl-${tipo}" data-k="${k}" data-tp="${tipo}" data-j="${j}" data-f="nome" value="${esc(tipo === 'mo' ? x.cat : x.tipo)}" placeholder="${tipo === 'mo' ? 'Categoria (ex.: Servente)' : 'Equipamento (ex.: Retroescavadora)'}"/>
+      <input class="plt-eqc-q" type="number" min="0" step="1" data-k="${k}" data-tp="${tipo}" data-j="${j}" data-f="qtd" value="${x.qtd}"/>
+      <button type="button" class="plt-fase-x" data-b="tira" data-k="${k}" data-tp="${tipo}" data-j="${j}" title="Retirar">${ICO.x}</button>
+    </div>`;
+  const corpo = () => `
+    <p class="plt-nota">Cada equipa junta a mão de obra e os equipamentos que trabalham juntos numa frente. Depois atribua as equipas às tarefas (coluna «Equipas» ou botão direito na barra) e veja os mapas nos separadores «Mão de obra» e «Equipamentos».</p>
+    ${rasc.length ? '' : '<div class="dd-vazio">Ainda não há equipas neste plano.</div>'}
+    ${rasc.map((e, k) => `<div class="plt-eqc" style="--c:${e.cor}">
+      <div class="plt-eqc-h">
+        <input class="plt-eqc-nome" data-k="${k}" data-f="enome" value="${esc(e.nome)}" placeholder="Nome da equipa"/>
+        <div class="plt-eqc-cores">${CORES_EQUIPA.map(c => `<button type="button" class="plt-cor sm ${e.cor === c ? 'on' : ''}" style="--c:${c}" data-b="cor" data-k="${k}" data-cor="${c}" title="Cor"></button>`).join('')}</div>
+      </div>
+      <div class="plt-eqc-sec">${ICO.equipas}<b>Mão de obra</b><small>${(e.mo || []).reduce((a, x) => a + (+x.qtd || 0), 0)} pessoas</small></div>
+      ${(e.mo || []).map((x, j) => linha(k, 'mo', x, j)).join('')}
+      <button type="button" class="plt-eqc-add" data-b="mais" data-k="${k}" data-tp="mo">${ICO.plus}Mão de obra</button>
+      <div class="plt-eqc-sec">${ICO.maquina}<b>Equipamentos</b><small>${(e.eq || []).reduce((a, x) => a + (+x.qtd || 0), 0)} unidades</small></div>
+      ${(e.eq || []).map((x, j) => linha(k, 'eq', x, j)).join('')}
+      <button type="button" class="plt-eqc-add" data-b="mais" data-k="${k}" data-tp="eq">${ICO.plus}Equipamento</button>
+      <div class="plt-eqc-f"><small>${usos(e.id) ? `Usada em ${usos(e.id)} tarefa${usos(e.id) > 1 ? 's' : ''}` : 'Ainda não está atribuída'}</small>
+        <button type="button" class="plt-btn del sm" data-b="apaga" data-k="${k}">${ICO.del}Eliminar equipa</button></div>
+    </div>`).join('')}
+    <div class="plt-eqc-novo">
+      <button type="button" class="plt-btn pri sm" data-b="nova">${ICO.plus}Nova equipa</button>
+      <select class="plt-eqc-modelo" data-b-sel="modelo"><option value="">Criar a partir de um modelo…</option>${MODELOS_EQUIPA.map((m, j) => `<option value="${j}">${esc(m.nome)}</option>`).join('')}</select>
+    </div>`;
+  const dr = mostrarGaveta('Plano de trabalhos', 'Equipas de trabalho', 'Mão de obra e equipamentos de cada equipa', corpo(),
+    '<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Guardar</button>');
+  dr.classList.add('plt-drawer-lg');
+  const body = dr.querySelector('.dd-b');
+  const repintar = () => { const y = body.scrollTop; body.innerHTML = corpo(); body.scrollTop = y; };
+  const focar = (k, sel) => { const c = body.querySelectorAll('.plt-eqc')[k]; const el = c && c.querySelector(sel); if (el) { el.focus(); el.select?.(); } };
+  const nova = (m) => {
+    rasc.push({ id: uid(), nome: m ? m.nome : `Equipa ${rasc.length + 1}`, cor: CORES_EQUIPA[rasc.length % CORES_EQUIPA.length],
+      mo: m ? m.mo.map(([cat, qtd]) => ({ cat, qtd })) : [{ cat: '', qtd: 1 }], eq: m ? m.eq.map(([tipo, qtd]) => ({ tipo, qtd })) : [] });
+    repintar();
+    body.scrollTop = body.scrollHeight;
+    focar(rasc.length - 1, '.plt-eqc-nome');
+  };
+  body.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-b]'); if (!b) return;
+    const k = +b.dataset.k, e = rasc[k];
+    switch (b.dataset.b) {
+      case 'nova': return nova(null);
+      case 'cor': e.cor = b.dataset.cor; return repintar();
+      case 'mais': (e[b.dataset.tp] = e[b.dataset.tp] || []).push(b.dataset.tp === 'mo' ? { cat: '', qtd: 1 } : { tipo: '', qtd: 1 }); repintar(); return focar(k, `input[data-tp="${b.dataset.tp}"][data-j="${e[b.dataset.tp].length - 1}"][data-f="nome"]`);
+      case 'tira': e[b.dataset.tp].splice(+b.dataset.j, 1); return repintar();
+      case 'apaga': {
+        const n = usos(e.id);
+        if (n && !confirm(`A equipa «${e.nome}» está atribuída a ${n} tarefa(s). Eliminar e retirá-la dessas tarefas?`)) return;
+        rasc.splice(k, 1); return repintar();
+      }
+    }
+  });
+  body.addEventListener('change', ev => {
+    const x = ev.target;
+    if (x.dataset.bSel === 'modelo') { const m = MODELOS_EQUIPA[+x.value]; if (m) nova(m); return; }
+    const k = x.dataset.k; if (k == null) return;
+    const e = rasc[+k];
+    if (x.dataset.f === 'enome') { e.nome = x.value.trim(); return; }
+    const it = e[x.dataset.tp][+x.dataset.j];
+    if (x.dataset.f === 'nome') { if (x.dataset.tp === 'mo') it.cat = x.value.trim(); else it.tipo = x.value.trim(); }
+    else it.qtd = Math.max(0, parseInt(x.value, 10) || 0);
+    if (x.dataset.f === 'qtd') repintar();
+  });
+  dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  dr.querySelector('[data-g="ok"]').onclick = () => {
+    // limpar: sem linhas vazias, nomes únicos
+    const vistos = new Set();
+    const limpas = rasc.map((e, k) => {
+      let nome = (e.nome || '').trim() || `Equipa ${k + 1}`;
+      while (vistos.has(nome.toLowerCase())) nome += ' (2)';
+      vistos.add(nome.toLowerCase());
+      return { id: e.id, nome, cor: e.cor || CORES_EQUIPA[k % CORES_EQUIPA.length],
+        mo: (e.mo || []).filter(x => x.cat && x.qtd > 0).map(x => ({ cat: x.cat, qtd: +x.qtd })),
+        eq: (e.eq || []).filter(x => x.tipo && x.qtd > 0).map(x => ({ tipo: x.tipo, qtd: +x.qtd })) };
+    });
+    const ids = new Set(limpas.map(e => e.id));
+    _plano.equipas = limpas;
+    const orfas = _plano.tarefas.some(t => (t.equipas || []).some(a => !ids.has(a.id)));
+    if (orfas) mudar(() => { _plano.tarefas.forEach(t => { if (t.equipas) { t.equipas = t.equipas.filter(a => ids.has(a.id)); if (!t.equipas.length) delete t.equipas; } }); });
+    else depoisDeMudar();
+    fecharGaveta();
+    showToast(`${limpas.length} equipa${limpas.length === 1 ? '' : 's'} guardada${limpas.length === 1 ? '' : 's'}`);
+  };
+}
+
+// ── Painel «Atribuir equipas» (uma ou várias tarefas) ──
+function abrirAtribuir(idxs) {
+  idxs = (idxs || []).filter(eFolhaAtribuivel);
+  if (!idxs.length) return showToast('Selecione tarefas (não resumos nem marcos) para atribuir equipas');
+  const T = _plano.tarefas, eqs = equipasDoPlano();
+  // ponto de partida: as equipas da 1.ª tarefa
+  const rasc = new Map(atribDe(T[idxs[0]]).map(a => [a.id, a.n || 1]));
+  const corpo = () => eqs.length ? `
+    <p class="plt-nota">${idxs.length > 1 ? `As equipas escolhidas substituem as das <b>${idxs.length} tarefas</b> selecionadas.` : 'Escolha as equipas que executam esta tarefa e quantas de cada.'} A mão de obra e os equipamentos contam em todos os dias de trabalho da tarefa.</p>
+    ${eqs.map(e => { const n = rasc.get(e.id) || 0; return `<div class="plt-at ${n ? 'on' : ''}" style="--c:${e.cor}">
+      <button type="button" class="plt-at-chk" data-b="tg" data-id="${e.id}" aria-pressed="${!!n}">${n ? ICO.visto : ''}</button>
+      <div class="plt-at-tx"><b>${esc(e.nome)}</b><small>${esc(resumoComp(e)) || 'Sem composição'}</small></div>
+      <div class="plt-at-n ${n ? '' : 'off'}"><button type="button" data-b="menos" data-id="${e.id}">−</button><span>${n || 1}</span><button type="button" data-b="mais" data-id="${e.id}">+</button></div>
+    </div>`; }).join('')}
+    <button type="button" class="plt-eqc-add" data-b="gerir">${ICO.cfg}Criar ou editar equipas…</button>`
+    : `<div class="dd-vazio">Ainda não há equipas neste plano. Crie-as primeiro (com a mão de obra e os equipamentos de cada uma).</div>
+       <button type="button" class="plt-btn pri sm" data-b="gerir">${ICO.plus}Criar equipas</button>`;
+  const titulo = idxs.length > 1 ? `${idxs.length} tarefas` : T[idxs[0]].nome;
+  const dr = mostrarGaveta('Atribuir equipas', titulo, idxs.length > 1 ? idxs.map(i => i + 1).join(', ') : `Tarefa ${idxs[0] + 1} · EDT ${_R.edt[idxs[0]]}`, corpo(),
+    `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Aplicar</button>`);
+  const body = dr.querySelector('.dd-b');
+  body.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-b]'); if (!b) return;
+    const id = b.dataset.id, n = rasc.get(id) || 0;
+    if (b.dataset.b === 'gerir') { fecharGaveta(); return setTimeout(abrirEquipas, 320); }
+    if (b.dataset.b === 'tg') { if (n) rasc.delete(id); else rasc.set(id, 1); }
+    if (b.dataset.b === 'mais') rasc.set(id, Math.min(20, (n || 0) + 1));
+    if (b.dataset.b === 'menos') { if (n > 1) rasc.set(id, n - 1); else rasc.delete(id); }
+    const y = body.scrollTop; body.innerHTML = corpo(); body.scrollTop = y;
+  });
+  dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  dr.querySelector('[data-g="ok"]').onclick = () => {
+    const lista = eqs.filter(e => rasc.has(e.id)).map(e => ({ id: e.id, n: rasc.get(e.id) }));
+    mudar(() => { idxs.forEach(i => { if (lista.length) T[i].equipas = lista.map(a => ({ ...a })); else delete T[i].equipas; }); });
+    fecharGaveta();
+  };
+}
+
+// ── Cálculo dos mapas ──
+// tipo 'mo' | 'eq'; per 'semana' | 'mes'. Por período: máximo diário, média diária (dias úteis) e total (dias × unidades).
+function mapaRecursos(tipo, per) {
+  const r = _R, T = _plano.tarefas;
+  const dia = new Map();     // ordinal → Map(categoria → quantidade)
+  let comAtrib = 0;
+  T.forEach((t, i) => {
+    if (r.resumo[i] || r.ms[i]) return;
+    const at = atribDe(t); if (!at.length) return;
+    comAtrib++;
+    const comp = new Map();
+    at.forEach(a => { const e = equipaPorId(a.id); ((tipo === 'mo' ? e.mo : e.eq) || []).forEach(x => { const c = tipo === 'mo' ? x.cat : x.tipo; if (c && x.qtd > 0) comp.set(c, (comp.get(c) || 0) + x.qtd * (a.n || 1)); }); });
+    if (!comp.size) return;
+    for (const o of diasTrabalho(i)) { let m = dia.get(o); if (!m) dia.set(o, (m = new Map())); comp.forEach((q, c) => m.set(c, (m.get(c) || 0) + q)); }
+  });
+  const periodos = [], chave = o => { const n = diaDe(o), d = new Date(n * DIA); if (per === 'mes') return d.toISOString().slice(0, 7); let s = n; while (dow(s) !== 1) s--; return 's' + s; };
+  const rot = (k, o) => { const d = new Date(diaDe(o) * DIA); if (per === 'mes') return MES_ABR[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2); let s = diaDe(o); while (dow(s) !== 1) s--; return fmtD(s).slice(0, 5); };
+  const idx = new Map();
+  if (T.length) for (let o = r.S0; o <= r.PF; o++) {
+    const k = chave(o);
+    if (!idx.has(k)) { idx.set(k, periodos.length); periodos.push({ k, rotulo: rot(k, o), dias: 0, max: new Map(), soma: new Map(), maxTot: 0, somaTot: 0 }); }
+    const p = periodos[idx.get(k)], m = dia.get(o);
+    p.dias++;
+    let tot = 0;
+    if (m) m.forEach((q, c) => { p.max.set(c, Math.max(p.max.get(c) || 0, q)); p.soma.set(c, (p.soma.get(c) || 0) + q); tot += q; });
+    p.maxTot = Math.max(p.maxTot, tot); p.somaTot += tot;
+  }
+  const totCat = new Map(), maxCat = new Map();
+  periodos.forEach(p => p.soma.forEach((q, c) => { totCat.set(c, (totCat.get(c) || 0) + q); maxCat.set(c, Math.max(maxCat.get(c) || 0, p.max.get(c))); }));
+  const cats = [...totCat.keys()].sort((a, b) => totCat.get(b) - totCat.get(a) || a.localeCompare(b, 'pt'));
+  return { periodos, cats, totCat, maxCat, maxGeral: Math.max(0, ...periodos.map(p => p.maxTot)), totGeral: periodos.reduce((a, p) => a + p.somaTot, 0), comAtrib, nFolhas: T.filter((t, i) => !r.resumo[i] && !r.ms[i]).length };
+}
+
+const CORES_MAPA = ['#5b86e5', '#43a047', '#f08c2e', '#8e5bd8', '#1fa3a3', '#e05252', '#e6b422', '#6d4c41', '#00897b', '#c2185b', '#7cb342', '#3949ab', '#8a93a5', '#ff7043'];
+function pintarMapaRecursos(tipo) {
+  const v = $('plt-vista');
+  _ui.mapaPer = _ui.mapaPer || 'mes'; _ui.mapaVal = _ui.mapaVal || 'max';
+  const nomeT = tipo === 'mo' ? 'mão de obra' : 'equipamento';
+  const eqs = equipasDoPlano();
+  const m = mapaRecursos(tipo, _ui.mapaPer);
+  const cab = `<div class="plt-mapa-top">
+      <div class="plt-mapa-info">${tipo === 'mo' ? ICO.equipas : ICO.maquina}<span><b>${eqs.length} equipa${eqs.length === 1 ? '' : 's'}</b> · ${m.comAtrib} de ${m.nFolhas} tarefas com equipa atribuída</span></div>
+      <div class="plt-seg"><button type="button" class="plt-seg-b ${_ui.mapaPer === 'semana' ? 'on' : ''}" data-mapa-per="semana">Semanas</button><button type="button" class="plt-seg-b ${_ui.mapaPer === 'mes' ? 'on' : ''}" data-mapa-per="mes">Meses</button></div>
+      <div class="plt-seg"><button type="button" class="plt-seg-b ${_ui.mapaVal === 'max' ? 'on' : ''}" data-mapa-val="max" title="O máximo em simultâneo num dia do período">Máximo diário</button><button type="button" class="plt-seg-b ${_ui.mapaVal === 'med' ? 'on' : ''}" data-mapa-val="med" title="Média por dia útil do período">Média diária</button><button type="button" class="plt-seg-b ${_ui.mapaVal === 'tot' ? 'on' : ''}" data-mapa-val="tot" title="${tipo === 'mo' ? 'Homens × dias' : 'Unidades × dias'}">${tipo === 'mo' ? 'Homens-dia' : 'Dias de máquina'}</button></div>
+      <button type="button" class="plt-btn sec sm" data-acao="equipas">${ICO.equipas}Equipas</button>
+    </div>`;
+  if (!m.cats.length) {
+    v.innerHTML = cab + `<div class="plt-vazio-g">
+      <div class="plt-vazio-ic">${tipo === 'mo' ? ICO.equipas : ICO.maquina}</div>
+      <b>O mapa de ${nomeT} ainda está vazio</b>
+      <p>${eqs.length ? `Atribua as equipas às tarefas: na coluna «Equipas» do Gantt, ou com o botão direito numa barra (pode selecionar várias tarefas com Ctrl ou Shift).` : 'Crie as equipas do plano com a mão de obra e os equipamentos de cada uma e depois atribua-as às tarefas.'}</p>
+      <button type="button" class="plt-btn pri" data-acao="equipas">${ICO.equipas}${eqs.length ? 'Ver equipas' : 'Criar equipas'}</button></div>`;
+    return;
+  }
+  const val = (p, c) => _ui.mapaVal === 'max' ? (p.max.get(c) || 0) : _ui.mapaVal === 'tot' ? (p.soma.get(c) || 0) : (p.dias ? (p.soma.get(c) || 0) / p.dias : 0);
+  const valTot = p => _ui.mapaVal === 'max' ? p.maxTot : _ui.mapaVal === 'tot' ? p.somaTot : (p.dias ? p.somaTot / p.dias : 0);
+  const fmt = x => (Math.round(x * 10) / 10).toLocaleString('pt-PT');
+  const cor = c => CORES_MAPA[m.cats.indexOf(c) % CORES_MAPA.length];
+  // gráfico de barras empilhadas
+  const W = Math.max(640, m.periodos.length * (_ui.mapaPer === 'mes' ? 70 : 38)), Hh = 250, pl = 46, pr = 16, pt = 14, pb = 30;
+  const maxY = Math.max(1, ...m.periodos.map(p => m.cats.reduce((a, c) => a + val(p, c), 0)));
+  const passo = maxY <= 5 ? 1 : maxY <= 12 ? 2 : maxY <= 30 ? 5 : maxY <= 60 ? 10 : Math.ceil(maxY / 50) * 10;
+  const topo = Math.ceil(maxY / passo) * passo, cw = (W - pl - pr) / m.periodos.length;
+  const Y = x => pt + (Hh - pt - pb) * (1 - x / topo);
+  let svg = '';
+  for (let g = 0; g <= topo; g += passo) svg += `<line x1="${pl}" x2="${W - pr}" y1="${Y(g)}" y2="${Y(g)}" class="gl"/><text x="${pl - 8}" y="${Y(g) + 4}" class="ax" text-anchor="end">${g}</text>`;
+  m.periodos.forEach((p, k) => {
+    const x = pl + k * cw + cw * 0.16, w = cw * 0.68;
+    let acc = 0;
+    m.cats.forEach(c => {
+      const q = val(p, c); if (!q) return;
+      svg += `<rect x="${x}" y="${Y(acc + q)}" width="${w}" height="${Math.max(0, Y(acc) - Y(acc + q))}" fill="${cor(c)}"><title>${esc(p.rotulo)} · ${esc(c)}: ${fmt(q)}</title></rect>`;
+      acc += q;
+    });
+    if (_ui.mapaPer === 'mes' || k % 2 === 0) svg += `<text x="${pl + k * cw + cw / 2}" y="${Hh - 10}" class="ax" text-anchor="middle">${esc(p.rotulo)}</text>`;
+  });
+  const rotVal = { max: 'máximo diário em simultâneo', med: 'média por dia útil', tot: tipo === 'mo' ? 'homens × dias' : 'unidades × dias' }[_ui.mapaVal];
+  v.innerHTML = cab + `
+    <div class="plt-fin-card">
+      <div class="plt-fin-h"><b>Mapa de ${nomeT} — ${rotVal}</b><span>Pico: <b>${m.maxGeral}</b> ${tipo === 'mo' ? 'pessoas' : 'unidades'} em simultâneo · total ${m.totGeral.toLocaleString('pt-PT')} ${tipo === 'mo' ? 'homens-dia' : 'dias de máquina'}</span></div>
+      <div class="plt-mapa-leg">${m.cats.map(c => `<span><i style="background:${cor(c)}"></i>${esc(c)}</span>`).join('')}</div>
+      <div class="plt-fin-g"><svg width="${W}" height="${Hh}" class="plt-fin-svg">${svg}</svg></div>
+    </div>
+    <div class="plt-fin-card">
+      <div class="plt-fin-t"><table class="plt-fin-tab plt-mapa-tab">
+        <thead><tr><th class="n">${tipo === 'mo' ? 'Categoria' : 'Equipamento'}</th>${m.periodos.map(p => `<th>${esc(p.rotulo)}</th>`).join('')}<th class="v">Máximo</th><th class="v">${tipo === 'mo' ? 'Homens-dia' : 'Dias'}</th></tr></thead>
+        <tbody>${m.cats.map(c => `<tr><td class="n"><i class="plt-mapa-dot" style="background:${cor(c)}"></i>${esc(c)}</td>${m.periodos.map(p => { const q = val(p, c); return `<td class="${q ? '' : 'z'}">${q ? fmt(q) : '—'}</td>`; }).join('')}<td class="v">${m.maxCat.get(c)}</td><td class="v">${m.totCat.get(c).toLocaleString('pt-PT')}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td class="n">Total${_ui.mapaVal === 'max' ? ' (em simultâneo)' : ''}</td>${m.periodos.map(p => `<td>${fmt(valTot(p))}</td>`).join('')}<td class="v">${m.maxGeral}</td><td class="v">${m.totGeral.toLocaleString('pt-PT')}</td></tr></tfoot>
+      </table></div>
+    </div>
+    <div class="plt-ajuda">Os valores vêm das equipas atribuídas a cada tarefa, nos dias de trabalho de cada uma (as pausas das barras partidas não contam). «Máximo diário» é o que se usa habitualmente nos mapas do plano de trabalhos. O Excel inclui estes mapas por mês.</div>`;
 }
