@@ -54,6 +54,11 @@ const ICO = {
   ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   parar: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  pincel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2.5 0-4.2 1.7-4.2 4.2 0 1.3-.8 2.6-2.5 3.3 1.3 1.2 3.2 1.5 4.8 1.5 3 0 5.1-2.2 4.7-5.6"/></svg>',
+  tesoura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>',
+  juntar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h7M14 12h7M7 8l4 4-4 4M17 8l-4 4 4 4"/></svg>',
+  visto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  desfazer100: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   minimizar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 17h12"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
@@ -150,6 +155,48 @@ const diaDe = o => _C.wd[Math.max(0, Math.min(_C.wd.length - 1, o))];
 const eUtil = n => _C.wd[ordC(n)] === n;
 
 // ───────────────────────── cálculo (CPM) ─────────────────────────
+// ── Fases: barra partida (como «Dividir tarefa» do MS Project) ──
+// t.fases = [{ dur, pausa, nome? }] — pausa = dias úteis parados antes da fase (a 1.ª tem 0).
+// t.dur é sempre o trabalho total (soma das fases); a barra ocupa trabalho + pausas.
+const temFases = t => Array.isArray(t.fases) && t.fases.length > 1;
+function normFases(t, eResumo) {
+  if (!Array.isArray(t.fases)) return;
+  if (eResumo || !(t.dur > 0)) { delete t.fases; return; }
+  const out = [];
+  for (const f of t.fases) {
+    const d = Math.max(0, parseInt(f.dur, 10) || 0), p = Math.max(0, parseInt(f.pausa, 10) || 0);
+    if (!d) continue;
+    if (out.length && p === 0) { out[out.length - 1].dur += d; continue; }   // sem pausa = mesma fase
+    out.push({ dur: d, pausa: out.length ? p : 0, ...(f.nome ? { nome: String(f.nome).slice(0, 80) } : {}) });
+  }
+  if (out.length < 2) { if (out.length) t.dur = out[0].dur; delete t.fases; return; }
+  t.fases = out;
+  t.dur = out.reduce((s, f) => s + f.dur, 0);
+}
+const spanDe = t => temFases(t) ? t.fases.reduce((s, f, k) => s + f.dur + (k ? f.pausa : 0), 0) : Math.max(0, t.dur | 0);
+// ordinal (dia útil) em que começa cada fase, dado o início da tarefa
+const iniciosFases = (t, es) => { let o = es; return t.fases.map((f, k) => { if (k) o += f.pausa; const a = o; o += f.dur; return a; }); };
+// muda a duração (trabalho) mantendo as fases: acerta a partir da última
+function definirDur(t, d) {
+  d = Math.max(0, parseInt(d, 10) || 0);
+  if (!temFases(t) || d < t.fases.length) { delete t.fases; t.dur = d; return; }
+  let dif = d - t.dur;
+  for (let k = t.fases.length - 1; k >= 0 && dif !== 0; k--) {
+    const nv = Math.max(1, t.fases[k].dur + dif);
+    dif -= nv - t.fases[k].dur; t.fases[k].dur = nv;
+  }
+  t.dur = t.fases.reduce((s, f) => s + f.dur, 0);
+}
+// dias úteis (ordinais) em que a tarefa tem trabalho — sem as pausas
+function diasTrabalho(i) {
+  const r = _R, t = _plano.tarefas[i];
+  if (r.ms[i]) return [r.es[i]];
+  const out = [];
+  if (!temFases(t)) { for (let o = r.es[i]; o <= r.ef[i]; o++) out.push(o); return out; }
+  iniciosFases(t, r.es[i]).forEach((a, k) => { for (let o = a; o < a + t.fases[k].dur; o++) out.push(o); });
+  return out;
+}
+
 function calcular() {
   const T = _plano.tarefas, n = T.length;
   const pai = new Array(n).fill(-1), resumo = new Array(n).fill(false), filhos = Array.from({ length: n }, () => []);
@@ -170,7 +217,9 @@ function calcular() {
   const folhas = new Array(n);
   for (let i = n - 1; i >= 0; i--) folhas[i] = resumo[i] ? filhos[i].flatMap(c => folhas[c]) : [i];
   const preds = T.map(t => (t.pred || []).map(p => ({ j: idx.get(p.id), tipo: p.tipo || 'FS', lag: p.lag | 0 })).filter(p => p.j != null));
-  const dur = T.map((t, i) => resumo[i] ? 0 : Math.max(0, t.dur | 0));
+  T.forEach((t, i) => normFases(t, resumo[i]));
+  const dur = T.map((t, i) => resumo[i] ? 0 : Math.max(0, t.dur | 0));        // trabalho (dias úteis)
+  const span = T.map((t, i) => resumo[i] ? 0 : spanDe(t));                      // ocupação na barra (trabalho + pausas)
   const ms = T.map((t, i) => !resumo[i] && dur[i] === 0);
   const S0 = ordC(dnum(_plano.data_inicio));
   const es = new Array(n).fill(S0), ef = new Array(n).fill(S0);
@@ -194,9 +243,9 @@ function calcular() {
       let e = S0;
       for (let k = i; k !== -1; k = pai[k]) {
         if (minOrd[k] != null) e = Math.max(e, minOrd[k]);
-        for (const p of preds[k]) e = Math.max(e, req(p, dur[i]));
+        for (const p of preds[k]) e = Math.max(e, req(p, span[i]));
       }
-      const f = ms[i] ? e : e + dur[i] - 1;
+      const f = ms[i] ? e : e + span[i] - 1;
       if (e !== es[i] || f !== ef[i]) { es[i] = e; ef[i] = f; mudou = true; }
     }
     for (let i = n - 1; i >= 0; i--) {
@@ -214,14 +263,14 @@ function calcular() {
   let PF = S0;
   for (let i = 0; i < n; i++) if (!resumo[i]) PF = Math.max(PF, ef[i]);
   const lf = new Array(n).fill(PF), ls = new Array(n);
-  const lsDe = i => ms[i] ? lf[i] : lf[i] - dur[i] + 1;
+  const lsDe = i => ms[i] ? lf[i] : lf[i] - span[i] + 1;
   for (let i = 0; i < n; i++) ls[i] = lsDe(i);
   if (!ciclo) {
     let m2 = true, it2 = 0;
     while (m2 && it2 < lim) {
       m2 = false; it2++;
       for (const e of E) {
-        const da = Math.max(0, dur[e.a] - 1);
+        const da = Math.max(0, span[e.a] - 1);
         let L;
         switch (e.tipo) {
           case 'SS': L = ls[e.b] - e.lag + da; break;
@@ -254,7 +303,7 @@ function calcular() {
     vis.push(i);
     if (resumo[i] && T[i].fechado) corte = T[i].nivel;
   }
-  _R = { n, pai, resumo, filhos, folhas, idx, edt, preds, dur, ms, es, ef, folga, valor, pct, vis, ciclo, S0, PF };
+  _R = { n, pai, resumo, filhos, folhas, idx, edt, preds, dur, span, ms, es, ef, folga, valor, pct, vis, ciclo, S0, PF };
 }
 
 // duração do ecrã (dias úteis) de uma tarefa calculada
@@ -511,7 +560,7 @@ function pintarGrelha() {
       <div class="c-id">${i + 1}${restr}</div>
       <div class="c-edt">${r.edt[i]}</div>
       <div class="c-nome" style="padding-left:${6 + t.nivel * 18}px">${tg}${t.cod ? `<span class="plt-cod" title="Artigo ${esc(t.cod)}">${esc(t.cod)}</span>` : ''}<input data-f="nome" value="${esc(t.nome)}" spellcheck="false"/></div>
-      <div class="c-dur"><input data-f="dur" value="${txtDur(durDe(i))}" ${ro}/></div>
+      <div class="c-dur">${temFases(t) ? `<span class="plt-fases-ic" title="Barra partida em ${t.fases.length} fases">${t.fases.length}×</span>` : ''}<input data-f="dur" value="${txtDur(durDe(i))}" ${ro} ${temFases(t) ? `title="${t.fases.map((f, k) => (k ? `pausa ${f.pausa} + ` : '') + f.dur).join(' + ')} d.ú."` : ''}/></div>
       <div class="c-ini"><input data-f="ini" value="${fmtD(diaDe(r.es[i]))}" ${ro}/></div>
       <div class="c-fim"><input data-f="fim" value="${fmtD(diaDe(r.ef[i]))}" ${ro || (r.ms[i] ? 'readonly tabindex="-1"' : '')}/></div>
       <div class="c-pred"><input data-f="pred" value="${esc(txtPred(i))}"/></div>
@@ -580,15 +629,37 @@ function pintarGrafico() {
     const crit = _ui.critico && r.folga[i] <= 0;
     const tit = esc(`${t.nome}\n${fmtD(a)} → ${fmtD(b)} · ${txtDur(durDe(i))}${r.resumo[i] ? '' : ' · folga ' + Math.max(0, r.folga[i]) + ' d.ú.'}${r.valor[i] ? ' · ' + eur0(r.valor[i]) : ''}`);
     const sel = _ui.sel.has(i) ? ' sel' : '';
+    const st = estiloCor(t);
+    const cls = (t.estilo === 'tracejada' ? ' trac' : '') + sel;
+    const critCls = crit ? (t.cor ? ' crit-o' : ' crit') : '';
     if (r.resumo[i]) {
-      barras += `<div class="plt-bar rs${sel}" data-i="${i}" style="top:${y + 10}px;left:${X(a)}px;width:${(b - a + 1) * px}px" title="${tit}"></div>`;
-      barras += `<div class="plt-lbl rs" style="top:${y}px;left:${X(b + 1) + 8}px">${esc(t.nome)}</div>`;
+      barras += `<div class="plt-bar rs${cls}" data-i="${i}" style="${st}top:${y + 10}px;left:${X(a)}px;width:${(b - a + 1) * px}px" title="${tit}"></div>`;
+      const lb = textoBarra(t, i, a, b, esc(t.nome));
+      if (lb) barras += `<div class="plt-lbl rs" style="top:${y}px;left:${X(b + 1) + 8}px">${lb}</div>`;
     } else if (r.ms[i]) {
-      barras += `<div class="plt-bar ms${crit ? ' crit' : ''}${sel}" data-i="${i}" style="top:${y + 9}px;left:${X(a) + px / 2 - 7}px" title="${tit}"></div>`;
-      barras += `<div class="plt-lbl" style="top:${y}px;left:${X(a) + px / 2 + 12}px">${fmtD(a)}</div>`;
+      barras += `<div class="plt-bar ms${critCls}${cls}" data-i="${i}" style="${st}top:${y + 9}px;left:${X(a) + px / 2 - 7}px" title="${tit}"></div>`;
+      const lb = textoBarra(t, i, a, b, fmtD(a));
+      if (lb) barras += `<div class="plt-lbl" style="top:${y}px;left:${X(a) + px / 2 + 12}px">${lb}</div>`;
+    } else if (temFases(t)) {
+      // barra partida: um segmento por fase, linha pontilhada nas pausas; o progresso enche as fases por ordem
+      const ini = iniciosFases(t, r.es[i]);
+      let feito = r.pct[i] / 100 * t.dur;
+      ini.forEach((o, k) => {
+        const f = t.fases[k], a2 = diaDe(o), b2 = diaDe(o + f.dur - 1);
+        const p = Math.max(0, Math.min(f.dur, feito)); feito -= p;
+        if (k) {
+          const fimAnt = diaDe(ini[k - 1] + t.fases[k - 1].dur - 1);
+          barras += `<div class="plt-gap" style="top:${y + 15}px;left:${X(fimAnt + 1)}px;width:${Math.max(0, (a2 - fimAnt - 1) * px)}px"></div>`;
+        }
+        const tf = esc(`${t.nome} — ${f.nome || 'Fase ' + (k + 1)}\n${fmtD(a2)} → ${fmtD(b2)} · ${txtDur(f.dur)}${k ? ` · pausa de ${f.pausa} d.ú. antes` : ''}\nArrastar para mudar a pausa · botão direito para mais opções`);
+        barras += `<div class="plt-bar seg${critCls}${cls}" data-i="${i}" data-k="${k}" style="${st}top:${y + 8}px;left:${X(a2)}px;width:${Math.max(4, (b2 - a2 + 1) * px)}px" title="${tf}"><div class="plt-prog" style="width:${p / f.dur * 100}%"></div>${f.nome && (b2 - a2 + 1) * px > 60 ? `<span class="plt-seg-nome">${esc(f.nome)}</span>` : ''}<div class="plt-rh"></div></div>`;
+      });
+      const lb = textoBarra(t, i, a, b, esc(t.nome));
+      if (lb) barras += `<div class="plt-lbl" style="top:${y}px;left:${X(b + 1) + 6}px">${lb}</div>`;
     } else {
-      barras += `<div class="plt-bar${crit ? ' crit' : ''}${sel}" data-i="${i}" style="top:${y + 8}px;left:${X(a)}px;width:${Math.max(4, (b - a + 1) * px)}px" title="${tit}"><div class="plt-prog" style="width:${r.pct[i]}%"></div><div class="plt-rh"></div></div>`;
-      barras += `<div class="plt-lbl" style="top:${y}px;left:${X(b + 1) + 6}px">${esc(t.nome)}</div>`;
+      barras += `<div class="plt-bar${critCls}${cls}" data-i="${i}" style="${st}top:${y + 8}px;left:${X(a)}px;width:${Math.max(4, (b - a + 1) * px)}px" title="${tit}"><div class="plt-prog" style="width:${r.pct[i]}%"></div><div class="plt-rh"></div></div>`;
+      const lb = textoBarra(t, i, a, b, esc(t.nome));
+      if (lb) barras += `<div class="plt-lbl" style="top:${y}px;left:${X(b + 1) + 6}px">${lb}</div>`;
     }
   });
   // ligações
@@ -630,6 +701,34 @@ function pintarGrafico() {
   const g = $('plt-grid'); if (g) g.scrollTop = ch.scrollTop;
 }
 
+// ── Aparência das barras (por tarefa): t.cor, t.estilo ('solida'|'tracejada'), t.rotulo ──
+const CORES_BARRA = [
+  { k: '', nome: 'Automática' }, { k: '#5b86e5', nome: 'Azul' }, { k: '#43a047', nome: 'Verde' },
+  { k: '#8e5bd8', nome: 'Roxo' }, { k: '#f08c2e', nome: 'Laranja' }, { k: '#e6b422', nome: 'Amarelo' },
+  { k: '#1fa3a3', nome: 'Turquesa' }, { k: '#e05252', nome: 'Vermelho' }, { k: '#8a93a5', nome: 'Cinzento' }, { k: '#1b2130', nome: 'Preto' },
+];
+const ROTULOS_BARRA = [
+  ['', 'Automático (nome; data nos marcos)'], ['nome', 'Nome da tarefa'], ['nome_datas', 'Nome e datas'],
+  ['datas', 'Datas de início e fim'], ['dur', 'Duração'], ['pct', '% concluída'], ['nenhum', 'Nenhum'],
+];
+const corValida = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+function escurecer(hex, f = 0.75) {
+  const n = parseInt(hex.slice(1), 16);
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * f).toString(16).padStart(2, '0')).join('');
+}
+const estiloCor = t => corValida(t.cor) ? `--c:${t.cor};--cb:${escurecer(t.cor)};` : '';
+function textoBarra(t, i, a, b, auto) {
+  switch (t.rotulo) {
+    case 'nenhum': return '';
+    case 'nome': return esc(t.nome);
+    case 'datas': return `${fmtD(a)} – ${fmtD(b)}`;
+    case 'nome_datas': return `${esc(t.nome)} <span class="plt-lbl-dt">${fmtD(a)} – ${fmtD(b)}</span>`;
+    case 'dur': return txtDur(durDe(i));
+    case 'pct': return _R.pct[i] + '%';
+    default: return auto;
+  }
+}
+
 function irPara(dia) {
   const ch = $('plt-chart'); if (!ch) return;
   ch.scrollLeft = Math.max(0, (dia - +ch.dataset.d0) * +ch.dataset.px - ch.clientWidth / 3);
@@ -656,7 +755,7 @@ function editarCampo(i, f, val, input) {
   if (f === 'dur') {
     const d = lerDur(val); if (d == null) { showToast('Duração inválida (ex.: 5, 5d, 2s)'); return repor(); }
     if (d === t.dur) return repor();
-    mudar(() => { t.dur = d; }); return;
+    mudar(() => { definirDur(t, d); }); return;
   }
   if (f === 'ini') {
     const iso = lerData(val, diaDe(r.es[i]));
@@ -669,7 +768,7 @@ function editarCampo(i, f, val, input) {
     if (!iso) { showToast('Data inválida (ex.: 25/11/26)'); return repor(); }
     const d = ordF(dnum(iso)) - r.es[i] + 1;
     if (d < 1) { showToast('O fim não pode ser anterior ao início'); return repor(); }
-    mudar(() => { t.dur = d; }); return;
+    mudar(() => { definirDur(t, temFases(t) ? t.dur + (d - spanDe(t)) : d); }); return;
   }
   if (f === 'pred') {
     calcular();
@@ -851,44 +950,223 @@ function ligarGantt() {
     e.target.addEventListener('pointermove', mv); e.target.addEventListener('pointerup', up);
   });
   // barras: mover / alterar duração
+  // barras: mover a tarefa, mudar a duração, ou (barra partida) mudar a pausa / a duração de uma fase
   ch.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;            // o botão direito abre o menu
     const bar = e.target.closest('.plt-bar'); if (!bar) return;
-    const i = +bar.dataset.i;
+    const i = +bar.dataset.i, k = bar.dataset.k != null ? +bar.dataset.k : -1;
     selecionar(i, e);
     if (bar.classList.contains('rs')) return;
     e.preventDefault();
-    const modo = e.target.classList.contains('plt-rh') ? 'dur' : 'mover';
+    const t = _plano.tarefas[i];
+    const modo = e.target.classList.contains('plt-rh') ? 'dur' : (k > 0 ? 'fase' : 'mover');
+    const ini = k >= 0 ? iniciosFases(t, _R.es[i])[k] : _R.es[i];
+    const fim = k >= 0 ? ini + t.fases[k].dur - 1 : _R.ef[i];
     const px = +ch.dataset.px, x0 = e.clientX, l0 = bar.offsetLeft, w0 = bar.offsetWidth;
-    const tip = $('plt-tip'); let dd = 0;
+    const tip = $('plt-tip'); let dd = 0, valor = null;
     bar.setPointerCapture(e.pointerId);
     const mv = ev => {
       dd = Math.round((ev.clientX - x0) / px);
-      if (!dd) { bar.style.left = l0 + 'px'; bar.style.width = w0 + 'px'; tip.style.display = 'none'; return; }
+      if (!dd) { bar.style.left = l0 + 'px'; bar.style.width = w0 + 'px'; tip.style.display = 'none'; valor = null; return; }
       bar.classList.add('drag');
       if (modo === 'mover') {
         bar.style.left = (l0 + dd * px) + 'px';
-        const n = diaDe(ordC(diaDe(_R.es[i]) + dd));
-        tip.textContent = 'Início: ' + fmtDL(n);
+        valor = diaDe(ordC(diaDe(ini) + dd));
+        tip.textContent = 'Início: ' + fmtDL(valor);
+      } else if (modo === 'fase') {
+        bar.style.left = (l0 + dd * px) + 'px';
+        valor = Math.max(0, t.fases[k].pausa + ordC(diaDe(ini) + dd) - ini);
+        tip.textContent = `Pausa antes da fase ${k + 1}: ${valor} d.ú. · recomeça a ${fmtDL(diaDe(ini + valor - t.fases[k].pausa))}`;
       } else {
         bar.style.width = Math.max(px, w0 + dd * px) + 'px';
-        const fim = diaDe(_R.ef[i]) + dd, d = Math.max(1, ordF(fim) - _R.es[i] + 1);
-        tip.textContent = 'Fim: ' + fmtDL(diaDe(_R.es[i] + d - 1)) + ' · ' + txtDur(d);
+        valor = Math.max(1, ordF(diaDe(fim) + dd) - ini + 1);
+        tip.textContent = (k >= 0 ? `Fase ${k + 1}: ` : 'Fim: ' + fmtDL(diaDe(ini + valor - 1)) + ' · ') + txtDur(valor);
       }
       tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px';
     };
     const up = () => {
       bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up);
       tip.style.display = 'none';
-      if (!dd) return;
-      const t = _plano.tarefas[i];
+      if (!dd || valor == null) return;
       mudar(() => {
-        if (modo === 'mover') t.inicioMin = diso(diaDe(ordC(diaDe(_R.es[i]) + dd)));
-        else t.dur = Math.max(1, ordF(diaDe(_R.ef[i]) + dd) - _R.es[i] + 1);
+        if (modo === 'mover') t.inicioMin = diso(valor);
+        else if (modo === 'fase') t.fases[k].pausa = valor;               // pausa 0 junta-a à fase anterior
+        else if (k >= 0) { t.fases[k].dur = valor; t.dur = t.fases.reduce((s, f) => s + f.dur, 0); }
+        else definirDur(t, valor);
       });
     };
     bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up);
   });
   ch.addEventListener('dblclick', e => { const bar = e.target.closest('.plt-bar'); if (bar) abrirTarefa(+bar.dataset.i); });
+  // botão direito: menu da barra (no gráfico) ou da tarefa (na grelha)
+  ch.addEventListener('contextmenu', e => {
+    const bar = e.target.closest('.plt-bar'); if (!bar) return;
+    e.preventDefault();
+    const i = +bar.dataset.i;
+    if (!_ui.sel.has(i)) selecionar(i);
+    const cb = $('plt-cb').getBoundingClientRect();
+    const dia = +ch.dataset.d0 + Math.floor((e.clientX - cb.left) / +ch.dataset.px);
+    abrirMenuBarra(i, dia, e.clientX, e.clientY);
+  });
+  gb.addEventListener('contextmenu', e => {
+    const row = e.target.closest('.plt-r[data-i]'); if (!row) return;
+    if (e.target.tagName === 'INPUT' && document.activeElement === e.target) return;   // a editar: menu normal (copiar/colar)
+    e.preventDefault();
+    const i = +row.dataset.i;
+    if (!_ui.sel.has(i)) selecionar(i);
+    abrirMenuBarra(i, null, e.clientX, e.clientY);
+  });
+  ch.addEventListener('scroll', fecharMenu);
+  g.addEventListener('scroll', fecharMenu);
+}
+
+// ───────────────────────── menu do botão direito ─────────────────────────
+const PAUSA_PADRAO = 5;
+function fecharMenu() { $('plt-menu')?.remove(); }
+function abrirMenuBarra(i, dia, x, y) {
+  fecharMenu();
+  const t = _plano.tarefas[i], r = _R;
+  const folha = !r.resumo[i] && !r.ms[i];
+  // ponto onde se pode partir: dia útil clicado, dentro de uma fase e depois do 1.º dia dela
+  let partir = null;
+  if (folha && dia != null) {
+    const o = ordF(dia);
+    const segs = temFases(t) ? iniciosFases(t, r.es[i]).map((a, k) => ({ a, d: t.fases[k].dur, k })) : [{ a: r.es[i], d: t.dur, k: 0 }];
+    const s = segs.find(z => o >= z.a && o < z.a + z.d);
+    if (s && o > s.a) partir = { k: s.k, off: o - s.a, dia: diaDe(o) };
+  }
+  const it = (a, ic, txt, extra = '') => `<button type="button" class="plt-menu-i ${extra}" data-m="${a}">${ic}<span>${txt}</span></button>`;
+  let h = `<div class="plt-menu-h">${esc(t.nome)}</div>`;
+  h += it('info', ICO.info, 'Definições da tarefa…');
+  h += it('barra', ICO.pincel, folha ? 'Aparência e fases da barra…' : 'Aparência da barra…');
+  if (folha && t.dur >= 2) {
+    h += '<div class="plt-menu-sep"></div>';
+    h += partir ? it('partir', ICO.tesoura, `Partir a barra a ${fmtD(partir.dia)}`)
+                : it('', ICO.tesoura, 'Partir a barra: clique dentro dela, no ponto de corte', 'off');
+    if (temFases(t)) h += it('juntar', ICO.juntar, `Juntar as ${t.fases.length} fases`);
+  }
+  if (!r.resumo[i]) {
+    h += '<div class="plt-menu-sep"></div>';
+    h += r.pct[i] >= 100 ? it('pct0', ICO.desfazer100, 'Marcar como por concluir') : it('pct100', ICO.visto, 'Marcar como concluída');
+  }
+  h += it('eliminar', ICO.del, 'Eliminar tarefa', 'perigo');
+  document.body.insertAdjacentHTML('beforeend', `<div class="plt-menu" id="plt-menu" role="menu">${h}</div>`);
+  const m = $('plt-menu');
+  const w = m.offsetWidth, hh = m.offsetHeight;
+  m.style.left = Math.min(x, innerWidth - w - 8) + 'px';
+  m.style.top = Math.min(y, innerHeight - hh - 8) + 'px';
+  m.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-m]'); if (!b || !b.dataset.m) return;
+    fecharMenu();
+    switch (b.dataset.m) {
+      case 'info': abrirTarefa(i); break;
+      case 'barra': abrirBarra(i); break;
+      case 'partir':
+        mudar(() => {
+          if (!temFases(t)) t.fases = [{ dur: t.dur, pausa: 0 }];
+          const f = t.fases[partir.k];
+          t.fases.splice(partir.k + 1, 0, { dur: f.dur - partir.off, pausa: PAUSA_PADRAO });
+          f.dur = partir.off;
+        });
+        showToast(`Barra partida (pausa de ${PAUSA_PADRAO} d.ú.) — arraste a fase seguinte para ajustar a pausa`);
+        break;
+      case 'juntar': mudar(() => { delete t.fases; }); break;
+      case 'pct100': mudar(() => { t.pct = 100; }); break;
+      case 'pct0': mudar(() => { t.pct = 0; }); break;
+      case 'eliminar': _ui.sel = new Set([i]); acao('eliminar'); break;
+    }
+  });
+}
+// fecha o menu ao clicar fora (mousedown, antes de qualquer re-render), com Esc ou ao sair da janela
+document.addEventListener('mousedown', e => { if (!e.target.closest('#plt-menu')) fecharMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
+window.addEventListener('blur', fecharMenu);
+window.addEventListener('resize', fecharMenu);
+
+// ───────────────────────── painel «Aparência e fases da barra» ─────────────────────────
+function abrirBarra(i) {
+  const t = _plano.tarefas[i], r = _R;
+  const folha = !r.resumo[i] && !r.ms[i];
+  const rasc = {
+    cor: corValida(t.cor) ? t.cor : '', estilo: t.estilo === 'tracejada' ? 'tracejada' : 'solida', rotulo: t.rotulo || '',
+    fases: temFases(t) ? t.fases.map(f => ({ ...f })) : null,
+  };
+  const corpo = () => {
+    const corAtual = rasc.cor || (r.ms[i] || r.resumo[i] ? '#1b2130' : '#5b86e5');
+    let h = `<h4>Cor da barra</h4>
+      <div class="plt-cores">${CORES_BARRA.map(c => `<button type="button" class="plt-cor ${rasc.cor === c.k ? 'on' : ''} ${c.k ? '' : 'auto'}" data-cor="${c.k}" title="${c.nome}" style="--c:${c.k || '#5b86e5'}">${c.k ? '' : 'A'}</button>`).join('')}
+        <label class="plt-cor-out ${rasc.cor && !CORES_BARRA.some(c => c.k === rasc.cor) ? 'on' : ''}" title="Escolher outra cor"><input type="color" id="pb-cor" value="${corAtual}"/><span>Outra</span></label>
+      </div>
+      <p class="plt-nota">«Automática» usa o azul do plano e o vermelho do caminho crítico. Com uma cor escolhida, o caminho crítico aparece com um contorno vermelho.</p>
+      <h4>Estilo</h4>
+      <div class="plt-seg plt-seg-lg"><button type="button" class="plt-seg-b ${rasc.estilo === 'solida' ? 'on' : ''}" data-estilo="solida">Sólida</button><button type="button" class="plt-seg-b ${rasc.estilo === 'tracejada' ? 'on' : ''}" data-estilo="tracejada">Tracejada (provisória)</button></div>
+      <div class="plt-f" style="margin-top:16px"><label>Texto ao lado da barra</label><select id="pb-rot">${ROTULOS_BARRA.map(([k, v]) => `<option value="${k}" ${rasc.rotulo === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
+    if (folha) {
+      h += '<h4>Fases da barra</h4>';
+      if (!rasc.fases) {
+        h += `<p class="plt-nota">A barra é contínua (${txtDur(t.dur)}). Parta-a quando o trabalho é feito em várias fases com paragens pelo meio — à espera de licenças, de material, de uma ligação dos SMAS ou de outra frente. Também pode clicar com o botão direito na barra, no ponto onde a quer partir.</p>
+          ${t.dur >= 2 ? `<button type="button" class="plt-btn sec sm" data-b="partir2">${ICO.tesoura}Partir em 2 fases</button>` : '<p class="plt-nota">Uma tarefa de 1 dia não se pode partir.</p>'}`;
+      } else {
+        const trab = rasc.fases.reduce((s, f) => s + (f.dur | 0), 0), pausas = rasc.fases.reduce((s, f, k) => s + (k ? f.pausa | 0 : 0), 0);
+        h += `<div class="plt-fases-prev">${rasc.fases.map((f, k) => `${k ? `<i style="flex:${Math.max(0, f.pausa | 0)}"></i>` : ''}<b style="flex:${Math.max(1, f.dur | 0)};--c:${corAtual}"></b>`).join('')}</div>
+          <div class="plt-fases">
+            <div class="plt-fase hd"><span>Fase</span><span>Pausa antes</span><span>Duração</span><span></span></div>
+            ${rasc.fases.map((f, k) => `<div class="plt-fase">
+              <input data-fk="${k}" data-ff="nome" value="${esc(f.nome || '')}" placeholder="Fase ${k + 1}"/>
+              ${k ? `<input type="number" min="0" data-fk="${k}" data-ff="pausa" value="${f.pausa}"/>` : '<span class="plt-fase-0">—</span>'}
+              <input type="number" min="1" data-fk="${k}" data-ff="dur" value="${f.dur}"/>
+              ${k ? `<button type="button" class="plt-fase-x" data-b="juntar" data-k="${k}" title="Juntar à fase anterior">${ICO.x}</button>` : '<span></span>'}
+            </div>`).join('')}
+          </div>
+          <p class="plt-nota">Trabalho: <b>${txtDur(trab)}</b> · pausas: <b>${txtDur(pausas)}</b> · a barra ocupa ${txtDur(trab + pausas)} úteis. Pausa e duração em dias úteis.</p>
+          <div class="plt-fases-ac">
+            <button type="button" class="plt-btn sec sm" data-b="mais" title="Parte a última fase ao meio">${ICO.plus}Mais uma fase</button>
+            <button type="button" class="plt-btn sec sm" data-b="contínua">${ICO.juntar}Barra contínua</button>
+          </div>`;
+      }
+    }
+    return h;
+  };
+  const dr = mostrarGaveta(`Tarefa ${i + 1} · EDT ${r.edt[i]}`, t.nome, folha ? 'Aparência e fases da barra' : 'Aparência da barra', corpo(),
+    `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Guardar</button>`);
+  const body = dr.querySelector('.dd-b');
+  const repintar = () => { const y = body.scrollTop; body.innerHTML = corpo(); body.scrollTop = y; };
+  body.addEventListener('click', e => {
+    const c = e.target.closest('[data-cor]'); if (c) { rasc.cor = c.dataset.cor; return repintar(); }
+    const s = e.target.closest('[data-estilo]'); if (s) { rasc.estilo = s.dataset.estilo; return repintar(); }
+    const b = e.target.closest('[data-b]'); if (!b) return;
+    if (b.dataset.b === 'partir2') rasc.fases = [{ dur: Math.ceil(t.dur / 2), pausa: 0 }, { dur: Math.floor(t.dur / 2), pausa: PAUSA_PADRAO }];
+    if (b.dataset.b === 'contínua') rasc.fases = null;
+    if (b.dataset.b === 'juntar') { const k = +b.dataset.k; rasc.fases[k - 1].dur += rasc.fases[k].dur; rasc.fases.splice(k, 1); if (rasc.fases.length < 2) rasc.fases = null; }
+    if (b.dataset.b === 'mais') {
+      const u = rasc.fases[rasc.fases.length - 1];
+      if (u.dur < 2) return showToast('A última fase tem só 1 dia: aumente-a antes de a partir');
+      rasc.fases.push({ dur: Math.floor(u.dur / 2), pausa: PAUSA_PADRAO }); u.dur = Math.ceil(u.dur / 2);
+    }
+    repintar();
+  });
+  body.addEventListener('change', e => {
+    if (e.target.id === 'pb-rot') { rasc.rotulo = e.target.value; return; }
+    if (e.target.id === 'pb-cor') { rasc.cor = e.target.value; return repintar(); }
+    const k = e.target.dataset.fk; if (k == null) return;
+    const f = rasc.fases[+k], ff = e.target.dataset.ff;
+    if (ff === 'nome') f.nome = e.target.value.trim();
+    else f[ff] = Math.max(ff === 'dur' ? 1 : 0, parseInt(e.target.value, 10) || 0);
+    repintar();
+  });
+  dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  dr.querySelector('[data-g="ok"]').onclick = () => {
+    mudar(() => {
+      if (rasc.cor) t.cor = rasc.cor; else delete t.cor;
+      if (rasc.estilo === 'tracejada') t.estilo = 'tracejada'; else delete t.estilo;
+      if (rasc.rotulo) t.rotulo = rasc.rotulo; else delete t.rotulo;
+      if (folha) {
+        if (rasc.fases && rasc.fases.length > 1) { t.fases = rasc.fases.map(f => ({ dur: f.dur, pausa: f.pausa, ...(f.nome ? { nome: f.nome } : {}) })); t.dur = t.fases.reduce((s, f) => s + f.dur, 0); }
+        else delete t.fases;
+      }
+    });
+    fecharGaveta();
+  };
 }
 
 function ligarTeclado() {
@@ -941,9 +1219,9 @@ function distribuicaoMensal() {
     if (r.resumo[i] || !r.valor[i]) return;
     let top = i; while (r.pai[top] !== -1) top = r.pai[top];
     const g = grupos[gi.get(top)];
-    const nd = r.ms[i] ? 1 : r.dur[i];
-    const porDia = r.valor[i] / nd;
-    for (let o = r.es[i]; o < r.es[i] + nd; o++) { const m = meses.get(chave(diaDe(o))); if (m != null) g.m[m] += porDia; }
+    const dias = diasTrabalho(i);              // só os dias com trabalho (as pausas das fases não faturam)
+    const porDia = r.valor[i] / dias.length;
+    for (const o of dias) { const m = meses.get(chave(diaDe(o))); if (m != null) g.m[m] += porDia; }
   });
   return { lista, grupos: grupos.filter(g => g.valor) };
 }
@@ -1229,7 +1507,7 @@ function abrirTarefa(i) {
     const nome = $('pt-nome').value.trim(); if (!nome) return showToast('A tarefa precisa de nome');
     mudar(() => {
       t.nome = nome; t.pred = x.pred; t.inicioMin = $('pt-min').value || null; t.notas = $('pt-notas').value;
-      if (!rs) { t.dur = Math.max(0, parseInt($('pt-dur').value, 10) || 0); t.pct = Math.max(0, Math.min(100, parseInt($('pt-pct').value, 10) || 0)); t.valor = parseFloat($('pt-valor').value) || 0; }
+      if (!rs) { definirDur(t, $('pt-dur').value); t.pct = Math.max(0, Math.min(100, parseInt($('pt-pct').value, 10) || 0)); t.valor = parseFloat($('pt-valor').value) || 0; }
     });
     fecharGaveta();
   };
@@ -1372,7 +1650,8 @@ function resumoParaIA() {
     durDe(i), ds(r.es[i]), ds(r.ef[i]), txtPred(i) || '—', r.pct[i],
     r.valor[i] ? r.valor[i].toFixed(2) : '', r.resumo[i] ? '' : Math.max(0, r.folga[i]),
     !r.resumo[i] && r.folga[i] <= 0 ? 'sim' : '',
-    t.cod || '', t.inicioMin || '', (t.notas || '').replace(/\s+/g, ' ').slice(0, 140),
+    t.cod || '', t.inicioMin || '',
+    (temFases(t) ? `[barra partida: ${t.fases.map((f, k) => (k ? `pausa ${f.pausa} d.ú. → ` : '') + `${f.nome ? f.nome + ' ' : ''}${f.dur} d.ú.`).join(' → ')}] ` : '') + (t.notas || '').replace(/\s+/g, ' ').slice(0, 140),
   ].join(' | '));
   return `${cab}\n\nTAREFAS\nID | EDT | nível | nome | duração (d.ú.) | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | notas\n${linhas.join('\n')}`;
 }
@@ -1700,7 +1979,7 @@ function aplicarOperacoes(ops, ids) {
           const i = precisa(o.id), t = T[i];
           if (o.dur != null && eResumo(i)) throw new Error('não se muda a duração de uma tarefa de resumo');
           if (o.nome) t.nome = limpaNome(o.nome);
-          if (o.dur != null) t.dur = Math.max(0, parseInt(o.dur, 10) || 0);
+          if (o.dur != null) definirDur(t, o.dur);
           if (o.inicio_min != null) t.inicioMin = o.inicio_min || null;
           if (o.pct != null) t.pct = Math.max(0, Math.min(100, parseInt(o.pct, 10) || 0));
           if (o.valor != null) t.valor = Number(o.valor) || 0;
