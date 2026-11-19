@@ -36,6 +36,7 @@ import { initPushPrompt, ensurePushSubscription, requestPushPermission, pushStat
 // Faturas
 import { renderTesouraria } from './modules/tesouraria.js';
 import { renderBalancoFat, renderCarteira } from './modules/clientes-carteira.js';
+import { renderPlanosTrabalho } from './modules/planos-trabalho.js';
 import { renderGuiasEscritorio } from './modules/guias-escritorio.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
 import { renderEstruturaCentral } from './modules/estrutura-central.js';
@@ -432,6 +433,7 @@ window.savePerfil = async function () {
     if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
     if (id === 'existencias')       { initExistencias(); }
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
+    if (id === 'planos-trabalho')   { renderPlanosTrabalho(); }
     if (id === 'atividade')    { initAtividade(); }
     if (id === 'fornecedores') { sbLoadFornecedores().then(() => renderFornecedores()); }
     if (id === 'mapa-ferias')        { renderMapaFerias(); }

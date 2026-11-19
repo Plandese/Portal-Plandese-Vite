@@ -796,8 +796,18 @@ function puFmtEur(v){ return new Intl.NumberFormat('pt-PT',{style:'currency',cur
 function puFmtNum(v){ if(!v) return '—'; return new Intl.NumberFormat('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:4}).format(v); }
 function puEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// Usado pelos Planos de Trabalho: ler um articulado (Excel/PDF) e obter o da Lista de Preços de uma obra
+function puLerArticulado(file){
+  const isPDF = /\.pdf$/i.test(file.name) || file.type==='application/pdf';
+  return isPDF ? _puParsePDF(file) : _puParseExcel(file);
+}
+function puArticuladoDaObra(obraId){
+  _puLoad();
+  return (PRECOS_UNIT.find(l => l.obraId === obraId)?.artigos) || [];
+}
+
 export {
-  PRECOS_UNIT,
+  PRECOS_UNIT, puLerArticulado, puArticuladoDaObra,
   initPrecosUnit, puGoList, puOpenObra,
   puOpenImport, puHandleFile, puHandleDrop, puDragOver, puDragLeave,
   puExportExcel, puLimpar,

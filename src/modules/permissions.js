@@ -377,7 +377,11 @@ const SECTION_ROLES = {
 // Páginas do módulo Clientes (fora da matriz de permissões): administrador + utilizadores autorizados. O servidor aplica o mesmo limite por RLS.
 export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
 
+// Páginas pessoais em teste (fora da matriz de permissões): só os utilizadores indicados. O servidor aplica o mesmo limite por RLS.
+export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['david.mosca'] };
+
 export function roleCanAccessSection(role, sec, username){
+  if(SOLO_USER_SECTIONS[sec]) return !!username && SOLO_USER_SECTIONS[sec].includes(username);
   if(ADMIN_ONLY_SECTIONS.includes(sec)) return role === 'admin' || (!!username && _cli.includes(username));
   if(role === 'admin') return true;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
@@ -412,6 +416,8 @@ export function applyRolePermissions(role){
   document.querySelectorAll('[data-solo]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   document.querySelectorAll('.nav-subgrp[data-sub="cli"]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
   document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el=>{ el.style.display=''; });
+  // Páginas pessoais (data-solo-user): só para os utilizadores da lista, qualquer que seja o perfil
+  document.querySelectorAll('[data-solo-user]').forEach(el=>{ el.style.display = roleCanAccessSection(role, el.dataset.soloUser, user) ? '' : 'none'; });
   if(role === 'admin') return; // admin vê tudo
   if(!ROLE_ACCESS[role]) return;
   // Esconder capítulos inteiros (grupo + toggle) sem nenhuma página permitida

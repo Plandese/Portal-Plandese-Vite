@@ -1496,6 +1496,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           <span class="nav-label">Lista de Preços</span>
         </button>
+        <button class="nav-btn" onclick="goTo('planos-trabalho',this)" id="nav-planos-trabalho" data-solo-user="planos-trabalho" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>
+          <span class="nav-label">Planos de Trabalho</span>
+        </button>
         <button class="nav-btn" onclick="goTo('pendentes-tavira',this)" id="nav-pendentes-tavira">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <span class="nav-label">Pós Venda</span>
@@ -2693,6 +2697,17 @@
           </div>
         </div>
         <div id="ex-root"></div>
+      </section>
+
+      <!-- PLANOS DE TRABALHO (teste) — página pessoal, ver SOLO_USER_SECTIONS em permissions.js -->
+      <section id="sec-planos-trabalho" class="section">
+        <div class="pg-hdr">
+          <div>
+            <div class="pg-title">Planos de Trabalho</div>
+            <div class="pg-sub">Gráfico de Gantt a partir do articulado da obra · versão de teste</div>
+          </div>
+        </div>
+        <div id="plt-body"></div>
       </section>
 
       <section id="sec-precos-unitarios" class="section">
