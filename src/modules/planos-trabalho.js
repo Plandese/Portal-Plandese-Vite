@@ -1032,7 +1032,7 @@ function abrirNovo() {
     </div>
     <div id="pn-opts">
       <h4>Como criar o plano</h4>
-      <div class="plt-f"><label>Detalhe</label><select id="pn-det"><option value="artigos">Capítulos e artigos (uma tarefa por artigo)</option><option value="capitulos">Só capítulos (os artigos somam no capítulo)</option></select></div>
+      <div class="plt-f"><label>Detalhe</label><select id="pn-det"><option value="artigos">Capítulos e artigos (uma tarefa por artigo)</option><option value="3">Até ao 3.º nível (ex.: 2.3.1) — o resto soma no nível acima</option><option value="2">Até ao 2.º nível (ex.: 2.3)</option><option value="capitulos">Só capítulos (os artigos somam no capítulo)</option></select></div>
       <div class="plt-f2">
         <div class="plt-f"><label>Prazo da obra (dias úteis)</label><input id="pn-prazo" type="number" min="1" value="60"/></div>
         <div class="plt-f"><label>Ligações iniciais</label><select id="pn-lig"><option value="seq">Sequenciais (fim → início)</option><option value="cap">Sequenciais dentro de cada capítulo</option><option value="nao">Sem ligações</option></select></div>
@@ -1087,6 +1087,7 @@ async function criarPlano() {
     if (!_novo.artigos?.length) return showToast(_novo.origem === 'ficheiro' ? 'Escolhe o ficheiro do articulado' : 'Esta obra não tem Lista de Preços');
     tarefas = tarefasDoArticulado(_novo.artigos, {
       soCapitulos: $('pn-det').value === 'capitulos',
+      maxNivel: parseInt($('pn-det').value, 10) || 0,
       prazo: Math.max(1, parseInt($('pn-prazo').value, 10) || 60),
       ligacoes: $('pn-lig').value,
     });
@@ -1108,32 +1109,54 @@ async function criarPlano() {
 }
 
 // Articulado (lista de capítulos/artigos) → tarefas com níveis, durações proporcionais ao valor e ligações
-export function tarefasDoArticulado(artigos, { soCapitulos = false, prazo = 60, ligacoes = 'seq' } = {}) {
-  const out = [], pilha = [];   // pilha: tarefas-capítulo abertas { cod, t }
+export function tarefasDoArticulado(artigos, { soCapitulos = false, maxNivel = 0, prazo = 60, ligacoes = 'seq' } = {}) {
+  let out = [];
+  const pilha = [];   // pilha: tarefas-capítulo abertas { cod, t }
+  const segs = c => (c ? c.split('.').filter(Boolean).length : 0);
   const ePrefixo = (cap, cod) => cap.cod && cod && cod.startsWith(cap.cod + '.');
-  const fundo = cod => { for (let k = pilha.length - 1; k >= 0; k--) if (ePrefixo(pilha[k], cod)) return k + 1; return -1; };
+  // capítulo aberto mais fundo cujo código é prefixo deste (índice na pilha; -1 se nenhum)
+  const prefixo = cod => { for (let k = pilha.length - 1; k >= 0; k--) if (ePrefixo(pilha[k], cod)) return k; return -1; };
+  // nome da tarefa = 1.ª linha da descrição (o texto completo vai para as notas)
+  const titulo = s => { const l = String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean)[0] || ''; return l.length > 110 ? l.slice(0, 107).trimEnd() + '…' : l; };
   for (const a of artigos) {
-    const cod = String(a.codigo || '').trim(), nome = String(a.descricao || '').trim() || cod;
+    const cod = String(a.codigo || '').trim().replace(/\.$/, '');
+    const desc = String(a.descricao || '').trim();
+    const v = Number(a.total) || (Number(a.quantidade) || 0) * (Number(a.precoUnit) || 0);
+    if (!/^\d/.test(cod) && !v) continue;          // notas e cabeçalhos soltos (sem código nem valor) não são tarefas
+    const nome = titulo(desc) || cod;
     if (!nome) continue;
+    const notas = (desc.includes('\n') || desc.length > 110) ? desc : '';
     if (a.isCapitulo) {
-      let d = fundo(cod);
-      if (d < 0) d = (a.nivel === 1 && pilha.length) ? 1 : 0;
-      pilha.length = Math.min(d, pilha.length);
-      const t = novaTarefa(nome, pilha.length, 1); t.cod = cod;
+      const ult = pilha[pilha.length - 1];
+      // o mesmo código repetido logo a seguir (título + descrição longa) é o mesmo capítulo
+      if (ult && ult.cod === cod && out[out.length - 1] === ult.t) { if (!ult.t.notas) ult.t.notas = notas || desc; continue; }
+      const k = prefixo(cod);
+      if (k >= 0) pilha.length = k + 1;
+      else pilha.length = (a.nivel === 1 && pilha.length) ? 1 : 0;
+      const t = novaTarefa(nome, pilha.length, 1); t.cod = cod; t.notas = notas;
       out.push(t); pilha.push({ cod, t });
     } else {
-      const d = fundo(cod);
-      if (d >= 0) pilha.length = d;
-      const v = Number(a.total) || (Number(a.quantidade) || 0) * (Number(a.precoUnit) || 0);
+      // só muda de capítulo quando o código encaixa (2.3.8 → 2.3); códigos trocados no articulado ficam no capítulo atual
+      const k = prefixo(cod);
+      if (k >= 0 && segs(cod) === segs(pilha[k].cod) + 1) pilha.length = k + 1;
       if (soCapitulos && pilha.length) { pilha[pilha.length - 1].t.valor += v; continue; }
       const t = novaTarefa(nome, pilha.length, 1);
-      Object.assign(t, { cod, un: a.unidade || '', qtd: Number(a.quantidade) || 0, valor: v });
+      Object.assign(t, { cod, un: a.unidade || '', qtd: Number(a.quantidade) || 0, valor: v, notas });
       out.push(t);
     }
   }
-  // só capítulos: o valor de um subcapítulo também fica no pai se este ficar sem folhas — normalizar níveis
+  // normalizar níveis (nunca saltar mais do que um nível)
   for (let i = 1; i < out.length; i++) if (out[i].nivel > out[i - 1].nivel + 1) out[i].nivel = out[i - 1].nivel + 1;
   if (out.length) out[0].nivel = 0;
+  // detalhe limitado: o que fica abaixo do nível máximo soma-se ao antepassado desse nível
+  if (maxNivel > 0) {
+    const fica = [];
+    for (const t of out) {
+      if (t.nivel < maxNivel) { fica.push(t); continue; }
+      for (let k = fica.length - 1; k >= 0; k--) if (fica[k].nivel === maxNivel - 1) { fica[k].valor += t.valor; break; }
+    }
+    out = fica;
+  }
   const eFolha = i => !(i + 1 < out.length && out[i + 1].nivel > out[i].nivel);
   // num plano só de capítulos, um capítulo-pai com subcapítulos passa o seu valor direto para o 1.º filho
   out.forEach((t, i) => { if (!eFolha(i) && t.valor) { out[i + 1].valor += t.valor; t.valor = 0; } });
