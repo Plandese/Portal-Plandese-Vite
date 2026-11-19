@@ -378,7 +378,7 @@ const SECTION_ROLES = {
 export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
 
 // Páginas pessoais em teste (fora da matriz de permissões): só os utilizadores indicados. O servidor aplica o mesmo limite por RLS.
-export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['david.mosca'] };
+export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['admin', 'david.mosca'] };
 
 export function roleCanAccessSection(role, sec, username){
   if(SOLO_USER_SECTIONS[sec]) return !!username && SOLO_USER_SECTIONS[sec].includes(username);
