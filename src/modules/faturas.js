@@ -1121,9 +1121,10 @@ function editarFatura(id){
     const pode2 = etapa2 && (role === 'admin' || eDiretor);
     const selCC = document.getElementById('mf-cc-sel');
     if(selCC){
-      selCC.innerHTML = '<option value="">— Centro de custo —</option>' + S.OBRAS.filter(o=>o.ativa || o.nome===f.centroCusto)
-        .map(o=>`<option value="${_fEsc(o.nome)}"${o.nome===f.centroCusto?' selected':''}>${_fEsc(o.nome)}</option>`).join('');
+      selCC.innerHTML = '<option value="">— Centro de custo —</option>' + _opcoesCentroCusto(f.centroCusto, o=>o.ativa || o.nome===f.centroCusto);
       selCC.disabled = etapa2 && role !== 'admin';   // o diretor não muda o centro de custo escolhido pelo financeiro
+      // Estrutura Central: assim que é escolhida na inserção, a fatura segue logo para lá (sem carregar em "Confirmar")
+      selCC.onchange = pode1 ? () => { if(ehEstruturaCentral(selCC.value)) aprovarFatura(); } : null;
     }
     const txt = document.getElementById('mf-apro-txt'), btn = document.getElementById('mf-apro-btn');
     if(txt) txt.textContent = etapa2 ? 'Aguarda a aprovação do diretor de obra' : 'Confirme o centro de custo desta fatura';
@@ -1890,6 +1891,18 @@ Aprovar mesmo assim?`)) return;
   await concluirAprovacao(f, cc, null);
 }
 
+// ── Estrutura Central (centro de custo O099) ───────────────────────────────────
+// Aparece sempre como primeira opção do centro de custo, mesmo que a obra O099 esteja inativa;
+// as faturas com este centro de custo vão para Financeiro → Estrutura Central.
+const ehEstruturaCentral = cc => /^O099\b/i.test(String(cc||'').trim());
+const nomeEstruturaCentral = () => (S.OBRAS||[]).find(o=>ehEstruturaCentral(o.nome))?.nome || 'O099 - CC Estrutura central';
+function _opcoesCentroCusto(atual, filtro){
+  const ec = nomeEstruturaCentral();
+  const obras = (S.OBRAS||[]).filter(o => !ehEstruturaCentral(o.nome) && filtro(o));
+  return `<option value="${_fEsc(ec)}"${ehEstruturaCentral(atual)?' selected':''}>Estrutura Central</option>`
+    + obras.map(o=>`<option value="${_fEsc(o.nome)}"${o.nome===atual?' selected':''}>${_fEsc(o.nome)}</option>`).join('');
+}
+
 // Etapa 1: a fatura passa para "Faturas Por Aprovar" e o(s) diretor(es) da obra são avisados
 async function confirmarCentroCusto(f, cc){
   const antes = { status:f.status, centroCusto:f.centroCusto, pagaNaOrigem:f.pagaNaOrigem };
@@ -1910,7 +1923,8 @@ async function confirmarCentroCusto(f, cc){
   }
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
-  showToast(`Fatura enviada para aprovação do diretor — ${cc}`);
+  showToast(ehEstruturaCentral(cc) ? 'Fatura enviada para a Estrutura Central' : `Fatura enviada para aprovação do diretor — ${cc}`);
+  if(ehEstruturaCentral(cc)) R.renderEstruturaCentral?.();
 
   const conf = await conferenciaGuiasFatura(f);
   const avisoGuias = conf && conf.pct != null && conf.pct < 100 && (conf.refs || conf.guias) ? ` · Guias ${conf.pct}%` : '';
@@ -2085,12 +2099,7 @@ function fssRenderFields(){
     const display = (val!=null && val!=='') ? String(val) : '';
 
     if(f.tipo === 'obra'){
-      const opts = ['<option value="">— Selecionar obra —</option>',
-        ...S.OBRAS.filter(o=>o.ativa).map(o=>{
-          const sel = display===o.nome ? ' selected' : '';
-          return `<option value="${o.nome.replace(/"/g,'&quot;')}"${sel}>${o.nome}</option>`;
-        })
-      ].join('');
+      const opts = '<option value="">— Selecionar obra —</option>' + _opcoesCentroCusto(display, o=>o.ativa);
       return `<div class="fss-field-row${display?' has-val':''}" data-campo="${f.key}" onclick="fssSetActive('${f.key}')">
         <div class="fss-field-label"><span class="fss-field-dot"></span>${f.label}</div>
         <select id="fss-input-${f.key}" class="fss-field-input fss-field-select"
@@ -2153,7 +2162,8 @@ async function fssSave(){
   aprenderTemplate(_fssFat);
 
   // Se tem centro de custo → entra no fluxo de aprovação
-  if(_fssFat.centroCusto) _fssFat.status = 'pendente_aprovacao';
+  // (Estrutura Central: segue logo para lá, já com o centro de custo confirmado)
+  if(_fssFat.centroCusto) _fssFat.status = ehEstruturaCentral(_fssFat.centroCusto) ? 'aguarda_diretor' : 'pendente_aprovacao';
 
   // Adicionar à lista, persistir e fechar
   FATURAS.push(_fssFat);
@@ -2176,7 +2186,8 @@ async function fssSave(){
   }
 
   // Sem notificações na inserção: os diretores só são avisados quando a fatura passa a "Por aprovar" (confirmarCentroCusto)
-  if(_fssFat.centroCusto) showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
+  if(ehEstruturaCentral(_fssFat.centroCusto)) showToast('Fatura enviada para a Estrutura Central');
+  else if(_fssFat.centroCusto) showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
   else showToast(validaNIF(_fssFat.nif) ? `${_fssItem?.name||'Fatura'}: guardada e fornecedor memorizado` : `${_fssItem?.name||'Fatura'}: guardada`);
 
   fssClose();
