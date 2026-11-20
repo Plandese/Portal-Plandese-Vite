@@ -2114,34 +2114,11 @@
 
         <!-- TAB: PERMISSÕES -->
         <div class="sec-tab-pane" id="util-pane-perms">
-          <div class="card" style="padding:20px 0;overflow:hidden">
-            <div style="padding:0 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
-              <div>
-                <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:4px">Controlo de acessos por perfil</div>
-                <div style="font-size:12px;color:var(--gray-500)">Ative ou desative o acesso por perfil. Clique num perfil para ver as pessoas e dar-lhes exceções; clique num capítulo para controlar cada sub-página. As alterações aplicam-se no próximo login.</div>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="resetPermissions()" title="Repor permissões predefinidas">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                Repor predefinições
-              </button>
-            </div>
-            <div style="overflow-x:auto;padding:0 20px">
-              <table class="perm-matrix" id="perm-matrix-table">
-                <thead id="perm-matrix-head"></thead>
-                <tbody id="perm-matrix-body"></tbody>
-              </table>
-            </div>
-            <div class="perm-save-bar" style="padding:14px 20px 4px">
-              <span class="perm-saved-msg" id="perm-saved-msg">✓ Permissões guardadas</span>
-              <button class="btn btn-primary" onclick="savePermissions()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Guardar permissões
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- Permissões de acesso: desenhado em permissions.js (renderPermMatrix) -->
+        <div class="pa" id="perm-acessos"></div>
+      </div>
 
-        <!-- TAB: NOTIFICAÇÕES -->
+      <!-- TAB: NOTIFICAÇÕES -->
         <div class="sec-tab-pane" id="util-pane-notifs">
           <div class="card" style="padding:20px 0;overflow:hidden">
             <div style="padding:0 20px 14px">

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  PERMISSÕES DE ACESSO
 // ═══════════════════════════════════════
-import { ROLE_ACCESS, NAV_CHAPTERS } from '../config.js';
+import { ROLE_ACCESS, NAV_CHAPTERS, ROLE_LABELS } from '../config.js';
 import { showToast } from './navigation.js';
 import { sb } from '../supabase.js';
 import { S } from '../state.js';
@@ -95,7 +95,7 @@ const _openChaps = new Set();   // capítulos expandidos (sub-páginas)
 
 function cloneJ(o){ return JSON.parse(JSON.stringify(o)); }
 function draft(){
-  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr), tf: [...(_tf || TF_DEFAULT)] };
+  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr), tf: [...(_tf || TF_DEFAULT)], cli: [...(_cli || [])] };
   return _draft;
 }
 const sameSet = (a,b)=>{ a=a||[]; b=b||[]; return a.length===b.length && a.every(x=>b.includes(x)); };
@@ -140,18 +140,24 @@ export async function savePermissions(){
     const tf = [...new Set(['admin', ...d.tf])];
     await upsertConfig(TF_CONFIG_KEY, tf);
     _tf = tf;
+    const cli = [...new Set(d.cli || [])];
+    await upsertConfig(CLI_CONFIG_KEY, cli);
+    _cli = cli;
   } catch(e){ serverOk = false; }
-  const msg = document.getElementById('perm-saved-msg');
-  if(msg){ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'),2500); }
   showToast(serverOk ? 'Permissões guardadas ✓' : '⚠️ Guardado localmente — falhou no servidor');
   if(S.currentUser) applyRolePermissions(S.currentUser.role);
+  // o rascunho passa a ser o estado guardado
+  d.ovr = cloneJ(ovr);
+  _paSnap = '';
+  renderPermMatrix();
 }
 
 export async function resetPermissions(){
   if(!confirm('Repor todas as permissões para os valores predefinidos? Isto remove também as exceções por pessoa e por sub-página.')) return;
   try { localStorage.removeItem(PERM_STORAGE_KEY); localStorage.removeItem(OVR_STORAGE_KEY); } catch(e){}
   _ovr = emptyOvr();
-  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr(), tf: [...TF_DEFAULT] };
+  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr(), tf: [...TF_DEFAULT], cli: [...(_cli || [])] };
+  _paSnap = '';
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
       ROLE_ACCESS[r.key].chapters = [...(DEFAULT_PERMISSIONS[r.key]||[])];
@@ -170,15 +176,7 @@ export async function resetPermissions(){
 
 export function readPermMatrixState(){ return cloneJ(draft().perms); }
 
-const SECTION_LABELS = {
-  'historico':'Folha de Ponto','fecho-mes':'Fecho do Mês','mapa-ferias':'Mapa de Férias','ponto-escritorio':'Ponto do Escritório','colaboradores':'Colaboradores',
-  'compras':'Compras','necessidades':'Necessidades de obra','faturas':'Faturas','faturas-aprovar':'Faturas por Aprovar','tesouraria':'Tesouraria','estrutura-central':'Estrutura Central','guias':'Guias de Remessa',
-  'equipamentos':'Equipamentos','combustivel':'Combustível','producao':'Produção','existencias':'Existências','precos-unitarios':'Preços Unitários',
-  'pendentes-tavira':'Pendentes Tavira','obras':'Obras','utilizadores':'Utilizadores','atividade':'Atividade',
-  'empresas-moa':'Empresas MOA','fornecedores':'Fornecedores','telas-finais':'Telas Finais',
-};
-
-// Estado efetivo (no rascunho) de um capítulo/sub-página para um perfil (user=null) ou para uma pessoa
+// Estado efetivo (no rascunho) de um capítulo/página para um perfil (user=null) ou para uma pessoa
 function chapEff(role, user, ch){
   const o = user ? draft().ovr.users[user] : null;
   const list = (o && o.chapters) || draft().perms[role] || [];
@@ -198,136 +196,398 @@ function secEff(role, user, ch, sec){
   if(sec==='ponto-escritorio') return true;
   return chapEff(role, user, ch);
 }
-function secLocked(role, user, ch, sec){
-  if(secBlockedByRole(role, sec)) return true;
-  if(sec==='faturas-aprovar' && role==='diretor_obra') return false;
-  if(sec==='ponto-escritorio') return false;
-  return !chapEff(role, user, ch);
+
+// ═══════════════════════════════════════════════════════════════════
+//  SEPARADOR «PERMISSÕES DE ACESSO»
+//  As páginas aparecem como no menu (mesmos nomes e grupos) e cada perfil tem um interruptor por página.
+//  O que se guarda é o mesmo de sempre: capítulos por perfil (role_permissions), páginas fechadas por perfil
+//  e exceções por pessoa (access_overrides) e as listas de pessoas (telas_finais_acesso, clientes_acesso).
+//  Ligar uma página de um capítulo fechado abre o capítulo só com essa página; desligar a última página
+//  aberta fecha o capítulo (o servidor, fn_cap, deixa de dar os dados desse capítulo).
+// ═══════════════════════════════════════════════════════════════════
+// regras: 'todos' (todos os perfis) · 'cada' (todos, cada um a sua folha) · 'admin' (só administrador)
+//         'lista:cli' / 'lista:tf' (pessoas escolhidas) · 'teste' (página pessoal em teste) · 'forn' (conta como Definições)
+const MENU_ACESSOS = [
+  { label:'Geral', paginas:[
+    { sec:'painel', label:'Painel Principal', regra:'todos' },
+    { sec:'calendario', label:'Calendário', regra:'todos' },
+    { sec:'notificacoes', label:'Notificações', regra:'todos' },
+  ]},
+  { ch:'rh', label:'Recursos Humanos', paginas:[
+    { sec:'historico', label:'Folha de Ponto' },
+    { sec:'fecho-mes', label:'Folha de Fecho' },
+    { sec:'mapa-ferias', label:'Mapa de Férias' },
+    { sec:'ponto-escritorio', label:'Folha de Ponto (escritório)', regra:'cada' },
+    { sec:'colaboradores', label:'Colaboradores' },
+    { sec:'empresas-moa', label:'Mão de Obra Aluguer' },
+  ]},
+  { ch:'cmp', label:'Compras', paginas:[
+    { sec:'compras', label:'Pedidos de compra' },
+    { sec:'necessidades', label:'Necessidades de obra' },
+    { sec:'fornecedores', label:'Lista de Fornecedores', regra:'forn' },
+  ]},
+  { ch:'fin', label:'Financeiro', paginas:[
+    { sub:'Fornecedores' },
+    { sec:'faturas', label:'Inserção de Faturas' },
+    { sec:'faturas-aprovar', label:'Faturas Por Aprovar' },
+    { sec:'tesouraria', label:'Tesouraria' },
+    { sub:'Clientes' },
+    { sec:'balanco-fat', label:'Balanço de Faturação', regra:'lista:cli' },
+    { sec:'carteira', label:'Carteira de Encomendas', regra:'lista:cli' },
+    { sub:'Estrutura Central' },
+    { sec:'estrutura-central', label:'Faturas da Estrutura Central' },
+  ]},
+  { ch:'log', label:'Equipamentos', paginas:[
+    { sec:'equipamentos', label:'Equipamentos' },
+    { sec:'combustivel', label:'Registos de Combustível' },
+  ]},
+  { ch:'prod', label:'Produção', paginas:[
+    { sec:'producao', label:'Controlo de Obras' },
+    { sec:'existencias', label:'Existências' },
+    { sec:'precos-unitarios', label:'Lista de Preços' },
+    { sec:'pendentes-tavira', label:'Pós Venda' },
+    { sec:'telas-finais', label:'Telas Finais', regra:'lista:tf' },
+  ]},
+  { ch:'def', label:'Definições', paginas:[
+    { sec:'obras', label:'Adicionar obra' },
+    { sec:'utilizadores', label:'Gerir utilizadores' },
+    { sec:'atividade', label:'Histórico de atividade' },
+    { sec:'planos-trabalho', label:'Planos de Trabalho', regra:'teste' },
+    { sec:'guias-teste', label:'Guias de Remessa (teste)', regra:'admin' },
+    { sec:'compras-teste', label:'Compras (teste)', regra:'admin' },
+  ]},
+];
+const LISTAS = {
+  cli: { titulo:'Clientes', paginas:'Balanço de Faturação e Carteira de Encomendas', nota:'O administrador vê sempre estas páginas. Escolha as outras pessoas que também as podem ver.' },
+  tf:  { titulo:'Telas Finais', paginas:'Telas Finais (editor dos esquemas de nós)', nota:'Escolha quem pode abrir o editor das telas finais. O administrador tem sempre acesso.' },
+};
+const _paFechados = new Set();   // grupos recolhidos no ecrã
+let _paSnap = '';                // estado guardado (para avisar de alterações por guardar)
+let _paQ = '';
+
+const roleLabel = r => (CONFIGURABLE_ROLES.find(x=>x.key===r)||{}).label || r;
+const nomeDe = u => (S.USERS?.[u]?.nome) || u;
+const escP = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const regraLista = p => (p.regra && p.regra.startsWith('lista:')) ? p.regra.slice(6) : null;
+// páginas do capítulo que dependem do capítulo (as abertas a todos não contam)
+const paginasCap = ch => (NAV_CHAPTERS.find(c=>c.id===ch)?.sections || []).filter(s => s !== 'ponto-escritorio');
+const editavel = (p, role) => !p.regra && !secBlockedByRole(role, p.sec);
+
+function estadoGuardavel(){
+  const d = draft();
+  return JSON.stringify({ perms:d.perms, ovr:normalizeOvr(cloneJ(d.ovr)), tf:[...d.tf].sort(), cli:[...d.cli].sort() });
 }
 
-function visibleCols(){
-  const cols = [];
-  NAV_CHAPTERS.forEach(ch=>{
-    cols.push({type:'chap', ch});
-    if(_openChaps.has(ch.id)){
-      ch.sections.forEach(sec=>cols.push({type:'sec', ch, sec}));
-      if(ch.id==='prod') cols.push({type:'sec', ch, sec:'telas-finais', tf:true});
+// Liga/desliga uma página para um perfil (user=null) ou para uma pessoa (exceção)
+function setPagina(role, user, ch, sec, on){
+  const d = draft();
+  const roleChs = d.perms[role] || [], roleOff = roleOffOf(d.ovr, role);
+  const o = user ? (d.ovr.users[user] || {}) : null;
+  let chs = [...((o && o.chapters) || roleChs)];
+  let off = [...((o && o.off) || roleOff)];
+  const pags = paginasCap(ch);
+  const semCapitulo = sec==='faturas-aprovar' && role==='diretor_obra';   // o diretor vê-a sem o capítulo Financeiro
+  if(on){
+    if(!chs.includes(ch) && !semCapitulo){
+      chs.push(ch);
+      off = [...new Set([...off, ...pags.filter(s => s !== sec)])];   // abre o capítulo só com esta página
     }
-  });
-  return cols;
+    off = off.filter(s => s !== sec);
+  } else {
+    off = [...new Set([...off, sec])];
+    // sem nenhuma página aberta, o capítulo fecha (e a lista fica limpa)
+    const aberta = s => !off.includes(s) && !secBlockedByRole(role, s) && !(s==='faturas-aprovar' && role==='diretor_obra');
+    if(chs.includes(ch) && !pags.some(aberta)){ chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s) || (s==='faturas-aprovar' && role==='diretor_obra')); }
+  }
+  if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
+  const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
+  if(sameSet(chs, roleChs)) delete ou.chapters; else ou.chapters = chs;
+  if(sameSet(off, roleOffOf(d.ovr, role))) delete ou.off; else ou.off = off;
+  if(!Object.keys(ou).length) delete d.ovr.users[user];
+}
+// Liga/desliga todas as páginas de um capítulo para um perfil (ou pessoa)
+function setCapitulo(role, user, ch, on){
+  const d = draft();
+  const roleChs = d.perms[role] || [], roleOff = roleOffOf(d.ovr, role);
+  const o = user ? (d.ovr.users[user] || {}) : null;
+  let chs = [...((o && o.chapters) || roleChs)];
+  let off = [...((o && o.off) || roleOff)];
+  const pags = paginasCap(ch);
+  if(on){ if(!chs.includes(ch)) chs.push(ch); off = off.filter(s => !pags.includes(s)); }
+  else { chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s)); if(role==='diretor_obra' && pags.includes('faturas-aprovar')) off.push('faturas-aprovar'); }
+  if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
+  const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
+  if(sameSet(chs, roleChs)) delete ou.chapters; else ou.chapters = chs;
+  if(sameSet(off, roleOff)) delete ou.off; else ou.off = off;
+  if(!Object.keys(ou).length) delete d.ovr.users[user];
+}
+// estado de um grupo para um perfil/pessoa: 'on' | 'mix' | 'off' | null (sem páginas editáveis)
+function estadoGrupo(g, role, user){
+  const ps = g.paginas.filter(p => p.sec && editavel(p, role));
+  if(!ps.length) return null;
+  const n = ps.filter(p => secEff(role, user, g.ch, p.sec)).length;
+  return n === ps.length ? 'on' : n ? 'mix' : 'off';
+}
+// pessoas do perfil cuja página difere do perfil
+function excecoes(role, ch, sec){
+  return cfgUsersOfRole(role).filter(u => secEff(role, u.username, ch, sec) !== secEff(role, null, ch, sec));
+}
+// páginas (rótulos) em que a pessoa difere do perfil
+function diferencasPessoa(role, user){
+  const out = [];
+  MENU_ACESSOS.forEach(g => g.paginas.forEach(p => {
+    if(!p.sec || !g.ch || !editavel(p, role)) return;
+    const a = secEff(role, user, g.ch, p.sec), b = secEff(role, null, g.ch, p.sec);
+    if(a !== b) out.push({ label:p.label, on:a });
+  }));
+  return out;
 }
 
-function toggleCell(checked, attrs, opts={}){
-  const {disabled=false, diff=false, title=''} = opts;
-  return `<label class="perm-toggle${diff?' perm-diff':''}" title="${title}">
-    <input type="checkbox" class="perm-chk" ${attrs} ${checked?'checked':''} ${disabled?'disabled':''} onchange="onPermChange(this)"/>
-    <span class="perm-slider"></span></label>`;
+// interruptor: on = true/'on' (ligado), 'mix' (parcial), false/'off' (desligado)
+const sw = (on, attrs, title='') => {
+  const lig = on === true || on === 'on', mix = on === 'mix';
+  return `<button type="button" class="pa-sw ${mix?'mix':lig?'on':''}" ${attrs} aria-pressed="${lig}" title="${escP(title)}"><i></i></button>`;
+};
+function pillRegra(p, role){
+  if(p.regra==='todos') return '<span class="pa-pill">Todos</span>';
+  if(p.regra==='cada') return '<span class="pa-pill" title="Cada pessoa preenche e vê a sua folha">Todos — a sua</span>';
+  if(p.regra==='admin') return '<span class="pa-pill mute">Só administrador</span>';
+  if(p.regra==='forn') return '<span class="pa-pill mute" title="Esta página conta como Definições no servidor: hoje só o administrador a vê e edita">Só administrador</span>';
+  if(secBlockedByRole(role, p.sec)) return `<span class="pa-pill mute" title="Esta página não existe para o perfil ${escP(roleLabel(role))}">Não</span>`;
+  return '';
 }
 
 export function renderPermMatrix(){
+  const box = document.getElementById('perm-acessos');
+  if(!box) return;
   const d = draft();
-  const thead = document.getElementById('perm-matrix-head');
-  if(!thead) return;
-  const cols = visibleCols();
-  thead.innerHTML = '<tr><th>Perfil</th>' + cols.map(c=>{
-    if(c.type==='chap'){
-      const open = _openChaps.has(c.ch.id);
-      return `<th class="perm-th-chap${open?' open':''}" onclick="togglePermChapter('${c.ch.id}')" title="Ver sub-páginas"><span class="perm-caret">${open?'▾':'▸'}</span> ${c.ch.label}</th>`;
-    }
-    return `<th class="perm-th-sec">${SECTION_LABELS[c.sec]||c.sec}</th>`;
-  }).join('') + '</tr>';
-
-  const rows = [];
-  CONFIGURABLE_ROLES.forEach(role=>{
-    const users = cfgUsersOfRole(role.key);
-    const open = _openRoles.has(role.key);
-    const nOv = users.filter(u=>d.ovr.users[u.username] && Object.keys(d.ovr.users[u.username]).length).length;
-    const cells = cols.map(c=>{
-      if(c.type==='chap'){
-        const on = chapEff(role.key, null, c.ch.id);
-        return `<td>${toggleCell(on, `data-kind="chap" data-role="${role.key}" data-ch="${c.ch.id}"`, {title:on?'Acesso permitido':'Acesso bloqueado'})}</td>`;
+  if(!_paSnap) _paSnap = estadoGuardavel();
+  const roles = CONFIGURABLE_ROLES;
+  const q = _paQ.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const bate = p => !q || (p.label||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(q);
+  const nExc = Object.keys(d.ovr.users).filter(u => S.USERS?.[u] && CONFIGURABLE_ROLES.some(r => r.key === S.USERS[u].role) && diferencasPessoa(S.USERS[u].role, u).length).length;
+  const linhas = [];
+  MENU_ACESSOS.forEach((g, gi) => {
+    const pags = g.paginas.filter(p => p.sub || bate(p));
+    if(q && !pags.some(p => p.sec)) return;
+    const fechado = !q && _paFechados.has(gi);
+    linhas.push(`<tr class="pa-g"><td><button type="button" class="pa-g-b" data-pa="grp" data-gi="${gi}"><span class="pa-car">${fechado?'▸':'▾'}</span>${escP(g.label)}</button></td>${roles.map(r => {
+      if(!g.ch) return '<td></td>';
+      const st = estadoGrupo(g, r.key, null);
+      return `<td>${st ? sw(st, `data-pa="cap" data-role="${r.key}" data-ch="${g.ch}"`, st==='on'?'Todas as páginas ligadas — clique para desligar o capítulo':st==='mix'?'Algumas páginas ligadas — clique para ligar todas':'Capítulo desligado — clique para ligar todas as páginas') : ''}</td>`;
+    }).join('')}</tr>`);
+    if(fechado) return;
+    pags.forEach((p, k) => {
+      if(p.sub){ if(pags.slice(k+1).some(x => x.sec && !x.sub) && !(pags[k+1]||{}).sub) linhas.push(`<tr class="pa-sg"><td colspan="${roles.length+1}">${escP(p.sub)}</td></tr>`); return; }
+      const lista = regraLista(p);
+      if(lista){
+        const nomes = (lista==='tf' ? d.tf.filter(u=>u!=='admin') : d.cli).map(nomeDe);
+        linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td><td colspan="${roles.length}"><div class="pa-lista"><span class="pa-pill info">Pessoas escolhidas</span>${nomes.length ? nomes.map(n=>`<span class="pa-pess">${escP(n)}</span>`).join('') : '<span class="pa-mute">só o administrador</span>'}<button type="button" class="pa-lnk" data-pa="lista" data-l="${lista}">Escolher pessoas</button></div></td></tr>`);
+        return;
       }
-      if(c.tf){
-        const on = users.length>0 && users.every(u=>d.tf.includes(u.username));
-        return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="tf" data-role="${role.key}"`, {disabled:!users.length, title:'Dar/retirar acesso às Telas Finais a todas as pessoas deste perfil'})}</td>`;
+      if(p.regra==='teste'){
+        const us = SOLO_USER_SECTIONS[p.sec] || [];
+        linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td><td colspan="${roles.length}"><div class="pa-lista"><span class="pa-pill warn">Em teste</span>${us.map(u=>`<span class="pa-pess">${escP(nomeDe(u))}</span>`).join('')}<span class="pa-mute">definido no portal (não se muda aqui)</span></div></td></tr>`);
+        return;
       }
-      const on = secEff(role.key, null, c.ch.id, c.sec);
-      return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="sec" data-role="${role.key}" data-ch="${c.ch.id}" data-sec="${c.sec}"`, {disabled:secLocked(role.key,null,c.ch.id,c.sec), title:on?'Sub-página permitida':'Sub-página bloqueada'})}</td>`;
-    }).join('');
-    rows.push(`<tr class="perm-role-row${open?' open':''}"><td onclick="togglePermRole('${role.key}')" class="perm-role-name"><span class="perm-caret">${open?'▾':'▸'}</span> ${role.label}
-      <span class="perm-count">${users.length} ${users.length===1?'pessoa':'pessoas'}${nOv?` · <b>${nOv} com exceções</b>`:''}</span></td>${cells}</tr>`);
-    if(open){
-      if(!users.length) rows.push(`<tr class="perm-user-row"><td colspan="${cols.length+1}" class="perm-empty">Sem utilizadores neste perfil.</td></tr>`);
-      users.forEach(u=>{
-        const ov = d.ovr.users[u.username];
-        const has = ov && Object.keys(ov).length;
-        const ucells = cols.map(c=>{
-          if(c.type==='chap'){
-            const on = chapEff(role.key, u.username, c.ch.id);
-            const diff = on !== chapEff(role.key, null, c.ch.id);
-            return `<td>${toggleCell(on, `data-kind="chap" data-role="${role.key}" data-user="${u.username}" data-ch="${c.ch.id}"`, {diff, title:diff?'Difere do perfil':(on?'Acesso permitido':'Acesso bloqueado')})}</td>`;
-          }
-          if(c.tf){
-            const on = d.tf.includes(u.username);
-            return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="tf" data-role="${role.key}" data-user="${u.username}"`, {title:on?'Tem acesso às Telas Finais':'Sem acesso às Telas Finais'})}</td>`;
-          }
-          const on = secEff(role.key, u.username, c.ch.id, c.sec);
-          const diff = on !== secEff(role.key, null, c.ch.id, c.sec);
-          return `<td class="perm-sec-cell">${toggleCell(on, `data-kind="sec" data-role="${role.key}" data-user="${u.username}" data-ch="${c.ch.id}" data-sec="${c.sec}"`, {disabled:secLocked(role.key,u.username,c.ch.id,c.sec), diff, title:diff?'Difere do perfil':''})}</td>`;
-        }).join('');
-        rows.push(`<tr class="perm-user-row${has?' perm-user-diff':''}"><td><span class="perm-user-name">${u.nome}</span>
-          ${has?`<span class="perm-badge">difere do perfil</span><button type="button" class="perm-reset" onclick="resetPermUser('${u.username}')" title="Repor ao perfil">↺ Repor</button>`:''}</td>${ucells}</tr>`);
-      });
-    }
+      linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td>${roles.map(r => {
+        const pr = pillRegra(p, r.key);
+        if(pr) return `<td>${pr}</td>`;
+        const on = secEff(r.key, null, g.ch, p.sec);
+        const ex = excecoes(r.key, g.ch, p.sec);
+        return `<td><span class="pa-c">${sw(on, `data-pa="pag" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}"`, on?'Ligada para o perfil':'Desligada para o perfil')}${ex.length ? `<button type="button" class="pa-exc" data-pa="exc" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}" title="${escP(ex.map(u=>u.nome).join(', '))}">${ex.length} ${ex.length===1?'exceção':'exceções'}</button>` : `<button type="button" class="pa-exc vazio" data-pa="exc" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}" title="Dar ou tirar só a algumas pessoas">pessoas</button>`}</span></td>`;
+      }).join('')}</tr>`);
+    });
   });
-  rows.push(`<tr style="opacity:.6"><td>Administrador <span style="font-size:10px;color:var(--gray-400);font-weight:400">(total)</span></td>${cols.map(()=>`<td><label class="perm-toggle"><input type="checkbox" checked disabled/><span class="perm-slider"></span></label></td>`).join('')}</tr>`);
-  document.getElementById('perm-matrix-body').innerHTML = rows.join('');
+  const mudou = estadoGuardavel() !== _paSnap;
+  box.innerHTML = `
+    <div class="pa-top">
+      <div class="pa-top-tx">
+        <b>Quem vê cada página</b>
+        <span>As páginas estão organizadas como no menu. Ligue ou desligue por perfil; em «pessoas» dá ou tira a uma pessoa só. O administrador vê tudo. As alterações aplicam-se no próximo início de sessão de cada pessoa.</span>
+      </div>
+      <div class="pa-top-ac">
+        <input type="search" class="pa-q" id="pa-q" placeholder="Procurar página…" value="${escP(_paQ)}" autocomplete="off"/>
+        <button type="button" class="pa-chip ${nExc?'warn':''}" data-pa="todas-exc">${nExc ? `${nExc} ${nExc===1?'pessoa':'pessoas'} com exceções` : 'Sem exceções por pessoa'}</button>
+        <button type="button" class="pa-chip" data-pa="repor" title="Repor permissões predefinidas">Repor predefinições</button>
+      </div>
+    </div>
+    <div class="pa-wrap"><table class="pa-t">
+      <thead><tr><th>Página</th>${roles.map(r => { const n = cfgUsersOfRole(r.key).length; return `<th><button type="button" class="pa-th" data-pa="perfil" data-role="${r.key}" title="Ver as pessoas deste perfil">${escP(r.label)}<small>${n} ${n===1?'pessoa':'pessoas'}</small></button></th>`; }).join('')}</tr></thead>
+      <tbody>${linhas.join('') || `<tr><td colspan="${roles.length+1}" class="pa-vazio">Nenhuma página com «${escP(_paQ)}».</td></tr>`}</tbody>
+    </table></div>
+    <p class="pa-nota">Encarregados: usam a app do encarregado; os módulos de cada um escolhem-se em <b>Utilizadores → Editar</b>.</p>
+    <div class="pa-bar ${mudou?'mudou':''}">
+      <span class="pa-bar-tx">${mudou ? 'Há alterações por guardar' : 'Sem alterações por guardar'}</span>
+      <button type="button" class="pa-btn sec" data-pa="descartar" ${mudou?'':'hidden'}>Descartar</button>
+      <button type="button" class="pa-btn pri" data-pa="guardar">Guardar permissões</button>
+    </div>`;
+  ligarPA(box);
+  if(document.getElementById('perm-drawer')?.classList.contains('open')) _paRedesenharGaveta?.();
 }
 
-export function togglePermRole(role){
-  _openRoles.has(role) ? _openRoles.delete(role) : _openRoles.add(role);
-  renderPermMatrix();
-}
-export function togglePermChapter(ch){
-  _openChaps.has(ch) ? _openChaps.delete(ch) : _openChaps.add(ch);
-  renderPermMatrix();
-}
-export function resetPermUser(username){
-  delete draft().ovr.users[username];
-  renderPermMatrix();
+function ligarPA(box){
+  if(box._paOk) return; box._paOk = true;
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-pa]'); if(!b) return;
+    const { pa, role, ch, sec, gi, l } = b.dataset;
+    if(pa==='grp'){ const i = +gi; _paFechados.has(i) ? _paFechados.delete(i) : _paFechados.add(i); return renderPermMatrix(); }
+    if(pa==='pag'){ setPagina(role, null, ch, sec, !b.classList.contains('on')); return renderPermMatrix(); }
+    if(pa==='cap'){ setCapitulo(role, null, ch, !b.classList.contains('on')); return renderPermMatrix(); }
+    if(pa==='exc') return gavetaPagina(role, ch, sec);
+    if(pa==='perfil') return gavetaPerfil(role);
+    if(pa==='lista') return gavetaLista(l);
+    if(pa==='todas-exc') return gavetaExcecoes();
+    if(pa==='repor') return resetPermissions();
+    if(pa==='guardar') return savePermissions();
+    if(pa==='descartar'){ _draft = null; _paSnap = ''; return renderPermMatrix(); }
+  });
+  box.addEventListener('input', e => {
+    if(e.target.id !== 'pa-q') return;
+    _paQ = e.target.value;
+    const pos = e.target.selectionStart;
+    renderPermMatrix();
+    const i = document.getElementById('pa-q'); if(i){ i.focus(); try{ i.setSelectionRange(pos, pos); }catch(_){} }
+  });
 }
 
-export function onPermChange(chk){
-  const d = draft();
-  const {kind, role, user, ch, sec} = chk.dataset;
-  const on = chk.checked;
-  if(kind==='tf'){
-    const names = user ? [user] : cfgUsersOfRole(role).map(u=>u.username);
-    d.tf = on ? [...new Set([...d.tf, ...names])] : d.tf.filter(x=>!names.includes(x));
-  } else if(kind==='chap'){
-    const roleList = d.perms[role] || [];
-    if(!user){
-      d.perms[role] = on ? [...new Set([...roleList, ch])] : roleList.filter(x=>x!==ch);
-    } else {
-      const o = d.ovr.users[user] || (d.ovr.users[user] = {});
-      const cur = o.chapters || roleList;
-      const next = on ? [...new Set([...cur, ch])] : cur.filter(x=>x!==ch);
-      if(sameSet(next, roleList)) delete o.chapters; else o.chapters = next;
-    }
-  } else if(kind==='sec'){
-    const roleOff = roleOffOf(d.ovr, role);
-    if(!user){
-      const next = on ? roleOff.filter(x=>x!==sec) : [...new Set([...roleOff, sec])];
-      d.ovr.roles[role] = { off: next };
-    } else {
-      const o = d.ovr.users[user] || (d.ovr.users[user] = {});
-      const cur = o.off || roleOff;
-      const next = on ? cur.filter(x=>x!==sec) : [...new Set([...cur, sec])];
-      if(sameSet(next, roleOff)) delete o.off; else o.off = next;
-    }
+// ── Painel lateral ──
+let _paRedesenharGaveta = null;
+function gavetaPA(sup, titulo, sub, corpo, aoClicar){
+  let dr = document.getElementById('perm-drawer');
+  if(!dr){
+    document.body.insertAdjacentHTML('beforeend', '<div class="d-scrim" id="perm-scrim"></div><aside class="d-drawer pa-drawer" id="perm-drawer" aria-hidden="true"></aside>');
+    dr = document.getElementById('perm-drawer');
+    document.getElementById('perm-scrim').addEventListener('click', fecharGavetaPA);
+    document.addEventListener('keydown', e => { if(e.key==='Escape' && dr.classList.contains('open')) fecharGavetaPA(); });
+    dr.addEventListener('click', e => { if(e.target.closest('[data-g="fechar"]')) return fecharGavetaPA(); dr._aoClicar?.(e); });
   }
-  renderPermMatrix();
+  const desenhar = () => {
+    const c = typeof corpo === 'function' ? corpo() : corpo;
+    const y = dr.querySelector('.dd-b')?.scrollTop || 0;
+    dr.innerHTML = `<div class="dd-h"><button class="dd-x" data-g="fechar" aria-label="Fechar">✕</button><small>${escP(sup)}</small><h2>${escP(typeof titulo==='function'?titulo():titulo)}</h2>${sub?`<p>${escP(typeof sub==='function'?sub():sub)}</p>`:''}</div>
+      <div class="dd-b">${c}</div>
+      <div class="dd-f"><button type="button" class="btn btn-primary" data-g="fechar">Feito</button></div>`;
+    const b = dr.querySelector('.dd-b'); if(b) b.scrollTop = y;
+  };
+  dr._aoClicar = aoClicar;
+  _paRedesenharGaveta = desenhar;
+  desenhar();
+  requestAnimationFrame(() => { dr.classList.add('open'); document.getElementById('perm-scrim').classList.add('open'); });
 }
+function fecharGavetaPA(){
+  document.getElementById('perm-drawer')?.classList.remove('open');
+  document.getElementById('perm-scrim')?.classList.remove('open');
+  _paRedesenharGaveta = null;
+}
+const iniciais = n => String(n||'').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+// Uma página × um perfil: cada pessoa do perfil, com exceção
+function gavetaPagina(role, ch, sec){
+  const p = MENU_ACESSOS.flatMap(g=>g.paginas).find(x=>x.sec===sec) || { label:sec };
+  gavetaPA(roleLabel(role), p.label, () => `Ligada para o perfil: ${secEff(role,null,ch,sec)?'sim':'não'}`, () => {
+    const us = cfgUsersOfRole(role);
+    if(!us.length) return '<div class="dd-vazio">Não há pessoas com este perfil.</div>';
+    return `<p class="pa-dnota">Por omissão cada pessoa segue o perfil. Ligue ou desligue para dar ou tirar esta página só a essa pessoa.</p>` + us.map(u => {
+      const on = secEff(role, u.username, ch, sec), dif = on !== secEff(role, null, ch, sec);
+      return `<div class="pa-dl ${dif?'dif':''}"><span class="d-rav">${escP(iniciais(u.nome))}</span><div class="pa-dl-tx"><b>${escP(u.nome)}</b><small>${dif ? (on?'Exceção: tem acesso':'Exceção: sem acesso') : 'Segue o perfil'}</small></div>${dif?`<button type="button" class="pa-lnk" data-r="repor-pag" data-u="${u.username}">Repor</button>`:''}${sw(on, `data-r="pag" data-u="${u.username}"`)}</div>`;
+    }).join('');
+  }, e => {
+    const b = e.target.closest('[data-r]'); if(!b) return;
+    const u = b.dataset.u;
+    if(b.dataset.r==='pag') setPagina(role, u, ch, sec, !b.classList.contains('on'));
+    if(b.dataset.r==='repor-pag') setPagina(role, u, ch, sec, secEff(role, null, ch, sec));
+    renderPermMatrix();
+  });
+}
+
+// Um perfil: as pessoas e as suas exceções
+function gavetaPerfil(role){
+  gavetaPA('Perfil', roleLabel(role), () => `${cfgUsersOfRole(role).length} pessoas`, () => {
+    const us = cfgUsersOfRole(role);
+    if(!us.length) return '<div class="dd-vazio">Não há pessoas com este perfil.</div>';
+    return `<p class="pa-dnota">Clique numa pessoa para ver tudo o que ela vê e dar-lhe exceções.</p>` + us.map(u => {
+      const dif = diferencasPessoa(role, u.username);
+      return `<button type="button" class="pa-dl pa-dl-b ${dif.length?'dif':''}" data-r="pessoa" data-u="${u.username}"><span class="d-rav">${escP(iniciais(u.nome))}</span><div class="pa-dl-tx"><b>${escP(u.nome)}</b><small>${dif.length ? dif.map(x=>(x.on?'+ ':'− ')+x.label).join(' · ') : 'Igual ao perfil'}</small></div><span class="pa-car">›</span></button>`;
+    }).join('');
+  }, e => { const b = e.target.closest('[data-r="pessoa"]'); if(b) gavetaPessoa(b.dataset.u); });
+}
+
+// Uma pessoa: todas as páginas, como no menu
+function gavetaPessoa(user){
+  const role = S.USERS?.[user]?.role;
+  if(!CONFIGURABLE_ROLES.some(r => r.key === role)) return showToast('Este perfil não se configura aqui');
+  gavetaPA(roleLabel(role), nomeDe(user), () => { const n = diferencasPessoa(role, user).length; return n ? `${n} ${n===1?'exceção':'exceções'} ao perfil` : 'Igual ao perfil'; }, () => {
+    const d = draft(), tem = d.ovr.users[user] && Object.keys(d.ovr.users[user]).length;
+    let h = tem ? `<button type="button" class="pa-btn sec pa-repor" data-r="repor">Repor ao perfil (tirar todas as exceções)</button>` : '';
+    MENU_ACESSOS.forEach(g => {
+      const ps = g.paginas.filter(p => p.sec);
+      h += `<h4>${escP(g.label)}</h4>`;
+      ps.forEach(p => {
+        const lista = regraLista(p);
+        let dir;
+        if(lista){ const on = (lista==='tf'?d.tf:d.cli).includes(user); dir = sw(on, `data-r="lista" data-l="${lista}"`, 'Lista de pessoas escolhidas'); }
+        else if(p.regra==='teste') dir = `<span class="pa-pill ${(SOLO_USER_SECTIONS[p.sec]||[]).includes(user)?'info':'mute'}">${(SOLO_USER_SECTIONS[p.sec]||[]).includes(user)?'Sim (em teste)':'Não'}</span>`;
+        else { const pr = pillRegra(p, role); if(pr) dir = pr; else {
+          const on = secEff(role, user, g.ch, p.sec), dif = on !== secEff(role, null, g.ch, p.sec);
+          dir = `${dif?`<span class="pa-pill warn">exceção</span>`:''}${sw(on, `data-r="pag" data-ch="${g.ch}" data-sec="${p.sec}"`)}`;
+        } }
+        h += `<div class="pa-dp"><span>${escP(p.label)}</span><span class="pa-dp-d">${dir}</span></div>`;
+      });
+    });
+    return h;
+  }, e => {
+    const b = e.target.closest('[data-r]'); if(!b) return;
+    const d = draft();
+    if(b.dataset.r==='pag') setPagina(role, user, b.dataset.ch, b.dataset.sec, !b.classList.contains('on'));
+    if(b.dataset.r==='repor') delete d.ovr.users[user];
+    if(b.dataset.r==='lista'){ const k = b.dataset.l, on = !b.classList.contains('on'); d[k] = on ? [...new Set([...d[k], user])] : d[k].filter(x => x !== user); }
+    renderPermMatrix();
+  });
+}
+
+// Todas as pessoas com exceções
+function gavetaExcecoes(){
+  gavetaPA('Permissões de acesso', 'Pessoas com exceções', 'Diferenças em relação ao perfil de cada uma', () => {
+    const d = draft();
+    const us = Object.keys(S.USERS||{}).filter(u => CONFIGURABLE_ROLES.some(r => r.key === S.USERS[u].role) && d.ovr.users[u] && diferencasPessoa(S.USERS[u].role, u).length)
+      .sort((a,b) => nomeDe(a).localeCompare(nomeDe(b), 'pt'));
+    if(!us.length) return '<div class="dd-vazio">Ninguém tem exceções: todas as pessoas seguem o seu perfil.</div>';
+    return us.map(u => {
+      const role = S.USERS[u].role, dif = diferencasPessoa(role, u);
+      return `<div class="pa-dl dif"><span class="d-rav">${escP(iniciais(nomeDe(u)))}</span><button type="button" class="pa-dl-tx pa-dl-bt" data-r="pessoa" data-u="${u}"><b>${escP(nomeDe(u))} <span class="pa-mute">· ${escP(roleLabel(role))}</span></b><small>${dif.map(x=>(x.on?'+ ':'− ')+x.label).join(' · ')}</small></button><button type="button" class="pa-lnk" data-r="repor" data-u="${u}">Repor</button></div>`;
+    }).join('');
+  }, e => {
+    const b = e.target.closest('[data-r]'); if(!b) return;
+    if(b.dataset.r==='pessoa') return gavetaPessoa(b.dataset.u);
+    if(b.dataset.r==='repor'){ delete draft().ovr.users[b.dataset.u]; renderPermMatrix(); }
+  });
+}
+
+// Lista de pessoas escolhidas (Clientes / Telas Finais)
+function gavetaLista(k){
+  const L = LISTAS[k];
+  gavetaPA('Pessoas escolhidas', L.titulo, L.paginas, () => {
+    const d = draft();
+    const us = Object.entries(S.USERS||{}).filter(([,u]) => u.role && u.role !== 'encarregado' && u.role !== 'admin')
+      .map(([username,u]) => ({ username, nome:u.nome||username, role:u.role })).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+    return `<p class="pa-dnota">${escP(L.nota)}</p>` + us.map(u => {
+      const on = d[k].includes(u.username);
+      return `<div class="pa-dl ${on?'dif':''}"><span class="d-rav">${escP(iniciais(u.nome))}</span><div class="pa-dl-tx"><b>${escP(u.nome)}</b><small>${escP(ROLE_LABELS[u.role] || u.role)}</small></div>${sw(on, `data-r="lista" data-u="${u.username}"`)}</div>`;
+    }).join('');
+  }, e => {
+    const b = e.target.closest('[data-r="lista"]'); if(!b) return;
+    const d = draft(), u = b.dataset.u, on = !b.classList.contains('on');
+    d[k] = on ? [...new Set([...d[k], u])] : d[k].filter(x => x !== u);
+    renderPermMatrix();
+  });
+}
+
+// Compatibilidade com os handlers antigos (já não usados pelo separador)
+export function togglePermRole(){ renderPermMatrix(); }
+export function togglePermChapter(){ renderPermMatrix(); }
+export function resetPermUser(username){ delete draft().ovr.users[username]; renderPermMatrix(); }
+export function onPermChange(){ renderPermMatrix(); }
 
 export function switchUtilTab(tab, btn){
   document.querySelectorAll('.sec-tab').forEach(t=>t.classList.remove('active'));
@@ -336,7 +596,7 @@ export function switchUtilTab(tab, btn){
   document.getElementById('util-pane-'+tab)?.classList.add('active');
   const btnNovo = document.getElementById('btn-novo-utilizador');
   if(btnNovo) btnNovo.style.display = tab==='users' ? '' : 'none';
-  if(tab==='perms'){ _draft = null; renderPermMatrix(); }
+  if(tab==='perms'){ _draft = null; _paSnap = ''; renderPermMatrix(); }
   if(tab==='notifs' && window.renderNotifSubs) window.renderNotifSubs();
 }
 

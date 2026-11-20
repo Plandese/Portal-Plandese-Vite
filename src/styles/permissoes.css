@@ -1,0 +1,87 @@
+/* ═══════════════════════════════════════════════════════════════════
+   UTILIZADORES & ACESSOS — separador «Permissões de acesso» (design novo)
+   Páginas como no menu × perfis; interruptores em pílula; exceções por pessoa no painel lateral.
+   ═══════════════════════════════════════════════════════════════════ */
+.pa,.pa-drawer{--pa-brand:var(--d-brand,#173f9f);--pa-ink:var(--d-ink,#1b2130);--pa-mute:var(--d-mute,#5d6678);--pa-line:var(--d-line,#dde2ea);--pa-line2:var(--d-line2,#edf0f5);--pa-tint:var(--d-tint,#eaf0fc)}
+.pa{background:#fff;border:1.5px solid var(--pa-line);border-radius:22px;overflow:hidden;color:var(--pa-ink)}
+.pa-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 20px;padding:18px 20px 14px}
+.pa-top-tx{flex:1 1 320px;min-width:0}
+.pa-top-tx b{display:block;font-size:16px;font-weight:800;letter-spacing:-.2px}
+.pa-top-tx span{display:block;font-size:13px;color:var(--pa-mute);margin-top:3px;line-height:1.5}
+.pa-top-ac{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pa-q{height:40px;border:1.5px solid #b9c1ce;border-radius:99px;padding:0 16px;font:inherit;font-size:14px;min-width:220px;outline:none;background:#fff;color:var(--pa-ink)}
+.pa-q:focus{border-color:var(--pa-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.pa-chip{height:40px;display:inline-flex;align-items:center;padding:0 16px;border:1.5px solid #d5dae3;border-radius:99px;background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--pa-ink);cursor:pointer;white-space:nowrap}
+.pa-chip:hover{background:#f1f4fa}
+.pa-chip.warn{border-color:#f3d19c;background:#fff8ec;color:#8a4b06}
+.pa-wrap{overflow-x:auto;border-top:1px solid var(--pa-line)}
+.pa-t{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+.pa-t th{position:sticky;top:0;background:#f6f8fc;font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#5d6678;padding:0;border-bottom:1.5px solid var(--pa-line);text-align:center}
+.pa-t th:first-child{text-align:left;padding:12px 20px;width:34%}
+.pa-th{width:100%;border:0;background:none;padding:10px 8px;font:inherit;font-weight:700;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;border-radius:0}
+.pa-th:hover{background:var(--pa-tint);color:var(--pa-brand)}
+.pa-th small{display:block;font-size:11.5px;font-weight:500;letter-spacing:0;text-transform:none;color:#8a93a5;margin-top:2px}
+.pa-t td{padding:8px 8px;border-bottom:1px solid var(--pa-line2);text-align:center;vertical-align:middle}
+.pa-t td:first-child{text-align:left;padding-left:20px}
+.pa-g td{background:#fafbfd;border-bottom:1px solid var(--pa-line);padding-top:10px;padding-bottom:10px}
+.pa-g-b{border:0;background:none;padding:0;font:inherit;font-size:14.5px;font-weight:800;color:var(--pa-ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.pa-car{display:inline-block;width:12px;color:#8a93a5;font-size:12px}
+.pa-p td:first-child{padding-left:40px;color:#2c3446}
+.pa-p:hover td{background:#f8faff}
+.pa-sg td{text-align:left!important;padding:12px 8px 4px 40px!important;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a93a5;border-bottom:0}
+.pa-vazio{padding:28px!important;text-align:center!important;color:var(--pa-mute)}
+/* interruptor em pílula */
+.pa-sw{position:relative;width:42px;height:24px;border-radius:99px;border:0;background:#cfd5df;cursor:pointer;padding:0;vertical-align:middle;transition:background .15s;flex:none}
+.pa-sw i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(10,28,90,.25);transition:left .15s}
+.pa-sw.on{background:var(--pa-brand)}
+.pa-sw.on i{left:21px}
+.pa-sw.mix{background:#8fa8dc}
+.pa-sw.mix i{left:12px}
+.pa-sw:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(23,63,159,.2)}
+/* o interruptor fica centrado; o botão das exceções/pessoas fica ao lado, sem mexer na altura da linha */
+.pa-c{position:relative;display:inline-block;vertical-align:middle;line-height:0}
+.pa-exc{position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);white-space:nowrap;line-height:1.3;border:0;background:#fff3df;padding:3px 9px;border-radius:99px;font:inherit;font-size:11.5px;font-weight:700;color:#8a4b06;cursor:pointer}
+.pa-exc:hover{background:#ffe8c2}
+.pa-exc.vazio{color:transparent;background:none;font-weight:600}
+.pa-p:hover .pa-exc.vazio,.pa-exc.vazio:focus{color:#8a93a5}
+.pa-exc.vazio:hover{background:var(--pa-tint);color:var(--pa-brand)}
+/* pílulas de estado */
+.pa-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#dff5e7;color:#166534;white-space:nowrap}
+.pa-pill.mute{background:#eef1f6;color:#5d6678}
+.pa-pill.info{background:#e5eeff;color:#1d4ed8}
+.pa-pill.warn{background:#fff0d9;color:#a35a08}
+.pa-lista{display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-start;padding-left:8px}
+.pa-pess{display:inline-flex;padding:3px 10px;border-radius:99px;background:#f1f4fa;font-size:12.5px;font-weight:600;color:#2c3446}
+.pa-mute{font-size:12.5px;color:#8a93a5;font-weight:500}
+.pa-lnk{border:0;background:none;padding:2px 4px;font:inherit;font-size:13px;font-weight:700;color:var(--pa-brand);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.pa-nota{margin:0;padding:12px 20px;font-size:12.5px;color:var(--pa-mute);border-top:1px solid var(--pa-line2)}
+/* barra de guardar (fixa no fundo do cartão) */
+.pa-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:10px;padding:12px 20px;background:#fff;border-top:1.5px solid var(--pa-line);z-index:2}
+.pa-bar-tx{flex:1;font-size:13.5px;color:var(--pa-mute);font-weight:600}
+.pa-bar.mudou{background:#fff8ec;border-top-color:#f3d19c}
+.pa-bar.mudou .pa-bar-tx{color:#8a4b06}
+.pa-btn{height:46px;padding:0 22px;border-radius:99px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pa-btn.pri{background:var(--pa-brand);color:#fff;border:0}
+.pa-btn.pri:hover{background:var(--d-brand-d,#143786)}
+.pa-btn.sec{background:#fff;color:var(--pa-brand);border:1.5px solid var(--pa-brand)}
+.pa-btn.sec:hover{background:var(--pa-tint)}
+/* painel lateral */
+.pa-drawer .dd-b h4:first-child{margin-top:4px}
+.pa-dnota{font-size:13px;color:#5d6678;line-height:1.5;margin:0 2px 14px}
+.pa-dl{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid #edf0f5;border-radius:16px;margin-bottom:8px;background:#fff;width:100%;text-align:left;font:inherit;color:var(--d-ink,#1b2130)}
+.pa-dl.dif{border-color:#f3d19c;background:#fffbf3}
+.pa-dl-b{cursor:pointer}
+.pa-dl-b:hover{border-color:#9fb1d8}
+.pa-dl-tx{flex:1;min-width:0}
+.pa-dl-bt{border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.pa-dl-tx b{display:block;font-size:14px}
+.pa-dl-tx small{display:block;font-size:12.5px;color:#6a7284;margin-top:2px;line-height:1.4}
+.pa-dp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;border-bottom:1px solid #f0f2f6;font-size:14px}
+.pa-dp-d{display:inline-flex;align-items:center;gap:8px}
+.pa-repor{width:100%;margin-bottom:4px}
+@media (max-width:760px){
+  .pa-top{padding:14px}
+  .pa-q{min-width:0;flex:1}
+  .pa-t th:first-child,.pa-t td:first-child{padding-left:14px}
+  .pa-p td:first-child{padding-left:24px}
+}
