@@ -442,3 +442,25 @@ button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
 .plt-limc b{font-size:14px}
 .plt-limc small{grid-column:1;color:#5d6678;font-size:12.5px}
 .plt-limc .plt-pill{grid-column:2;grid-row:1 / span 2}
+
+/* ── Novo plano: LPU (arrastar e largar) e assistente a montar o plano ── */
+#pn-drop.plt-drop{height:auto;min-height:92px;gap:14px;justify-content:flex-start;text-align:left;padding:16px 18px;font-weight:500;color:var(--d-ink,#1b2130);transition:border-color .15s,background .15s}
+#pn-drop.sobre{border-color:var(--d-brand,#173f9f);background:#eef3ff;box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.plt-drop-ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#eef3ff;color:var(--d-brand,#173f9f)}
+.plt-drop-ic svg{width:22px;height:22px}
+.plt-drop-tx{font-size:14.5px;line-height:1.4}
+.plt-drop-tx b{color:var(--d-brand,#173f9f);font-weight:700}
+.plt-drop-tx small{display:block;font-size:12.5px;color:#5d6678;margin-top:2px}
+#pn-prev{margin:-4px 0 16px}
+#pn-prev:empty{display:none}
+.plt-ia-prog{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:40px 10px 10px}
+.plt-ia-prog-ic{display:grid;place-items:center;width:64px;height:64px;border-radius:22px;background:var(--d-brand,#173f9f);color:#fff;margin-bottom:6px;animation:plt-respira 1.8s ease-in-out infinite}
+.plt-ia-prog-ic svg{width:30px;height:30px}
+.plt-ia-prog b{font-size:17px;font-weight:800;color:var(--d-ink,#1b2130)}
+.plt-ia-prog small{font-size:13.5px;color:#5d6678}
+.plt-ia-prog-bar{position:relative;width:min(320px,90%);height:6px;border-radius:99px;background:#e6ebf4;overflow:hidden;margin:10px 0 2px}
+.plt-ia-prog-bar i{position:absolute;top:0;bottom:0;width:35%;border-radius:99px;background:var(--d-brand,#173f9f);animation:plt-corre 1.6s ease-in-out infinite}
+.plt-ia-prog-t{font-size:12.5px;font-weight:700;color:#8a93a5;font-variant-numeric:tabular-nums}
+.plt-ia-prog .plt-nota{margin-top:14px;max-width:380px}
+@keyframes plt-respira{50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(23,63,159,.08)}}
+@keyframes plt-corre{0%{left:-35%}100%{left:100%}}
