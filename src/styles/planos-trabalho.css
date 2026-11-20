@@ -401,3 +401,44 @@ body.plt-ia-fora .plt-ia,body.plt-ia-fora .plt-ia-mini{display:none!important}
 .plt-sub-tx small{display:block;font-size:12.5px;color:#5d6678;margin-top:2px}
 .plt-sub-tab td,.plt-sub-tab th{text-align:left}
 .plt-sub-tab .v{text-align:right}
+
+/* ── Detalhes de cálculo: calendário por tarefa, datas-limite, prazo contratual, sobrecargas ── */
+.plt-kpi-b{font:inherit;text-align:left;cursor:pointer;color:inherit;transition:border-color .15s,box-shadow .15s}
+.plt-kpi-b:hover{border-color:var(--p-brand,#173f9f);box-shadow:0 0 0 3px rgba(23,63,159,.1)}
+.plt-kpi.ok{border-color:#b7e4c7;background:#f1fbf4}
+.plt-kpi.ok b{color:#166534}
+.plt-kpi.warn{border-color:#f3d19c;background:#fff8ec}
+.plt-kpi.warn b{color:#a35a08}
+.plt-lim-ic,.plt-sob-ic{display:inline-grid;color:#166534}
+.plt-lim-ic svg,.plt-sob-ic svg{width:11px;height:11px}
+.plt-lim-ic.falha{color:#b3261e}
+.plt-sob-ic{color:#d97706}
+.plt-r.sel .plt-lim-ic,.plt-r.sel .plt-sob-ic{color:#fff}
+.plt-r .c-dur{position:relative}
+.plt-cal-ic{position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:9.5px;font-weight:800;color:#1fa3a3;background:#e3f6f6;border-radius:99px;padding:1px 5px;pointer-events:none}
+.plt-pz{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #2e7d32;z-index:1;pointer-events:none}
+.plt-pz.falha{border-left-color:#c62828}
+.plt-pz span{position:sticky;top:4px;display:inline-block;margin-left:4px;padding:2px 8px;border-radius:99px;background:#dff5e7;color:#166534;font-size:11px;font-weight:700;white-space:nowrap}
+.plt-pz.falha span{background:#fde8e8;color:#b3261e}
+.plt-lim{position:absolute;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #2e7d32;z-index:3;cursor:help}
+.plt-lim.falha{border-top-color:#c62828}
+.plt-bar.atr{box-shadow:0 0 0 2px #c62828}
+.plt-sob{position:absolute;height:4px;border-radius:99px;z-index:1;background:repeating-linear-gradient(45deg,#f59e0b 0,#f59e0b 4px,#fde3b0 4px,#fde3b0 8px);cursor:help}
+.plt-alerta{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;margin:0 0 14px;font-size:13px;line-height:1.5}
+.plt-alerta svg{flex:none;width:18px;height:18px;margin-top:1px}
+.plt-alerta.bad{background:#fdf1f0;color:#8a1c14;border:1.5px solid #f0b4b0}
+.plt-alerta.warn{background:#fff8ec;color:#7a4306;border:1.5px solid #f3d19c}
+.plt-lnk{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--p-brand,#173f9f);text-decoration:underline;cursor:pointer}
+.plt-sobc{border:1.5px solid var(--p-line,#dde2ea);border-left:5px solid var(--c);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.plt-sobc-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.plt-sobc>small{display:block;color:#5d6678;font-size:12.5px;margin:2px 0 8px}
+.plt-sobc-t{display:block;width:100%;text-align:left;border:0;background:#f6f8fc;border-radius:12px;padding:8px 10px;margin-top:6px;font:inherit;font-size:13.5px;font-weight:600;color:var(--p-ink,#1b2130);cursor:pointer}
+.plt-sobc-t:hover{background:#e7eefc}
+.plt-sobc-t small{display:block;font-weight:500;color:#5d6678;font-size:12px;margin-top:2px}
+.plt-limc{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;width:100%;text-align:left;border:1.5px solid var(--p-line,#dde2ea);background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:8px;font:inherit;color:var(--p-ink,#1b2130)}
+button.plt-limc{cursor:pointer}
+button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
+.plt-limc.falha{border-color:#f0b4b0;background:#fdf1f0}
+.plt-limc b{font-size:14px}
+.plt-limc small{grid-column:1;color:#5d6678;font-size:12.5px}
+.plt-limc .plt-pill{grid-column:2;grid-row:1 / span 2}

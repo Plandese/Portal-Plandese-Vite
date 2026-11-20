@@ -50,6 +50,9 @@ const ICO = {
   xls: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13l4 5M12 13l-4 5"/></svg>',
   mpp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M7 10h11M5 15h7M10 20h10"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16"/></svg>',
+  bandeira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  aviso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  nivelar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h8M3 12h5M13 12h8M3 18h18"/><path d="M15 3l3 3-3 3"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
@@ -117,11 +120,15 @@ async function gravar() {
   p.updated_at = new Date().toISOString();
   if (_modoLocal) { lsGravarTodos(); _estado = 'ok'; pintarEstado(); return; }
   _estado = 'a'; pintarEstado();
-  const { error } = await sb.from('planos_trabalho').upsert({
+  const linha = {
     id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio,
     calendario: p.calendario, tarefas: p.tarefas, equipas: Array.isArray(p.equipas) ? p.equipas : [],
     subempreiteiros: Array.isArray(p.subempreiteiros) ? p.subempreiteiros : [], updated_at: p.updated_at,
-  });
+    opcoes: p.opcoes && typeof p.opcoes === 'object' ? p.opcoes : {},
+  };
+  let { error } = await sb.from('planos_trabalho').upsert(linha);
+  // coluna «opcoes» ainda não criada (migração por aplicar): grava o resto
+  if (error && /opcoes/i.test(error.message || '')) { delete linha.opcoes; ({ error } = await sb.from('planos_trabalho').upsert(linha)); if (!error) console.warn('planos_trabalho: falta a coluna opcoes (prazo contratual não guardado)'); }
   _estado = error ? 'erro' : 'ok';
   if (error) console.error('planos_trabalho:', error);
   pintarEstado();
@@ -141,25 +148,42 @@ const hojeN = () => { const d = new Date(); return Math.round(Date.UTC(d.getFull
 const fmtD = n => { const d = new Date(n * DIA); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + String(d.getUTCFullYear()).slice(2); };
 const fmtDL = n => { const d = new Date(n * DIA); return d.getUTCDate() + ' ' + MES_ABR[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
 
-function montarCalendario() {
-  const sab = _plano.calendario === '6';
+// Calendários: '5' = seg–sex, '6' = seg–sáb (ambos sem feriados_pt), '7' = todos os dias (contínuo:
+// curas de betão, secagens, bombagens, ensaios de estanquidade…). O plano tem um calendário; cada
+// tarefa pode ter o seu (t.cal). As datas (es/ef) são dias de calendário (dnum); durações, fases e
+// folgas contam-se em dias úteis do calendário da tarefa; desfasamentos em dias úteis do plano.
+const CAL_NOMES = { '5': 'Segunda a sexta', '6': 'Segunda a sábado', '7': 'Todos os dias (contínuo)' };
+let _CALS = {};
+function montarCal(k) {
   const base = dnum(_plano.data_inicio) - 400;
   const len = 365 * 16;
   const wd = [], ceil = new Int32Array(len + 1);
-  for (let k = 0; k <= len; k++) {
-    const n = base + k, w = dow(n);
-    if (w !== 0 && (w !== 6 || sab) && !_feriados.has(diso(n))) wd.push(n);
+  for (let q = 0; q <= len; q++) {
+    const n = base + q, w = dow(n);
+    if (k === '7' || (w !== 0 && (w !== 6 || k === '6') && !_feriados.has(diso(n)))) wd.push(n);
   }
   let j = 0;
-  for (let k = 0; k <= len; k++) { while (j < wd.length - 1 && wd[j] < base + k) j++; ceil[k] = j; }
-  _C = { base, wd, ceil, len, sab };
+  for (let q = 0; q <= len; q++) { while (j < wd.length - 1 && wd[j] < base + q) j++; ceil[q] = j; }
+  return { k, base, wd, ceil, len, sab: k !== '5' };
 }
-// dia de calendário → ordinal do 1.º dia útil ≥ n
-const ordC = n => { const k = n - _C.base; return _C.ceil[Math.max(0, Math.min(_C.len, k))]; };
-// dia de calendário → ordinal do último dia útil ≤ n
-const ordF = n => { const o = ordC(n); return _C.wd[o] > n ? o - 1 : o; };
-const diaDe = o => _C.wd[Math.max(0, Math.min(_C.wd.length - 1, o))];
-const eUtil = n => _C.wd[ordC(n)] === n;
+const calK = k => _CALS[k] || (_CALS[k] = montarCal(k));
+function montarCalendario() {
+  _CALS = {};
+  _C = calK(_plano.calendario === '6' ? '6' : '5');
+}
+// calendário de uma tarefa (o do plano se não tiver um próprio)
+const calTarefa = t => (t && CAL_NOMES[t.cal] && t.cal !== _C.k ? calK(t.cal) : _C);
+// ── aritmética num calendário c ──
+const oC = (c, n) => c.ceil[Math.max(0, Math.min(c.len, n - c.base))];        // ordinal do 1.º dia útil ≥ n
+const oF = (c, n) => { const o = oC(c, n); return c.wd[o] > n ? o - 1 : o; };  // ordinal do último dia útil ≤ n
+const dD = (c, o) => c.wd[Math.max(0, Math.min(c.wd.length - 1, o))];          // ordinal → dia
+const proxUtil = (c, n) => dD(c, oC(c, n));                                     // 1.º dia útil ≥ n
+const antUtil = (c, n) => dD(c, oF(c, n));                                      // último dia útil ≤ n
+const somaUteis = (c, n, d) => dD(c, oC(c, n) + d);                             // d dias úteis depois de n
+const contaUteis = (c, a, b) => (b < a ? 0 : Math.max(0, oF(c, b) - oC(c, a) + 1));   // dias úteis em [a, b]
+// dia útil no calendário do plano?
+const eUtil = n => dD(_C, oC(_C, n)) === n;
+const eUtilC = (c, n) => dD(c, oC(c, n)) === n;
 
 // ───────────────────────── cálculo (CPM) ─────────────────────────
 // ── Fases: barra partida (como «Dividir tarefa» do MS Project) ──
@@ -180,8 +204,8 @@ function normFases(t, eResumo) {
   t.dur = out.reduce((s, f) => s + f.dur, 0);
 }
 const spanDe = t => temFases(t) ? t.fases.reduce((s, f, k) => s + f.dur + (k ? f.pausa : 0), 0) : Math.max(0, t.dur | 0);
-// ordinal (dia útil) em que começa cada fase, dado o início da tarefa
-const iniciosFases = (t, es) => { let o = es; return t.fases.map((f, k) => { if (k) o += f.pausa; const a = o; o += f.dur; return a; }); };
+// ordinal (dia útil do calendário c da tarefa) em que começa cada fase, dado o dia de início da tarefa
+const iniciosFasesO = (t, es, c) => { let o = oC(c, es); return t.fases.map((f, k) => { if (k) o += f.pausa; const a = o; o += f.dur; return a; }); };
 // muda a duração (trabalho) mantendo as fases: acerta a partir da última
 function definirDur(t, d) {
   d = Math.max(0, parseInt(d, 10) || 0);
@@ -193,13 +217,13 @@ function definirDur(t, d) {
   }
   t.dur = t.fases.reduce((s, f) => s + f.dur, 0);
 }
-// dias úteis (ordinais) em que a tarefa tem trabalho — sem as pausas
+// dias (de calendário) em que a tarefa tem trabalho, no calendário dela — sem as pausas
 function diasTrabalho(i) {
-  const r = _R, t = _plano.tarefas[i];
+  const r = _R, t = _plano.tarefas[i], c = r.cal[i];
   if (r.ms[i]) return [r.es[i]];
   const out = [];
-  if (!temFases(t)) { for (let o = r.es[i]; o <= r.ef[i]; o++) out.push(o); return out; }
-  iniciosFases(t, r.es[i]).forEach((a, k) => { for (let o = a; o < a + t.fases[k].dur; o++) out.push(o); });
+  if (!temFases(t)) { for (let o = oC(c, r.es[i]), b = oF(c, r.ef[i]); o <= b; o++) out.push(dD(c, o)); return out; }
+  iniciosFasesO(t, r.es[i], c).forEach((a, k) => { for (let o = a; o < a + t.fases[k].dur; o++) out.push(dD(c, o)); });
   return out;
 }
 
@@ -227,17 +251,25 @@ function calcular() {
   const dur = T.map((t, i) => resumo[i] ? 0 : Math.max(0, t.dur | 0));        // trabalho (dias úteis)
   const span = T.map((t, i) => resumo[i] ? 0 : spanDe(t));                      // ocupação na barra (trabalho + pausas)
   const ms = T.map((t, i) => !resumo[i] && dur[i] === 0);
-  const S0 = ordC(dnum(_plano.data_inicio));
-  const es = new Array(n).fill(S0), ef = new Array(n).fill(S0);
-  const minOrd = T.map(t => t.inicioMin ? ordC(dnum(t.inicioMin)) : null);
+  const P = _C;                                                               // calendário do plano (desfasamentos)
+  const cal = T.map(t => calTarefa(t));                                       // calendário de cada tarefa
+  const S0 = proxUtil(P, dnum(_plano.data_inicio));
+  const es = new Array(n).fill(S0), ef = new Array(n).fill(S0);               // dias de calendário
+  const minDia = T.map(t => t.inicioMin ? dnum(t.inicioMin) : null);
+  // desfasamento em dias úteis do plano, a partir do dia n0 (e o inverso, para a passagem para trás)
+  const desloca = (n0, lag) => (lag ? dD(P, oC(P, n0) + lag) : n0);
+  const recua = (n0, lag) => (lag ? dD(P, oF(P, n0) - lag) : n0);
 
-  const req = (p, d) => {
-    const pes = es[p.j], pef = ef[p.j];
+  // início mais cedo da tarefa i imposto pela ligação p
+  const req = (p, i) => {
+    const c = cal[i], s = span[i], pes = es[p.j], pef = ef[p.j];
+    // início para que a tarefa i acabe no dia fimMin ou depois
+    const iniPorFim = fimMin => (s <= 1 ? fimMin : dD(c, oC(c, fimMin) - (s - 1)));
     switch (p.tipo) {
-      case 'SS': return pes + p.lag;
-      case 'FF': return pef + p.lag - Math.max(0, d - 1);
-      case 'SF': return pes + p.lag - Math.max(0, d - 1);
-      default: return (ms[p.j] || d === 0 ? pef : pef + 1) + p.lag;   // marco a seguir a uma tarefa fica no dia em que ela acaba
+      case 'SS': return desloca(pes, p.lag);
+      case 'FF': return iniPorFim(desloca(pef, p.lag));
+      case 'SF': return iniPorFim(desloca(pes, p.lag));
+      default: return desloca(ms[p.j] || s === 0 ? pef : pef + 1, p.lag);   // marco a seguir a uma tarefa fica no dia em que ela acaba
     }
   };
   let mudou = true, it = 0;
@@ -248,10 +280,11 @@ function calcular() {
       if (resumo[i]) continue;
       let e = S0;
       for (let k = i; k !== -1; k = pai[k]) {
-        if (minOrd[k] != null) e = Math.max(e, minOrd[k]);
-        for (const p of preds[k]) e = Math.max(e, req(p, span[i]));
+        if (minDia[k] != null) e = Math.max(e, minDia[k]);
+        for (const p of preds[k]) e = Math.max(e, req(p, i));
       }
-      const f = ms[i] ? e : e + span[i] - 1;
+      e = proxUtil(cal[i], e);
+      const f = ms[i] ? e : somaUteis(cal[i], e, span[i] - 1);
       if (e !== es[i] || f !== ef[i]) { es[i] = e; ef[i] = f; mudou = true; }
     }
     for (let i = n - 1; i >= 0; i--) {
@@ -268,29 +301,43 @@ function calcular() {
   for (let k = 0; k < n; k++) for (const p of preds[k]) for (const b of folhas[k]) for (const a of folhas[p.j]) if (a !== b) E.push({ a, b, tipo: p.tipo, lag: p.lag });
   let PF = S0;
   for (let i = 0; i < n; i++) if (!resumo[i]) PF = Math.max(PF, ef[i]);
-  const lf = new Array(n).fill(PF), ls = new Array(n);
-  const lsDe = i => ms[i] ? lf[i] : lf[i] - span[i] + 1;
-  for (let i = 0; i < n; i++) ls[i] = lsDe(i);
+  // Datas-limite (contrato): a da tarefa ou a de um resumo acima dela, e o prazo contratual do plano.
+  // Entram no fim mais tarde (como os «Deadlines» do MS Project): se não forem cumpridas, a folga fica negativa.
+  const PZ = prazoContratual();
+  const limite = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    let L = PZ;
+    for (let k = i; k !== -1; k = pai[k]) if (T[k].limite) { const d = dnum(T[k].limite); L = L == null ? d : Math.min(L, d); }
+    limite[i] = L;
+  }
+  const fimTarde = i => antUtil(cal[i], limite[i] != null ? Math.min(PF, limite[i]) : PF);
+  const lf = new Array(n), ls = new Array(n);
+  const lsDe = i => (ms[i] ? lf[i] : dD(cal[i], oF(cal[i], lf[i]) - span[i] + 1));
+  const fimSeComecar = (i, ini) => { const a = antUtil(cal[i], ini); return ms[i] ? a : somaUteis(cal[i], a, span[i] - 1); };
+  for (let i = 0; i < n; i++) { lf[i] = fimTarde(i); ls[i] = lsDe(i); }
   if (!ciclo) {
     let m2 = true, it2 = 0;
     while (m2 && it2 < lim) {
       m2 = false; it2++;
       for (const e of E) {
-        const da = Math.max(0, span[e.a] - 1);
         let L;
         switch (e.tipo) {
-          case 'SS': L = ls[e.b] - e.lag + da; break;
-          case 'FF': L = lf[e.b] - e.lag; break;
-          case 'SF': L = lf[e.b] - e.lag + da; break;
-          default: L = ls[e.b] - e.lag - (ms[e.a] || ms[e.b] ? 0 : 1);
+          case 'SS': L = fimSeComecar(e.a, recua(ls[e.b], e.lag)); break;
+          case 'FF': L = recua(lf[e.b], e.lag); break;
+          case 'SF': L = fimSeComecar(e.a, recua(lf[e.b], e.lag)); break;
+          default: { const x = recua(ls[e.b], e.lag); L = ms[e.a] || ms[e.b] ? x : x - 1; }
         }
+        L = antUtil(cal[e.a], L);
         if (L < lf[e.a]) { lf[e.a] = L; ls[e.a] = lsDe(e.a); m2 = true; }
       }
     }
   }
+  // folga total em dias úteis do calendário da tarefa (negativa = não cumpre uma data-limite)
   const folga = new Array(n).fill(0);
-  for (let i = 0; i < n; i++) if (!resumo[i]) folga[i] = lf[i] - ef[i];
+  for (let i = 0; i < n; i++) if (!resumo[i]) folga[i] = oF(cal[i], lf[i]) - oF(cal[i], ef[i]);
   for (let i = n - 1; i >= 0; i--) if (resumo[i]) folga[i] = Math.min(...folhas[i].map(c => folga[c]));
+  // dias úteis (do plano) de atraso em relação à data-limite da própria tarefa
+  const atrasoLim = T.map((t, i) => { if (!t.limite) return 0; const d = dnum(t.limite); return ef[i] > d ? contaUteis(P, d + 1, ef[i]) || 1 : 0; });
   // valores e % dos resumos
   const valor = T.map((t, i) => resumo[i] ? 0 : (Number(t.valor) || 0));
   const pct = T.map(t => Math.max(0, Math.min(100, Number(t.pct) || 0)));
@@ -309,20 +356,73 @@ function calcular() {
     vis.push(i);
     if (resumo[i] && T[i].fechado) corte = T[i].nivel;
   }
-  _R = { n, pai, resumo, filhos, folhas, idx, edt, preds, dur, span, ms, es, ef, folga, valor, pct, vis, ciclo, S0, PF };
+  _R = { n, pai, resumo, filhos, folhas, idx, edt, preds, dur, span, ms, es, ef, folga, valor, pct, vis, ciclo, S0, PF, cal, PZ, atrasoLim };
+  _R.sob = calcularSobrecargas();
 }
 
-// duração do ecrã (dias úteis) de uma tarefa calculada
-const durDe = i => _R.resumo[i] ? (_R.ef[i] - _R.es[i] + 1) : _R.dur[i];
+// duração do ecrã de uma tarefa calculada (dias úteis do plano nos resumos; da tarefa nas outras)
+const durDe = i => _R.resumo[i] ? contaUteis(_C, _R.es[i], _R.ef[i]) : _R.dur[i];
+// prazo do plano em dias úteis e de calendário
+const prazoUteis = () => contaUteis(_C, _R.S0, _R.PF);
+const prazoCal = () => _R.PF - _R.S0 + 1;
+const txtFolga = (f, c = _C) => `${f} ${c.k === '7' ? (Math.abs(f) === 1 ? 'dia' : 'dias') : 'd.ú.'}${f < 0 ? ' (falha uma data-limite)' : ''}`;
+
+// ── Prazo contratual do plano: _plano.opcoes.prazo = { dias } (dias de calendário desde o início) ou { data } ──
+const opcoesPlano = () => (_plano.opcoes && typeof _plano.opcoes === 'object' && !Array.isArray(_plano.opcoes) ? _plano.opcoes : (_plano.opcoes = {}));
+function prazoContratual() {
+  const pz = opcoesPlano().prazo; if (!pz) return null;
+  if (pz.dias > 0) return dnum(_plano.data_inicio) + Math.round(pz.dias) - 1;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(pz.data || '')) return dnum(pz.data);
+  return null;
+}
+
+// ── Sobrecarga de equipas: a mesma equipa de trabalho em mais tarefas (ou unidades) do que as disponíveis (e.disp) ──
+// Devolve { lista: [{ eq, de, ate, max, disp, tarefas: [i…] }], porTarefa: Map(i → [conflito…]) }
+const dispDe = e => Math.max(1, parseInt(e && e.disp, 10) || 1);
+function calcularSobrecargas() {
+  const r = _R, T = _plano.tarefas;
+  const uso = new Map();     // id da equipa → Map(dia → [{ i, n }])
+  T.forEach((t, i) => {
+    if (r.resumo[i] || r.ms[i]) return;
+    const at = atribDe(t); if (!at.length) return;
+    const dias = diasTrabalho(i);
+    at.forEach(a => {
+      let m = uso.get(a.id); if (!m) uso.set(a.id, (m = new Map()));
+      for (const d of dias) { let l = m.get(d); if (!l) m.set(d, (l = [])); l.push({ i, n: a.n || 1 }); }
+    });
+  });
+  const lista = [];
+  uso.forEach((m, id) => {
+    const e = equipaPorId(id), disp = dispDe(e);
+    const dias = [...m.keys()].filter(d => m.get(d).reduce((s, u) => s + u.n, 0) > disp).sort((a, b) => a - b);
+    let cur = null;
+    for (const d of dias) {
+      const us = m.get(d), chave = us.map(u => u.i).sort((a, b) => a - b).join(',');
+      const tot = us.reduce((s, u) => s + u.n, 0);
+      // junta dias seguidos (ou separados só por dias não úteis) com as mesmas tarefas
+      if (cur && cur.chave === chave && d - cur.ate <= 3) { cur.ate = d; cur.max = Math.max(cur.max, tot); cur.dias++; continue; }
+      cur = { eq: e, de: d, ate: d, max: tot, disp, chave, dias: 1, tarefas: us.map(u => u.i).sort((a, b) => a - b), usos: us };
+      lista.push(cur);
+    }
+  });
+  lista.sort((a, b) => a.de - b.de || a.eq.nome.localeCompare(b.eq.nome, 'pt'));
+  const porTarefa = new Map();
+  lista.forEach(c => c.tarefas.forEach(i => { let l = porTarefa.get(i); if (!l) porTarefa.set(i, (l = [])); l.push(c); }));
+  return { lista, porTarefa };
+}
+const txtSobrecarga = (c, i) => {
+  const outras = c.tarefas.filter(j => j !== i).map(j => j + 1);
+  return `${c.eq.nome}: ${c.max} em uso para ${c.disp} disponíve${c.disp === 1 ? 'l' : 'is'} · ${fmtD(c.de)}${c.ate !== c.de ? ' a ' + fmtD(c.ate) : ''}${outras.length ? ' · com a tarefa ' + outras.join(', ') : ' · a tarefa pede mais equipas do que as disponíveis'}`;
+};
 
 // ───────────────────────── texto ⇄ valores ─────────────────────────
-function lerDur(txt) {
+function lerDur(txt, c = _C) {
   const m = String(txt).trim().toLowerCase().replace(',', '.').match(/^(\d+(?:\.\d+)?)\s*(d|dias?|s|sem|semanas?|m|mes|meses|mês)?$/);
   if (!m) return null;
   let v = parseFloat(m[1]);
   const u = (m[2] || 'd')[0];
-  if (u === 's') v *= _C.sab ? 6 : 5;
-  if (u === 'm') v *= _C.sab ? 26 : 22;
+  if (u === 's') v *= c.k === '7' ? 7 : c.sab ? 6 : 5;
+  if (u === 'm') v *= c.k === '7' ? 30 : c.sab ? 26 : 22;
   return Math.round(v);
 }
 const txtDur = d => d + (d === 1 ? ' dia' : ' dias');
@@ -394,8 +494,9 @@ function resumoPlano(p) {
   if (!T.length) return { fim: null, dias: 0, valor: 0, n: 0 };
   const guard = _plano; _plano = p;
   montarCalendario(); calcular();
-  const r = { fim: diaDe(_R.PF), dias: _R.PF - _R.S0 + 1, valor: _R.valor.reduce((s, v, i) => s + (_R.pai[i] === -1 ? v : 0), 0), n: T.length };
-  _plano = guard; _R = null; _C = null;
+  const r = { fim: _R.PF, dias: prazoUteis(), valor: _R.valor.reduce((s, v, i) => s + (_R.pai[i] === -1 ? v : 0), 0), n: T.length,
+    excede: _R.PZ != null && _R.PF > _R.PZ ? contaUteis(_C, _R.PZ + 1, _R.PF) || 1 : 0 };
+  _plano = guard; _R = null; _C = null; _CALS = {};
   return r;
 }
 
@@ -413,6 +514,7 @@ function pintarLista() {
           <span class="plt-pill info">${fmtDL(dnum(p.data_inicio))}${r.fim ? ' → ' + fmtDL(r.fim) : ''}</span>
           ${r.n ? `<span class="plt-pill mute">${r.dias} dias úteis</span><span class="plt-pill mute">${r.n} tarefas</span>` : '<span class="plt-pill warn">Sem tarefas</span>'}
           ${r.valor ? `<span class="plt-pill ok">${eur0(r.valor)}</span>` : ''}
+          ${r.excede ? `<span class="plt-pill bad">Excede o prazo contratual em ${r.excede} d.ú.</span>` : ''}
         </span>
       </span>
       <span class="plt-card-dt">Alterado ${p.updated_at ? new Date(p.updated_at).toLocaleDateString('pt-PT') : ''}</span>
@@ -437,6 +539,7 @@ async function abrirPlano(id) {
   if (!Array.isArray(p.tarefas)) p.tarefas = [];
   if (!Array.isArray(p.equipas)) p.equipas = [];
   if (!Array.isArray(p.subempreiteiros)) p.subempreiteiros = [];
+  if (!p.opcoes || typeof p.opcoes !== 'object' || Array.isArray(p.opcoes)) p.opcoes = {};
   if (_plano !== p) { _undo = []; _redo = []; _ui.sel.clear(); _ui.vista = 'gantt'; }
   _plano = p;
   montarCalendario(); calcular();
@@ -488,13 +591,28 @@ function pintarKpis() {
   const w = folhas.reduce((s, i) => s + Math.max(1, r.dur[i]), 0);
   const pct = w ? Math.round(folhas.reduce((s, i) => s + r.pct[i] * Math.max(1, r.dur[i]), 0) / w) : 0;
   const crit = folhas.filter(i => r.folga[i] <= 0 && !r.ms[i]).length;
+  // prazo contratual
+  let kPz = '';
+  if (r.PZ != null && T.length) {
+    const exc = r.PF > r.PZ ? contaUteis(_C, r.PZ + 1, r.PF) || 1 : 0, sobra = r.PF < r.PZ ? contaUteis(_C, r.PF + 1, r.PZ) : 0;
+    kPz = `<button type="button" class="plt-kpi plt-kpi-b ${exc ? 'bad' : 'ok'}" data-acao="definicoes" title="Prazo contratual (Definições do plano)"><small>Prazo contratual</small><b>${fmtDL(r.PZ)}</b><span>${exc ? `Excede em ${exc} d.ú.` : sobra ? `Margem de ${sobra} d.ú.` : 'Acaba no limite'}</span></button>`;
+  }
+  // datas-limite das tarefas
+  const comLim = T.map((t, i) => i).filter(i => T[i].limite);
+  const falhas = comLim.filter(i => r.atrasoLim[i] > 0);
+  const kLim = comLim.length ? `<button type="button" class="plt-kpi plt-kpi-b ${falhas.length ? 'bad' : 'ok'}" data-acao="limites" title="Ver as datas-limite"><small>Datas-limite</small><b>${falhas.length ? `${falhas.length} falhada${falhas.length > 1 ? 's' : ''}` : 'Cumpridas'}</b><span>${comLim.length} marcada${comLim.length > 1 ? 's' : ''} no plano</span></button>` : '';
+  // sobrecargas de equipas
+  const sob = r.sob?.lista || [];
+  const kSob = sob.length ? `<button type="button" class="plt-kpi plt-kpi-b warn" data-acao="sobrecargas" title="Ver e resolver as sobrecargas"><small>Sobrecargas</small><b>${sob.length} período${sob.length > 1 ? 's' : ''}</b><span>${(n => `${n} equipa${n > 1 ? 's' : ''} sobrecarregada${n > 1 ? 's' : ''}`)(new Set(sob.map(c => c.eq.id)).size)}</span></button>` : '';
   $('plt-kpis').innerHTML = `
-    <div class="plt-kpi"><small>Início</small><b>${fmtDL(diaDe(r.S0))}</b></div>
-    <div class="plt-kpi"><small>Conclusão</small><b>${T.length ? fmtDL(diaDe(r.PF)) : '—'}</b></div>
-    <div class="plt-kpi"><small>Prazo</small><b>${T.length ? (r.PF - r.S0 + 1) + ' d.ú.' : '—'}</b><span>${T.length ? (diaDe(r.PF) - diaDe(r.S0) + 1) + ' dias de calendário' : ''}</span></div>
+    <div class="plt-kpi"><small>Início</small><b>${fmtDL(r.S0)}</b></div>
+    <div class="plt-kpi"><small>Conclusão</small><b>${T.length ? fmtDL(r.PF) : '—'}</b></div>
+    <div class="plt-kpi"><small>Prazo</small><b>${T.length ? prazoUteis() + ' d.ú.' : '—'}</b><span>${T.length ? prazoCal() + ' dias de calendário' : ''}</span></div>
+    ${kPz}
     <div class="plt-kpi"><small>Valor</small><b>${eur0(tot)}</b></div>
     <div class="plt-kpi"><small>Concluído</small><b>${pct}%</b></div>
     <div class="plt-kpi"><small>Tarefas críticas</small><b>${crit}</b></div>
+    ${kLim}${kSob}
     ${r.ciclo ? '<div class="plt-kpi bad"><small>Atenção</small><b>Ligações em ciclo</b><span>Rever as predecessoras</span></div>' : ''}`;
 }
 
@@ -566,8 +684,10 @@ function abrirMenuColunas(anchor, x, y, kHdr) {
 
 function escala() {
   const r = _R, px = ZOOM[_ui.zoom];
-  let d0 = diaDe(r.S0), d1 = diaDe(r.S0) + 30;
-  for (let i = 0; i < r.n; i++) { d0 = Math.min(d0, diaDe(r.es[i])); d1 = Math.max(d1, diaDe(r.ef[i])); }
+  let d0 = r.S0, d1 = r.S0 + 30;
+  for (let i = 0; i < r.n; i++) { d0 = Math.min(d0, r.es[i]); d1 = Math.max(d1, r.ef[i]); }
+  if (r.PZ != null) d1 = Math.max(d1, r.PZ);
+  _plano.tarefas.forEach(t => { if (t.limite) d1 = Math.max(d1, dnum(t.limite)); });
   if (_ui.zoom === 'mes') { const a = new Date(d0 * DIA); d0 = Math.round(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1) / DIA); d1 += 62; }
   else { d0 -= 3; while (dow(d0) !== 1) d0--; d1 += _ui.zoom === 'dia' ? 14 : 35; }
   return { d0, d1, px, w: Math.ceil((d1 - d0 + 1) * px) };
@@ -626,13 +746,17 @@ function pintarGrelha() {
     const ro = rs ? 'readonly tabindex="-1"' : '';
     const tg = rs ? `<button type="button" class="plt-tg" data-tg="${i}" title="${t.fechado ? 'Expandir' : 'Recolher'}">${t.fechado ? '▸' : '▾'}</button>` : '<span class="plt-tg0"></span>';
     const restr = t.inicioMin ? `<span class="plt-restr" title="Não iniciar antes de ${fmtD(dnum(t.inicioMin))}">${ICO.pin}</span>` : '';
+    const lim = t.limite ? `<span class="plt-lim-ic ${r.atrasoLim[i] ? 'falha' : ''}" title="Data-limite ${fmtD(dnum(t.limite))}${r.atrasoLim[i] ? ` — falhada por ${r.atrasoLim[i]} d.ú.` : ' — cumprida'}">${ICO.bandeira}</span>` : '';
+    const sob = r.sob.porTarefa.get(i);
+    const sobIc = sob ? `<span class="plt-sob-ic" title="${esc('Sobrecarga de equipa:\n' + sob.map(c => txtSobrecarga(c, i)).join('\n'))}">${ICO.aviso}</span>` : '';
+    const calP = !rs && r.cal[i] !== _C ? `<span class="plt-cal-ic" title="Calendário próprio: ${CAL_NOMES[r.cal[i].k]}">${r.cal[i].k}/7</span>` : '';
     return `<div class="plt-r ${sel ? 'sel' : ''} ${rs ? 'rs' : ''} ${crit ? 'crit' : ''} ${r.ms[i] ? 'ms' : ''}" data-i="${i}">
-      <div class="c-id">${i + 1}${restr}</div>
+      <div class="c-id">${i + 1}${restr}${lim}${sobIc}</div>
       <div class="c-edt">${r.edt[i]}</div>
       <div class="c-nome" style="padding-left:${6 + t.nivel * 18}px">${tg}${t.cod ? `<span class="plt-cod" title="Artigo ${esc(t.cod)}">${esc(t.cod)}</span>` : ''}<input data-f="nome" value="${esc(t.nome)}" spellcheck="false"/></div>
-      <div class="c-dur">${temFases(t) ? `<span class="plt-fases-ic" title="Barra partida em ${t.fases.length} fases">${t.fases.length}×</span>` : ''}<input data-f="dur" value="${txtDur(durDe(i))}" ${ro} ${temFases(t) ? `title="${t.fases.map((f, k) => (k ? `pausa ${f.pausa} + ` : '') + f.dur).join(' + ')} d.ú."` : ''}/></div>
-      <div class="c-ini"><input data-f="ini" value="${fmtD(diaDe(r.es[i]))}" ${ro}/></div>
-      <div class="c-fim"><input data-f="fim" value="${fmtD(diaDe(r.ef[i]))}" ${ro || (r.ms[i] ? 'readonly tabindex="-1"' : '')}/></div>
+      <div class="c-dur">${temFases(t) ? `<span class="plt-fases-ic" title="Barra partida em ${t.fases.length} fases">${t.fases.length}×</span>` : calP}<input data-f="dur" value="${txtDur(durDe(i))}" ${ro} ${temFases(t) ? `title="${t.fases.map((f, k) => (k ? `pausa ${f.pausa} + ` : '') + f.dur).join(' + ')} d.ú."` : ''}/></div>
+      <div class="c-ini"><input data-f="ini" value="${fmtD(r.es[i])}" ${ro}/></div>
+      <div class="c-fim"><input data-f="fim" value="${fmtD(r.ef[i])}" ${ro || (r.ms[i] ? 'readonly tabindex="-1"' : '')}/></div>
       <div class="c-pred"><input data-f="pred" value="${esc(txtPred(i))}"/></div>
       <div class="c-eq ${rs || r.ms[i] ? 'ro' : ''}" ${rs || r.ms[i] ? '' : `data-eq="${i}" title="Clique para atribuir equipas"`}>${celulaEquipas(t, i)}</div>
       <div class="c-pct"><input data-f="pct" value="${r.pct[i]}%" ${ro}/></div>
@@ -691,17 +815,24 @@ function pintarGrafico() {
   }
   const hj = hojeN();
   if (hj >= E.d0 && hj <= E.d1) fundo += `<div class="plt-hoje" style="left:${X(hj) + px / 2}px" title="Hoje"></div>`;
+  // prazo contratual: linha vermelha no fim do último dia
+  if (r.PZ != null && r.PZ >= E.d0 && r.PZ <= E.d1) fundo += `<div class="plt-pz ${r.PF > r.PZ ? 'falha' : ''}" style="left:${X(r.PZ + 1)}px" title="Prazo contratual: ${fmtD(r.PZ)}"><span>Prazo ${fmtD(r.PZ)}</span></div>`;
   // barras
   const linha = new Map(r.vis.map((i, k) => [i, k]));
   let barras = '';
   r.vis.forEach((i, k) => {
-    const t = T[i], y = k * ROW;
-    const a = diaDe(r.es[i]), b = diaDe(r.ef[i]);
+    const t = T[i], y = k * ROW, c = r.cal[i];
+    const a = r.es[i], b = r.ef[i];
     const crit = _ui.critico && r.folga[i] <= 0;
-    const tit = esc(`${t.nome}\n${fmtD(a)} → ${fmtD(b)} · ${txtDur(durDe(i))}${r.resumo[i] ? '' : ' · folga ' + Math.max(0, r.folga[i]) + ' d.ú.'}${r.valor[i] ? ' · ' + eur0(r.valor[i]) : ''}`);
+    const sob = r.sob.porTarefa.get(i);
+    const tit = esc(`${t.nome}\n${fmtD(a)} → ${fmtD(b)} · ${txtDur(durDe(i))}${c !== _C && !r.resumo[i] ? ' (' + CAL_NOMES[c.k].toLowerCase() + ')' : ''}${r.resumo[i] ? '' : ' · folga ' + txtFolga(r.folga[i], c)}${r.valor[i] ? ' · ' + eur0(r.valor[i]) : ''}${t.limite ? `\nData-limite ${fmtD(dnum(t.limite))}${r.atrasoLim[i] ? ` — falhada por ${r.atrasoLim[i]} d.ú.` : ''}` : ''}${sob ? '\n⚠ ' + sob.map(x => txtSobrecarga(x, i)).join('\n⚠ ') : ''}`);
     const sel = _ui.sel.has(i) ? ' sel' : '';
     const st = estiloCor(t);
-    const cls = (t.estilo === 'tracejada' ? ' trac' : '') + sel;
+    const cls = (t.estilo === 'tracejada' ? ' trac' : '') + (r.atrasoLim[i] ? ' atr' : '') + sel;
+    // data-limite: seta para baixo no fim do dia-limite
+    if (t.limite) { const dl = dnum(t.limite); barras += `<div class="plt-lim ${r.atrasoLim[i] ? 'falha' : ''}" style="top:${y + 2}px;left:${X(dl + 1) - 6}px" title="Data-limite ${fmtD(dl)}${r.atrasoLim[i] ? ` — falhada por ${r.atrasoLim[i]} d.ú.` : ' — cumprida'}"></div>`; }
+    // sobrecarga de equipa: faixa âmbar por baixo da barra nos dias em causa
+    if (sob) sob.forEach(x => { barras += `<div class="plt-sob" style="top:${y + 26}px;left:${X(x.de)}px;width:${Math.max(4, (x.ate - x.de + 1) * px)}px" title="${esc(txtSobrecarga(x, i))}"></div>`; });
     const critCls = crit ? (t.cor ? ' crit-o' : ' crit') : '';
     if (r.resumo[i]) {
       barras += `<div class="plt-bar rs${cls}" data-i="${i}" style="${st}top:${y + 10}px;left:${X(a)}px;width:${(b - a + 1) * px}px" title="${tit}"></div>`;
@@ -713,13 +844,13 @@ function pintarGrafico() {
       if (lb) barras += `<div class="plt-lbl" style="top:${y}px;left:${X(a) + px / 2 + 12}px">${lb}</div>`;
     } else if (temFases(t)) {
       // barra partida: um segmento por fase, linha pontilhada nas pausas; o progresso enche as fases por ordem
-      const ini = iniciosFases(t, r.es[i]);
+      const ini = iniciosFasesO(t, r.es[i], c);
       let feito = r.pct[i] / 100 * t.dur;
       ini.forEach((o, k) => {
-        const f = t.fases[k], a2 = diaDe(o), b2 = diaDe(o + f.dur - 1);
+        const f = t.fases[k], a2 = dD(c, o), b2 = dD(c, o + f.dur - 1);
         const p = Math.max(0, Math.min(f.dur, feito)); feito -= p;
         if (k) {
-          const fimAnt = diaDe(ini[k - 1] + t.fases[k - 1].dur - 1);
+          const fimAnt = dD(c, ini[k - 1] + t.fases[k - 1].dur - 1);
           barras += `<div class="plt-gap" style="top:${y + 15}px;left:${X(fimAnt + 1)}px;width:${Math.max(0, (a2 - fimAnt - 1) * px)}px"></div>`;
         }
         const tf = esc(`${t.nome} — ${f.nome || 'Fase ' + (k + 1)}\n${fmtD(a2)} → ${fmtD(b2)} · ${txtDur(f.dur)}${k ? ` · pausa de ${f.pausa} d.ú. antes` : ''}\nArrastar para mudar a pausa · botão direito para mais opções`);
@@ -740,7 +871,7 @@ function pintarGrafico() {
       if (!linha.has(p.j)) continue;
       const ka = linha.get(p.j), kb = linha.get(i);
       const ya = ka * ROW + ROW / 2, yb = kb * ROW + ROW / 2;
-      const a0 = X(diaDe(r.es[p.j])), a1 = X(diaDe(r.ef[p.j]) + 1), b0 = X(diaDe(r.es[i])), b1 = X(diaDe(r.ef[i]) + 1);
+      const a0 = X(r.es[p.j]), a1 = X(r.ef[p.j] + 1), b0 = X(r.es[i]), b1 = X(r.ef[i] + 1);
       const msA = r.ms[p.j], msB = r.ms[i];
       const pa0 = msA ? a0 + px / 2 : a0, pa1 = msA ? a0 + px / 2 + 7 : a1, pb0 = msB ? b0 + px / 2 - 8 : b0, pb1 = msB ? b0 + px / 2 + 8 : b1;
       const crit = _ui.critico && r.folga[i] <= 0 && r.folga[p.j] <= 0 && !r.resumo[i] && !r.resumo[p.j];
@@ -767,7 +898,7 @@ function pintarGrafico() {
       ${barras}
     </div>`;
   ch.dataset.d0 = E.d0; ch.dataset.px = px;
-  if (primeira) { ch.dataset.pronto = '1'; ch.scrollLeft = Math.max(0, X(diaDe(r.S0)) - 40); }
+  if (primeira) { ch.dataset.pronto = '1'; ch.scrollLeft = Math.max(0, X(r.S0) - 40); }
   else { ch.scrollLeft = sl; ch.scrollTop = st; }
   const g = $('plt-grid'); if (g) g.scrollTop = ch.scrollTop;
 }
@@ -826,20 +957,20 @@ function editarCampo(i, f, val, input) {
   const repor = () => { if (input) pintarGrelha(); };
   if (f === 'nome') { const v = val.trim(); if (!v || v === t.nome) return repor(); mudar(() => { t.nome = v; }); return; }
   if (f === 'dur') {
-    const d = lerDur(val); if (d == null) { showToast('Duração inválida (ex.: 5, 5d, 2s)'); return repor(); }
+    const d = lerDur(val, r.cal[i]); if (d == null) { showToast('Duração inválida (ex.: 5, 5d, 2s)'); return repor(); }
     if (d === t.dur) return repor();
     mudar(() => { definirDur(t, d); }); return;
   }
   if (f === 'ini') {
-    const iso = lerData(val, diaDe(r.es[i]));
+    const iso = lerData(val, r.es[i]);
     if (iso === null) { showToast('Data inválida (ex.: 25/11/26)'); return repor(); }
-    mudar(() => { t.inicioMin = iso || null; if (iso && !eUtil(dnum(iso))) showToast('O início passa para o dia útil seguinte'); });
+    mudar(() => { t.inicioMin = iso || null; if (iso && !eUtilC(r.cal[i], dnum(iso))) showToast('O início passa para o dia útil seguinte'); });
     return;
   }
   if (f === 'fim') {
-    const iso = lerData(val, diaDe(r.ef[i]));
+    const iso = lerData(val, r.ef[i]);
     if (!iso) { showToast('Data inválida (ex.: 25/11/26)'); return repor(); }
-    const d = ordF(dnum(iso)) - r.es[i] + 1;
+    const c = r.cal[i], d = oF(c, dnum(iso)) - oC(c, r.es[i]) + 1;
     if (d < 1) { showToast('O fim não pode ser anterior ao início'); return repor(); }
     mudar(() => { definirDur(t, temFases(t) ? t.dur + (d - spanDe(t)) : d); }); return;
   }
@@ -1035,8 +1166,10 @@ function ligarGantt() {
     e.preventDefault();
     const t = _plano.tarefas[i];
     const modo = e.target.classList.contains('plt-rh') ? 'dur' : (k > 0 ? 'fase' : 'mover');
-    const ini = k >= 0 ? iniciosFases(t, _R.es[i])[k] : _R.es[i];
-    const fim = k >= 0 ? ini + t.fases[k].dur - 1 : _R.ef[i];
+    const c = _R.cal[i];
+    // ini/fim em ordinais do calendário da tarefa
+    const ini = k >= 0 ? iniciosFasesO(t, _R.es[i], c)[k] : oC(c, _R.es[i]);
+    const fim = k >= 0 ? ini + t.fases[k].dur - 1 : oF(c, _R.ef[i]);
     const px = +ch.dataset.px, x0 = e.clientX, l0 = bar.offsetLeft, w0 = bar.offsetWidth;
     const tip = $('plt-tip'); let dd = 0, valor = null;
     bar.setPointerCapture(e.pointerId);
@@ -1046,16 +1179,16 @@ function ligarGantt() {
       bar.classList.add('drag');
       if (modo === 'mover') {
         bar.style.left = (l0 + dd * px) + 'px';
-        valor = diaDe(ordC(diaDe(ini) + dd));
+        valor = proxUtil(c, dD(c, ini) + dd);
         tip.textContent = 'Início: ' + fmtDL(valor);
       } else if (modo === 'fase') {
         bar.style.left = (l0 + dd * px) + 'px';
-        valor = Math.max(0, t.fases[k].pausa + ordC(diaDe(ini) + dd) - ini);
-        tip.textContent = `Pausa antes da fase ${k + 1}: ${valor} d.ú. · recomeça a ${fmtDL(diaDe(ini + valor - t.fases[k].pausa))}`;
+        valor = Math.max(0, t.fases[k].pausa + oC(c, dD(c, ini) + dd) - ini);
+        tip.textContent = `Pausa antes da fase ${k + 1}: ${valor} d.ú. · recomeça a ${fmtDL(dD(c, ini + valor - t.fases[k].pausa))}`;
       } else {
         bar.style.width = Math.max(px, w0 + dd * px) + 'px';
-        valor = Math.max(1, ordF(diaDe(fim) + dd) - ini + 1);
-        tip.textContent = (k >= 0 ? `Fase ${k + 1}: ` : 'Fim: ' + fmtDL(diaDe(ini + valor - 1)) + ' · ') + txtDur(valor);
+        valor = Math.max(1, oF(c, dD(c, fim) + dd) - ini + 1);
+        tip.textContent = (k >= 0 ? `Fase ${k + 1}: ` : 'Fim: ' + fmtDL(dD(c, ini + valor - 1)) + ' · ') + txtDur(valor);
       }
       tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px';
     };
@@ -1110,10 +1243,10 @@ function abrirMenuBarra(i, dia, x, y) {
   // ponto onde se pode partir: dia útil clicado, dentro de uma fase e depois do 1.º dia dela
   let partir = null;
   if (folha && dia != null) {
-    const o = ordF(dia);
-    const segs = temFases(t) ? iniciosFases(t, r.es[i]).map((a, k) => ({ a, d: t.fases[k].dur, k })) : [{ a: r.es[i], d: t.dur, k: 0 }];
+    const c = r.cal[i], o = oF(c, dia);
+    const segs = temFases(t) ? iniciosFasesO(t, r.es[i], c).map((a, k) => ({ a, d: t.fases[k].dur, k })) : [{ a: oC(c, r.es[i]), d: t.dur, k: 0 }];
     const s = segs.find(z => o >= z.a && o < z.a + z.d);
-    if (s && o > s.a) partir = { k: s.k, off: o - s.a, dia: diaDe(o) };
+    if (s && o > s.a) partir = { k: s.k, off: o - s.a, dia: dD(c, o) };
   }
   const it = (a, ic, txt, extra = '') => `<button type="button" class="plt-menu-i ${extra}" data-m="${a}">${ic}<span>${txt}</span></button>`;
   let h = `<div class="plt-menu-h">${esc(t.nome)}</div>`;
@@ -1274,6 +1407,9 @@ function ligarTeclado() {
     if (a === 'ia') return abrirIA();
     if (a === 'xls') return exportarExcel();
     if (a === 'xml') return exportarMSProject();
+    if (a === 'sobrecargas') return abrirSobrecargas();
+    if (a === 'limites') return abrirLimites();
+    if (a === 'nivelar') return nivelarEquipas();
     acao(a);
   });
   document.addEventListener('keydown', e => {
@@ -1295,7 +1431,7 @@ function distribuicaoMensal() {
   const r = _R, T = _plano.tarefas;
   const meses = new Map();   // 'YYYY-MM' → índice
   const chave = n => diso(n).slice(0, 7);
-  let a = diaDe(r.S0), b = diaDe(r.PF);
+  let a = r.S0, b = r.PF;
   const lista = [];
   for (let d = new Date(a * DIA); ; d.setUTCMonth(d.getUTCMonth() + 1, 1)) {
     const k = d.toISOString().slice(0, 7);
@@ -1311,7 +1447,7 @@ function distribuicaoMensal() {
     const g = grupos[gi.get(top)];
     const dias = diasTrabalho(i);              // só os dias com trabalho (as pausas das fases não faturam)
     const porDia = r.valor[i] / dias.length;
-    for (const o of dias) { const m = meses.get(chave(diaDe(o))); if (m != null) g.m[m] += porDia; }
+    for (const d of dias) { const m = meses.get(chave(d)); if (m != null) g.m[m] += porDia; }
   });
   return { lista, grupos: grupos.filter(g => g.valor) };
 }
@@ -1567,20 +1703,32 @@ function abrirTarefa(i) {
   }).join('') || '<div class="dd-vazio">Sem predecessoras.</div>';
   const succ = T.map((x, k) => (x.pred || []).some(p => p.id === t.id) ? k : -1).filter(k => k >= 0);
   const succHtml = succ.map(k => `<div class="dd-row"><div class="dd-tx"><b>${k + 1} · ${esc(T[k].nome)}</b></div></div>`).join('') || '<div class="dd-vazio">Nenhuma tarefa depende desta.</div>';
+  const sob = r.sob.porTarefa.get(i);
+  const calOps = [['', `Do plano (${CAL_NOMES[_C.k].toLowerCase()})`], ...Object.entries(CAL_NOMES).filter(([k]) => k !== _C.k)];
+  const calAtual = r.cal[i] !== _C ? r.cal[i].k : '';
   const corpo = `
     <div class="dd-tiles">
-      <div class="dd-tile"><small>Início</small><b>${fmtD(diaDe(r.es[i]))}</b></div>
-      <div class="dd-tile"><small>Fim</small><b>${fmtD(diaDe(r.ef[i]))}</b></div>
-      <div class="dd-tile"><small>Duração</small><b>${durDe(i)} d.ú.</b></div>
-      <div class="dd-tile"><small>Folga total</small><b class="${r.folga[i] <= 0 ? 'plt-crit-t' : ''}">${Math.max(0, r.folga[i])} d.ú.</b></div>
+      <div class="dd-tile"><small>Início</small><b>${fmtD(r.es[i])}</b></div>
+      <div class="dd-tile"><small>Fim</small><b>${fmtD(r.ef[i])}</b></div>
+      <div class="dd-tile"><small>Duração</small><b>${durDe(i)} ${r.cal[i].k === '7' && !rs ? 'dias' : 'd.ú.'}</b></div>
+      <div class="dd-tile"><small>Folga total</small><b class="${r.folga[i] <= 0 ? 'plt-crit-t' : ''}">${r.folga[i]} ${r.cal[i].k === '7' && !rs ? 'dias' : 'd.ú.'}</b></div>
     </div>
+    ${r.atrasoLim[i] ? `<div class="plt-alerta bad">${ICO.bandeira}<span>Acaba a ${fmtD(r.ef[i])}, <b>${r.atrasoLim[i]} d.ú. depois da data-limite</b> (${fmtD(dnum(t.limite))}).</span></div>` : ''}
+    ${r.folga[i] < 0 && !r.atrasoLim[i] ? `<div class="plt-alerta bad">${ICO.bandeira}<span>Folga negativa: com esta duração e ligações, <b>uma data-limite mais à frente não é cumprida</b>${r.PZ != null ? ' (pode ser o prazo contratual)' : ''}.</span></div>` : ''}
+    ${sob ? `<div class="plt-alerta warn">${ICO.aviso}<span><b>Sobrecarga de equipa</b><br>${sob.map(c => esc(txtSobrecarga(c, i))).join('<br>')}</span></div>` : ''}
     <h4>Tarefa</h4>
     <div class="plt-f"><label>Nome</label><input id="pt-nome" value="${esc(t.nome)}"/></div>
     ${rs ? '' : `<div class="plt-f2">
-      <div class="plt-f"><label>Duração (dias úteis)</label><input id="pt-dur" type="number" min="0" value="${t.dur}"/></div>
+      <div class="plt-f"><label id="pt-dur-l">Duração (${r.cal[i].k === '7' ? 'dias seguidos' : 'dias úteis'})</label><input id="pt-dur" type="number" min="0" value="${t.dur}"/></div>
       <div class="plt-f"><label>% concluída</label><input id="pt-pct" type="number" min="0" max="100" value="${t.pct || 0}"/></div>
-    </div>`}
-    <div class="plt-f"><label>Não iniciar antes de</label><input id="pt-min" type="date" value="${t.inicioMin || ''}"/></div>
+    </div>
+    <div class="plt-f"><label>Calendário da tarefa</label><select id="pt-cal">${calOps.map(([k, v]) => `<option value="${k}" ${k === calAtual ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <p class="plt-nota">«Todos os dias» serve para o que corre sem parar ao fim de semana nem nos feriados — curas de betão, secagens, bombagens, ensaios de estanquidade. A duração conta-se nos dias do calendário escolhido.</p>`}
+    <div class="plt-f2">
+      <div class="plt-f"><label>Não iniciar antes de</label><input id="pt-min" type="date" value="${t.inicioMin || ''}"/></div>
+      <div class="plt-f"><label>Data-limite (contrato)</label><input id="pt-lim" type="date" value="${t.limite || ''}"/></div>
+    </div>
+    <p class="plt-nota">A data-limite não muda as datas: marca a tarefa a vermelho quando acaba depois dela e entra na folga (fica negativa), para se ver o que tem de recuperar.</p>
     <div class="plt-f"><label>Predecessoras</label><input id="pt-pred" value="${esc(txtPred(i))}" placeholder="ex.: 3; 5II+2"/></div>
     ${predsHtml}
     <h4>Sucessoras</h4>${succHtml}
@@ -1591,13 +1739,18 @@ function abrirTarefa(i) {
   const dr = mostrarGaveta(`Tarefa ${i + 1} · EDT ${r.edt[i]}`, t.nome, rs ? 'Tarefa de resumo — datas calculadas a partir das subtarefas' : (r.ms[i] ? 'Marco' : ''), corpo,
     `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Guardar</button>`);
   dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  $('pt-cal')?.addEventListener('change', e => { $('pt-dur-l').textContent = `Duração (${(e.target.value || _C.k) === '7' ? 'dias seguidos' : 'dias úteis'})`; });
   dr.querySelector('[data-g="ok"]').onclick = () => {
     const x = lerPred($('pt-pred').value, i);
     if (x.erro) return showToast(x.erro);
     const nome = $('pt-nome').value.trim(); if (!nome) return showToast('A tarefa precisa de nome');
     mudar(() => {
       t.nome = nome; t.pred = x.pred; t.inicioMin = $('pt-min').value || null; t.notas = $('pt-notas').value;
-      if (!rs) { definirDur(t, $('pt-dur').value); t.pct = Math.max(0, Math.min(100, parseInt($('pt-pct').value, 10) || 0)); t.valor = parseFloat($('pt-valor').value) || 0; }
+      if ($('pt-lim').value) t.limite = $('pt-lim').value; else delete t.limite;
+      if (!rs) {
+        definirDur(t, $('pt-dur').value); t.pct = Math.max(0, Math.min(100, parseInt($('pt-pct').value, 10) || 0)); t.valor = parseFloat($('pt-valor').value) || 0;
+        const cv = $('pt-cal').value; if (cv) t.cal = cv; else delete t.cal;
+      }
     });
     fecharGaveta();
   };
@@ -1606,6 +1759,7 @@ function abrirTarefa(i) {
 // ── Definições do plano ──
 function abrirDefinicoes() {
   const p = _plano;
+  const pz = opcoesPlano().prazo || {};
   const obras = (S.OBRAS || []).slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt'));
   const corpo = `
     <div class="plt-f"><label>Nome do plano</label><input id="pd-nome" value="${esc(p.nome)}"/></div>
@@ -1614,16 +1768,35 @@ function abrirDefinicoes() {
       <div class="plt-f"><label>Data de início</label><input id="pd-ini" type="date" value="${p.data_inicio}"/></div>
       <div class="plt-f"><label>Calendário</label><select id="pd-cal"><option value="5" ${p.calendario !== '6' ? 'selected' : ''}>Segunda a sexta</option><option value="6" ${p.calendario === '6' ? 'selected' : ''}>Segunda a sábado</option></select></div>
     </div>
-    <p class="plt-nota">Os feriados nacionais (tabela de feriados do portal) não contam como dias úteis.</p>
+    <p class="plt-nota">Os feriados nacionais (tabela de feriados do portal) não contam como dias úteis. Cada tarefa pode ter um calendário próprio (ex.: curas de betão todos os dias) — nas informações da tarefa.</p>
+    <h4>Prazo contratual</h4>
+    <div class="plt-f2">
+      <div class="plt-f"><label>Prazo de execução (dias)</label><input id="pd-pz-dias" type="number" min="1" step="1" value="${pz.dias || ''}" placeholder="ex.: 120"/></div>
+      <div class="plt-f"><label>Ou data-limite</label><input id="pd-pz-data" type="date" value="${pz.dias ? '' : (pz.data || '')}"/></div>
+    </div>
+    <p class="plt-nota" id="pd-pz-nota"></p>
     <h4>Zona de perigo</h4>
     <button type="button" class="plt-btn del" data-g="apagar">${ICO.del}Eliminar este plano</button>`;
   const dr = mostrarGaveta('Plano de trabalhos', 'Definições', p.nome, corpo,
     `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Guardar</button>`);
   dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  // prazo: em dias (contados a partir da data de início, que é o dia 1) ou numa data; um apaga o outro
+  const notaPz = () => {
+    const ini = $('pd-ini').value, d = parseInt($('pd-pz-dias').value, 10), dt = $('pd-pz-data').value;
+    const fim = d > 0 && ini ? dnum(ini) + d - 1 : dt ? dnum(dt) : null;
+    $('pd-pz-nota').textContent = fim == null ? 'Sem prazo contratual. Com prazo, o Gantt mostra a linha do prazo e a folga das tarefas passa a contar com ele.'
+      : `Data-limite de conclusão: ${fmtDL(fim)}${d > 0 ? ` (${d} dias de calendário a contar da data de início)` : ''}.`;
+  };
+  $('pd-pz-dias').addEventListener('input', () => { if ($('pd-pz-dias').value) $('pd-pz-data').value = ''; notaPz(); });
+  $('pd-pz-data').addEventListener('input', () => { if ($('pd-pz-data').value) $('pd-pz-dias').value = ''; notaPz(); });
+  $('pd-ini').addEventListener('input', notaPz);
+  notaPz();
   dr.querySelector('[data-g="ok"]').onclick = () => {
     const nome = $('pd-nome').value.trim(), ini = $('pd-ini').value;
     if (!nome || !ini) return showToast('Nome e data de início são obrigatórios');
     p.nome = nome; p.obra_id = $('pd-obra').value || null; p.data_inicio = ini; p.calendario = $('pd-cal').value;
+    const pzD = parseInt($('pd-pz-dias').value, 10), pzT = $('pd-pz-data').value;
+    if (pzD > 0) opcoesPlano().prazo = { dias: pzD }; else if (pzT) opcoesPlano().prazo = { data: pzT }; else delete opcoesPlano().prazo;
     montarCalendario(); calcular(); fecharGaveta(); abrirPlano(p.id); agendarGravar();
   };
   dr.querySelector('[data-g="apagar"]').onclick = async () => {
@@ -1640,13 +1813,21 @@ const nomeFicheiro = () => { const f = _plano.nome.normalize('NFD').replace(/[̀
 function exportarExcel() {
   if (!window.XLSX) return showToast('Excel indisponível');
   const r = _R, T = _plano.tarefas;
-  const ds = n => diso(diaDe(n)).split('-').reverse().join('/');
-  const rows = [['ID', 'EDT', 'Artigo', 'Nome da tarefa', 'Duração (d.ú.)', 'Início', 'Fim', 'Predecessoras', '% concluída', 'Folga (d.ú.)', 'Un.', 'Quantidade', 'Valor (€)']];
-  T.forEach((t, i) => rows.push([i + 1, r.edt[i], t.cod || '', '    '.repeat(t.nivel) + t.nome, durDe(i), ds(r.es[i]), ds(r.ef[i]), txtPred(i), r.pct[i], r.resumo[i] ? '' : Math.max(0, r.folga[i]), t.un || '', t.qtd || '', Math.round(r.valor[i] * 100) / 100]));
+  const ds = n => diso(n).split('-').reverse().join('/');
+  const rows = [['ID', 'EDT', 'Artigo', 'Nome da tarefa', 'Duração', 'Calendário', 'Início', 'Fim', 'Predecessoras', '% concluída', 'Folga (d.ú.)', 'Data-limite', 'Un.', 'Quantidade', 'Valor (€)']];
+  T.forEach((t, i) => rows.push([i + 1, r.edt[i], t.cod || '', '    '.repeat(t.nivel) + t.nome, durDe(i), r.resumo[i] ? '' : CAL_NOMES[r.cal[i].k], ds(r.es[i]), ds(r.ef[i]), txtPred(i), r.pct[i], r.resumo[i] ? '' : r.folga[i], t.limite ? ds(dnum(t.limite)) + (r.atrasoLim[i] ? ` (falhada por ${r.atrasoLim[i]} d.ú.)` : '') : '', t.un || '', t.qtd || '', Math.round(r.valor[i] * 100) / 100]));
+  if (r.PZ != null) rows.push([], ['', '', '', 'Prazo contratual', '', '', '', ds(r.PZ), '', '', '', r.PF > r.PZ ? `Excede em ${contaUteis(_C, r.PZ + 1, r.PF) || 1} d.ú.` : 'Cumprido']);
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [6, 8, 10, 60, 12, 11, 11, 16, 10, 10, 6, 11, 14].map(w => ({ wch: w }));
+  ws['!cols'] = [6, 8, 10, 60, 10, 22, 11, 11, 16, 10, 10, 26, 6, 11, 14].map(w => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, ws, 'Plano de trabalhos');
+  const sob = r.sob.lista;
+  if (sob.length) {
+    const fsb = [['Equipa', 'De', 'Até', 'Em uso', 'Disponíveis', 'Tarefas']];
+    sob.forEach(c => fsb.push([c.eq.nome, ds(c.de), ds(c.ate), c.max, c.disp, c.tarefas.map(j => `${j + 1} ${T[j].nome}`).join('; ')]));
+    const w5 = XLSX.utils.aoa_to_sheet(fsb); w5['!cols'] = [{ wch: 26 }, { wch: 11 }, { wch: 11 }, { wch: 8 }, { wch: 11 }, { wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, w5, 'Sobrecargas de equipas');
+  }
   if (T.length) {
     const { lista, grupos } = distribuicaoMensal();
     const f = [['EDT', 'Capítulo', 'Valor (€)', ...lista]];
@@ -1678,14 +1859,19 @@ function exportarExcel() {
 function exportarMSProject() {
   const r = _R, T = _plano.tarefas;
   const x = s => esc(s);
-  const dt = (n, h) => diso(diaDe(n)) + 'T' + h;
+  const dt = (n, h) => diso(n) + 'T' + h;
   const tipoMS = { FF: 0, FS: 1, SF: 2, SS: 3 };
-  const fer = [..._feriados].filter(d => d >= diso(diaDe(r.S0) - 30) && d <= diso(diaDe(r.PF) + 400)).sort();
+  const fer = [..._feriados].filter(d => d >= diso(r.S0 - 30) && d <= diso(r.PF + 400)).sort();
   const wt = '<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes>';
-  const dias = [1, 2, 3, 4, 5, 6, 7].map(d => {
-    const util = d >= 2 && d <= 6 || (d === 7 && _C.sab);
+  // calendários: 1 = o do plano; 2/3/4 = seg–sex / seg–sáb / todos os dias, se alguma tarefa os usar
+  const UIDCAL = { '5': 2, '6': 3, '7': 4 };
+  const semana = k => [1, 2, 3, 4, 5, 6, 7].map(d => {
+    const util = k === '7' || (d >= 2 && d <= 6) || (d === 7 && k === '6');
     return `<WeekDay><DayType>${d}</DayType><DayWorking>${util ? 1 : 0}</DayWorking>${util ? wt : ''}</WeekDay>`;
-  }).join('') + fer.map(d => `<WeekDay><DayType>0</DayType><DayWorking>0</DayWorking><TimePeriod><FromDate>${d}T00:00:00</FromDate><ToDate>${d}T23:59:00</ToDate></TimePeriod></WeekDay>`).join('');
+  }).join('') + (k === '7' ? '' : fer.map(d => `<WeekDay><DayType>0</DayType><DayWorking>0</DayWorking><TimePeriod><FromDate>${d}T00:00:00</FromDate><ToDate>${d}T23:59:00</ToDate></TimePeriod></WeekDay>`).join(''));
+  const calsUsados = [...new Set(T.map((t, i) => (r.resumo[i] || r.cal[i] === _C ? null : r.cal[i].k)).filter(Boolean))];
+  const calXml = `<Calendar><UID>1</UID><Name>Plandese</Name><IsBaseCalendar>1</IsBaseCalendar><BaseCalendarUID>-1</BaseCalendarUID><WeekDays>${semana(_C.k)}</WeekDays></Calendar>`
+    + calsUsados.map(k => `<Calendar><UID>${UIDCAL[k]}</UID><Name>${x(CAL_NOMES[k])}</Name><IsBaseCalendar>1</IsBaseCalendar><BaseCalendarUID>-1</BaseCalendarUID><WeekDays>${semana(k)}</WeekDays></Calendar>`).join('');
   const tarefas = T.map((t, i) => {
     const d = r.resumo[i] ? durDe(i) : r.dur[i];
     const links = r.preds[i].map(p => `<PredecessorLink><PredecessorUID>${p.j + 1}</PredecessorUID><Type>${tipoMS[p.tipo]}</Type><CrossProject>0</CrossProject><LinkLag>${p.lag * 4800}</LinkLag><LagFormat>7</LagFormat></PredecessorLink>`).join('');
@@ -1696,6 +1882,7 @@ function exportarMSProject() {
 <Duration>PT${d * 8}H0M0S</Duration><DurationFormat>7</DurationFormat>
 <Milestone>${r.ms[i] ? 1 : 0}</Milestone><Summary>${r.resumo[i] ? 1 : 0}</Summary><PercentComplete>${r.pct[i]}</PercentComplete>
 ${t.inicioMin ? `<ConstraintType>4</ConstraintType><ConstraintDate>${t.inicioMin}T08:00:00</ConstraintDate>` : '<ConstraintType>0</ConstraintType>'}
+${t.limite ? `<Deadline>${t.limite}T17:00:00</Deadline>` : ''}${!r.resumo[i] && r.cal[i] !== _C ? `<CalendarUID>${UIDCAL[r.cal[i].k]}</CalendarUID><IgnoreResourceCalendar>1</IgnoreResourceCalendar>` : ''}
 ${notas ? `<Notes>${x(notas)}</Notes>` : ''}${links}</Task>`;
   }).join('\n');
   const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1705,7 +1892,7 @@ ${notas ? `<Notes>${x(notas)}</Notes>` : ''}${links}</Task>`;
 <DefaultStartTime>08:00:00</DefaultStartTime><DefaultFinishTime>17:00:00</DefaultFinishTime>
 <MinutesPerDay>480</MinutesPerDay><MinutesPerWeek>${_C.sab ? 2880 : 2400}</MinutesPerWeek><DaysPerMonth>${_C.sab ? 26 : 22}</DaysPerMonth>
 <DurationFormat>7</DurationFormat><WeekStartDay>1</WeekStartDay><CalendarUID>1</CalendarUID>
-<Calendars><Calendar><UID>1</UID><Name>Plandese</Name><IsBaseCalendar>1</IsBaseCalendar><BaseCalendarUID>-1</BaseCalendarUID><WeekDays>${dias}</WeekDays></Calendar></Calendars>
+<Calendars>${calXml}</Calendars>
 <Tasks>
 ${tarefas}
 </Tasks>
@@ -1731,37 +1918,41 @@ const SUGESTOES_IA = [
   'Como posso encurtar o prazo em duas semanas?',
   'Não se trabalha entre 24/12 e 1/1: ajusta as tarefas afetadas',
   'Acrescenta um marco de receção provisória 5 dias úteis depois da conclusão',
+  'Há equipas sobrecarregadas? Propõe como as desfasar',
 ];
 
 // Resumo do plano (texto) enviado ao agente: tabela com o que se vê no Gantt
 function resumoParaIA() {
   const r = _R, T = _plano.tarefas;
-  const ds = o => diso(diaDe(o));
+  const ds = o => diso(o);
   const tot = r.valor.reduce((s, v, i) => s + (r.pai[i] === -1 ? v : 0), 0);
   const cab = [
     `Plano: ${_plano.nome}`,
     `Obra: ${nomeObra(_plano.obra_id) || '—'}`,
-    `Data de início (consignação): ${_plano.data_inicio} · calendário: ${_plano.calendario === '6' ? 'segunda a sábado' : 'segunda a sexta'} (sem feriados nacionais)`,
-    T.length ? `Conclusão calculada: ${ds(r.PF)} · prazo ${r.PF - r.S0 + 1} dias úteis (${diaDe(r.PF) - diaDe(r.S0) + 1} dias de calendário) · valor total ${tot.toFixed(2)} €` : 'O plano ainda não tem tarefas.',
+    `Data de início (consignação): ${_plano.data_inicio} · calendário do plano: ${CAL_NOMES[_C.k].toLowerCase()} (sem feriados nacionais)`,
+    T.length ? `Conclusão calculada: ${ds(r.PF)} · prazo ${prazoUteis()} dias úteis (${prazoCal()} dias de calendário) · valor total ${tot.toFixed(2)} €` : 'O plano ainda não tem tarefas.',
+    r.PZ != null ? `Prazo contratual: ${ds(r.PZ)}${opcoesPlano().prazo?.dias ? ` (${opcoesPlano().prazo.dias} dias a contar da data de início)` : ''} — ${r.PF > r.PZ ? `o plano EXCEDE-O em ${contaUteis(_C, r.PZ + 1, r.PF) || 1} dias úteis` : `cumprido com ${contaUteis(_C, r.PF + 1, r.PZ)} dias úteis de margem`}` : 'Prazo contratual: não definido.',
     r.ciclo ? 'ATENÇÃO: há ligações em ciclo, as datas não são fiáveis.' : '',
     _ui.sel.size ? `Tarefas selecionadas pelo utilizador: ${selOrd().map(i => i + 1).join(', ')}` : '',
   ].filter(Boolean).join('\n');
   const linhas = T.map((t, i) => [
     i + 1, r.edt[i], t.nivel,
     (r.resumo[i] ? '[RESUMO] ' : '') + (r.ms[i] ? '[MARCO] ' : '') + t.nome,
-    durDe(i), ds(r.es[i]), ds(r.ef[i]), txtPred(i) || '—', r.pct[i],
-    r.valor[i] ? r.valor[i].toFixed(2) : '', r.resumo[i] ? '' : Math.max(0, r.folga[i]),
+    durDe(i), r.resumo[i] || r.cal[i] === _C ? '' : r.cal[i].k, ds(r.es[i]), ds(r.ef[i]), txtPred(i) || '—', r.pct[i],
+    r.valor[i] ? r.valor[i].toFixed(2) : '', r.resumo[i] ? '' : r.folga[i],
     !r.resumo[i] && r.folga[i] <= 0 ? 'sim' : '',
-    t.cod || '', t.inicioMin || '', nomesEquipas(t) || '—',
+    t.cod || '', t.inicioMin || '', t.limite ? t.limite + (r.atrasoLim[i] ? ` (FALHADA por ${r.atrasoLim[i]} d.ú.)` : '') : '', nomesEquipas(t) || '—',
     (temFases(t) ? `[barra partida: ${t.fases.map((f, k) => (k ? `pausa ${f.pausa} d.ú. → ` : '') + `${f.nome ? f.nome + ' ' : ''}${f.dur} d.ú.`).join(' → ')}] ` : '') + (t.notas || '').replace(/\s+/g, ' ').slice(0, 140),
   ].join(' | '));
   const eqs = equipasTrabalho(), fix = equipasFixas(), subs = subsDoPlano();
+  const sob = r.sob.lista;
   const secEq = [
-    eqs.length ? `EQUIPAS DE TRABALHO (nome: composição)\n${eqs.map(e => `- ${e.nome}: ${resumoComp(e) || 'sem composição'}`).join('\n')}` : 'EQUIPAS DE TRABALHO: nenhuma definida.',
+    eqs.length ? `EQUIPAS DE TRABALHO (nome: composição · equipas iguais disponíveis)\n${eqs.map(e => `- ${e.nome}: ${resumoComp(e) || 'sem composição'} · disponíveis: ${dispDe(e)}`).join('\n')}` : 'EQUIPAS DE TRABALHO: nenhuma definida.',
+    sob.length ? `SOBRECARGAS DE EQUIPAS (a mesma equipa em mais tarefas ao mesmo tempo do que as disponíveis)\n${sob.map(c => `- ${c.eq.nome}: ${ds(c.de)} a ${ds(c.ate)} · ${c.max} em uso para ${c.disp} disponíve${c.disp === 1 ? 'l' : 'is'} · tarefas ${c.tarefas.map(j => j + 1).join(', ')}`).join('\n')}` : 'SOBRECARGAS DE EQUIPAS: nenhuma.',
     fix.length ? `PESSOAL E EQUIPAMENTO FIXO DE OBRA (não se atribui a tarefas; conta em todos os dias úteis do período)\n${fix.map(e => `- ${e.nome}: ${resumoComp(e) || 'sem composição'} — ${periodoFixa(e)}`).join('\n')}` : 'PESSOAL FIXO DE OBRA: nenhum definido.',
     subs.length ? `SUBEMPREITEIROS (nome — especialidade)\n${subs.map(s => `- ${s.nome}${s.especialidade ? ' — ' + s.especialidade : ''}`).join('\n')}` : 'SUBEMPREITEIROS: nenhum definido.',
   ].join('\n\n');
-  return `${cab}\n\n${secEq}\n\nTAREFAS\nID | EDT | nível | nome | duração (d.ú.) | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | equipas | notas\n${linhas.join('\n')}`;
+  return `${cab}\n\n${secEq}\n\nTAREFAS (calendário vazio = o do plano; 6 = seg–sáb; 7 = todos os dias, duração em dias seguidos; folga negativa = não cumpre uma data-limite)\nID | EDT | nível | nome | duração | calendário | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | data-limite | equipas | notas\n${linhas.join('\n')}`;
 }
 
 function abrirIA() {
@@ -1912,7 +2103,7 @@ function descreverOps(p) {
       case 'adicionar': {
         const onde = o.dentro_de ? ` dentro de ${nm(o.dentro_de)}` : o.depois_de ? ` a seguir a ${nm(o.depois_de)}` : ' no fim';
         const pr = (o.pred || []).length ? ` · depois de ${o.pred.map(x => `${nm(x.id)} (${lig(x.tipo, x.desfasamento)})`).join(', ')}` : '';
-        return `<b>Nova</b> «${esc(o.nome)}» — ${o.dur === 0 ? 'marco' : (o.dur ?? 1) + ' d.ú.'}${onde}${pr}${o.valor ? ` · ${eur0(o.valor)}` : ''}${o.inicio_min ? ` · não antes de ${dt(o.inicio_min)}` : ''}`;
+        return `<b>Nova</b> «${esc(o.nome)}» — ${o.dur === 0 ? 'marco' : (o.dur ?? 1) + (o.calendario === '7' ? ' dias seguidos' : ' d.ú.')}${onde}${pr}${o.valor ? ` · ${eur0(o.valor)}` : ''}${o.inicio_min ? ` · não antes de ${dt(o.inicio_min)}` : ''}${o.calendario && CAL_NOMES[o.calendario] ? ` · calendário ${CAL_NOMES[o.calendario].toLowerCase()}` : ''}${o.data_limite ? ` · data-limite ${dt(o.data_limite)}` : ''}`;
       }
       case 'editar': {
         const c = [];
@@ -1920,6 +2111,10 @@ function descreverOps(p) {
         if (o.dur != null) c.push(o.dur === 0 ? 'passa a marco' : `duração → ${o.dur} d.ú.`);
         if (o.inicio_min === '') c.push('sem restrição de início');
         else if (o.inicio_min) c.push(`não iniciar antes de ${dt(o.inicio_min)}`);
+        if (o.calendario === '') c.push('calendário do plano');
+        else if (CAL_NOMES[o.calendario]) c.push(`calendário → ${CAL_NOMES[o.calendario].toLowerCase()}`);
+        if (o.data_limite === '') c.push('sem data-limite');
+        else if (o.data_limite) c.push(`data-limite ${dt(o.data_limite)}`);
         if (o.pct != null) c.push(`${o.pct}% concluída`);
         if (o.valor != null) c.push(`valor → ${eur0(o.valor)}`);
         if (o.notas != null) c.push('notas');
@@ -1931,7 +2126,8 @@ function descreverOps(p) {
       case 'eliminar': return `<b>Eliminar</b> ${nm(o.id)} (e subtarefas)`;
       case 'mover': return `<b>Mover</b> ${nm(o.id)} ${o.dentro_de ? 'para dentro de ' + nm(o.dentro_de) : 'para a seguir a ' + nm(o.depois_de)}`;
       case 'nivel': return `${Number(o.delta) > 0 ? '<b>Avançar</b>' : '<b>Recuar</b>'} nível de ${nm(o.id)}`;
-      case 'definir_equipa': return `<b>${o.fixa ? 'Pessoal fixo' : 'Equipa'}</b> «${esc(o.nome)}»${o.fixa && (o.de || o.ate) ? ` (${o.de ? 'de ' + esc(o.de) : ''}${o.ate ? ' até ' + esc(o.ate) : ''})` : ''}: ${[...(o.mao_de_obra || []).map(x => `${x.qtd} ${esc(x.categoria)}`), ...(o.equipamentos || []).map(x => `${x.qtd} ${esc(x.tipo)}`)].join(', ') || 'sem alterações à composição'}`;
+      case 'definir_equipa': return `<b>${o.fixa ? 'Pessoal fixo' : 'Equipa'}</b> «${esc(o.nome)}»${o.fixa && (o.de || o.ate) ? ` (${o.de ? 'de ' + esc(o.de) : ''}${o.ate ? ' até ' + esc(o.ate) : ''})` : ''}: ${[...(o.mao_de_obra || []).map(x => `${x.qtd} ${esc(x.categoria)}`), ...(o.equipamentos || []).map(x => `${x.qtd} ${esc(x.tipo)}`)].join(', ') || 'sem alterações à composição'}${o.disponiveis ? ` · ${o.disponiveis} disponíve${o.disponiveis == 1 ? 'l' : 'is'}` : ''}`;
+      case 'nivelar': return '<b>Nivelar equipas</b>: atrasar as tarefas necessárias para que nenhuma equipa esteja em duas frentes ao mesmo tempo';
       case 'definir_subempreiteiro': return `<b>Subempreiteiro</b> «${esc(o.nome)}»${o.especialidade ? ' — ' + esc(o.especialidade) : ''}`;
       case 'subempreiteiro': return `${nm(o.id)}: executada por <b>${o.nome && !/^plandese$/i.test(o.nome) ? esc(o.nome) : 'Plandese'}</b>`;
       case 'equipas': return `${nm(o.id)}: equipas → ${(o.equipas || []).length ? o.equipas.map(x => `${esc(x.nome)}${x.n > 1 ? ' ×' + x.n : ''}`).join(', ') : 'nenhuma'}`;
@@ -1946,6 +2142,9 @@ function descreverOps(p) {
         if (o.data_inicio) c.push(`início → ${dt(o.data_inicio)}`);
         if (o.calendario) c.push(o.calendario === '6' ? 'calendário segunda a sábado' : 'calendário segunda a sexta');
         if (o.nome_plano) c.push(`nome → «${esc(o.nome_plano)}»`);
+        if (o.prazo_dias > 0) c.push(`prazo contratual → ${o.prazo_dias} dias`);
+        else if (o.prazo_data) c.push(`prazo contratual → ${dt(o.prazo_data)}`);
+        else if (o.prazo_dias === 0 || o.prazo_data === '') c.push('sem prazo contratual');
         return `<b>Plano</b>: ${c.join(', ')}`;
       }
       default: return esc(o.op);
@@ -2086,6 +2285,8 @@ function aplicarOperacoes(ops, ids) {
           else if (o.depois_de) { const a = precisa(o.depois_de); p = fim(a) + 1; nv = T[a].nivel; }
           const t = novaTarefa(limpaNome(o.nome), nv, o.dur != null ? Math.max(0, parseInt(o.dur, 10) || 0) : 1);
           if (o.inicio_min) t.inicioMin = o.inicio_min;
+          if (CAL_NOMES[o.calendario] && o.calendario !== _C.k) t.cal = o.calendario;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(o.data_limite || '')) t.limite = o.data_limite;
           if (o.valor != null) t.valor = Number(o.valor) || 0;
           if (o.notas) t.notas = String(o.notas);
           if (o.pred) t.pred = predsDe(o.pred, t.id);
@@ -2099,6 +2300,8 @@ function aplicarOperacoes(ops, ids) {
           if (o.nome) t.nome = limpaNome(o.nome);
           if (o.dur != null) definirDur(t, o.dur);
           if (o.inicio_min != null) t.inicioMin = o.inicio_min || null;
+          if (o.calendario != null) { if (eResumo(i) && o.calendario) throw new Error('o calendário indica-se nas tarefas, não nos resumos'); if (CAL_NOMES[o.calendario] && o.calendario !== _C.k) t.cal = o.calendario; else delete t.cal; }
+          if (o.data_limite != null) { if (/^\d{4}-\d{2}-\d{2}$/.test(o.data_limite)) t.limite = o.data_limite; else delete t.limite; }
           if (o.pct != null) t.pct = Math.max(0, Math.min(100, parseInt(o.pct, 10) || 0));
           if (o.valor != null) t.valor = Number(o.valor) || 0;
           if (o.notas != null) t.notas = String(o.notas);
@@ -2166,6 +2369,14 @@ function aplicarOperacoes(ops, ids) {
           if (eFixa(e)) { ['de', 'ate'].forEach(k => { if (o[k] === '') delete e[k]; else if (/^\d{4}-\d{2}-\d{2}$/.test(o[k] || '')) e[k] = o[k]; }); }
           if (Array.isArray(o.mao_de_obra)) e.mo = o.mao_de_obra.filter(x => x && x.categoria && +x.qtd > 0).map(x => ({ cat: String(x.categoria).trim().slice(0, 60), qtd: Math.round(+x.qtd) }));
           if (Array.isArray(o.equipamentos)) e.eq = o.equipamentos.filter(x => x && x.tipo && +x.qtd > 0).map(x => ({ tipo: String(x.tipo).trim().slice(0, 60), qtd: Math.round(+x.qtd) }));
+          if (o.disponiveis != null && !eFixa(e)) { const d = Math.max(1, Math.min(20, parseInt(o.disponiveis, 10) || 1)); if (d > 1) e.disp = d; else delete e.disp; }
+          break;
+        }
+        case 'nivelar': {
+          if (mudouPlano) montarCalendario();
+          const n = nivelarSemUndo();
+          if (n.ficam) erros.push(`${k + 1}.ª (nivelar): ${n.ficam} sobrecarga(s) não se resolvem atrasando tarefas (uma tarefa pede mais equipas do que as disponíveis)`);
+          if (!n.mexidas) throw new Error('não havia sobrecargas para resolver');
           break;
         }
         case 'equipas': {
@@ -2202,6 +2413,9 @@ function aplicarOperacoes(ops, ids) {
           if (o.data_inicio) { _plano.data_inicio = o.data_inicio; mudouPlano = true; }
           if (o.calendario === '5' || o.calendario === '6') { _plano.calendario = o.calendario; mudouPlano = true; }
           if (o.nome_plano) _plano.nome = String(o.nome_plano).trim().slice(0, 200);
+          if (Number(o.prazo_dias) > 0) opcoesPlano().prazo = { dias: Math.round(Number(o.prazo_dias)) };
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(o.prazo_data || '')) opcoesPlano().prazo = { data: o.prazo_data };
+          else if (Number(o.prazo_dias) === 0 && o.prazo_dias != null || o.prazo_data === '') delete opcoesPlano().prazo;
           break;
         }
         default: throw new Error('operação desconhecida');
@@ -2310,8 +2524,11 @@ function abrirEquipas() {
       ${fixa ? `<div class="plt-eqc-per">
           <label>De<input type="date" data-k="${k}" data-f="de" value="${e.de || ''}"/></label>
           <label>Até<input type="date" data-k="${k}" data-f="ate" value="${e.ate || ''}"/></label>
-          <small>Sem datas = durante toda a obra (${fmtD(diaDe(_R.S0))} a ${fmtD(diaDe(_R.PF))}).</small>
-        </div>` : ''}
+          <small>Sem datas = durante toda a obra (${fmtD(_R.S0)} a ${fmtD(_R.PF)}).</small>
+        </div>` : `<div class="plt-eqc-per">
+          <label>Equipas iguais disponíveis<input type="number" min="1" max="20" step="1" data-k="${k}" data-f="disp" value="${dispDe(e)}"/></label>
+          <small>Quantas equipas destas há na obra ao mesmo tempo. Se estiver em mais tarefas em simultâneo, aparece como sobrecarga.</small>
+        </div>`}
       <div class="plt-eqc-sec">${ICO.equipas}<b>Mão de obra</b><small>${(e.mo || []).reduce((a, x) => a + (+x.qtd || 0), 0)} pessoas</small></div>
       ${(e.mo || []).map((x, j) => linha(k, 'mo', x, j)).join('')}
       <button type="button" class="plt-eqc-add" data-b="mais" data-k="${k}" data-tp="mo">${ICO.plus}Mão de obra</button>
@@ -2382,6 +2599,7 @@ function abrirEquipas() {
     const e = rasc[+k];
     if (x.dataset.f === 'enome') { e.nome = x.value.trim(); return; }
     if (x.dataset.f === 'de' || x.dataset.f === 'ate') { if (x.value) e[x.dataset.f] = x.value; else delete e[x.dataset.f]; return; }
+    if (x.dataset.f === 'disp') { const d = Math.max(1, Math.min(20, parseInt(x.value, 10) || 1)); if (d > 1) e.disp = d; else delete e.disp; return; }
     const it = e[x.dataset.tp][+x.dataset.j];
     if (x.dataset.f === 'nome') { if (x.dataset.tp === 'mo') it.cat = x.value.trim(); else it.tipo = x.value.trim(); }
     else it.qtd = Math.max(0, parseInt(x.value, 10) || 0);
@@ -2396,7 +2614,7 @@ function abrirEquipas() {
       while (vistos.has(nome.toLowerCase())) nome += ' (2)';
       vistos.add(nome.toLowerCase());
       return { id: e.id, nome, cor: e.cor || CORES_EQUIPA[k % CORES_EQUIPA.length],
-        ...(eFixa(e) ? { tipo: 'fixa', ...(e.de ? { de: e.de } : {}), ...(e.ate ? { ate: e.ate } : {}) } : {}),
+        ...(eFixa(e) ? { tipo: 'fixa', ...(e.de ? { de: e.de } : {}), ...(e.ate ? { ate: e.ate } : {}) } : (e.disp > 1 ? { disp: e.disp } : {})),
         mo: (e.mo || []).filter(x => x.cat && x.qtd > 0).map(x => ({ cat: x.cat, qtd: +x.qtd })),
         eq: (e.eq || []).filter(x => x.tipo && x.qtd > 0).map(x => ({ tipo: x.tipo, qtd: +x.qtd })) };
     });
@@ -2408,6 +2626,92 @@ function abrirEquipas() {
     fecharGaveta();
     showToast('Equipas guardadas');
   };
+}
+
+// ── Nivelar equipas (como o «Nivelar recursos» do MS Project, simplificado) ──
+// Enquanto houver uma equipa em mais tarefas ao mesmo tempo do que as disponíveis: no 1.º dia em conflito
+// ficam as tarefas já começadas / que começam primeiro / com menos folga; as outras passam a «não iniciar
+// antes de» o dia a seguir ao fim da primeira que acaba. Não mexe em tarefas já começadas (% > 0).
+// Devolve { mexidas: nº de tarefas atrasadas, ficam: nº de sobrecargas que não se resolvem assim }.
+function nivelarSemUndo() {
+  const T = _plano.tarefas, mexidas = new Set();
+  const impossiveis = new Set();
+  for (let volta = 0; volta < 400; volta++) {
+    calcular();
+    const c = _R.sob.lista.find(x => !impossiveis.has(x.eq.id + '|' + x.de) && x.usos.filter(u => !(T[u.i].pct > 0)).length && x.usos.length > 1);
+    if (!c) break;
+    const r = _R;
+    const ord = c.usos.slice().sort((a, b) => ((T[b.i].pct > 0) - (T[a.i].pct > 0)) || r.es[a.i] - r.es[b.i] || r.folga[a.i] - r.folga[b.i] || a.i - b.i);
+    const ficam = [], saem = []; let acc = 0;
+    for (const u of ord) { if (!ficam.length || T[u.i].pct > 0 || acc + u.n <= c.disp) { ficam.push(u); acc += u.n; } else saem.push(u); }
+    if (!saem.length) { impossiveis.add(c.eq.id + '|' + c.de); continue; }
+    const liberta = Math.min(...ficam.map(u => r.ef[u.i])) + 1;
+    let mexeu = false;
+    saem.forEach(u => {
+      const t = T[u.i], novo = diso(liberta);
+      if (!t.inicioMin || t.inicioMin < novo) { t.inicioMin = novo; mexidas.add(t.id); mexeu = true; }
+    });
+    if (!mexeu) impossiveis.add(c.eq.id + '|' + c.de);
+  }
+  calcular();
+  return { mexidas: mexidas.size, ficam: _R.sob.lista.length };
+}
+function nivelarEquipas() {
+  let res = null;
+  const fimAntes = _R.PF;
+  mudar(() => { res = nivelarSemUndo(); if (!res.mexidas) return false; });
+  if (!res) return;
+  if (!res.mexidas) return showToast(res.ficam ? 'As sobrecargas que restam não se resolvem atrasando tarefas (há tarefas que pedem mais equipas do que as disponíveis)' : 'Não há sobrecargas de equipas');
+  const atraso = _R.PF > fimAntes ? contaUteis(_C, fimAntes + 1, _R.PF) : 0;
+  showToast(`${res.mexidas} tarefa${res.mexidas > 1 ? 's' : ''} atrasada${res.mexidas > 1 ? 's' : ''} (ficam com «não iniciar antes de»)${atraso ? ` · a obra acaba ${atraso} d.ú. mais tarde` : ' · a conclusão não muda'}${res.ficam ? ` · ${res.ficam} sobrecarga(s) por resolver` : ''} — Ctrl+Z para anular`);
+}
+
+// ── Painel «Sobrecargas de equipas» ──
+function abrirSobrecargas() {
+  const r = _R, T = _plano.tarefas, sob = r.sob.lista;
+  const corpo = sob.length ? `
+    <p class="plt-nota">Uma equipa está sobrecarregada quando, no mesmo dia, está atribuída a mais tarefas (ou em mais unidades) do que as equipas iguais disponíveis. O nº de equipas disponíveis de cada tipo muda-se em <b>Equipas</b>.</p>
+    ${sob.map(c => `<div class="plt-sobc" style="--c:${c.eq.cor || '#5b86e5'}">
+      <div class="plt-sobc-h"><b>${esc(c.eq.nome)}</b><span class="plt-pill warn">${c.max} em uso · ${c.disp} disponíve${c.disp === 1 ? 'l' : 'is'}</span></div>
+      <small>${fmtD(c.de)}${c.ate !== c.de ? ' a ' + fmtD(c.ate) : ''} · ${c.dias} dia${c.dias > 1 ? 's' : ''}</small>
+      ${c.tarefas.map(j => `<button type="button" class="plt-sobc-t" data-ir="${j}"><span class="plt-edt">${j + 1}</span>${esc(T[j].nome)}<small>${fmtD(r.es[j])} → ${fmtD(r.ef[j])} · folga ${txtFolga(r.folga[j], r.cal[j])}</small></button>`).join('')}
+    </div>`).join('')}
+    <h4>Resolver</h4>
+    <p class="plt-nota"><b>Nivelar</b> atrasa as tarefas que podem esperar (as que começam depois e têm mais folga) até a equipa ficar livre, pondo-lhes «não iniciar antes de». Tudo se anula com Ctrl+Z. Em alternativa, peça ao assistente para propor outra solução (outra equipa, mais equipas, partir a barra…).</p>`
+    : '<div class="dd-vazio">Não há sobrecargas: nenhuma equipa está em mais tarefas ao mesmo tempo do que as disponíveis.</div>';
+  const dr = mostrarGaveta('Plano de trabalhos', 'Sobrecargas de equipas', sob.length ? `${sob.length} período${sob.length > 1 ? 's' : ''} com sobrecarga` : 'Sem sobrecargas', corpo,
+    sob.length ? `<button type="button" class="plt-btn sec" data-g="ia">${ICO.ia}Pedir ao assistente</button><button type="button" class="plt-btn pri" data-g="nivelar">${ICO.nivelar}Nivelar</button>`
+      : '<button type="button" class="plt-btn sec" data-g="cancelar">Fechar</button>');
+  dr.querySelector('[data-g="cancelar"]')?.addEventListener('click', fecharGaveta);
+  dr.querySelector('[data-g="nivelar"]')?.addEventListener('click', () => { fecharGaveta(); nivelarEquipas(); });
+  dr.querySelector('[data-g="ia"]')?.addEventListener('click', () => { fecharGaveta(); abrirIA(); enviarIA('Há equipas sobrecarregadas (ver SOBRECARGAS DE EQUIPAS). Propõe como resolver com o menor atraso possível na conclusão.'); });
+  dr.querySelector('.dd-b').addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) { fecharGaveta(); irParaTarefa(+b.dataset.ir); } });
+}
+
+// ── Painel «Datas-limite» ──
+function abrirLimites() {
+  const r = _R, T = _plano.tarefas;
+  const idx = T.map((t, i) => i).filter(i => T[i].limite).sort((a, b) => dnum(T[a].limite) - dnum(T[b].limite));
+  const corpo = `
+    ${r.PZ != null ? `<div class="plt-limc ${r.PF > r.PZ ? 'falha' : ''}"><b>Prazo contratual</b><small>Data-limite ${fmtD(r.PZ)} · conclusão prevista ${fmtD(r.PF)}</small><span class="plt-pill ${r.PF > r.PZ ? 'bad' : 'ok'}">${r.PF > r.PZ ? `Excede ${contaUteis(_C, r.PZ + 1, r.PF) || 1} d.ú.` : 'Cumprido'}</span></div>` : ''}
+    ${idx.map(i => `<button type="button" class="plt-limc ${r.atrasoLim[i] ? 'falha' : ''}" data-ir="${i}">
+      <b><span class="plt-edt">${i + 1}</span>${esc(T[i].nome)}</b>
+      <small>Data-limite ${fmtD(dnum(T[i].limite))} · acaba ${fmtD(r.ef[i])}</small>
+      <span class="plt-pill ${r.atrasoLim[i] ? 'bad' : 'ok'}">${r.atrasoLim[i] ? `Falha ${r.atrasoLim[i]} d.ú.` : 'Cumprida'}</span>
+    </button>`).join('') || '<div class="dd-vazio">Nenhuma tarefa tem data-limite.</div>'}
+    <p class="plt-nota">As datas-limite marcam-se nas informações de cada tarefa (duplo clique) — por exemplo nos marcos contratuais (conclusão de uma fase, receção provisória). O prazo contratual da obra está nas Definições do plano. Quando uma data-limite não é cumprida, as tarefas que a atrasam ficam com folga negativa.</p>`;
+  const dr = mostrarGaveta('Plano de trabalhos', 'Datas-limite', `${idx.filter(i => r.atrasoLim[i]).length} falhada(s) de ${idx.length}`, corpo, '<button type="button" class="plt-btn sec" data-g="cancelar">Fechar</button>');
+  dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  dr.querySelector('.dd-b').addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) { fecharGaveta(); irParaTarefa(+b.dataset.ir); } });
+}
+// seleciona a tarefa e leva o Gantt até ela (abre os resumos que a escondem)
+function irParaTarefa(i) {
+  if (_ui.vista !== 'gantt') { _ui.vista = 'gantt'; }
+  for (let k = _R.pai[i]; k !== -1; k = _R.pai[k]) _plano.tarefas[k].fechado = false;
+  calcular(); _ui.sel = new Set([i]); _ui.ancora = i; pintarPlano();
+  const linhaY = _R.vis.indexOf(i) * ROW, ch = $('plt-chart');
+  if (ch) ch.scrollTop = Math.max(0, linhaY - ch.clientHeight / 3);
+  irPara(_R.es[i]);
 }
 
 // ── Painel «Execução e equipas» (uma ou várias tarefas): Plandese ou subempreiteiro + equipas ──
@@ -2515,7 +2819,7 @@ function pintarSubempreiteiros() {
   const porSub = new Map(subs.map(s => [s.id, folhas.filter(i => T[i].sub === s.id)]));
   const valSub = folhas.filter(i => subDe(T[i])).reduce((a, i) => a + r.valor[i], 0);
   const pct = tot ? valSub / tot * 100 : 0;
-  const ds = o => fmtD(diaDe(o));
+  const ds = o => fmtD(o);
   const cab = `<div class="plt-mapa-top">
       <div class="plt-mapa-info">${ICO.sub}<span><b>${subs.length} subempreiteiro${subs.length === 1 ? '' : 's'}</b> · ${folhas.filter(i => subDe(T[i])).length} de ${folhas.length} tarefas subempreitadas</span></div>
       <button type="button" class="plt-btn pri sm" data-acao="novo-sub">${ICO.plus}Novo subempreiteiro</button>
@@ -2560,7 +2864,7 @@ function pintarSubempreiteiros() {
 // Por período: máximo diário, média diária (dias úteis) e total (dias × unidades).
 function mapaRecursos(tipo, per, orig = 'tudo') {
   const r = _R, T = _plano.tarefas;
-  const dia = new Map();     // ordinal → Map(categoria → quantidade)
+  const dia = new Map();     // dia (de calendário) → Map(categoria → quantidade)
   const somar = (o, comp) => { let m = dia.get(o); if (!m) dia.set(o, (m = new Map())); comp.forEach((q, c) => m.set(c, (m.get(c) || 0) + q)); };
   const compDe = (e, n = 1) => { const comp = new Map(); ((tipo === 'mo' ? e.mo : e.eq) || []).forEach(x => { const c = tipo === 'mo' ? x.cat : x.tipo; if (c && x.qtd > 0) comp.set(c, (comp.get(c) || 0) + x.qtd * n); }); return comp; };
   let comAtrib = 0, nSub = 0;
@@ -2580,13 +2884,15 @@ function mapaRecursos(tipo, per, orig = 'tudo') {
   const fixas = equipasFixas();
   if (orig !== 'sub' && T.length) fixas.forEach(e => {
     const comp = compDe(e); if (!comp.size) return;
-    const a = Math.max(r.S0, e.de ? ordC(dnum(e.de)) : r.S0), b = Math.min(r.PF, e.ate ? ordF(dnum(e.ate)) : r.PF);
-    for (let o = a; o <= b; o++) somar(o, comp);
+    const a = Math.max(r.S0, e.de ? dnum(e.de) : r.S0), b = Math.min(r.PF, e.ate ? dnum(e.ate) : r.PF);
+    for (let d = a; d <= b; d++) if (eUtil(d)) somar(d, comp);
   });
-  const periodos = [], chave = o => { const n = diaDe(o), d = new Date(n * DIA); if (per === 'mes') return d.toISOString().slice(0, 7); let s = n; while (dow(s) !== 1) s--; return 's' + s; };
-  const rot = o => { const d = new Date(diaDe(o) * DIA); if (per === 'mes') return MES_ABR[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2); let s = diaDe(o); while (dow(s) !== 1) s--; return fmtD(s).slice(0, 5); };
+  const periodos = [], chave = n => { const d = new Date(n * DIA); if (per === 'mes') return d.toISOString().slice(0, 7); let s = n; while (dow(s) !== 1) s--; return 's' + s; };
+  const rot = n => { const d = new Date(n * DIA); if (per === 'mes') return MES_ABR[d.getUTCMonth()] + ' ' + String(d.getUTCFullYear()).slice(2); let s = n; while (dow(s) !== 1) s--; return fmtD(s).slice(0, 5); };
   const idx = new Map();
+  // dias úteis do plano, mais os dias não úteis em que há trabalho (tarefas com calendário contínuo)
   if (T.length) for (let o = r.S0; o <= r.PF; o++) {
+    if (!eUtil(o) && !dia.has(o)) continue;
     const k = chave(o);
     if (!idx.has(k)) { idx.set(k, periodos.length); periodos.push({ k, rotulo: rot(o), dias: 0, max: new Map(), soma: new Map(), maxTot: 0, somaTot: 0 }); }
     const p = periodos[idx.get(k)], m = dia.get(o);
@@ -2615,7 +2921,7 @@ function pintarMapaRecursos(tipo) {
       <div class="plt-seg">${seg('mapaPer', 'semana', 'Semanas')}${seg('mapaPer', 'mes', 'Meses')}</div>
       <div class="plt-seg">${seg('mapaVal', 'max', 'Máximo diário', 'O máximo em simultâneo num dia do período')}${seg('mapaVal', 'med', 'Média diária', 'Média por dia útil do período')}${seg('mapaVal', 'tot', tipo === 'mo' ? 'Homens-dia' : 'Dias de máquina', tipo === 'mo' ? 'Homens × dias' : 'Unidades × dias')}</div>
       <button type="button" class="plt-btn sec sm" data-acao="equipas">${ICO.equipas}Equipas</button>
-    </div>`;
+    </div>${_R.sob.lista.length ? `<div class="plt-alerta warn">${ICO.aviso}<span><b>${_R.sob.lista.length} período${_R.sob.lista.length > 1 ? 's' : ''} com equipas sobrecarregadas</b> — nesses dias o mapa mostra mais meios do que os disponíveis. <button type="button" class="plt-lnk" data-acao="sobrecargas">Ver e resolver</button></span></div>` : ''}`;
   if (!m.cats.length) {
     v.innerHTML = cab + `<div class="plt-vazio-g">
       <div class="plt-vazio-ic">${tipo === 'mo' ? ICO.equipas : ICO.maquina}</div>

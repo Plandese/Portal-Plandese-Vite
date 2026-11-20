@@ -100,6 +100,10 @@ COMO FUNCIONA O PLANO
 - Pessoal e equipamento fixo de obra (secção «PESSOAL E EQUIPAMENTO FIXO DE OBRA»): quem está em obra durante toda a empreitada ou um período — por exemplo o encarregado, a carrinha de apoio, o contentor de estaleiro. Não se atribui a tarefas e conta nos mapas em todos os dias úteis do período. O encarregado deve estar aqui e não dentro das equipas de trabalho, para não ser contado a dobrar. Cria-se com "definir_equipa" e fixa = true (de/ate opcionais, AAAA-MM-DD; sem datas = toda a obra).
 - Subempreiteiros (secção «SUBEMPREITEIROS»): empresas que executam trabalhos que não são feitos pela Plandese. Cria-os com "definir_subempreiteiro" (nome, especialidade, contactos) e indica quem executa cada tarefa com "subempreiteiro" (nome do subempreiteiro, ou "Plandese" para voltar a meios próprios). Na coluna «equipas» da tabela, «Sub: X» indica a tarefa subempreitada. Pode ser útil indicar a percentagem do valor subempreitado.
 - Para criar ou mudar a composição de uma equipa usa "definir_equipa" (pelo nome; se já existir, substitui a lista que enviares). Para atribuir equipas a uma tarefa usa "equipas" com a lista completa (pelos nomes das equipas, que têm de existir ou ser criadas antes na mesma proposta). Composições que proponhas são estimativas correntes em obra e deves dizê-lo.
+- Calendário por tarefa (coluna «calendário»; vazio = o do plano): "5" segunda a sexta, "6" segunda a sábado, "7" todos os dias (contínuo, também nos feriados) — para o que não para ao fim de semana: curas de betão, secagens, bombagens, ensaios de estanquidade. Numa tarefa com calendário 7 a duração é em dias seguidos. Muda-se com "editar"/"adicionar" e o campo calendario ("" volta ao do plano). Os desfasamentos das ligações contam sempre em dias úteis do plano.
+- Datas-limite (coluna «data-limite»): datas do contrato que uma tarefa ou marco tem de cumprir (conclusão de uma fase, receção provisória…). Não mudam as datas calculadas; se a tarefa acabar depois, aparece «FALHADA por N d.ú.» e as tarefas que a atrasam ficam com folga negativa (é o que falta recuperar). Marca-se com data_limite em "editar"/"adicionar" ("" retira).
+- Prazo contratual do plano (linha «Prazo contratual»): define-se com a operação "plano" (prazo_dias = dias de calendário a contar da data de início, ou prazo_data). Conta como data-limite de todas as tarefas: se o plano o excede, o caminho crítico fica com folga negativa. Para recuperar atraso: rever durações (mais equipas), sobrepor tarefas (II/TT ou desfasamentos negativos), calendário de segunda a sábado nas tarefas críticas, ou partir barras.
+- Sobrecargas de equipas (secção «SOBRECARGAS DE EQUIPAS»): a mesma equipa atribuída a mais tarefas em simultâneo do que as equipas iguais disponíveis (definir_equipa → disponiveis). Para resolver: desfasar uma das tarefas (ligação TI entre elas ou inicio_min), atribuir outra equipa, aumentar as disponíveis (se houver meios) ou usar a operação "nivelar" (o portal atrasa automaticamente as tarefas com mais folga até a equipa ficar livre). Prefere desfasar as tarefas com folga e diz o efeito na data de conclusão.
 
 O QUE FAZES
 - Perguntas sobre o plano (prazo, caminho crítico, folgas, o que se executa num mês, faturação prevista): responde a partir de <plano_atual> com números concretos. Para contas usa "calcular".
@@ -136,9 +140,14 @@ const TOOLS: any[] = [
             properties: {
               op: {
                 type: "string",
-                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano"],
-                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano",
+                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"],
+                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos + disponiveis) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano (início, calendário, nome, prazo contratual) | nivelar: o portal atrasa as tarefas com mais folga até nenhuma equipa estar sobrecarregada (sem outros campos; aplica-se depois das operações anteriores)",
               },
+              calendario: { type: "string", enum: ["", "5", "6", "7"], description: "adicionar/editar: calendário da tarefa — \"5\" seg–sex, \"6\" seg–sáb, \"7\" todos os dias (curas, secagens…), \"\" = o do plano · plano: calendário do plano (só \"5\" ou \"6\")." },
+              data_limite: { type: "string", description: "adicionar/editar: data-limite (contrato) AAAA-MM-DD; \"\" retira." },
+              prazo_dias: { type: "integer", minimum: 0, description: "plano: prazo contratual em dias de calendário a contar da data de início (0 = sem prazo)." },
+              prazo_data: { type: "string", description: "plano: prazo contratual como data-limite AAAA-MM-DD (\"\" = sem prazo). Usar prazo_dias OU prazo_data." },
+              disponiveis: { type: "integer", minimum: 1, maximum: 20, description: "definir_equipa (equipa de trabalho): nº de equipas iguais disponíveis em simultâneo (1 por omissão)." },
               id: { type: "string", description: "Tarefa alvo (editar, predecessoras, eliminar, mover, nivel): ID da tabela (\"14\") ou ref de tarefa nova (\"N1\")." },
               ref: { type: "string", description: "adicionar: ref da nova tarefa (N1, N2…), para usar nas operações seguintes." },
               nome: { type: "string", description: "adicionar/editar: nome da tarefa · definir_equipa: nome da equipa · definir_subempreiteiro: nome da empresa · subempreiteiro: nome do subempreiteiro que executa (ou \"Plandese\")." },
@@ -168,7 +177,6 @@ const TOOLS: any[] = [
               desfasamento: { type: "integer", description: "ligar: desfasamento em dias úteis." },
               delta: { type: "integer", enum: [1, -1], description: "nivel: +1 avança (passa a subtarefa da anterior), -1 recua." },
               data_inicio: { type: "string", description: "plano: nova data de início (consignação) AAAA-MM-DD." },
-              calendario: { type: "string", enum: ["5", "6"], description: "plano: 5 = segunda a sexta, 6 = segunda a sábado." },
               nome_plano: { type: "string", description: "plano: novo nome do plano." },
               fixa: { type: "boolean", description: "definir_equipa: true = pessoal/equipamento fixo de obra (não se atribui a tarefas); false = equipa de trabalho." },
               de: { type: "string", description: "definir_equipa com fixa: início da presença em obra AAAA-MM-DD (\"\" = início da obra)." },
@@ -222,7 +230,7 @@ const TOOLS: any[] = [
 ];
 const ROTULOS: Record<string, string> = { propor_alteracoes: "A preparar as alterações", calcular: "A fazer contas" };
 
-const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano"]);
+const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"]);
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Validação do que o modelo pediu (com eager_input_streaming o servidor não valida o input)
 function validarProposta(input: any): { resumo: string; operacoes: any[] } {
@@ -257,6 +265,10 @@ function validarProposta(input: any): { resumo: string; operacoes: any[] } {
     }
     if (o.inicio_min && !RE_DATA.test(o.inicio_min)) throw new Error(`Operação ${k + 1}: inicio_min deve ser AAAA-MM-DD.`);
     if (o.data_inicio && !RE_DATA.test(o.data_inicio)) throw new Error(`Operação ${k + 1}: data_inicio deve ser AAAA-MM-DD.`);
+    if (o.data_limite && !RE_DATA.test(o.data_limite)) throw new Error(`Operação ${k + 1}: data_limite deve ser AAAA-MM-DD.`);
+    if (o.prazo_data && !RE_DATA.test(o.prazo_data)) throw new Error(`Operação ${k + 1}: prazo_data deve ser AAAA-MM-DD.`);
+    if (o.calendario != null && !["", "5", "6", "7"].includes(String(o.calendario))) throw new Error(`Operação ${k + 1}: calendario deve ser "", "5", "6" ou "7".`);
+    if (o.op === "plano" && o.calendario != null && !["5", "6"].includes(String(o.calendario))) throw new Error(`Operação ${k + 1}: o calendário do plano é "5" ou "6".`);
     if (o.dur != null && (!Number.isFinite(Number(o.dur)) || Number(o.dur) < 0)) throw new Error(`Operação ${k + 1}: duração inválida.`);
     return o;
   });
