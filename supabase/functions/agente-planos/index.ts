@@ -464,7 +464,7 @@ async function montarPlanoNovo(sb: any, apiKey: string, role: string, username: 
                 const agora = Date.now();
                 if (agora - ultimo > 700) {
                   ultimo = agora;
-                  const n = (parcial.match(/"ref"\s*:\s*"T/g) || []).length;
+                  const n = (parcial.match(/"nivel"\s*:/g) || []).length;   // só as tarefas têm «nivel» (as predecessoras também têm «ref»)
                   if (n !== nTarefas) { nTarefas = n; emit({ type: "progresso", tarefas: n }); }
                 }
               }

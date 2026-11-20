@@ -1766,7 +1766,7 @@ async function montarComIA({ nome, ini, descricao }) {
   if (pz) p.opcoes.prazo = { dias: pz };
   if (!await inserirPlano(p)) return;
   fecharGaveta();
-  abrirPlano(p.id);
+  await abrirPlano(p.id);
   // abre o assistente com a explicação do plano, para continuar a conversa
   const avisos = [];
   if (res.semArtigo.length) avisos.push(`**${res.semArtigo.length} artigos da LPU** (${eur0(res.valorSem)}) não foram atribuídos pelo assistente e ficaram no grupo «Trabalhos da LPU por planear», no fim do plano.`);
