@@ -489,3 +489,8 @@ button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
 .plt-desc-rt p{margin:0 0 6px}
 .plt-desc-rt ul{margin:2px 0 8px;padding-left:18px}
 .plt-des-pe{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;color:#6a7284;margin-top:2px}
+/* ── Novo plano por fases: estado de cada grupo ── */
+.plt-ia-grupos{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:520px;margin-top:12px}
+.plt-ia-grupos:empty{display:none}
+.plt-ia-grupos .plt-pill{display:inline-flex;align-items:center;gap:6px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plt-ia-grupos .plt-ia-spin{width:10px;height:10px;border-width:2px;flex:none}

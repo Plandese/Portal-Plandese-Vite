@@ -1756,7 +1756,7 @@ function juntarDesenho(k, f) {
     try {
       const env = await desenhoParaEnviar(f);
       await chamarAgente({ modo: 'desenho', especialidade: x.nome, pedido: x.desenho, ficheiro: f.name, tipo: env.tipo, dados: env.dados,
-        lpu: lpuParaTexto(arts), descricao: $('pn-desc')?.value.trim() || '' }, ev => {
+        lpu: lpuParaTexto(arts, _novo.artigos || []), descricao: $('pn-desc')?.value.trim() || '' }, ev => {
         if (ev.type === 'resumo') resumo = ev.texto;
         else if (ev.type === 'erro') erro = ev.mensagem;
       });
@@ -1825,14 +1825,164 @@ const codArt = a => String(a.codigo || '').trim().replace(/\.$/, '');
 const valorArt = a => Number(a.total) || (Number(a.quantidade) || 0) * (Number(a.precoUnit) || 0);
 const linha1 = s => String(s || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean)[0] || '';
 
-function lpuParaTexto(artigos) {
+// LPU em texto para o assistente. Cada linha leva um número único «L<n>» (posição na LPU completa `todos`),
+// porque os códigos dos artigos podem repetir-se entre especialidades.
+function lpuParaTexto(artigos, todos = artigos) {
   const n2 = v => (Math.round((Number(v) || 0) * 100) / 100).toString();
-  const linhas = (artigos || []).filter(a => codArt(a) || valorArt(a)).map(a => {
+  const pos = new Map((todos || []).map((a, k) => [a, k + 1]));
+  const linhas = (artigos || []).filter(a => codArt(a) || valorArt(a) || linha1(a.descricao)).map(a => {
     const d = linha1(a.descricao), dd = d.length > 150 ? d.slice(0, 147) + '…' : d;
-    return a.isCapitulo ? `${codArt(a)} | [CAPÍTULO] ${dd} | | |`
-      : `${codArt(a)} | ${dd} | ${a.unidade || ''} | ${n2(a.quantidade)} | ${n2(valorArt(a))}`;
+    return a.isCapitulo ? `L${pos.get(a)} | ${codArt(a)} | [CAPÍTULO] ${dd} | | |`
+      : `L${pos.get(a)} | ${codArt(a)} | ${dd} | ${a.unidade || ''} | ${n2(a.quantidade)} | ${n2(valorArt(a))}`;
   });
-  return linhas.length ? 'código | descrição | un | quantidade | total €\n' + linhas.join('\n') : '';
+  return linhas.length ? 'linha | código | descrição | un | quantidade | total €\n' + linhas.join('\n') : '';
+}
+// LPU de um subconjunto de artigos, com os capítulos que os contêm (para contexto), na numeração da LPU completa
+function lpuDoSubconjunto(todos, idxs) {
+  const quer = new Set(idxs), out = [];
+  let ultCap = null;
+  (todos || []).forEach((a, k) => {
+    if (a.isCapitulo) { ultCap = a; return; }
+    if (!quer.has(k)) return;
+    if (ultCap && out[out.length - 1] !== ultCap && !out.includes(ultCap)) out.push(ultCap);
+    out.push(a);
+  });
+  return lpuParaTexto(out, todos);
+}
+
+// Reparte os artigos da LPU por «donos» (grupos ou tarefas) a partir das referências do assistente:
+// linhas «L45», intervalos «L45..L60», códigos «2.3.1», capítulos «2.3» e intervalos de códigos «2.3.1..2.3.8».
+// O mais específico ganha (linha/código exato > intervalo > capítulo). `universo` limita os artigos considerados.
+// Devolve { porDono: Map(dono → [índices]), sem: [índices sem dono] }.
+function repartirArtigos(todos, entradas, universo = null) {
+  const arts = (todos || []).map((a, k) => ({ a, k, cod: codArt(a) })).filter(z => !z.a.isCapitulo && (universo ? universo.has(z.k) : (z.cod || valorArt(z.a))));
+  const posCod = new Map(); (todos || []).forEach((a, k) => { const c = codArt(a); if (c && !posCod.has(c)) posCod.set(c, k); });
+  const ultPos = c => { let u = -1; (todos || []).forEach((a, k) => { const x = codArt(a); if (x === c || x.startsWith(c + '.')) u = k; }); return u; };
+  const melhor = new Map();
+  const marcar = (z, dono, score) => { const m = melhor.get(z.k); if (!m || score > m.score) melhor.set(z.k, { dono, score }); };
+  const linhaN = s => { const m = /^L\s*(\d+)$/i.exec(s); return m ? parseInt(m[1], 10) - 1 : null; };
+  (entradas || []).forEach((lista, dono) => (Array.isArray(lista) ? lista : []).forEach(e0 => {
+    const e = String(e0 || '').trim().replace(/\.$/, ''); if (!e) return;
+    const rg = e.split(/\s*(?:\.\.|–|—)\s*/);
+    if (rg.length === 2 && rg[0] && rg[1]) {
+      let ia = linhaN(rg[0]), ib = linhaN(rg[1]);
+      if (ia == null || ib == null) { ia = posCod.get(rg[0]) ?? -1; ib = ultPos(rg[1]); }
+      if (ia >= 0 && ib >= ia) arts.forEach(z => { if (z.k >= ia && z.k <= ib) marcar(z, dono, 2000 - Math.min(1999, ib - ia)); });
+      return;
+    }
+    const ln = linhaN(e);
+    if (ln != null) { const z = arts.find(y => y.k === ln); if (z) marcar(z, dono, 10000); return; }
+    arts.forEach(z => { if (z.cod === e) marcar(z, dono, 9000); else if (z.cod.startsWith(e + '.')) marcar(z, dono, e.split('.').length * 10); });
+  }));
+  const porDono = new Map();
+  melhor.forEach((m, k) => { let l = porDono.get(m.dono); if (!l) porDono.set(m.dono, (l = [])); l.push(k); });
+  porDono.forEach(l => l.sort((a, b) => a - b));
+  return { porDono, sem: arts.filter(z => !melhor.has(z.k)).map(z => z.k) };
+}
+
+// ── Montagem por fases ──
+// 1) estrutura (grupos + sequência + durações-alvo + equipas + marcos + repartição dos artigos pelos grupos);
+// 2) detalhe de cada grupo (até 4 em paralelo), só com os artigos desse grupo.
+// Cada pedido é cortado pelo servidor antes do limite de tempo; aqui repete-se uma vez com esforço «low».
+// Um grupo que falhe duas vezes entra simplificado (uma tarefa com os seus artigos) — o plano nunca falha por um grupo.
+// Devolve o plano no formato de planoDaIA (tarefas com refs; os artigos vão já decididos em `_idx`).
+async function montarPorFases({ artigos, dados, descricao, desTxt, sinal, fase, avisos }) {
+  const pedir = async (body, evento, aoProgresso, aoRepetir) => {
+    let ultimo = '';
+    for (const esforco of [null, 'low']) {
+      if (sinal.aborted) throw new DOMException('cancelado', 'AbortError');
+      if (esforco) aoRepetir?.();
+      let res = null, erro = '';
+      try {
+        await chamarAgente({ ...body, ...(esforco ? { esforco } : {}) }, ev => {
+          if (ev.type === evento) res = ev.dados;
+          else if (ev.type === 'progresso') aoProgresso?.(ev.n);
+          else if (ev.type === 'erro') erro = ev.mensagem || 'Erro do assistente';
+        }, sinal);
+      } catch (e) { if (e.name === 'AbortError') throw e; erro = String(e.message || e); }
+      if (res) return res;
+      ultimo = erro || 'A ligação ao assistente terminou antes do fim.';
+    }
+    throw new Error(ultimo);
+  };
+
+  // ── 1) estrutura ──
+  fase('1/2 · O assistente está a definir a estrutura do plano…', '');
+  const est = await pedir({ modo: 'estrutura', dados, descricao, lpu: lpuParaTexto(artigos), desenhos: desTxt }, 'estrutura',
+    n => fase('1/2 · O assistente está a definir a estrutura do plano…', `${n} grupo${n === 1 ? '' : 's'} definido${n === 1 ? '' : 's'}`),
+    () => fase('1/2 · A estrutura demorou demasiado — o assistente está a tentar de novo, mais depressa…', ''));
+  const grupos = est.grupos || [];
+  const marcos = est.marcos || [];
+  // artigos de cada grupo (índices na LPU)
+  const rep = repartirArtigos(artigos, grupos.map(g => g.artigos));
+  const artsDe = i => rep.porDono.get(i) || [];
+
+  // textos partilhados pelos pedidos dos grupos
+  const lig = p => `${p.ref}${p.tipo && p.tipo !== 'TI' ? ' ' + p.tipo : ''}${p.desfasamento ? (p.desfasamento > 0 ? ' +' : ' ') + p.desfasamento : ''}`;
+  const estruturaTxt = [
+    ...grupos.map(g => `${g.ref} | ${g.nome} | duração-alvo ${g.duracao} d.ú. | depois de: ${(g.pred || []).map(lig).join(', ') || 'consignação'}`),
+    ...marcos.map(m => `${m.ref} | marco: ${m.nome} | depois de: ${(m.depois_de || []).join(', ') || '—'}${m.data_limite ? ' | data-limite ' + m.data_limite : ''}`),
+  ].join('\n');
+  const comp = e => [...(e.mao_de_obra || []).map(x => `${x.qtd} ${x.categoria}`), ...(e.equipamentos || []).map(x => `${x.qtd} ${x.tipo}`)].join(', ');
+  const equipasTxt = [
+    ...(est.equipas || []).map(e => `- ${e.nome}${e.fixa ? ' (pessoal fixo de obra — não se atribui a tarefas)' : ''}: ${comp(e) || 'sem composição'}${!e.fixa && e.disponiveis > 1 ? ` · ${e.disponiveis} disponíveis` : ''}`),
+    ...(est.subempreiteiros || []).map(s => `- Subempreiteiro: ${s.nome}${s.especialidade ? ' — ' + s.especialidade : ''}`),
+  ].join('\n');
+
+  // ── 2) detalhe dos grupos (até 4 ao mesmo tempo) ──
+  const estado = grupos.map(() => 'à espera');
+  const pintarG = () => {
+    const box = $('pn-ia-grupos'); if (!box) return;
+    const prontos = estado.filter(s => s === 'pronto' || s === 'simplificado').length;
+    fase(`2/2 · O assistente está a detalhar os grupos: ${prontos} de ${grupos.length} prontos…`, `${grupos.length} grupos · ${est.equipas?.length || 0} equipas`);
+    const cls = { 'à espera': 'mute', 'a detalhar': 'info', 'a repetir': 'warn', pronto: 'ok', simplificado: 'warn' };
+    box.innerHTML = grupos.map((g, i) => `<span class="plt-pill ${cls[estado[i]]}" title="${esc(estado[i])}">${estado[i] === 'a detalhar' || estado[i] === 'a repetir' ? '<i class="plt-ia-spin"></i>' : ''}${esc(g.nome)}</span>`).join('');
+  };
+  const detalhes = new Array(grupos.length).fill(null);
+  let prox = 0;
+  const trabalhador = async () => {
+    while (prox < grupos.length) {
+      const i = prox++, g = grupos[i];
+      estado[i] = 'a detalhar'; pintarG();
+      const grupoTxt = [`${g.ref} — ${g.nome}`, `Duração-alvo: ${g.duracao} dias úteis`, `Tarefas pretendidas: cerca de ${g.tarefas_alvo || 5}`, `Orientações: ${g.orientacoes || '—'}`,
+        g.inicio_min ? `Não iniciar antes de: ${g.inicio_min}` : '', g.data_limite ? `Data-limite: ${g.data_limite}` : ''].filter(Boolean).join('\n');
+      try {
+        detalhes[i] = await pedir({ modo: 'grupo', dados, descricao, estrutura: estruturaTxt, equipas: equipasTxt, desenhos: desTxt, grupo: grupoTxt, lpu: lpuDoSubconjunto(artigos, artsDe(i)) }, 'grupo',
+          null, () => { estado[i] = 'a repetir'; pintarG(); });
+        estado[i] = 'pronto';
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+        estado[i] = 'simplificado';
+        avisos.push(`O grupo «${g.nome}» não foi detalhado pelo assistente (${String(e.message || e).slice(0, 120)}) e ficou como uma só tarefa com os seus artigos — peça-me para o detalhar.`);
+      }
+      pintarG();
+    }
+  };
+  pintarG();
+  await Promise.all(Array.from({ length: Math.min(4, grupos.length) }, trabalhador));
+
+  // ── juntar: consignação, grupos (com o detalhe), marcos e conclusão ──
+  const T = [{ ref: '_C0', nome: 'Consignação da obra', nivel: 0, dur: 0 }];
+  const comSucessor = new Set();
+  grupos.forEach(g => (g.pred || []).forEach(p => comSucessor.add(String(p.ref).trim())));
+  marcos.forEach(m => (m.depois_de || []).forEach(r => comSucessor.add(String(r).trim())));
+  grupos.forEach((g, i) => {
+    const predG = (g.pred || []).map(p => ({ ref: String(p.ref).trim(), tipo: p.tipo, desfasamento: p.desfasamento }));
+    const base = { ref: g.ref, nome: g.nome, nivel: 0, pred: predG.length ? predG : [{ ref: '_C0' }], ...(g.inicio_min ? { inicio_min: g.inicio_min } : {}), ...(g.data_limite ? { data_limite: g.data_limite } : {}) };
+    const det = detalhes[i]?.tarefas;
+    if (!det?.length) { T.push({ ...base, dur: Math.max(1, parseInt(g.duracao, 10) || 1), _idx: artsDe(i), notas: g.orientacoes || '' }); return; }
+    T.push(base);
+    // os artigos do detalhe ficam restritos aos do grupo (decididos aqui por índice)
+    const repG = repartirArtigos(artigos, det.map(t => t.artigos), new Set(artsDe(i)));
+    det.forEach((t, k) => T.push({ ...t, ref: `${g.ref}/${t.ref}`, nivel: (parseInt(t.nivel, 10) || 0) + 1, _idx: repG.porDono.get(k) || [], artigos: [],
+      pred: (t.pred || []).map(p => ({ ...p, ref: `${g.ref}/${String(p.ref).trim()}` })) }));
+    if (repG.sem.length) T.push({ ref: `${g.ref}/_resto`, nome: `Outros trabalhos — ${g.nome}`.slice(0, 120), nivel: 1, dur: 1, _idx: repG.sem,
+      notas: 'Artigos deste grupo que o assistente não pôs em nenhuma tarefa: rever a duração e as ligações.' });
+  });
+  marcos.forEach(m => T.push({ ref: m.ref, nome: m.nome, nivel: 0, dur: 0, pred: (m.depois_de || []).map(r => ({ ref: String(r).trim() })), ...(m.data_limite ? { data_limite: m.data_limite } : {}) }));
+  const finais = [...grupos.map(g => g.ref), ...marcos.map(m => m.ref)].filter(r => !comSucessor.has(r));
+  T.push({ ref: '_CF', nome: 'Conclusão da obra', nivel: 0, dur: 0, pred: finais.map(r => ({ ref: r })) });
+  return { resumo: est.resumo, equipas: est.equipas || [], subempreiteiros: est.subempreiteiros || [], tarefas: T };
 }
 
 async function montarComIA({ nome, ini, descricao }) {
@@ -1863,7 +2013,8 @@ async function montarComIA({ nome, ini, descricao }) {
       <small id="pn-ia-cont">${artigos.length ? `${artigos.filter(a => !a.isCapitulo).length} artigos · ${eur0(totLPU)}` : 'Sem LPU — a partir da descrição'}</small>
       <div class="plt-ia-prog-bar"><i></i></div>
       <span class="plt-ia-prog-t" id="pn-ia-t">0:00</span>
-      <p class="plt-nota">Normalmente demora 1 a 3 minutos. Não feche esta janela até o plano abrir.</p>
+      <div class="plt-ia-grupos" id="pn-ia-grupos"></div>
+      <p class="plt-nota">O plano é montado em duas fases: primeiro a estrutura (grupos e sequência), depois o detalhe de cada grupo, vários ao mesmo tempo. Normalmente demora 2 a 4 minutos. Não feche esta janela até o plano abrir.</p>
     </div>`;
   pe.innerHTML = '<button type="button" class="plt-btn sec" data-g="parar">Cancelar</button>';
   pe.querySelector('[data-g="parar"]').onclick = () => ctrl.abort();
@@ -1877,43 +2028,20 @@ async function montarComIA({ nome, ini, descricao }) {
   const desLidos = desLista.filter(x => x.estado === 'lido' && x.resumo);
   const cont0 = $('pn-ia-cont');
   if (desLidos.length && cont0) cont0.textContent += ` · ${desLidos.length} desenho${desLidos.length > 1 ? 's' : ''}`;
+  const avisosFases = [];
   try {
-    const { data } = await sb.auth.getSession();
-    const token = data?.session?.access_token;
-    if (!token) throw new Error('Sessão expirada. Volte a iniciar sessão.');
-    const r = await fetch(URL_IA, {
-      method: 'POST', signal: ctrl.signal,
-      headers: { Authorization: 'Bearer ' + token, apikey: ANON_IA, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modo: 'criar', dados, descricao, lpu: lpuParaTexto(artigos), desenhos: textoDesenhos(desLidos) }),
-    });
-    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ('Erro ' + r.status)); }
-    const reader = r.body.getReader(), dec = new TextDecoder();
-    let buf = '';
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let k;
-      while ((k = buf.indexOf('\n')) >= 0) {
-        const l = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
-        if (!l) continue;
-        let ev; try { ev = JSON.parse(l); } catch (_) { continue; }
-        if (ev.type === 'fase') fase(ev.fase === 'a escrever o plano' ? 'O assistente está a escrever o plano…' : ev.fase === 'a corrigir o plano' ? 'O assistente está a corrigir o plano…' : 'O assistente está a analisar a LPU e a descrição…');
-        else if (ev.type === 'progresso') fase('O assistente está a escrever o plano…', `${ev.tarefas} tarefa${ev.tarefas === 1 ? '' : 's'} até agora`);
-        else if (ev.type === 'plano') plano = ev.plano;
-        else if (ev.type === 'erro') erro = ev.mensagem || 'Erro do assistente';
-      }
-    }
-    if (!plano && !erro) erro = 'A ligação ao assistente terminou antes de o plano estar pronto (o servidor tem um limite de tempo). Tente outra vez com o detalhe «Resumido».';
+    plano = await montarPorFases({ artigos, dados, descricao, desTxt: textoDesenhos(desLidos), sinal: ctrl.signal, fase, avisos: avisosFases });
   } catch (e) {
     erro = e.name === 'AbortError' ? '' : String(e.message || e);
     if (e.name === 'AbortError') { clearInterval(relogio); showToast('Cancelado'); return abrirNovoDeNovo(); }
   } finally { clearInterval(relogio); }
   if (erro || !plano) {
     body.innerHTML = `<div class="plt-alerta bad">${ICO.aviso}<span><b>Não foi possível montar o plano</b><br>${esc(erro || 'Sem resposta do assistente.')}</span></div>`;
-    pe.innerHTML = '<button type="button" class="plt-btn sec" data-g="cancelar">Fechar</button><button type="button" class="plt-btn pri" data-g="voltar">Voltar ao formulário</button>';
+    pe.innerHTML = '<button type="button" class="plt-btn sec" data-g="cancelar">Fechar</button><button type="button" class="plt-btn sec" data-g="voltar">Voltar ao formulário</button><button type="button" class="plt-btn pri" data-g="repetir">Tentar de novo</button>';
     pe.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
     pe.querySelector('[data-g="voltar"]').onclick = abrirNovoDeNovo;
+    // repete com o mesmo formulário (repõe-no e volta a carregar em «Montar»)
+    pe.querySelector('[data-g="repetir"]').onclick = () => { abrirNovoDeNovo(); document.querySelector('#plt-drawer [data-g="criar"]')?.click(); };
     return;
   }
   fase('A criar o plano…', '');
@@ -1926,7 +2054,7 @@ async function montarComIA({ nome, ini, descricao }) {
   fecharGaveta();
   await abrirPlano(p.id);
   // abre o assistente com a explicação do plano, para continuar a conversa
-  const avisos = [];
+  const avisos = [...avisosFases];
   if (res.semArtigo.length) avisos.push(`**${res.semArtigo.length} artigos da LPU** (${eur0(res.valorSem)}) não foram atribuídos pelo assistente e ficaram no grupo «Trabalhos da LPU por planear», no fim do plano.`);
   if (res.ligacoesIgnoradas) avisos.push(`${res.ligacoesIgnoradas} ligação(ões) inválida(s) foram ignoradas.`);
   const valOk = [artigos.length ? `Valor no plano: **${eur0(res.valorPlano)}** de ${eur0(totLPU)} da LPU.` : '', desLidos.length ? `Usei ${desLidos.length === 1 ? 'o desenho' : `os ${desLidos.length} desenhos`} de ${desLidos.map(x => x.nome.toLowerCase()).join(', ')} (o que li fica nas Definições do plano).` : ''].filter(Boolean).join(' ');
@@ -2004,31 +2132,19 @@ function planoDaIA(res, artigos, p) {
     const su = t._x.subempreiteiro && !/^plandese$/i.test(t._x.subempreiteiro) ? subNome(t._x.subempreiteiro) : null;
     if (su) t.sub = su.id;
   });
-  // artigos da LPU → tarefa (o mais específico ganha: código exato > intervalo > capítulo mais fundo)
-  const arts = (artigos || []).map((a, k) => ({ a, k, cod: codArt(a), v: valorArt(a) })).filter(z => !z.a.isCapitulo && (z.cod || z.v));
-  const posCod = new Map(); (artigos || []).forEach((a, k) => { const c = codArt(a); if (c && !posCod.has(c)) posCod.set(c, k); });
-  const ultPos = c => { let u = -1; (artigos || []).forEach((a, k) => { const x = codArt(a); if (x === c || x.startsWith(c + '.')) u = k; }); return u; };
-  const melhor = new Map();   // índice do artigo → { t, score }
-  const marcar = (z, t, score) => { const m = melhor.get(z.k); if (!m || score > m.score) melhor.set(z.k, { t, score }); };
-  T.forEach((t, i) => {
-    (Array.isArray(t._x.artigos) ? t._x.artigos : []).forEach(e0 => {
-      const e = String(e0 || '').trim().replace(/\.$/, ''); if (!e) return;
-      const rg = e.split(/\s*(?:\.\.|–|—)\s*/);
-      if (rg.length === 2 && rg[0] && rg[1]) {
-        const ia = posCod.get(rg[0]) ?? -1, ib = ultPos(rg[1]);
-        if (ia >= 0 && ib >= ia) arts.forEach(z => { if (z.k >= ia && z.k <= ib) marcar(z, i, 2000 - Math.min(1999, ib - ia)); });
-        return;
-      }
-      arts.forEach(z => {
-        if (z.cod === e) marcar(z, i, 10000);
-        else if (z.cod.startsWith(e + '.')) marcar(z, i, e.split('.').length * 10);
-      });
-    });
-  });
+  // artigos da LPU → tarefa. Tarefas com `_idx` (índices já decididos, ex.: plano montado por fases) ficam com
+  // esses artigos; as outras pelas referências do assistente (linhas, códigos, capítulos, intervalos).
+  const Z = new Map((artigos || []).map((a, k) => [k, { a, k, cod: codArt(a), v: valorArt(a) }]));
+  const fixos = new Set();
+  T.forEach(t => (Array.isArray(t._x._idx) ? t._x._idx : []).forEach(k => fixos.add(k)));
+  const universo = new Set([...Z.values()].filter(z => !z.a.isCapitulo && (z.cod || z.v) && !fixos.has(z.k)).map(z => z.k));
+  const rep = repartirArtigos(artigos, T.map(t => (Array.isArray(t._x._idx) ? [] : t._x.artigos)), universo);
   // um resumo não fica com artigos: passam para a 1.ª subtarefa folha
   const folhaDe = i => { let k = i; while (eResumo(k)) k++; return k; };
   const porTarefa = new Map();
-  melhor.forEach((m, k) => { const i = folhaDe(m.t); let l = porTarefa.get(i); if (!l) porTarefa.set(i, (l = [])); l.push(arts.find(z => z.k === k)); });
+  const juntar = (i, k) => { const f = folhaDe(i), z = Z.get(k); if (!z) return; let l = porTarefa.get(f); if (!l) porTarefa.set(f, (l = [])); l.push(z); };
+  T.forEach((t, i) => (Array.isArray(t._x._idx) ? t._x._idx : []).forEach(k => juntar(i, k)));
+  rep.porDono.forEach((ks, i) => ks.forEach(k => juntar(i, k)));
   let valorPlano = 0;
   porTarefa.forEach((l, i) => {
     const t = T[i]; l.sort((a, b) => a.k - b.k);
@@ -2040,7 +2156,7 @@ function planoDaIA(res, artigos, p) {
     t.notas = t.notas ? t.notas + '\n' + txt : txt;
   });
   // artigos que ficaram sem tarefa: grupo no fim (antes do marco de conclusão), um por capítulo de topo
-  const sem = arts.filter(z => !melhor.has(z.k));
+  const sem = rep.sem.map(k => Z.get(k));
   const valorSem = sem.reduce((s, z) => s + z.v, 0);
   if (sem.length) {
     const ultimo = T[T.length - 1];
