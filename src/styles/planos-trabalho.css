@@ -464,3 +464,28 @@ button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
 .plt-ia-prog .plt-nota{margin-top:14px;max-width:380px}
 @keyframes plt-respira{50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(23,63,159,.08)}}
 @keyframes plt-corre{0%{left:-35%}100%{left:100%}}
+/* ── Novo plano: desenhos de projeto, um por especialidade ── */
+.plt-des{margin-bottom:16px}
+.plt-des-esp{display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:13.5px;color:#5d6678}
+.plt-desc{border:1.5px solid var(--d-line,#dde2ea);border-radius:18px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.plt-desc.lido{border-color:#b7e4c7}
+.plt-desc.erro{border-color:#f0b4b0}
+.plt-desc-h{display:flex;align-items:center;gap:10px}
+.plt-desc-h b{flex:1;font-size:14.5px;color:var(--d-ink,#1b2130)}
+.plt-desc-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:#eef3ff;color:var(--d-brand,#173f9f)}
+.plt-desc-ic svg{width:17px;height:17px}
+.plt-desc.lido .plt-desc-ic{background:#dff5e7;color:#166534}
+.plt-desc-ped{margin:8px 0 10px;font-size:13px;color:#3d4556;line-height:1.45}
+.plt-desc-ped small{display:block;color:#6a7284;font-size:12.5px;margin-top:2px}
+.plt-desc-f{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:12px;background:#f4f7fd;font-size:13px;font-weight:600;color:var(--d-ink,#1b2130);word-break:break-all}
+.plt-drop.plt-drop-des{height:auto;min-height:58px;justify-content:flex-start;text-align:left;padding:10px 14px;font-weight:500;font-size:13.5px;color:var(--d-ink,#1b2130)}
+.plt-drop-des b{color:var(--d-brand,#173f9f)}
+.plt-drop-des small{display:block;font-size:12px;color:#6a7284;margin-top:1px}
+.plt-drop-des.sobre{border-color:var(--d-brand,#173f9f);background:#eef3ff}
+.plt-desc .plt-alerta{margin:10px 0 0;padding:9px 12px;font-size:12.5px}
+.plt-desc-r{margin-top:10px}
+.plt-desc-r summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--d-brand,#173f9f)}
+.plt-desc-rt{margin-top:8px;padding:10px 12px;border-radius:12px;background:#f8f9fc;font-size:13px;line-height:1.5;color:#2c3446;max-height:320px;overflow:auto}
+.plt-desc-rt p{margin:0 0 6px}
+.plt-desc-rt ul{margin:2px 0 8px;padding-left:18px}
+.plt-des-pe{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;color:#6a7284;margin-top:2px}
