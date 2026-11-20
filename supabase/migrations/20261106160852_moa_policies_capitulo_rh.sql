@@ -1,0 +1,3 @@
+alter policy "alterar" on public.empresas_moa using (fn_cap('rh') AND NOT fn_sec_all_off(ARRAY['empresas-moa','historico','fecho-mes'])) with check (fn_cap('rh') AND NOT fn_sec_all_off(ARRAY['empresas-moa','historico','fecho-mes']));
+alter policy "apagar" on public.empresas_moa using (fn_cap('rh') AND NOT fn_sec_all_off(ARRAY['empresas-moa','historico','fecho-mes']));
+alter policy "apagar" on public.colaboradores_moa using ((fn_cap('rh') AND NOT fn_sec_all_off(ARRAY['empresas-moa','historico','fecho-mes'])) OR fn_enc_mod('aluguer'));

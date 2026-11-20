@@ -19,4 +19,8 @@ Qualquer ecrã, janela, página ou componente **novo** (ou mexido de forma relev
 - `faturas.js`: nunca `export function`; só o bloco `export{}` no fim.
 - Tabelas novas no Supabase precisam de RLS e policies (ver `fn_cap(...)`); páginas públicas só via RPC `security definer`.
 - Projeto Supabase correto: `zcigwqvqmqatcivkrrsw`.
+- **Repositório = fonte da verdade da Supabase.** Push para `main` publica sozinho (`.github/workflows/supabase.yml`): aplica migrações pendentes e publica as Edge Functions.
+  - Migrações novas: `supabase/migrations/AAAAMMDDHHMMSS_nome.sql` (14 dígitos, hora atual); nunca renomear nem editar uma já aplicada — o histórico está em `supabase_migrations.schema_migrations`.
+  - Se uma migração for aplicada à mão (painel/MCP), o ficheiro tem de ter a **mesma versão** que ficou no histórico, senão o `db push` volta a corrê-la.
+  - Funções: nunca editar só no painel; `verify_jwt` de cada função está em `supabase/config.toml` (função nova → acrescentar lá).
 - Depois de cada tarefa: commit e push.

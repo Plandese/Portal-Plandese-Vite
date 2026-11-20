@@ -1,0 +1,39 @@
+# Configuração do Supabase CLI para o projeto do portal (zcigwqvqmqatcivkrrsw).
+# Usada pela publicação automática (.github/workflows/supabase.yml) e por `supabase functions deploy`.
+# Atenção: ao publicar pelo CLI, o verify_jwt de cada função passa a ser o que está aqui —
+# manter igual ao que está no painel (Edge Functions → função → Settings → «Verify JWT»).
+project_id = "zcigwqvqmqatcivkrrsw"
+
+[functions.agente]
+verify_jwt = true
+
+[functions.agente-compras]
+verify_jwt = true
+
+[functions.agente-planos]
+verify_jwt = true
+
+[functions.agente-ponto]
+verify_jwt = true
+
+# chamada pelo pg_cron diário (sem sessão de utilizador); valida a chave fn_avisos_cron_key no código
+[functions.avisos-validades]
+verify_jwt = false
+
+[functions.dropbox]
+verify_jwt = true
+
+[functions.guias-pdf]
+verify_jwt = true
+
+[functions.ler-fatura]
+verify_jwt = true
+
+[functions.ler-guia]
+verify_jwt = true
+
+[functions.ler-proposta]
+verify_jwt = true
+
+[functions.send-push]
+verify_jwt = true
