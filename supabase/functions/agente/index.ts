@@ -644,7 +644,7 @@ Deno.serve(async (req: Request) => {
         const executar = async (nome: string, input: any): Promise<any> => {
           switch (nome) {
             case "listar_tabelas":
-              return Object.entries(TABELAS).map(([k, t]) => ({ tabela: k, descricao: t.desc, colunas: [...colsReais(t), ...(t.virt ?? [])] }));
+              return Object.entries(TABELAS).filter(([k, t]) => podeTabela(t, k)).map(([k, t]) => ({ tabela: k, descricao: t.desc, colunas: [...colsReais(t), ...(t.virt ?? [])] }));
 
             case "consultar": {
               const tabela = String(input.tabela);
