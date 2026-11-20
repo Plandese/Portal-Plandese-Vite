@@ -7,7 +7,8 @@
 # Segredos necessários (GitHub → Settings → Secrets and variables → Actions):
 #   SUPABASE_ACCESS_TOKEN  token da Supabase (supabase.com → Account → Access Tokens), só para o projeto do portal,
 #                          com Database e Edge Functions em leitura/escrita. Expira (máx. 1 ano): renovar e substituir.
-#   SUPABASE_DB_PASSWORD   (opcional, não usado) — com o CLI v3 as migrações vão pela API com o token.
+#   SUPABASE_DB_PASSWORD   password da base de dados (Project Settings → Database). As migrações ligam-se pelo
+#                          «Session pooler» (IPv4), porque os servidores do GitHub não têm IPv6 para a ligação direta.
 #
 # Regras para não dessincronizar:
 #   - migrações novas: ficheiro AAAAMMDDHHMMSS_nome.sql em supabase/migrations (nunca mudar o nome a uma já aplicada);
@@ -36,7 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_ID: zcigwqvqmqatcivkrrsw
+      POOLER_HOST: aws-0-eu-north-1.pooler.supabase.com
       SUPABASE_YES: "1"
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +48,8 @@ jobs:
 
       - name: Verificar segredos
         run: |
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "::error::Falta o segredo SUPABASE_ACCESS_TOKEN no repositório."
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::Faltam os segredos SUPABASE_ACCESS_TOKEN e/ou SUPABASE_DB_PASSWORD no repositório."
             exit 1
           fi
 
@@ -68,8 +71,11 @@ jobs:
       - name: Aplicar migrações pendentes
         if: steps.mudou.outputs.migracoes == 'true'
         run: |
-          supabase migration list --remote="$PROJECT_ID"
-          supabase db push --remote="$PROJECT_ID" --skip-vault --yes
+          PASS_URL=$(python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"],safe=""))')
+          echo "::add-mask::$PASS_URL"
+          DB_URL="postgresql://postgres.${PROJECT_ID}:${PASS_URL}@${POOLER_HOST}:5432/postgres"
+          supabase migration list --remote="$DB_URL"
+          supabase db push --remote="$DB_URL" --skip-vault --yes
 
       - name: Publicar Edge Functions
         if: steps.mudou.outputs.funcoes == 'true'
