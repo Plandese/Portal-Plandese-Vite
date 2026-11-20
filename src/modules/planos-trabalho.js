@@ -2055,6 +2055,9 @@ async function montarComIA({ nome, ini, descricao }) {
   await abrirPlano(p.id);
   // abre o assistente com a explicação do plano, para continuar a conversa
   const avisos = [...avisosFases];
+  // os grupos são detalhados em paralelo: a mesma equipa pode ficar em duas frentes ao mesmo tempo
+  const nSob = _R?.sob?.lista?.length || 0;
+  if (nSob) avisos.push(`Há **${nSob} período${nSob > 1 ? 's' : ''} com equipas sobrecarregadas** (a mesma equipa em duas frentes ao mesmo tempo). Carregue no indicador «Sobrecargas» e em «Nivelar», ou peça-me para as resolver com o menor atraso possível.`);
   if (res.semArtigo.length) avisos.push(`**${res.semArtigo.length} artigos da LPU** (${eur0(res.valorSem)}) não foram atribuídos pelo assistente e ficaram no grupo «Trabalhos da LPU por planear», no fim do plano.`);
   if (res.ligacoesIgnoradas) avisos.push(`${res.ligacoesIgnoradas} ligação(ões) inválida(s) foram ignoradas.`);
   const valOk = [artigos.length ? `Valor no plano: **${eur0(res.valorPlano)}** de ${eur0(totLPU)} da LPU.` : '', desLidos.length ? `Usei ${desLidos.length === 1 ? 'o desenho' : `os ${desLidos.length} desenhos`} de ${desLidos.map(x => x.nome.toLowerCase()).join(', ')} (o que li fica nas Definições do plano).` : ''].filter(Boolean).join(' ');
