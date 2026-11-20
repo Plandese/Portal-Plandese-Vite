@@ -2415,18 +2415,24 @@ function abrirAtribuir(idxs) {
   idxs = (idxs || []).filter(eFolhaAtribuivel);
   if (!idxs.length) return showToast('Selecione tarefas (não resumos nem marcos) para atribuir equipas');
   const T = _plano.tarefas, eqs = equipasTrabalho(), subs = subsDoPlano();
-  const rasc = new Map(atribDe(T[idxs[0]]).map(a => [a.id, a.n || 1]));
-  let sub = subDe(T[idxs[0]])?.id || '';
+  // com várias tarefas: se forem diferentes, parte-se de «sem escolha» e só se aplica o que o utilizador mexer
+  const chaveEq = t => JSON.stringify(atribDe(t).map(a => [a.id, a.n || 1]).sort());
+  const eqMistas = idxs.some(i => chaveEq(T[i]) !== chaveEq(T[idxs[0]]));
+  const subMisto = idxs.some(i => (subDe(T[i])?.id || '') !== (subDe(T[idxs[0]])?.id || ''));
+  const rasc = new Map(eqMistas ? [] : atribDe(T[idxs[0]]).map(a => [a.id, a.n || 1]));
+  let sub = subMisto ? null : (subDe(T[idxs[0]])?.id || '');
+  let mexeuSub = false, mexeuEq = false;
   const corpo = () => `
     <h4>Quem executa</h4>
+    ${sub === null ? '<p class="plt-nota">As tarefas selecionadas têm executantes diferentes. Cada uma mantém o seu, a não ser que escolha um aqui.</p>' : ''}
     <div class="plt-exec">
-      <button type="button" class="plt-exec-op ${sub ? '' : 'on'}" data-b="sub" data-id=""><b>Plandese</b><small>Meios próprios</small></button>
+      <button type="button" class="plt-exec-op ${sub === '' ? 'on' : ''}" data-b="sub" data-id=""><b>Plandese</b><small>Meios próprios</small></button>
       ${subs.map(s => `<button type="button" class="plt-exec-op sub ${sub === s.id ? 'on' : ''}" data-b="sub" data-id="${s.id}"><b>${esc(s.nome)}</b><small>${esc(s.especialidade || 'Subempreiteiro')}</small></button>`).join('')}
       <button type="button" class="plt-eqc-add" data-b="novo-sub">${ICO.plus}Subempreiteiro</button>
     </div>
     <h4>Equipas</h4>
     ${eqs.length ? `
-      <p class="plt-nota">${idxs.length > 1 ? `As escolhas substituem as das <b>${idxs.length} tarefas</b> selecionadas.` : 'Escolha as equipas que executam esta tarefa e quantas de cada.'}${sub ? ' Numa tarefa subempreitada, as equipas representam os meios do subempreiteiro (nos mapas podem ser vistos à parte).' : ''}</p>
+      <p class="plt-nota">${idxs.length > 1 ? (eqMistas && !mexeuEq ? `As <b>${idxs.length} tarefas</b> têm equipas diferentes e cada uma mantém as suas, a não ser que escolha equipas aqui (nesse caso substituem as de todas).` : `As equipas escolhidas substituem as das <b>${idxs.length} tarefas</b> selecionadas.`) : 'Escolha as equipas que executam esta tarefa e quantas de cada.'}${sub ? ' Numa tarefa subempreitada, as equipas representam os meios do subempreiteiro (nos mapas podem ser vistos à parte).' : ''}</p>
       ${eqs.map(e => { const n = rasc.get(e.id) || 0; return `<div class="plt-at ${n ? 'on' : ''}" style="--c:${e.cor}">
         <button type="button" class="plt-at-chk" data-b="tg" data-id="${e.id}" aria-pressed="${!!n}">${n ? ICO.visto : ''}</button>
         <div class="plt-at-tx"><b>${esc(e.nome)}</b><small>${esc(resumoComp(e)) || 'Sem composição'}</small></div>
@@ -2444,7 +2450,8 @@ function abrirAtribuir(idxs) {
     const id = b.dataset.id, n = rasc.get(id) || 0;
     if (b.dataset.b === 'gerir') { fecharGaveta(); return setTimeout(abrirEquipas, 320); }
     if (b.dataset.b === 'novo-sub') { fecharGaveta(); return setTimeout(() => abrirSub(null, idxs), 320); }
-    if (b.dataset.b === 'sub') sub = id;
+    if (b.dataset.b === 'sub') { sub = id; mexeuSub = true; }
+    if (['tg', 'mais', 'menos'].includes(b.dataset.b)) mexeuEq = true;
     if (b.dataset.b === 'tg') { if (n) rasc.delete(id); else rasc.set(id, 1); }
     if (b.dataset.b === 'mais') rasc.set(id, Math.min(20, (n || 0) + 1));
     if (b.dataset.b === 'menos') { if (n > 1) rasc.set(id, n - 1); else rasc.delete(id); }
@@ -2453,9 +2460,10 @@ function abrirAtribuir(idxs) {
   dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
   dr.querySelector('[data-g="ok"]').onclick = () => {
     const lista = eqs.filter(e => rasc.has(e.id)).map(e => ({ id: e.id, n: rasc.get(e.id) }));
-    mudar(() => { idxs.forEach(i => {
-      if (lista.length) T[i].equipas = lista.map(a => ({ ...a })); else delete T[i].equipas;
-      if (sub) T[i].sub = sub; else delete T[i].sub;
+    // só se aplica o que foi mexido (com várias tarefas, não apaga o executante/equipas das outras)
+    if (mexeuEq || mexeuSub) mudar(() => { idxs.forEach(i => {
+      if (mexeuEq) { if (lista.length) T[i].equipas = lista.map(a => ({ ...a })); else delete T[i].equipas; }
+      if (mexeuSub) { if (sub) T[i].sub = sub; else delete T[i].sub; }
     }); });
     fecharGaveta();
   };
