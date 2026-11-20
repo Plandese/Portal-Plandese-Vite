@@ -1127,8 +1127,9 @@ function editarFatura(id){
       selCC.onchange = pode1 ? () => { if(ehEstruturaCentral(selCC.value)) aprovarFatura(); } : null;
     }
     const txt = document.getElementById('mf-apro-txt'), btn = document.getElementById('mf-apro-btn');
+    const ecSel = ehEstruturaCentral(selCC?.value);
     if(txt) txt.textContent = etapa2 ? 'Aguarda a aprovação do diretor de obra' : 'Confirme o centro de custo desta fatura';
-    if(btn) btn.lastChild.textContent = etapa2 ? ' Aprovar e carimbar' : ' Confirmar centro de custo';
+    if(btn) btn.lastChild.textContent = ecSel ? ' Enviar para a Estrutura Central' : etapa2 ? ' Aprovar e carimbar' : ' Confirmar centro de custo';
     aproBar.style.display = (pode1 || pode2) ? 'flex' : 'none';
   }
 
@@ -1797,7 +1798,9 @@ async function _carregarCarimbo(f, cc, { ov, d, w, fechar, fora }){
 }
 
 // Conclui a aprovação: carimba (se possível), grava em "Aprovadas" e atualiza a fatura
-async function concluirAprovacao(f, cc, pos){
+// opts.estruturaCentral: sem aprovação nem carimbo — só passa a aprovada e o ficheiro vai para as aprovadas
+async function concluirAprovacao(f, cc, pos, opts = {}){
+  const ec = !!opts.estruturaCentral;
   await carregarPastasFaturas();
   const antes = { status:f.status, centroCusto:f.centroCusto, aprovadoPor:f.aprovadoPor, aprovadoEm:f.aprovadoEm, dropboxPath:f.dropboxPath, ficheiroUrl:f.ficheiroUrl };
   f.centroCusto = cc;
@@ -1815,7 +1818,7 @@ async function concluirAprovacao(f, cc, pos){
         let blob = original;
         // a pasta do fornecedor (Dropbox cria-a se ainda não existir) é resolvida enquanto se carimba
         const pastaP = _pastaDoFornecedor(f);
-        if(/\.pdf$/i.test(nome)){
+        if(!ec && /\.pdf$/i.test(nome)){
           // o original (possivelmente assinado digitalmente) fica guardado, sem alterações, em "Originais";
           // o upload corre ao mesmo tempo que o carimbo
           const [carimbado] = await Promise.all([
@@ -1851,6 +1854,12 @@ async function concluirAprovacao(f, cc, pos){
   // só fecha o detalhe se ainda for desta fatura (o utilizador pode ter aberto outra entretanto)
   if(parseInt(document.getElementById('mf-id')?.value, 10) === f.id) closeModal('modal-fat');
   _refrescarTesouraria();
+  if(ec){
+    R.renderEstruturaCentral?.();
+    showToast('Fatura enviada para a Estrutura Central');
+    R.emitEvent?.({ acao:`Fatura da Estrutura Central: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''}`, seccao:'estrutura-central', obra:f.centroCusto });
+    return true;
+  }
   showToast(f.dropboxPath ? `Fatura aprovada e guardada nas aprovadas — ${f.centroCusto}`
     : `Fatura aprovada — ${f.centroCusto}. ATENÇÃO: não tem ficheiro na Dropbox, por isso não foi criada pasta nem carimbo`);
   R.emitEvent?.({ acao:`Fatura aprovada: ${f.fornecedor||''}${f.total?' · '+f.total+'€':''} (${f.centroCusto||''})`, seccao:'faturas', obra:f.centroCusto });
@@ -1866,6 +1875,15 @@ async function aprovarFatura(){
   const selCC = document.getElementById('mf-cc-sel');
   const cc = (selCC && !selCC.disabled ? selCC.value : '') || f.centroCusto || '';
   if(!cc){ showToast('Escolha o centro de custo'); selCC?.focus(); return; }
+
+  // Estrutura Central: não precisa de aprovação — fica logo aprovada (sem carimbo) e vai para a lista da Estrutura Central
+  if(ehEstruturaCentral(cc)){
+    if(f.status === 'paga' || document.getElementById('mf-status')?.value === 'paga') f.pagaNaOrigem = true;
+    _aGuardar.add(f.id); _indicadorGuardar();
+    try{ await concluirAprovacao(f, cc, null, { estruturaCentral:true }); }
+    finally{ _aGuardar.delete(f.id); _indicadorGuardar(); }
+    return;
+  }
 
   // Etapa 1 — financeiro confirma o centro de custo (sem carimbo) e envia ao diretor da obra
   if(f.status !== 'aguarda_diretor'){
@@ -1923,8 +1941,7 @@ async function confirmarCentroCusto(f, cc){
   }
   renderFaturas(); atualizaKPIs();
   closeModal('modal-fat');
-  showToast(ehEstruturaCentral(cc) ? 'Fatura enviada para a Estrutura Central' : `Fatura enviada para aprovação do diretor — ${cc}`);
-  if(ehEstruturaCentral(cc)) R.renderEstruturaCentral?.();
+  showToast(`Fatura enviada para aprovação do diretor — ${cc}`);
 
   const conf = await conferenciaGuiasFatura(f);
   const avisoGuias = conf && conf.pct != null && conf.pct < 100 && (conf.refs || conf.guias) ? ` · Guias ${conf.pct}%` : '';
@@ -2162,8 +2179,13 @@ async function fssSave(){
   aprenderTemplate(_fssFat);
 
   // Se tem centro de custo → entra no fluxo de aprovação
-  // (Estrutura Central: segue logo para lá, já com o centro de custo confirmado)
-  if(_fssFat.centroCusto) _fssFat.status = ehEstruturaCentral(_fssFat.centroCusto) ? 'aguarda_diretor' : 'pendente_aprovacao';
+  // (Estrutura Central: não precisa de aprovação — fica logo aprovada e vai para a lista da Estrutura Central)
+  const _ec = ehEstruturaCentral(_fssFat.centroCusto);
+  if(_ec){
+    _fssFat.status = 'aprovada';
+    _fssFat.aprovadoPor = S.currentUser?.nome || S.currentUser?.key || 'admin';
+    _fssFat.aprovadoEm = new Date().toISOString();
+  } else if(_fssFat.centroCusto) _fssFat.status = 'pendente_aprovacao';
 
   // Adicionar à lista, persistir e fechar
   FATURAS.push(_fssFat);
@@ -2173,7 +2195,7 @@ async function fssSave(){
   // Upload Dropbox (se ligado e ficheiro disponível)
   if(dropboxIsConnected() && _fssItem?._file){
     try{
-      const path = dropboxFatPath(_fssFat, _fssItem.name, false);
+      const path = dropboxFatPath(_fssFat, _fssItem.name, _ec);
       const dbxPath = await dropboxUpload(_fssItem._file, path);
       _fssFat.dropboxPath = dbxPath;
       // Gerar link partilhado para pré-visualização no portal
@@ -2186,7 +2208,7 @@ async function fssSave(){
   }
 
   // Sem notificações na inserção: os diretores só são avisados quando a fatura passa a "Por aprovar" (confirmarCentroCusto)
-  if(ehEstruturaCentral(_fssFat.centroCusto)) showToast('Fatura enviada para a Estrutura Central');
+  if(_ec){ showToast('Fatura enviada para a Estrutura Central'); _refrescarTesouraria(); R.renderEstruturaCentral?.(); }
   else if(_fssFat.centroCusto) showToast(`Fatura enviada para aprovação — ${_fssFat.centroCusto}`);
   else showToast(validaNIF(_fssFat.nif) ? `${_fssItem?.name||'Fatura'}: guardada e fornecedor memorizado` : `${_fssItem?.name||'Fatura'}: guardada`);
 
