@@ -1930,6 +1930,9 @@
             <div class="pg-title">Estrutura Central</div>
             <div class="pg-sub" id="esc-sub">Faturas do centro de custo O099 — CC Estrutura central</div>
           </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" data-esc-act="exportar-lista" title="Descarrega em Excel as faturas que estão na lista (com os filtros aplicados)">Descarregar lista (Excel)</button>
+          </div>
         </div>
         <div id="esc-chips" class="d-chips"></div>
         <div class="filter-bar">
@@ -1937,6 +1940,7 @@
           <select id="esc-mes" style="min-width:200px"><option value="">Todos os meses</option></select>
         </div>
         <div class="card" id="esc-mapa" style="padding:0;overflow:hidden"></div>
+        <div id="esc-bar" class="tes-bar" style="display:none"></div>
       </section>
 
       <!-- TESOURARIA -->
