@@ -273,10 +273,27 @@ const regraLista = p => (p.regra && p.regra.startsWith('lista:')) ? p.regra.slic
 const paginasCap = ch => (NAV_CHAPTERS.find(c=>c.id===ch)?.sections || []).filter(s => s !== 'ponto-escritorio');
 const editavel = (p, role) => !p.regra && !secBlockedByRole(role, p.sec);
 
+// Forma canónica do rascunho (para saber se há alterações): a ordem das listas não conta e a lista de páginas
+// fechadas de um perfil igual à predefinida vale o mesmo que não a ter
 function estadoGuardavel(){
   const d = draft();
-  return JSON.stringify({ perms:d.perms, ovr:normalizeOvr(cloneJ(d.ovr)), tf:[...d.tf].sort(), cli:[...d.cli].sort() });
+  const srt = a => [...(a||[])].sort();
+  const perms = {}; Object.keys(d.perms).sort().forEach(r => { perms[r] = srt(d.perms[r]); });
+  const roles = {}; Object.keys(d.ovr.roles).sort().forEach(r => {
+    const off = srt(d.ovr.roles[r].off);
+    if(!sameSet(off, DEFAULT_ROLE_OFF[r] || [])) roles[r] = off;
+  });
+  const users = {}; Object.keys(d.ovr.users).sort().forEach(u => {
+    const o = d.ovr.users[u], c = {};
+    if(o.chapters) c.chapters = srt(o.chapters);
+    if(o.off) c.off = srt(o.off);
+    if(Object.keys(c).length) users[u] = c;
+  });
+  return JSON.stringify({ perms, roles, users, tf:srt(d.tf), cli:srt(d.cli) });
 }
+// Páginas de um capítulo que o separador mostra como «Só administrador» (Lista de Fornecedores conta como
+// Definições no servidor): ficam sempre fechadas quando se abre o capítulo e não o mantêm aberto
+const SO_ADMIN_NO_CAP = ['fornecedores'];
 
 // Liga/desliga uma página para um perfil (user=null) ou para uma pessoa (exceção)
 function setPagina(role, user, ch, sec, on){
@@ -286,17 +303,17 @@ function setPagina(role, user, ch, sec, on){
   let chs = [...((o && o.chapters) || roleChs)];
   let off = [...((o && o.off) || roleOff)];
   const pags = paginasCap(ch);
-  const semCapitulo = sec==='faturas-aprovar' && role==='diretor_obra';   // o diretor vê-a sem o capítulo Financeiro
   if(on){
-    if(!chs.includes(ch) && !semCapitulo){
+    if(!chs.includes(ch)){
       chs.push(ch);
-      off = [...new Set([...off, ...pags.filter(s => s !== sec)])];   // abre o capítulo só com esta página
+      off = [...new Set([...off, ...pags.filter(s => s !== sec && !secBlockedByRole(role, s))])];   // abre o capítulo só com esta página
     }
     off = off.filter(s => s !== sec);
   } else {
     off = [...new Set([...off, sec])];
     // sem nenhuma página aberta, o capítulo fecha (e a lista fica limpa)
-    const aberta = s => !off.includes(s) && !secBlockedByRole(role, s) && !(s==='faturas-aprovar' && role==='diretor_obra');
+    // (Faturas por aprovar conta: o diretor tem o capítulo Financeiro por omissão só com ela e não se lho tira sem querer)
+    const aberta = s => !off.includes(s) && !secBlockedByRole(role, s) && !SO_ADMIN_NO_CAP.includes(s);
     if(chs.includes(ch) && !pags.some(aberta)){ chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s) || (s==='faturas-aprovar' && role==='diretor_obra')); }
   }
   if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
@@ -313,7 +330,7 @@ function setCapitulo(role, user, ch, on){
   let chs = [...((o && o.chapters) || roleChs)];
   let off = [...((o && o.off) || roleOff)];
   const pags = paginasCap(ch);
-  if(on){ if(!chs.includes(ch)) chs.push(ch); off = off.filter(s => !pags.includes(s)); }
+  if(on){ if(!chs.includes(ch)) chs.push(ch); off = off.filter(s => !pags.includes(s)); off.push(...pags.filter(s => SO_ADMIN_NO_CAP.includes(s))); }
   else { chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s)); if(role==='diretor_obra' && pags.includes('faturas-aprovar')) off.push('faturas-aprovar'); }
   if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
   const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
