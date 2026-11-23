@@ -77,6 +77,7 @@ const ICO = {
   exportar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
   chev: '<svg class="plt-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   guardarVer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 4-2.2"/><path d="M19 14v6M16 17h6"/></svg>',
+  zonas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -687,6 +688,7 @@ export async function renderPlanosTrabalho() {
   pintarLista();
 }
 
+const subtituloPlano = () => (nomeObra(_plano.obra_id) || 'Sem obra') + (opcoesPlano().tipo === 'resumo' ? ' · Plano resumo' : '');
 function nomeObra(id) { const o = (S.OBRAS || []).find(x => String(x.id) === String(id)); return o ? o.nome : ''; }
 
 function resumoPlano(p) {
@@ -703,12 +705,12 @@ function resumoPlano(p) {
 function pintarLista() {
   const el = $('plt-body'); if (!el) return;
   const aviso = _modoLocal ? `<div class="plt-aviso"><b>Modo local</b> — a tabela <code>planos_trabalho</code> ainda não existe na Supabase, por isso os planos ficam guardados só neste computador. Aplicar a migração <code>20261119_planos_trabalho.sql</code> para os guardar no servidor.</div>` : '';
-  const cards = _planos.map(p => {
-    const r = resumoPlano(p);
+  const card = p => {
+    const r = resumoPlano(p), resumo = p.opcoes?.tipo === 'resumo';
     return `<button type="button" class="plt-card" data-abrir="${esc(p.id)}">
-      <span class="plt-card-ic">${ICO.plano}</span>
+      <span class="plt-card-ic ${resumo ? 'res' : ''}">${resumo ? ICO.zonas : ICO.plano}</span>
       <span class="plt-card-tx">
-        <small>${esc(nomeObra(p.obra_id) || 'Sem obra')}</small>
+        <small>${resumo ? 'Plano resumo · zonas e especialidades' : 'Plano detalhado · articulado'}</small>
         <b>${esc(p.nome)}</b>
         <span class="plt-card-meta">
           <span class="plt-pill info">${fmtDL(dnum(p.data_inicio))}${r.fim ? ' → ' + fmtDL(r.fim) : ''}</span>
@@ -720,16 +722,24 @@ function pintarLista() {
       </span>
       <span class="plt-card-dt">Alterado ${p.updated_at ? new Date(p.updated_at).toLocaleDateString('pt-PT') : ''}</span>
     </button>`;
-  }).join('');
+  };
+  // um bloco por obra (a obra com o plano mexido mais recentemente primeiro)
+  const grupos = new Map();
+  _planos.forEach(p => { const k = p.obra_id ? String(p.obra_id) : ''; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); });
+  const blocos = [...grupos.entries()].map(([k, ps]) => `<div class="plt-grupo">
+      <div class="plt-grupo-h"><b>${esc(nomeObra(k) || (k ? 'Obra ' + k : 'Sem obra'))}</b><span>${ps.length} plano${ps.length > 1 ? 's' : ''}</span>
+        <button type="button" class="plt-lnk" data-acao="novo" data-obra="${esc(k)}">${ICO.plus}Novo plano nesta obra</button></div>
+      <div class="plt-cards">${ps.map(card).join('')}</div>
+    </div>`).join('');
   el.innerHTML = `${aviso}
     <div class="plt-lista-top">
-      <div class="plt-lista-tx">${_planos.length ? `${_planos.length} plano${_planos.length > 1 ? 's' : ''}` : ''}</div>
+      <div class="plt-lista-tx">${_planos.length ? `${_planos.length} plano${_planos.length > 1 ? 's' : ''} em ${grupos.size} obra${grupos.size > 1 ? 's' : ''}` : ''}</div>
       <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button>
     </div>
-    ${_planos.length ? `<div class="plt-cards">${cards}</div>` : `<div class="plt-vazio-g">
+    ${_planos.length ? blocos : `<div class="plt-vazio-g">
       <div class="plt-vazio-ic">${ICO.plano}</div>
       <b>Ainda não há planos de trabalho</b>
-      <p>Cria um plano a partir do articulado de uma obra (Lista de Preços ou ficheiro Excel/PDF) e ajusta-o num gráfico de Gantt.</p>
+      <p>Cria um plano detalhado a partir do articulado de uma obra (Lista de Preços ou ficheiro Excel/PDF), ou um plano resumo por zonas de intervenção e especialidades, e ajusta-o num gráfico de Gantt.</p>
       <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button></div>`}`;
 }
 
@@ -764,7 +774,7 @@ async function abrirPlano(id) {
     <div class="plt-top">
       <button type="button" class="plt-ico-btn" data-acao="voltar" title="Voltar aos planos">${ICO.back}</button>
       <div class="plt-top-tx">
-        <small>${esc(nomeObra(p.obra_id) || 'Sem obra')}</small>
+        <small>${esc(subtituloPlano())}</small>
         <b id="plt-titulo">${esc(p.nome)}</b>
       </div>
       <button type="button" id="plt-estado" class="plt-pill plt-estado-b ok" data-acao="estado">Guardado</button>
@@ -797,7 +807,7 @@ async function abrirPlano(id) {
 function pintarPlano() {
   if (!_plano || !$('plt-vista')) return;
   $('plt-titulo').textContent = _plano.nome;
-  const ob = document.querySelector('.plt-top-tx small'); if (ob) ob.textContent = nomeObra(_plano.obra_id) || 'Sem obra';
+  const ob = document.querySelector('.plt-top-tx small'); if (ob) ob.textContent = subtituloPlano();
   document.querySelectorAll('.plt-tab').forEach(b => b.classList.toggle('on', b.dataset.vista === _ui.vista));
   pintarKpis();
   if (_ui.vista === 'fin') pintarFinanceiro();
@@ -1676,7 +1686,7 @@ function ligarTeclado() {
     if (b.dataset.vista) { _ui.vista = b.dataset.vista; return pintarPlano(); }
     if (b.dataset.zoom) { _ui.zoom = b.dataset.zoom; const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto; return pintarGantt(); }
     const a = b.dataset.acao;
-    if (a === 'novo') return abrirNovo();
+    if (a === 'novo') return abrirNovo(b.dataset.obra);
     if (a === 'voltar') {
       // espera pela gravação antes de recarregar a lista (senão a lista podia trazer a versão anterior)
       fecharIA(); const p = _plano; _plano = null; _R = null; _ui.comp = null; clearTimeout(_saveT);
@@ -1810,6 +1820,7 @@ function gaveta() {
 function fecharGaveta() { $('plt-drawer')?.classList.remove('open'); $('plt-scrim')?.classList.remove('open'); }
 function mostrarGaveta(sup, titulo, sub, corpo, rodape) {
   const dr = gaveta();
+  dr.classList.remove('largo');
   dr.innerHTML = `
     <div class="dd-h">
       <button class="dd-x" data-g="fechar" aria-label="Fechar">${ICO.x}</button>
@@ -1824,10 +1835,11 @@ function mostrarGaveta(sup, titulo, sub, corpo, rodape) {
 
 // ── Novo plano ──
 function proximaSegunda() { let n = hojeN() + 1; while (dow(n) !== 1) n++; return diso(n); }
-function abrirNovo() {
-  const obras = (S.OBRAS || []).filter(o => o.ativa !== false).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt'));
-  _novo = { obra: obras[0]?.id ?? '', origem: 'ficheiro', modo: 'ia', detalhe: 'artigos', ligacoes: 'seq', ficheiro: null, nomeFicheiro: '', artigos: null,
-    des: { estado: 'vazio', chave: '', lista: [], erro: '' } };
+function abrirNovo(obraId) {
+  const obras = (S.OBRAS || []).filter(o => o.ativa !== false || String(o.id) === String(obraId)).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt'));
+  const obra0 = obraId != null && obraId !== undefined && obras.some(o => String(o.id) === String(obraId)) ? obraId : (obraId === '' ? '' : obras[0]?.id ?? '');
+  _novo = { tipo: 'detalhado', obra: obra0, origem: 'ficheiro', modo: 'ia', detalhe: 'artigos', ligacoes: 'seq', ficheiro: null, nomeFicheiro: '', artigos: null,
+    des: { estado: 'vazio', chave: '', lista: [], erro: '' }, res: resNovo() };
   const corpo = `
     <div class="plt-f"><label>Obra</label><select id="pn-obra">${obras.map(o => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('')}<option value="">— Sem obra —</option></select></div>
     <div class="plt-f"><label>Nome do plano</label><input id="pn-nome"/></div>
@@ -1835,6 +1847,12 @@ function abrirNovo() {
       <div class="plt-f"><label>Data de início (consignação)</label><input id="pn-ini" type="date" value="${proximaSegunda()}"/></div>
       <div class="plt-f"><label>Calendário</label><select id="pn-cal"><option value="5">Segunda a sexta</option><option value="6">Segunda a sábado</option></select></div>
     </div>
+    <h4>Tipo de plano</h4>
+    <div class="plt-ops plt-ops-2" id="pn-tipo">
+      <button type="button" class="plt-op" data-t="detalhado"><b>Plano detalhado</b><small>A partir do articulado (LPU): tarefas por capítulo e artigo, com valores</small></button>
+      <button type="button" class="plt-op" data-t="resumo"><b>Plano resumo</b><small>Sem articulado: zonas de intervenção × especialidades e grupos de trabalho</small></button>
+    </div>
+    <div id="pn-lpu">
     <h4>Lista de Preços Unitários (LPU)</h4>
     <div class="plt-ops" id="pn-origem">
       <button type="button" class="plt-op" data-v="ficheiro"><b>Ficheiro da LPU</b><small>Excel ou PDF desta empreitada</small></button>
@@ -1848,9 +1866,12 @@ function abrirNovo() {
       </label>
     </div>
     <div id="pn-prev" class="plt-prev"></div>
+    </div>
+    <div id="pn-res-corpo" class="plt-res" hidden></div>
     <h4>Como vai ser a empreitada</h4>
     <div class="plt-f"><textarea id="pn-desc" rows="7" placeholder="Ex.: Obra em duas frentes (zona alta e zona baixa), a começar pelo coletor de descarga. Duas equipas de valas e uma de ligações. As ligações às condutas existentes só com corte de água combinado com os SMAS, à segunda de manhã. Pavimentação betuminosa subempreitada no fim. Não se trabalha na 2.ª quinzena de agosto."></textarea></div>
     <p class="plt-nota">Frentes de trabalho e por onde se começa, equipas e meios disponíveis, subempreiteiros, condicionantes (cortes de água, licenças, trânsito, épocas sem trabalho), marcos e datas impostas. Quanto mais concreto, melhor o plano. O assistente volta a ler esta descrição sempre que lhe pedir alterações (fica nas Definições do plano).</p>
+    <div id="pn-quem">
     <h4>Quem monta o plano</h4>
     <div class="plt-ops" id="pn-modo">
       <button type="button" class="plt-op" data-m="ia"><b>Assistente de IA</b><small>Lê a LPU e a descrição e propõe as tarefas, durações, ligações, equipas e marcos</small></button>
@@ -1873,13 +1894,18 @@ function abrirNovo() {
         <div class="plt-f"><label>Ligações iniciais</label><select id="pn-lig"><option value="seq">Sequenciais (fim → início)</option><option value="cap">Sequenciais dentro de cada capítulo</option><option value="nao">Sem ligações</option></select></div>
       </div>
       <p class="plt-nota">As durações são distribuídas pelo prazo na proporção do valor de cada tarefa. É uma primeira proposta — depois ajusta-se no Gantt.</p>
+    </div>
     </div>`;
-  const dr = mostrarGaveta('Planos de trabalho', 'Novo plano de trabalhos', 'A partir da LPU da empreitada', corpo,
+  const dr = mostrarGaveta('Planos de trabalho', 'Novo plano de trabalhos', 'Detalhado a partir do articulado, ou resumo por zonas e especialidades', corpo,
     `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="criar">Montar com o assistente</button>`);
   const atualizar = () => {
     _novo.obra = $('pn-obra').value;
+    const resumo = _novo.tipo === 'resumo';
+    dr.querySelectorAll('#pn-tipo .plt-op').forEach(b => b.classList.toggle('on', b.dataset.t === _novo.tipo));
+    $('pn-lpu').hidden = resumo; $('pn-quem').hidden = resumo; $('pn-res-corpo').hidden = !resumo;
+    dr.classList.toggle('largo', resumo);
     const o = obras.find(x => String(x.id) === String(_novo.obra));
-    if (!$('pn-nome').dataset.mexido) $('pn-nome').value = 'Plano de trabalhos' + (o ? ' — ' + String(o.nome).replace(/^O\d{3}\s*-\s*/, '') : '');
+    if (!$('pn-nome').dataset.mexido) $('pn-nome').value = (resumo ? 'Plano resumo' : 'Plano de trabalhos') + (o ? ' — ' + String(o.nome).replace(/^O\d{3}\s*-\s*/, '') : '');
     const art = _novo.obra ? puArticuladoDaObra(_novo.obra) : [];
     const nArt = art.filter(a => !a.isCapitulo).length;
     $('pn-lista-info').textContent = nArt ? `${nArt} artigos já importados` : 'Esta obra ainda não tem Lista de Preços';
@@ -1896,9 +1922,10 @@ function abrirNovo() {
     const caps = a.filter(x => x.isCapitulo).length, arts = a.filter(x => !x.isCapitulo), tot = arts.reduce((s, x) => s + (Number(x.total) || 0), 0);
     $('pn-prev').innerHTML = a.length ? `${_novo.origem === 'ficheiro' && _novo.nomeFicheiro ? `<span class="plt-pill mute">${esc(_novo.nomeFicheiro)}</span>` : ''}<span class="plt-pill info">${caps} capítulos</span><span class="plt-pill info">${arts.length} artigos</span>${tot ? `<span class="plt-pill ok">${eur0(tot)}</span>` : ''}` : '';
     const btn = dr.querySelector('[data-g="criar"]');
-    if (btn) btn.textContent = _novo.modo === 'ia' ? 'Montar com o assistente' : 'Criar plano';
+    if (btn) btn.textContent = resumo ? 'Criar plano resumo' : _novo.modo === 'ia' ? 'Montar com o assistente' : 'Criar plano';
+    if (resumo) previewRes();
     // desenhos: com a LPU carregada e o assistente escolhido, ele diz logo que desenhos quer (uma vez por LPU)
-    if (_novo.modo === 'ia' && a.length && _novo.des.chave !== chaveLPU() && _novo.des.estado !== 'a pedir') pedirDesenhos();
+    if (!resumo && _novo.modo === 'ia' && a.length && _novo.des.chave !== chaveLPU() && _novo.des.estado !== 'a pedir') pedirDesenhos();
     pintarDesenhos();
   };
   // ler a LPU (botão ou arrastar e largar)
@@ -1917,8 +1944,13 @@ function abrirNovo() {
     }
     atualizar();
   };
+  $('pn-obra').value = String(_novo.obra ?? '');
   $('pn-obra').onchange = atualizar;
   $('pn-nome').oninput = () => { $('pn-nome').dataset.mexido = '1'; };
+  $('pn-ini').onchange = () => { if (_novo.tipo === 'resumo') previewRes(); };
+  $('pn-cal').onchange = () => { if (_novo.tipo === 'resumo') previewRes(); };
+  dr.querySelector('#pn-tipo').onclick = e => { const b = e.target.closest('.plt-op'); if (!b) return; _novo.tipo = b.dataset.t; if (_novo.tipo === 'resumo') pintarResNovo(); atualizar(); };
+  ligarResNovo();
   dr.querySelector('#pn-origem').onclick = e => { const b = e.target.closest('.plt-op'); if (!b || b.classList.contains('off')) return; _novo.origem = b.dataset.v; atualizar(); };
   dr.querySelector('#pn-modo').onclick = e => { const b = e.target.closest('.plt-op'); if (!b) return; _novo.modo = b.dataset.m; atualizar(); };
   $('pn-file').onchange = e => { lerLPU(e.target.files[0]); e.target.value = ''; };
@@ -1930,6 +1962,175 @@ function abrirNovo() {
   dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
   dr.querySelector('[data-g="criar"]').onclick = criarPlano;
   atualizar();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PLANO RESUMO DA EMPREITADA: zonas de intervenção × especialidades (sem articulado)
+//  _novo.res = { zonas: [{ id, nome }], esp: [{ id, nome, valor, cel: { <zona>: dias } }], seq, sobre, org, estaleiro, prazo }
+//  Gera: Consignação → (estaleiro) → um grupo por zona (ou por especialidade) → (desmontagem) → Receção provisória.
+// ═══════════════════════════════════════════════════════════════════
+const ESP_SUGESTOES = ['Demolições', 'Movimentação de terras', 'Contenções e muros', 'Drenagem de águas pluviais', 'Rede de águas residuais', 'Rede de abastecimento de água', 'Rede de rega', 'Infraestruturas elétricas', 'Iluminação pública', 'Telecomunicações', 'Rede de gás', 'Estruturas', 'Pavimentação', 'Passeios e lancis', 'Sinalização', 'Arranjos exteriores'];
+const CORES_ESP = ['#5b86e5', '#43a047', '#f08c2e', '#8e5bd8', '#1fa3a3', '#e05252', '#e6b422', '#6d4c41', '#c2185b', '#3949ab', '#00897b', '#8a93a5'];
+function resNovo() {
+  return { zonas: [{ id: uid(), nome: 'Zona 1' }, { id: uid(), nome: 'Zona 2' }], esp: [], seq: 'equipa', sobre: 'seguidas', org: 'zona', estaleiro: true, prazo: '' };
+}
+function espNova(nome, dias = 10) {
+  const cel = {}; _novo.res.zonas.forEach(z => { cel[z.id] = dias; });
+  return { id: uid(), nome, valor: '', cel };
+}
+function tarefasResumo(R) {
+  const zonas = R.zonas;
+  const esp = R.esp.map((e, k) => ({ ...e, nome: String(e.nome || '').trim(), cor: CORES_ESP[k % CORES_ESP.length] })).filter(e => e.nome);
+  const dias = (e, z) => { const v = parseInt(e.cel[z.id], 10); return v > 0 ? Math.min(v, 2000) : 0; };
+  const nomeZ = z => String(z.nome || '').trim() || 'Zona';
+  const T = [], tid = {};
+  const nova = (nome, nivel, dur, extra = {}) => { const t = { ...novaTarefa(nome, nivel, dur), ...extra }; T.push(t); return t; };
+  const liga = (t, de, tipo = 'FS', lag = 0) => { if (de && de !== t && !t.pred.some(p => p.id === de.id)) t.pred.push({ id: de.id, tipo, lag }); };
+  const valorDe = (e, z) => {
+    const v = parseFloat(String(e.valor).replace(',', '.')) || 0; if (!v) return 0;
+    const tot = zonas.reduce((s, x) => s + dias(e, x), 0);
+    return tot ? Math.round(v * dias(e, z) / tot * 100) / 100 : 0;
+  };
+  const folha = (e, z, nome) => { const t = nova(nome, 1, dias(e, z), { cor: e.cor, valor: valorDe(e, z) }); tid[e.id + '|' + z.id] = t; return t; };
+  const cons = nova('Consignação', 0, 0);
+  const est = R.estaleiro ? nova('Montagem do estaleiro', 0, 5) : null;
+  if (est) liga(est, cons);
+  const inicio = est || cons;
+  // grupos: por zona › especialidades, ou por especialidade › zonas
+  if (R.org === 'esp') {
+    esp.forEach(e => { if (!zonas.some(z => dias(e, z))) return; nova(e.nome, 0, 0); zonas.forEach(z => { if (dias(e, z)) folha(e, z, nomeZ(z)); }); });
+  } else {
+    zonas.forEach(z => { if (!esp.some(e => dias(e, z))) return; nova(nomeZ(z), 0, 0); esp.forEach(e => { if (dias(e, z)) folha(e, z, e.nome); }); });
+  }
+  // ligações
+  let ultimaZona = null;
+  zonas.forEach((z, zi) => {
+    const seq = esp.filter(e => dias(e, z)); if (!seq.length) return;
+    seq.forEach((e, k) => {
+      const t = tid[e.id + '|' + z.id];
+      if (k === 0) liga(t, R.seq === 'uma' && ultimaZona ? ultimaZona : inicio);
+      else {
+        const a = tid[seq[k - 1].id + '|' + z.id];
+        if (R.sobre === 'meio') liga(t, a, 'SS', Math.max(1, Math.ceil(a.dur / 2))); else liga(t, a);
+      }
+      // a mesma equipa passa de zona em zona: só entra nesta zona depois de acabar na anterior
+      if (R.seq === 'equipa') for (let j = zi - 1; j >= 0; j--) { const ant = tid[e.id + '|' + zonas[j].id]; if (ant) { liga(t, ant); break; } }
+    });
+    ultimaZona = tid[seq[seq.length - 1].id + '|' + z.id];
+  });
+  const usados = new Set(T.flatMap(t => t.pred.map(p => p.id)));
+  const finais = Object.values(tid).filter(t => !usados.has(t.id));
+  const desm = R.estaleiro ? nova('Desmontagem do estaleiro e limpeza', 0, 3) : null;
+  const rec = nova('Receção provisória', 0, 0);
+  const ant = finais.length ? finais : [inicio];
+  if (desm) { ant.forEach(f => liga(desm, f)); liga(rec, desm); } else ant.forEach(f => liga(rec, f));
+  return T;
+}
+function pintarResNovo() {
+  const R = _novo.res, el = $('pn-res-corpo'); if (!el) return;
+  const zonas = R.zonas;
+  const sug = ESP_SUGESTOES.filter(n => !R.esp.some(e => e.nome.trim().toLowerCase() === n.toLowerCase()));
+  el.innerHTML = `
+    <h4>Zonas de intervenção</h4>
+    <div class="plt-rz-zonas">${zonas.map(z => `<span class="plt-rz-z"><input data-rz-z="${z.id}" value="${esc(z.nome)}" aria-label="Nome da zona" placeholder="Nome da zona"/>${zonas.length > 1 ? `<button type="button" data-rz="tirar-z" data-z="${z.id}" title="Tirar esta zona">${ICO.x}</button>` : ''}</span>`).join('')}
+      <button type="button" class="plt-btn sec sm" data-rz="mais-z">${ICO.plus}Zona</button></div>
+    <p class="plt-nota">Lotes, arruamentos, troços, edifícios, fases… pela ordem em que se vai avançar.</p>
+    <h4>Especialidades e grupos de trabalho</h4>
+    <p class="plt-nota">Pela ordem em que se executam em cada zona. Em cada zona, os <b>dias úteis</b> que leva (vazio = não se faz nessa zona). O valor é opcional e reparte-se pelas zonas para o cronograma financeiro.</p>
+    ${R.esp.length ? `<div class="plt-rz-wrap"><table class="plt-rz">
+      <thead><tr><th class="n">Especialidade</th>${zonas.map(z => `<th title="${esc(z.nome)}">${esc(z.nome || 'Zona')}</th>`).join('')}<th class="v">Valor (€)</th><th></th></tr></thead>
+      <tbody>${R.esp.map((e, k) => `<tr data-e="${e.id}">
+        <td class="n"><i class="plt-rz-cor" style="background:${CORES_ESP[k % CORES_ESP.length]}"></i><input data-f="nome" value="${esc(e.nome)}" placeholder="Especialidade"/></td>
+        ${zonas.map(z => `<td><input data-f="cel" data-z="${z.id}" type="number" min="0" step="1" value="${e.cel[z.id] ?? ''}" placeholder="—" aria-label="Dias em ${esc(z.nome)}"/></td>`).join('')}
+        <td class="v"><input data-f="valor" type="number" min="0" step="0.01" value="${esc(e.valor)}" placeholder="—"/></td>
+        <td class="a"><button type="button" data-rz="sobe" title="Subir">${ICO.up}</button><button type="button" data-rz="desce" title="Descer">${ICO.down}</button><button type="button" data-rz="tirar-e" title="Tirar">${ICO.x}</button></td>
+      </tr>`).join('')}</tbody></table></div>` : '<div class="dd-vazio">Escolha as especialidades nas sugestões abaixo ou acrescente outras.</div>'}
+    <div class="plt-rz-sug">${sug.map(n => `<button type="button" class="plt-rz-chip" data-rz="sug" data-n="${esc(n)}">${ICO.plus}${esc(n)}</button>`).join('')}<button type="button" class="plt-rz-chip outra" data-rz="mais-e">${ICO.plus}Outra</button></div>
+    <h4>Como se encadeia</h4>
+    <div class="plt-f"><label>Entre zonas</label><select data-rf="seq">
+      <option value="equipa">Cada especialidade passa de zona em zona (uma equipa por especialidade)</option>
+      <option value="paralelo">Todas as zonas ao mesmo tempo</option>
+      <option value="uma">Uma zona de cada vez (a seguinte só começa quando a anterior acaba)</option></select></div>
+    <div class="plt-f2">
+      <div class="plt-f"><label>Dentro de cada zona</label><select data-rf="sobre"><option value="seguidas">Uma especialidade a seguir à outra</option><option value="meio">A seguinte entra a meio da anterior</option></select></div>
+      <div class="plt-f"><label>Organizar o Gantt</label><select data-rf="org"><option value="zona">Por zona › especialidades</option><option value="esp">Por especialidade › zonas</option></select></div>
+    </div>
+    <div class="plt-f2">
+      <div class="plt-f"><label>Prazo contratual (dias)</label><input data-rf="prazo" type="number" min="1" step="1" value="${esc(R.prazo)}" placeholder="Opcional"/></div>
+      <div class="plt-f plt-f-chk"><label class="plt-chk-l"><input type="checkbox" data-rf="estaleiro" ${R.estaleiro ? 'checked' : ''}/> Montagem do estaleiro no início e desmontagem no fim</label></div>
+    </div>
+    <div class="plt-rz-prev" id="pn-res-prev"></div>`;
+  el.querySelectorAll('select[data-rf]').forEach(sel => { sel.value = R[sel.dataset.rf]; });
+  previewRes();
+}
+// ligações de eventos do bloco (uma vez por «Novo plano»; o conteúdo é redesenhado)
+function ligarResNovo() {
+  const el = $('pn-res-corpo'); if (!el) return;
+  const R = () => _novo.res;
+  const espDe = x => R().esp.find(e => e.id === x.closest('[data-e]')?.dataset.e);
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-rz]'); if (!b) return;
+    const r = R(), a = b.dataset.rz;
+    if (a === 'mais-z') {
+      const z = { id: uid(), nome: `Zona ${r.zonas.length + 1}` };
+      const ult = r.zonas[r.zonas.length - 1];
+      r.esp.forEach(es => { es.cel[z.id] = ult ? es.cel[ult.id] ?? '' : 10; });
+      r.zonas.push(z); pintarResNovo();
+      const i = el.querySelector(`[data-rz-z="${z.id}"]`); if (i) { i.focus(); i.select(); }
+      return;
+    }
+    if (a === 'tirar-z') { r.zonas = r.zonas.filter(z => z.id !== b.dataset.z); return pintarResNovo(); }
+    if (a === 'sug') { r.esp.push(espNova(b.dataset.n)); return pintarResNovo(); }
+    if (a === 'mais-e') { const n = espNova(''); r.esp.push(n); pintarResNovo(); el.querySelector(`[data-e="${n.id}"] [data-f="nome"]`)?.focus(); return; }
+    const es = espDe(b); if (!es) return;
+    const k = r.esp.indexOf(es);
+    if (a === 'tirar-e') r.esp.splice(k, 1);
+    if (a === 'sobe' && k > 0) r.esp.splice(k - 1, 0, r.esp.splice(k, 1)[0]);
+    if (a === 'desce' && k < r.esp.length - 1) r.esp.splice(k + 1, 0, r.esp.splice(k, 1)[0]);
+    pintarResNovo();
+  });
+  el.addEventListener('input', e => {
+    const t = e.target, r = R();
+    if (t.dataset.rzZ) { const z = r.zonas.find(x => x.id === t.dataset.rzZ); if (z) z.nome = t.value; const th = el.querySelectorAll('.plt-rz thead th')[r.zonas.indexOf(z) + 1]; if (th) th.textContent = t.value || 'Zona'; return previewRes(); }
+    if (t.dataset.rf === 'prazo') { r.prazo = t.value; return previewRes(); }
+    const es = espDe(t); if (!es) return;
+    if (t.dataset.f === 'nome') es.nome = t.value;
+    if (t.dataset.f === 'cel') es.cel[t.dataset.z] = t.value;
+    if (t.dataset.f === 'valor') es.valor = t.value;
+    previewRes();
+  });
+  el.addEventListener('change', e => {
+    const t = e.target, k = t.dataset.rf; if (!k || k === 'prazo') return;
+    R()[k] = t.type === 'checkbox' ? t.checked : t.value;
+    previewRes();
+  });
+}
+// pré-visualização: nº de tarefas e conclusão prevista
+function previewRes() {
+  const el = $('pn-res-prev'); if (!el) return;
+  const R = _novo.res, ini = $('pn-ini')?.value;
+  const T = tarefasResumo(R);
+  if (!ini || !T.some(t => t.dur > 0)) { el.innerHTML = '<span class="plt-pill mute">Indique pelo menos uma especialidade com dias numa zona</span>'; return; }
+  const pz = parseInt(R.prazo, 10) || 0;
+  const r = comCalculo({ data_inicio: ini, calendario: $('pn-cal')?.value === '6' ? '6' : '5', tarefas: T, opcoes: pz > 0 ? { prazo: { dias: pz } } : {} }, x => ({
+    n: x.n, fim: x.PF, dias: contaUteis(_C, x.S0, x.PF), cal: x.PF - x.S0 + 1,
+    excede: x.PZ != null && x.PF > x.PZ ? contaUteis(_C, x.PZ + 1, x.PF) || 1 : 0, valor: x.valor.reduce((s, v, i) => s + (x.pai[i] === -1 ? v : 0), 0) }));
+  el.innerHTML = `<span class="plt-pill info">${r.n} tarefas</span><span class="plt-pill info">Conclusão prevista ${fmtDL(r.fim)}</span><span class="plt-pill mute">${r.dias} dias úteis (${r.cal} de calendário)</span>${r.valor ? `<span class="plt-pill ok">${eur0(r.valor)}</span>` : ''}${pz ? (r.excede ? `<span class="plt-pill bad">Excede o prazo em ${r.excede} d.ú.</span>` : '<span class="plt-pill ok">Cumpre o prazo</span>') : ''}`;
+}
+async function criarResumo({ nome, ini, descricao }) {
+  const R = _novo.res;
+  const T = tarefasResumo(R);
+  if (!T.some(t => t.dur > 0)) return showToast('Indique pelo menos uma especialidade com dias numa zona');
+  const pz = parseInt(R.prazo, 10) || 0;
+  const opcoes = { tipo: 'resumo', resumo: { zonas: R.zonas.map(z => z.nome.trim()).filter(Boolean), especialidades: R.esp.map(e => e.nome.trim()).filter(Boolean), seq: R.seq, sobre: R.sobre, org: R.org } };
+  if (descricao) opcoes.descricao = descricao.slice(0, 8000);
+  if (pz > 0) opcoes.prazo = { dias: pz };
+  const p = { id: uid(), obra_id: _novo.obra || null, nome, data_inicio: ini, calendario: $('pn-cal').value, tarefas: T, equipas: [], subempreiteiros: [], opcoes, updated_at: new Date().toISOString() };
+  const btn = document.querySelector('#plt-drawer [data-g="criar"]'); btn.disabled = true; btn.textContent = 'A criar…';
+  if (!await inserirPlano(p)) { btn.disabled = false; btn.textContent = 'Criar plano resumo'; return; }
+  fecharGaveta();
+  showToast(`Plano resumo criado com ${T.length} tarefas`);
+  abrirPlano(p.id);
 }
 
 // ── Desenhos de projeto no «Novo plano»: o assistente pede um por especialidade e lê cada um ──
@@ -2079,6 +2280,7 @@ async function criarPlano() {
   if (!nome) return showToast('Indica o nome do plano');
   if (!ini) return showToast('Indica a data de início');
   const descricao = $('pn-desc').value.trim();
+  if (_novo.tipo === 'resumo') return criarResumo({ nome, ini, descricao });
   if (_novo.modo === 'ia') {
     if (!_novo.artigos?.length && !descricao) return showToast(_novo.origem === 'ficheiro' ? 'Junte a LPU ou descreva a empreitada' : 'Descreva a empreitada para o assistente montar o plano');
     return montarComIA({ nome, ini, descricao });
@@ -3290,6 +3492,7 @@ function resumoParaIA() {
   const cab = [
     `Plano: ${_plano.nome}`,
     `Obra: ${nomeObra(_plano.obra_id) || '—'}`,
+    opcoesPlano().tipo === 'resumo' ? `Tipo: PLANO RESUMO da empreitada — organizado por zonas de intervenção e especialidades (grupos de trabalho), sem artigos do articulado${opcoesPlano().resumo?.zonas?.length ? `. Zonas: ${opcoesPlano().resumo.zonas.join(', ')}` : ''}. Mantém este nível de detalhe (não descer a artigos).` : '',
     `Data de início (consignação): ${_plano.data_inicio} · calendário do plano: ${CAL_NOMES[_C.k].toLowerCase()} (sem feriados nacionais)`,
     T.length ? `Conclusão calculada: ${ds(r.PF)} · prazo ${prazoUteis()} dias úteis (${prazoCal()} dias de calendário) · valor total ${tot.toFixed(2)} €` : 'O plano ainda não tem tarefas.',
     r.PZ != null ? `Prazo contratual: ${ds(r.PZ)}${opcoesPlano().prazo?.dias ? ` (${opcoesPlano().prazo.dias} dias a contar da data de início)` : ''} — ${r.PF > r.PZ ? `o plano EXCEDE-O em ${contaUteis(_C, r.PZ + 1, r.PF) || 1} dias úteis` : `cumprido com ${contaUteis(_C, r.PF + 1, r.PZ)} dias úteis de margem`}` : 'Prazo contratual: não definido.',

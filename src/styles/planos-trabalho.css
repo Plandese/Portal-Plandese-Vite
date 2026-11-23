@@ -553,3 +553,48 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-tb-sob[aria-expanded="true"] .plt-chev{transform:rotate(180deg)}
 .plt-menu-sob{min-width:290px}
 .plt-menu-sob .plt-menu-chk .plt-chk{border-radius:50%}
+/* ── Plano resumo: zonas de intervenção × especialidades ── */
+.plt-drawer.largo{width:min(880px,100%)}
+.plt-ops-2{flex-direction:row}
+.plt-ops-2 .plt-op{flex:1;min-width:0}
+.plt-rz-zonas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px}
+.plt-rz-z{display:inline-flex;align-items:center;height:40px;border:1.5px solid #b9c1ce;border-radius:99px;padding:0 4px 0 14px;background:#fff}
+.plt-rz-z:focus-within{border-color:var(--p-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.plt-rz-z input{border:0;outline:none;font:inherit;font-size:14.5px;width:130px;background:none;color:var(--p-ink)}
+.plt-rz-z button{border:0;background:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--p-mute)}
+.plt-rz-z button svg{width:14px;height:14px}
+.plt-rz-z button:hover{background:#f1f4fa;color:#b3261e}
+.plt-rz-wrap{overflow-x:auto;border:1.5px solid var(--p-line);border-radius:16px;margin:0 0 12px}
+.plt-rz{border-collapse:collapse;width:100%;font-size:13.5px}
+.plt-rz th{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678;text-align:center;padding:10px 6px;background:#f6f8fc;border-bottom:1.5px solid var(--p-line);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.plt-rz th.n{text-align:left;padding-left:14px}
+.plt-rz td{padding:5px 4px;border-bottom:1px solid var(--p-line2);text-align:center;vertical-align:middle}
+.plt-rz tr:last-child td{border-bottom:0}
+.plt-rz td.n{padding-left:12px;min-width:250px}
+.plt-rz td.n > *{vertical-align:middle}
+.plt-rz-cor{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+.plt-rz td.n input{width:calc(100% - 18px);text-align:left}
+.plt-rz input{width:100%;height:38px;border:1.5px solid #d5dbe5;border-radius:10px;padding:0 8px;font:inherit;font-size:14px;color:var(--p-ink);box-sizing:border-box;outline:none;text-align:center;background:#fff}
+.plt-rz td:not(.n):not(.a):not(.v){min-width:74px}
+.plt-rz td.v{min-width:112px}
+.plt-rz input:focus{border-color:var(--p-brand);box-shadow:0 0 0 3px rgba(23,63,159,.13)}
+.plt-rz input::placeholder{color:#b3bac7}
+.plt-rz td.a{white-space:nowrap;padding-right:8px}
+.plt-rz td.a button{border:0;background:none;width:28px;height:28px;border-radius:8px;cursor:pointer;color:var(--p-mute);display:inline-grid;place-items:center}
+.plt-rz td.a button svg{width:15px;height:15px}
+.plt-rz td.a button:hover{background:#f1f4fa;color:var(--p-ink)}
+.plt-rz-sug{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+.plt-rz-chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:1.5px dashed #b9c1ce;border-radius:99px;background:#fff;font:inherit;font-size:13px;color:#3a4252;cursor:pointer}
+.plt-rz-chip svg{width:13px;height:13px;color:var(--p-brand)}
+.plt-rz-chip:hover{border-color:var(--p-brand);color:var(--p-brand);border-style:solid}
+.plt-rz-chip.outra{border-style:solid;border-color:var(--p-brand);color:var(--p-brand);font-weight:600}
+.plt-f-chk{display:flex;align-items:flex-end;padding-bottom:2px}
+.plt-rz-prev{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 18px}
+/* lista de planos agrupada por obra */
+.plt-grupo{margin:0 0 24px}
+.plt-grupo-h{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;padding:0 4px}
+.plt-grupo-h b{font-size:16px;font-weight:800}
+.plt-grupo-h span{font-size:13px;color:var(--p-mute)}
+.plt-grupo-h .plt-lnk{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:14px;text-decoration:none}
+.plt-grupo-h .plt-lnk svg{width:15px;height:15px}
+.plt-card-ic.res{background:#f1ebfb;color:#6b3fb8}
