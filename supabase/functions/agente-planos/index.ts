@@ -104,8 +104,8 @@ COMO FUNCIONA O PLANO
 - Calendário por tarefa (coluna «calendário»; vazio = o do plano): "5" segunda a sexta, "6" segunda a sábado, "7" todos os dias (contínuo, também nos feriados) — para o que não para ao fim de semana: curas de betão, secagens, bombagens, ensaios de estanquidade. Numa tarefa com calendário 7 a duração é em dias seguidos. Muda-se com "editar"/"adicionar" e o campo calendario ("" volta ao do plano). Os desfasamentos das ligações contam sempre em dias úteis do plano.
 - Datas-limite (coluna «data-limite»): datas do contrato que uma tarefa ou marco tem de cumprir (conclusão de uma fase, receção provisória…). Não mudam as datas calculadas; se a tarefa acabar depois, aparece «FALHADA por N d.ú.» e as tarefas que a atrasam ficam com folga negativa (é o que falta recuperar). Marca-se com data_limite em "editar"/"adicionar" ("" retira).
 - Prazo contratual do plano (linha «Prazo contratual»): define-se com a operação "plano" (prazo_dias = dias de calendário a contar da data de início, ou prazo_data). Conta como data-limite de todas as tarefas: se o plano o excede, o caminho crítico fica com folga negativa. Para recuperar atraso: rever durações (mais equipas), sobrepor tarefas (II/TT ou desfasamentos negativos), calendário de segunda a sábado nas tarefas críticas, ou partir barras.
-- Acompanhamento da obra: «Data de estado» é o dia até ao qual o avanço foi medido; com ela, o trabalho por fazer não fica no passado (tarefas por começar passam para depois dela, e o que falta das tarefas em curso também). Cada tarefa pode ter início real e fim real (colunas «início real»/«fim real»): com início real fica presa a essa data, com fim real fica concluída (100%). Atualiza-se com "editar" (pct, inicio_real, fim_real; "" retira) e a data de estado com "plano" (data_estado). Quando o utilizador disser o que já está feito («a vala acabou ontem», «a rede está a 60%»), usa estas operações.
-- Linha de base (linha «Linha de base» e colunas «fim ref.»/«desvio»): fotografia do plano aprovado. Desvio > 0 = a tarefa acaba agora N dias úteis depois do previsto na base. Para comparar com o plano aprovado, responder «quanto estamos atrasados» ou recuperar atraso, usa o desvio e o avanço previsto vs. real. Fixa-se ou retira-se com "linha_base" (acao fixar/retirar) — só quando o pedirem (por exemplo «o plano foi aprovado, fixa a linha de base»), porque substitui a anterior.
+- Acompanhamento da obra: o diretor de obra atualiza o plano no próprio Gantt — a % feita de cada tarefa (coluna %) e as datas — e vai guardando versões. Quando disser o que já está feito («a vala está a 60%», «o estaleiro acabou»), usa "editar" com pct; para uma tarefa que começou ou vai começar noutro dia, usa inicio_min.
+- Versão sobreposta (linha «Versão sobreposta» e colunas «fim ref.»/«desvio»): uma versão guardada (normalmente a inicial) mostrada em cinzento por baixo do plano atual. Desvio > 0 = a tarefa acaba agora N dias úteis depois do que essa versão previa. Para «quanto estamos atrasados» ou recuperar atraso, usa o desvio, a conclusão das duas versões e o «previa X% feito até hoje» vs. o concluído atual. As versões guardam-se e escolhem-se no portal, não com operações.
 - Sobrecargas de equipas (secção «SOBRECARGAS DE EQUIPAS»): a mesma equipa atribuída a mais tarefas em simultâneo do que as equipas iguais disponíveis (definir_equipa → disponiveis). Para resolver: desfasar uma das tarefas (ligação TI entre elas ou inicio_min), atribuir outra equipa, aumentar as disponíveis (se houver meios) ou usar a operação "nivelar" (o portal atrasa automaticamente as tarefas com mais folga até a equipa ficar livre). Prefere desfasar as tarefas com folga e diz o efeito na data de conclusão.
 
 O QUE FAZES
@@ -143,8 +143,8 @@ const TOOLS: any[] = [
             properties: {
               op: {
                 type: "string",
-                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar", "linha_base"],
-                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos + disponiveis) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano (início, calendário, nome, prazo contratual, data de estado) | linha_base: fixa (com as datas depois das outras operações) ou retira a linha de base | nivelar: o portal atrasa as tarefas com mais folga até nenhuma equipa estar sobrecarregada (sem outros campos; aplica-se depois das operações anteriores)",
+                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"],
+                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos + disponiveis) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano (início, calendário, nome, prazo contratual) | nivelar: o portal atrasa as tarefas com mais folga até nenhuma equipa estar sobrecarregada (sem outros campos; aplica-se depois das operações anteriores)",
               },
               calendario: { type: "string", enum: ["", "5", "6", "7"], description: "adicionar/editar: calendário da tarefa — \"5\" seg–sex, \"6\" seg–sáb, \"7\" todos os dias (curas, secagens…), \"\" = o do plano · plano: calendário do plano (só \"5\" ou \"6\")." },
               data_limite: { type: "string", description: "adicionar/editar: data-limite (contrato) AAAA-MM-DD; \"\" retira." },
@@ -159,10 +159,6 @@ const TOOLS: any[] = [
               dentro_de: { type: "string", description: "adicionar/mover: passa a ser a última subtarefa desta tarefa. ID ou ref." },
               inicio_min: { type: "string", description: "adicionar/editar: «não iniciar antes de» AAAA-MM-DD; \"\" retira a restrição." },
               pct: { type: "integer", minimum: 0, maximum: 100, description: "editar: % concluída." },
-              inicio_real: { type: "string", description: "editar: data em que a tarefa começou de facto AAAA-MM-DD; \"\" retira." },
-              fim_real: { type: "string", description: "editar: data em que a tarefa acabou de facto AAAA-MM-DD (passa a 100%); \"\" retira." },
-              data_estado: { type: "string", description: "plano: data de estado (avanço medido até esse dia) AAAA-MM-DD; \"\" retira." },
-              acao: { type: "string", enum: ["fixar", "retirar"], description: "linha_base: fixar (fotografia das datas atuais) ou retirar." },
               valor: { type: "number", description: "adicionar/editar: valor em euros." },
               notas: { type: "string", description: "adicionar/editar: notas da tarefa." },
               pred: {
@@ -237,7 +233,7 @@ const TOOLS: any[] = [
 ];
 const ROTULOS: Record<string, string> = { propor_alteracoes: "A preparar as alterações", calcular: "A fazer contas" };
 
-const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar", "linha_base"]);
+const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"]);
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Validação do que o modelo pediu (com eager_input_streaming o servidor não valida o input)
 function validarProposta(input: any): { resumo: string; operacoes: any[] } {
@@ -274,8 +270,6 @@ function validarProposta(input: any): { resumo: string; operacoes: any[] } {
     if (o.data_inicio && !RE_DATA.test(o.data_inicio)) throw new Error(`Operação ${k + 1}: data_inicio deve ser AAAA-MM-DD.`);
     if (o.data_limite && !RE_DATA.test(o.data_limite)) throw new Error(`Operação ${k + 1}: data_limite deve ser AAAA-MM-DD.`);
     if (o.prazo_data && !RE_DATA.test(o.prazo_data)) throw new Error(`Operação ${k + 1}: prazo_data deve ser AAAA-MM-DD.`);
-    for (const c of ["inicio_real", "fim_real", "data_estado"]) if (o[c] && !RE_DATA.test(o[c])) throw new Error(`Operação ${k + 1}: ${c} deve ser AAAA-MM-DD.`);
-    if (o.op === "linha_base" && !["fixar", "retirar"].includes(o.acao ?? "fixar")) throw new Error(`Operação ${k + 1}: acao deve ser fixar ou retirar.`);
     if (o.calendario != null && !["", "5", "6", "7"].includes(String(o.calendario))) throw new Error(`Operação ${k + 1}: calendario deve ser "", "5", "6" ou "7".`);
     if (o.op === "plano" && o.calendario != null && !["5", "6"].includes(String(o.calendario))) throw new Error(`Operação ${k + 1}: o calendário do plano é "5" ou "6".`);
     if (o.dur != null && (!Number.isFinite(Number(o.dur)) || Number(o.dur) < 0)) throw new Error(`Operação ${k + 1}: duração inválida.`);

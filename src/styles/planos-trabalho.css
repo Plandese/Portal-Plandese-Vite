@@ -22,8 +22,6 @@
 .plt-btn:disabled{opacity:.55;cursor:default}
 
 /* lista de planos */
-.plt-aviso{margin-bottom:16px;padding:14px 18px;border-radius:18px;background:#fff7e8;border:1.5px solid #f4d9a6;color:#7a4a06;font-size:14px;line-height:1.5}
-.plt-aviso code{background:rgba(0,0,0,.06);padding:1px 6px;border-radius:6px;font-size:12.5px}
 .plt-lista-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
 .plt-lista-tx{font-size:14px;color:var(--p-mute);font-weight:600}
 .plt-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px}
@@ -512,35 +510,19 @@ button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
 .plt-ia-grupos:empty{display:none}
 .plt-ia-grupos .plt-pill{display:inline-flex;align-items:center;gap:6px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plt-ia-grupos .plt-ia-spin{width:10px;height:10px;border-width:2px;flex:none}
-/* ── Acompanhamento: linha de base, data de estado, datas reais ── */
+/* ── Acompanhar a obra: versão sobreposta (barras cinzentas, desvio) e % feita na barra ── */
 .plt-r .c-desv{width:72px;justify-content:flex-end;padding:0 8px;font-size:12.5px;font-weight:700;color:#5d6678;font-variant-numeric:tabular-nums}
 .plt-r .c-desv.atr{color:#b3261e}
 .plt-r .c-desv.adi{color:#166534}
 .plt-r .c-desv i{font-weight:500;font-style:normal;color:#8a93a5}
-.plt-real-ic{font-size:10px;line-height:1;color:var(--p-brand)}
-.plt-real-ic.ok{color:#1f9d55;font-weight:800}
-.plt-r.sel .plt-real-ic{color:#fff}
 .plt-base{position:absolute;height:4px;border-radius:2px;background:#aab2c0;z-index:1;pointer-events:auto}
 .plt-base.rs{height:3px;background:#8a93a5}
 .plt-base.ms{width:8px;height:8px;border-radius:1px;transform:rotate(45deg)}
-.plt-estado{position:absolute;top:0;bottom:0;width:0;border-left:2px dotted #1d4ed8;z-index:1;pointer-events:none}
-.plt-estado span{position:sticky;top:0;display:inline-block;margin-left:4px;padding:1px 7px;border-radius:99px;background:#e5eeff;color:#1d4ed8;margin-top:24px;font-size:11px;font-weight:700;white-space:nowrap}
 .plt-alerta.ok{background:#f0faf3;color:#14532d;border:1.5px solid #b7e2c4}
-.plt-f2-b{align-items:flex-end}
-.plt-f2-b .plt-btn{margin-bottom:14px;height:50px}
 .plt-ac-bts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
 .plt-ac-bts .plt-btn svg{width:17px;height:17px}
 .plt-chk-l{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:14.5px;cursor:pointer}
 .plt-chk-l input{width:20px;height:20px;accent-color:var(--p-brand);flex:none}
-.plt-av{padding:12px 14px;border:1.5px solid var(--p-line);border-radius:16px;margin:0 0 10px}
-.plt-av-h b{display:block;font-size:14px;line-height:1.35}
-.plt-av-h small{display:block;font-size:12.5px;color:var(--p-mute);margin-top:2px}
-.plt-av-h .plt-edt{margin-right:6px;color:#8a93a5;font-weight:600}
-.plt-av-f{display:flex;gap:8px;margin-top:10px}
-.plt-av-f label{flex:1;min-width:0;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678}
-.plt-av-f label.pct{flex:0 0 72px}
-.plt-av-f input{display:block;width:100%;height:42px;margin-top:4px;border:1.5px solid #b9c1ce;border-radius:12px;padding:0 10px;font:inherit;font-size:14.5px;color:var(--p-ink);box-sizing:border-box;outline:none}
-.plt-av-f input:focus{border-color:var(--p-brand);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
 /* Versões */
 .plt-ver{padding:14px 16px;border:1.5px solid var(--p-line);border-radius:18px;margin:0 0 10px}
 .plt-ver.on{border-color:var(--p-brand);background:#f7f9ff}
@@ -559,3 +541,15 @@ button.plt-estado-b{border:0;font-family:inherit;cursor:pointer}
 button.plt-estado-b.ok{cursor:default}
 button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 @keyframes plt-pisca{50%{box-shadow:0 0 0 4px rgba(179,38,30,.18)}}
+/* pega da % feita dentro da barra (aparece ao passar o rato) */
+.plt-ph{position:absolute;top:0;bottom:0;width:10px;margin-left:-5px;cursor:col-resize;opacity:0;transition:opacity .12s;z-index:1}
+.plt-ph::after{content:'';position:absolute;left:4px;top:2px;bottom:2px;width:2px;border-radius:2px;background:#fff;box-shadow:0 0 0 1px rgba(15,30,80,.55)}
+.plt-bar:hover .plt-ph,.plt-bar.sel .plt-ph{opacity:1}
+/* «Sobrepor versão» na barra do Gantt */
+.plt-tb-b .plt-chev{width:13px;height:13px;margin-left:-2px;color:var(--p-mute)}
+.plt-tb-sob span{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.plt-tb-b.plt-tb-sob.on{background:var(--p-tint);color:var(--p-brand)}
+.plt-tb-b.plt-tb-sob.on svg{color:var(--p-brand)}
+.plt-tb-sob[aria-expanded="true"] .plt-chev{transform:rotate(180deg)}
+.plt-menu-sob{min-width:290px}
+.plt-menu-sob .plt-menu-chk .plt-chk{border-radius:50%}
