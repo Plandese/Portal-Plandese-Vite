@@ -598,3 +598,58 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-grupo-h .plt-lnk{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:14px;text-decoration:none}
 .plt-grupo-h .plt-lnk svg{width:15px;height:15px}
 .plt-card-ic.res{background:#f1ebfb;color:#6b3fb8}
+/* ── Alertas: encomendas, adjudicações e outras datas importantes ── */
+.plt-al{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--p-line);border-radius:18px;margin:0 0 10px;background:#fff}
+.plt-al.atraso{border-color:#f0b4b0;background:#fdf6f5}
+.plt-al.breve{border-color:#f3d19c;background:#fffaf1}
+.plt-al.ok{opacity:.72}
+.plt-al.sug{border-style:dashed}
+.plt-al-ic{flex:none;width:38px;height:38px;border-radius:50%;background:var(--p-tint);color:var(--p-brand);display:grid;place-items:center}
+.plt-al-ic svg{width:18px;height:18px}
+.plt-al.atraso .plt-al-ic{background:#fde8e8;color:#b3261e}
+.plt-al.breve .plt-al-ic{background:#fff0d9;color:#a35a08}
+.plt-al.ok .plt-al-ic{background:#dff5e7;color:#166534}
+.plt-al-tx{flex:1;min-width:0}
+.plt-al-tx > b{display:block;font-size:14.5px;line-height:1.35}
+.plt-al-tx small{display:block;font-size:12.5px;color:#5d6678;margin-top:2px;line-height:1.4}
+.plt-al-tx small b{color:var(--p-ink)}
+.plt-al-n{font-style:italic}
+.plt-al-a{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.plt-al-a .plt-btn svg{width:15px;height:15px}
+.plt-al-a .plt-al-ed{width:32px;height:32px}
+.plt-al-a .plt-al-ed svg{width:15px;height:15px}
+.plt-ops-3{flex-direction:row}
+.plt-ops-3 .plt-op{flex:1;min-width:0;flex-direction:row;align-items:center;gap:10px;padding:11px 14px}
+.plt-op-ic{flex:none;width:30px;height:30px;border-radius:50%;background:var(--p-tint);color:var(--p-brand);display:grid;place-items:center}
+.plt-op-ic svg{width:16px;height:16px}
+.plt-kpi-el{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* no Gantt */
+.plt-alm{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e5eeff;color:#1d4ed8;border:1.5px solid #1d4ed8;cursor:pointer;box-sizing:border-box}
+.plt-alm svg{width:11px;height:11px}
+.plt-alm.breve{background:#fff0d9;color:#a35a08;border-color:#e08a00}
+.plt-alm.atraso{background:#fde8e8;color:#b3261e;border-color:#c62828}
+.plt-alm.ok{background:#dff5e7;color:#166534;border-color:#2e7d32}
+.plt-alm.sem{display:none}
+.plt-alm-l{position:absolute;z-index:1;height:0;border-top:1.5px dotted #1d4ed8;pointer-events:none}
+.plt-alm-l.breve{border-top-color:#e08a00}
+.plt-alm-l.atraso{border-top-color:#c62828}
+.plt-alm-l.ok{border-top-color:#2e7d32}
+.plt-al-ic-g{display:inline-grid;color:#1d4ed8}
+.plt-al-ic-g svg{width:11px;height:11px}
+.plt-al-ic-g.breve{color:#a35a08}
+.plt-al-ic-g.atraso{color:#b3261e}
+.plt-r.sel .plt-al-ic-g{color:#fff}
+.plt-tb-n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#c62828;color:#fff;font-style:normal;font-size:11px;font-weight:700;box-sizing:border-box}
+.plt-tb-al{color:#a35a08}
+/* lista de planos: alertas de todos os planos */
+.plt-al-banner{border:1.5px solid #f3d19c;background:#fffaf1;border-radius:22px;padding:14px 16px 8px;margin:0 0 18px}
+.plt-al-banner.bad{border-color:#f0b4b0;background:#fdf6f5}
+.plt-al-banner-h{display:flex;align-items:center;gap:10px;margin:0 0 8px;flex-wrap:wrap}
+.plt-al-banner-h svg{width:20px;height:20px;color:#a35a08}
+.plt-al-banner.bad .plt-al-banner-h svg{color:#b3261e}
+.plt-al-banner-h b{font-size:15.5px}
+.plt-al-banner-h span{font-size:13px;color:var(--p-mute)}
+.plt-al-li{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:12px;background:none;font:inherit;text-align:left;cursor:pointer;color:var(--p-ink)}
+.plt-al-li:hover{background:rgba(255,255,255,.8)}
+.plt-al-li b{font-size:14px}
+.plt-al-li small{font-size:12.5px;color:var(--p-mute);margin-left:auto;text-align:right}

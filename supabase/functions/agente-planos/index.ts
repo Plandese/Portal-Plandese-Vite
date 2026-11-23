@@ -106,6 +106,7 @@ COMO FUNCIONA O PLANO
 - Prazo contratual do plano (linha «Prazo contratual»): define-se com a operação "plano" (prazo_dias = dias de calendário a contar da data de início, ou prazo_data). Conta como data-limite de todas as tarefas: se o plano o excede, o caminho crítico fica com folga negativa. Para recuperar atraso: rever durações (mais equipas), sobrepor tarefas (II/TT ou desfasamentos negativos), calendário de segunda a sábado nas tarefas críticas, ou partir barras.
 - Acompanhamento da obra: o diretor de obra atualiza o plano no próprio Gantt — a % feita de cada tarefa (coluna %) e as datas — e vai guardando versões. Quando disser o que já está feito («a vala está a 60%», «o estaleiro acabou»), usa "editar" com pct; para uma tarefa que começou ou vai começar noutro dia, usa inicio_min.
 - Versão sobreposta (linha «Versão sobreposta» e colunas «fim ref.»/«desvio»): uma versão guardada (normalmente a inicial) mostrada em cinzento por baixo do plano atual. Desvio > 0 = a tarefa acaba agora N dias úteis depois do que essa versão previa. Para «quanto estamos atrasados» ou recuperar atraso, usa o desvio, a conclusão das duas versões e o «previa X% feito até hoje» vs. o concluído atual. As versões guardam-se e escolhem-se no portal, não com operações.
+- Alertas (secção «ALERTAS»): datas para encomendar material, adjudicar subempreitadas ou tratar de outras coisas (licenças, cortes de água, pedidos às entidades). Cada alerta fica ligado a uma tarefa com uma antecedência em dias úteis antes do início dela, e a data acompanha o plano; o portal avisa no sininho 7 dias antes e no dia. Cria-se com "alerta" (tipo_alerta material/sub/outro, nome = o que é preciso, id = tarefa, antes = dias úteis; ou data_alerta sem tarefa). Quando pedirem («que encomendas tenho de fazer?», «lembra-me de adjudicar a pavimentação») propõe alertas para os materiais de prazo de entrega longo (tubagens e acessórios especiais, caixas e elementos pré-fabricados, equipamentos, materiais por medida) e para cada subempreitada (≈ 20 d.ú. antes da 1.ª tarefa dela). As antecedências são estimativas: di-lo.
 - Sobrecargas de equipas (secção «SOBRECARGAS DE EQUIPAS»): a mesma equipa atribuída a mais tarefas em simultâneo do que as equipas iguais disponíveis (definir_equipa → disponiveis). Para resolver: desfasar uma das tarefas (ligação TI entre elas ou inicio_min), atribuir outra equipa, aumentar as disponíveis (se houver meios) ou usar a operação "nivelar" (o portal atrasa automaticamente as tarefas com mais folga até a equipa ficar livre). Prefere desfasar as tarefas com folga e diz o efeito na data de conclusão.
 
 O QUE FAZES
@@ -143,8 +144,8 @@ const TOOLS: any[] = [
             properties: {
               op: {
                 type: "string",
-                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"],
-                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos + disponiveis) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano (início, calendário, nome, prazo contratual) | nivelar: o portal atrasa as tarefas com mais folga até nenhuma equipa estar sobrecarregada (sem outros campos; aplica-se depois das operações anteriores)",
+                enum: ["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar", "alerta"],
+                description: "adicionar: nova tarefa | editar: muda campos de uma tarefa | predecessoras: substitui TODAS as predecessoras de id | ligar/desligar: acrescenta/retira uma ligação de→para | eliminar: apaga id e as suas subtarefas | mover: muda id (com subtarefas) de sítio | nivel: avança (+1) ou recua (-1) id | fases: parte a barra de id em fases (ou volta a juntá-la) | definir_equipa: cria ou muda uma equipa (nome + mao_de_obra + equipamentos + disponiveis) | equipas: atribui equipas à tarefa id | definir_subempreiteiro: cria ou muda um subempreiteiro (nome + especialidade/contactos) | subempreiteiro: indica quem executa a tarefa id (nome do subempreiteiro ou «Plandese») | plano: dados gerais do plano (início, calendário, nome, prazo contratual) | alerta: novo alerta (encomenda, adjudicação ou outro) ligado à tarefa id com antecedência em dias úteis | nivelar: o portal atrasa as tarefas com mais folga até nenhuma equipa estar sobrecarregada (sem outros campos; aplica-se depois das operações anteriores)",
               },
               calendario: { type: "string", enum: ["", "5", "6", "7"], description: "adicionar/editar: calendário da tarefa — \"5\" seg–sex, \"6\" seg–sáb, \"7\" todos os dias (curas, secagens…), \"\" = o do plano · plano: calendário do plano (só \"5\" ou \"6\")." },
               data_limite: { type: "string", description: "adicionar/editar: data-limite (contrato) AAAA-MM-DD; \"\" retira." },
@@ -159,6 +160,9 @@ const TOOLS: any[] = [
               dentro_de: { type: "string", description: "adicionar/mover: passa a ser a última subtarefa desta tarefa. ID ou ref." },
               inicio_min: { type: "string", description: "adicionar/editar: «não iniciar antes de» AAAA-MM-DD; \"\" retira a restrição." },
               pct: { type: "integer", minimum: 0, maximum: 100, description: "editar: % concluída." },
+              tipo_alerta: { type: "string", enum: ["material", "sub", "outro"], description: "alerta: material = encomendar material, sub = adjudicar subempreitada, outro = outra data importante." },
+              antes: { type: "integer", minimum: 0, maximum: 400, description: "alerta: dias úteis antes do início da tarefa id (prazo de entrega ou de adjudicação)." },
+              data_alerta: { type: "string", description: "alerta sem tarefa: data AAAA-MM-DD." },
               valor: { type: "number", description: "adicionar/editar: valor em euros." },
               notas: { type: "string", description: "adicionar/editar: notas da tarefa." },
               pred: {
@@ -233,7 +237,7 @@ const TOOLS: any[] = [
 ];
 const ROTULOS: Record<string, string> = { propor_alteracoes: "A preparar as alterações", calcular: "A fazer contas" };
 
-const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar"]);
+const OPS = new Set(["adicionar", "editar", "predecessoras", "ligar", "desligar", "eliminar", "mover", "nivel", "fases", "definir_equipa", "equipas", "definir_subempreiteiro", "subempreiteiro", "plano", "nivelar", "alerta"]);
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 // Validação do que o modelo pediu (com eager_input_streaming o servidor não valida o input)
 function validarProposta(input: any): { resumo: string; operacoes: any[] } {
@@ -255,6 +259,11 @@ function validarProposta(input: any): { resumo: string; operacoes: any[] } {
       if (o.equipamentos != null && !Array.isArray(o.equipamentos)) throw new Error(`Operação ${k + 1}: equipamentos tem de ser uma lista.`);
     }
     if (o.op === "definir_subempreiteiro") precisa("nome");
+    if (o.op === "alerta") {
+      precisa("nome");
+      if (!o.id && !o.data_alerta) throw new Error(`Operação ${k + 1} (alerta): indica a tarefa (id) ou a data (data_alerta).`);
+      if (o.data_alerta && !RE_DATA.test(o.data_alerta)) throw new Error(`Operação ${k + 1}: data_alerta deve ser AAAA-MM-DD.`);
+    }
     if (o.op === "subempreiteiro") precisa("id");
     if (o.op === "equipas") {
       precisa("id");

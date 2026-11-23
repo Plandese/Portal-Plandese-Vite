@@ -78,6 +78,8 @@ const ICO = {
   chev: '<svg class="plt-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   guardarVer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 4-2.2"/><path d="M19 14v6M16 17h6"/></svg>',
   zonas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>',
+  sino: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
+  caixa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -173,6 +175,7 @@ async function gravarAgora(p) {
   const em = p._mudouEm || Date.now();
   p._sujo = false;
   estadoDe(p, 'a');
+  if (p === _plano && _R && alertasDoPlano().length) atualizarDatasAlertas();
   const linha = { ...campos(p), updated_at: new Date().toISOString() };
   const enviar = () => {
     let q = sb.from('planos_trabalho').update(linha).eq('id', p.id);
@@ -558,6 +561,49 @@ function refComparacao() {
 }
 const txtDesvio = d => (d == null ? '' : d > 0 ? `+${d} d.ú.` : d < 0 ? `${d} d.ú.` : '0');
 
+// ── Alertas de datas importantes (opcoes.alertas): encomendar material, adjudicar subempreitadas, outros ──
+// [{ id, tipo: 'material'|'sub'|'outro', titulo, tarefa?: <id da tarefa>, antes: <d.ú. antes do início da tarefa>,
+//    dataFixa?: 'AAAA-MM-DD' (sem tarefa), feito?: 'AAAA-MM-DD', notas?, sub?: <subempreiteiro de onde veio a sugestão>,
+//    data, inicio, tarefaNome — calculados ao gravar: o aviso diário do servidor (fn_alertas_planos) lê-os }]
+// Ligado a uma tarefa, o alerta acompanha o plano: se a tarefa mudar de data, a data do alerta muda também.
+const TIPOS_ALERTA = {
+  material: { nome: 'Encomenda de material', curto: 'Encomenda', verbo: 'Encomendar', feito: 'Encomendado', antes: 15, ph: 'Ex.: Tubagem PEAD Ø90 e acessórios' },
+  sub: { nome: 'Adjudicação de subempreitada', curto: 'Subempreitada', verbo: 'Adjudicar', feito: 'Adjudicado', antes: 20, ph: 'Ex.: Pavimentação betuminosa' },
+  outro: { nome: 'Outra data importante', curto: 'Outro', verbo: '', feito: 'Feito', antes: 10, ph: 'Ex.: Pedir corte de água aos SMAS' },
+};
+const AVISO_DIAS = 7;   // o sininho avisa 7 dias antes e no próprio dia
+const alertasDoPlano = () => (Array.isArray(opcoesPlano().alertas) ? opcoesPlano().alertas : []);
+const listaAlertas = () => (Array.isArray(opcoesPlano().alertas) ? opcoesPlano().alertas : (opcoesPlano().alertas = []));
+const icoAlerta = a => (a.tipo === 'sub' ? ICO.sub : a.tipo === 'material' ? ICO.caixa : ICO.sino);
+function dataAlerta(a) {
+  if (a.tarefa) { const i = _R?.idx.get(a.tarefa); if (i == null) return null; return dD(_C, oC(_C, _R.es[i]) - Math.max(0, a.antes | 0)); }
+  return /^\d{4}-\d{2}-\d{2}$/.test(a.dataFixa || '') ? dnum(a.dataFixa) : null;
+}
+function estadoAlerta(a, d = dataAlerta(a)) {
+  if (a.feito) return 'ok';
+  if (d == null) return 'sem';
+  const h = hojeN();
+  return d < h ? 'atraso' : d <= h + AVISO_DIAS ? 'breve' : 'futuro';
+}
+function txtEstadoAlerta(a, d = dataAlerta(a)) {
+  const e = estadoAlerta(a, d), h = hojeN(), n = Math.abs(d - h);
+  if (e === 'ok') return `${(TIPOS_ALERTA[a.tipo] || TIPOS_ALERTA.outro).feito} a ${fmtD(dnum(a.feito))}`;
+  if (e === 'sem') return a.tarefa ? 'A tarefa já não existe' : 'Sem data';
+  if (e === 'atraso') return `Em atraso há ${n} dia${n > 1 ? 's' : ''}`;
+  if (d === h) return 'É hoje';
+  return `Faltam ${n} dia${n > 1 ? 's' : ''}`;
+}
+const PILL_ALERTA = { ok: 'ok', atraso: 'bad', breve: 'warn', futuro: 'info', sem: 'mute' };
+// grava no plano as datas calculadas (o aviso diário do servidor lê-as)
+function atualizarDatasAlertas() {
+  alertasDoPlano().forEach(a => {
+    const d = dataAlerta(a), i = a.tarefa ? _R.idx.get(a.tarefa) : null;
+    a.data = d == null ? null : diso(d);
+    a.inicio = i != null ? diso(_R.es[i]) : null;
+    a.tarefaNome = i != null ? _plano.tarefas[i].nome : null;
+  });
+}
+
 // ── Sobrecarga de equipas: a mesma equipa de trabalho em mais tarefas (ou unidades) do que as disponíveis (e.disp) ──
 // Devolve { lista: [{ eq, de, ate, max, disp, tarefas: [i…] }], porTarefa: Map(i → [conflito…]) }
 const dispDe = e => Math.max(1, parseInt(e && e.disp, 10) || 1);
@@ -702,6 +748,22 @@ function resumoPlano(p) {
   return r;
 }
 
+// alertas em atraso ou nos próximos dias, de todos os planos (datas gravadas com o plano)
+function bannerAlertas() {
+  const hj = hojeN(), L = [];
+  _planos.forEach(p => (Array.isArray(p.opcoes?.alertas) ? p.opcoes.alertas : []).forEach(a => {
+    if (a.feito || !/^\d{4}-\d{2}-\d{2}$/.test(a.data || '')) return;
+    const d = dnum(a.data); if (d <= hj + AVISO_DIAS) L.push({ p, a, d });
+  }));
+  if (!L.length) return '';
+  L.sort((x, y) => x.d - y.d);
+  const at = L.filter(x => x.d < hj).length, br = L.length - at;
+  return `<div class="plt-al-banner ${at ? 'bad' : ''}">
+    <div class="plt-al-banner-h">${ICO.sino}<b>${[at ? `${at} alerta${at > 1 ? 's' : ''} em atraso` : '', br ? `${br} nos próximos ${AVISO_DIAS} dias` : ''].filter(Boolean).join(' · ')}</b><span>Encomendas e adjudicações dos planos de trabalho</span></div>
+    ${L.slice(0, 8).map(x => `<button type="button" class="plt-al-li" data-abrir-al="${esc(x.p.id)}"><span class="plt-pill ${x.d < hj ? 'bad' : 'warn'}">${x.d < hj ? `Em atraso desde ${fmtD(x.d)}` : x.d === hj ? 'Hoje' : `Até ${fmtD(x.d)}`}</span><b>${esc(x.a.titulo)}</b><small>${esc(nomeObra(x.p.obra_id) || x.p.nome)}${x.a.tarefaNome ? ' · ' + esc(x.a.tarefaNome) : ''}</small></button>`).join('')}
+    ${L.length > 8 ? `<p class="plt-nota">… e mais ${L.length - 8}.</p>` : ''}
+  </div>`;
+}
 function pintarLista() {
   const el = $('plt-body'); if (!el) return;
   const aviso = _modoLocal ? `<div class="plt-aviso"><b>Modo local</b> — a tabela <code>planos_trabalho</code> ainda não existe na Supabase, por isso os planos ficam guardados só neste computador. Aplicar a migração <code>20261119_planos_trabalho.sql</code> para os guardar no servidor.</div>` : '';
@@ -732,6 +794,7 @@ function pintarLista() {
       <div class="plt-cards">${ps.map(card).join('')}</div>
     </div>`).join('');
   el.innerHTML = `${aviso}
+    ${bannerAlertas()}
     <div class="plt-lista-top">
       <div class="plt-lista-tx">${_planos.length ? `${_planos.length} plano${_planos.length > 1 ? 's' : ''} em ${grupos.size} obra${grupos.size > 1 ? 's' : ''}` : ''}</div>
       <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button>
@@ -816,6 +879,16 @@ function pintarPlano() {
   else pintarGantt();
 }
 
+// indicador «Alertas» (encomendas, adjudicações e outras datas importantes)
+function kAlertas() {
+  const L = alertasDoPlano().map(a => { const d = dataAlerta(a); return { a, d, e: estadoAlerta(a, d) }; });
+  if (!L.length) return '';
+  const at = L.filter(x => x.e === 'atraso').length, br = L.filter(x => x.e === 'breve').length, pend = L.filter(x => x.e !== 'ok');
+  const prox = pend.filter(x => x.d != null).sort((x, y) => x.d - y.d)[0];
+  const b = at ? `${at} em atraso` : br ? `${br} nos próximos ${AVISO_DIAS} dias` : pend.length ? `${pend.length} por fazer` : 'Tudo feito';
+  const sp = at && br ? `e ${br} nos próximos ${AVISO_DIAS} dias` : prox ? `Próximo: ${fmtD(prox.d)} — ${prox.a.titulo}` : `${L.length} alerta${L.length > 1 ? 's' : ''}`;
+  return `<button type="button" class="plt-kpi plt-kpi-b ${at ? 'bad' : br ? 'warn' : ''}" data-acao="alertas" title="Encomendas, adjudicações e outras datas importantes"><small>Alertas</small><b>${b}</b><span class="plt-kpi-el">${esc(sp)}</span></button>`;
+}
 function pintarKpis() {
   const r = _R, T = _plano.tarefas;
   const tot = r.valor.reduce((s, v, i) => s + (r.pai[i] === -1 ? v : 0), 0);
@@ -854,7 +927,7 @@ function pintarKpis() {
     <div class="plt-kpi"><small>Valor</small><b>${eur0(tot)}</b></div>
     ${kPct}
     <div class="plt-kpi"><small>Tarefas críticas</small><b>${crit}</b></div>
-    ${kRef}${kLim}${kSob}
+    ${kAlertas()}${kRef}${kLim}${kSob}
     ${r.ciclo ? '<div class="plt-kpi bad"><small>Atenção</small><b>Ligações em ciclo</b><span>Rever as predecessoras</span></div>' : ''}`;
 }
 
@@ -953,6 +1026,7 @@ function escala() {
   if (r.PZ != null) d1 = Math.max(d1, r.PZ);
   if (_ui.refs) for (let i = 0; i < r.n; i++) if (r.bES[i] != null) { d0 = Math.min(d0, r.bES[i]); d1 = Math.max(d1, r.bEF[i]); }
   _plano.tarefas.forEach(t => { if (t.limite) d1 = Math.max(d1, dnum(t.limite)); });
+  alertasDoPlano().forEach(a => { const d = dataAlerta(a); if (d != null) { d0 = Math.min(d0, d); d1 = Math.max(d1, d); } });
   if (_ui.zoom === 'mes') { const a = new Date(d0 * DIA); d0 = Math.round(Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), 1) / DIA); d1 += 62; }
   else { d0 -= 3; while (dow(d0) !== 1) d0--; d1 += _ui.zoom === 'dia' ? 14 : 35; }
   return { d0, d1, px, w: Math.ceil((d1 - d0 + 1) * px) };
@@ -984,6 +1058,8 @@ function pintarGantt() {
       ${tbi('refazer', ICO.redo, 'Refazer (Ctrl+Y)')}
       <span class="plt-tb-sep"></span>
       ${tb('colunas', ICO.colunas, 'Colunas', 'Mostrar ou ocultar colunas da tabela')}
+      <span class="plt-tb-sep"></span>
+      ${(n => `<button type="button" class="plt-tb-b ${n ? 'plt-tb-al' : ''}" data-acao="alertas" title="Alertas: quando encomendar material ou adjudicar subempreitadas">${ICO.sino}<span>Alertas</span>${n ? `<i class="plt-tb-n">${n}</i>` : ''}</button>`)(alertasDoPlano().filter(a => ['atraso', 'breve'].includes(estadoAlerta(a))).length)}
       <span class="plt-tb-fill"></span>
       <button type="button" class="plt-tb-b plt-tb-sob ${_R.ref ? 'on' : ''}" data-acao="sobrepor" aria-haspopup="menu" title="Sobrepor uma versão guardada (por exemplo a inicial) ao plano atual">${ICO.base}<span>${_R.ref ? 'Sobreposta: ' + esc(_R.ref.nome) : 'Sobrepor versão'}</span>${ICO.chev}</button>
       <button type="button" class="plt-tb-b ${_ui.critico ? 'on' : ''}" data-acao="critico" title="Realçar o caminho crítico">${ICO.crit}<span>Caminho crítico</span></button>
@@ -1012,12 +1088,14 @@ function pintarGrelha() {
     const ro = rs ? 'readonly tabindex="-1"' : '';
     const tg = rs ? `<button type="button" class="plt-tg" data-tg="${i}" title="${t.fechado ? 'Expandir' : 'Recolher'}">${t.fechado ? '▸' : '▾'}</button>` : '<span class="plt-tg0"></span>';
     const restr = t.inicioMin ? `<span class="plt-restr" title="Não iniciar antes de ${fmtD(dnum(t.inicioMin))}">${ICO.pin}</span>` : '';
+    const als = alertasDoPlano().filter(a => a.tarefa === t.id && !a.feito);
+    const alIc = als.length ? `<span class="plt-al-ic-g ${als.some(a => estadoAlerta(a) === 'atraso') ? 'atraso' : als.some(a => estadoAlerta(a) === 'breve') ? 'breve' : ''}" title="${esc(als.map(a => `${a.titulo}: até ${fmtD(dataAlerta(a))}`).join('\n'))}">${ICO.sino}</span>` : '';
     const lim = t.limite ? `<span class="plt-lim-ic ${r.atrasoLim[i] ? 'falha' : ''}" title="Data-limite ${fmtD(dnum(t.limite))}${r.atrasoLim[i] ? ` — falhada por ${r.atrasoLim[i]} d.ú.` : ' — cumprida'}">${ICO.bandeira}</span>` : '';
     const sob = r.sob.porTarefa.get(i);
     const sobIc = sob ? `<span class="plt-sob-ic" title="${esc('Sobrecarga de equipa:\n' + sob.map(c => txtSobrecarga(c, i)).join('\n'))}">${ICO.aviso}</span>` : '';
     const calP = !rs && r.cal[i] !== _C ? `<span class="plt-cal-ic" title="Calendário próprio: ${CAL_NOMES[r.cal[i].k]}">${r.cal[i].k}/7</span>` : '';
     return `<div class="plt-r ${sel ? 'sel' : ''} ${rs ? 'rs' : ''} ${crit ? 'crit' : ''} ${r.ms[i] ? 'ms' : ''}" data-i="${i}">
-      <div class="c-id">${i + 1}${restr}${lim}${sobIc}</div>
+      <div class="c-id">${i + 1}${restr}${lim}${sobIc}${alIc}</div>
       <div class="c-edt">${r.edt[i]}</div>
       <div class="c-nome" style="padding-left:${6 + t.nivel * 18}px">${tg}${t.cod ? `<span class="plt-cod" title="Artigo ${esc(t.cod)}">${esc(t.cod)}</span>` : ''}<input data-f="nome" value="${esc(t.nome)}" spellcheck="false"/></div>
       <div class="c-dur">${temFases(t) ? `<span class="plt-fases-ic" title="Barra partida em ${t.fases.length} fases">${t.fases.length}×</span>` : calP}<input data-f="dur" value="${txtDur(durDe(i))}" ${ro} ${temFases(t) ? `title="${t.fases.map((f, k) => (k ? `pausa ${f.pausa} + ` : '') + f.dur).join(' + ')} d.ú."` : ''}/></div>
@@ -1087,6 +1165,9 @@ function pintarGrafico() {
   // barras
   const linha = new Map(r.vis.map((i, k) => [i, k]));
   let barras = '';
+  // alertas: sino no dia-limite, ligado por um tracejado ao início da tarefa
+  const alPor = new Map();
+  alertasDoPlano().forEach(a => { if (!a.tarefa) return; const l = alPor.get(a.tarefa) || []; l.push(a); alPor.set(a.tarefa, l); });
   r.vis.forEach((i, k) => {
     const t = T[i], y = k * ROW, c = r.cal[i];
     const a = r.es[i], b = r.ef[i];
@@ -1097,6 +1178,12 @@ function pintarGrafico() {
     const st = estiloCor(t);
     const cls = (t.estilo === 'tracejada' ? ' trac' : '') + (r.atrasoLim[i] ? ' atr' : '') + sel;
     // data-limite: seta para baixo no fim do dia-limite
+    (alPor.get(t.id) || []).forEach(al => {
+      const d = dataAlerta(al); if (d == null) return;
+      const e = estadoAlerta(al, d), x0 = X(d) + px / 2, x1 = X(a);
+      if (x1 - x0 > 10) barras += `<div class="plt-alm-l ${e}" style="top:${y + 16}px;left:${x0}px;width:${x1 - x0}px"></div>`;
+      barras += `<div class="plt-alm ${e}" data-al="${esc(al.id)}" style="top:${y + 7}px;left:${x0 - 9}px" title="${esc(`${al.titulo}\n${(TIPOS_ALERTA[al.tipo] || TIPOS_ALERTA.outro).verbo || 'Até'}${(TIPOS_ALERTA[al.tipo] || TIPOS_ALERTA.outro).verbo ? ' até' : ''} ${fmtDL(d)} · ${al.antes | 0} d.ú. antes do início\n${txtEstadoAlerta(al, d)} — clique para abrir`)}">${ICO.sino}</div>`;
+    });
     if (t.limite) { const dl = dnum(t.limite); barras += `<div class="plt-lim ${r.atrasoLim[i] ? 'falha' : ''}" style="top:${y + 2}px;left:${X(dl + 1) - 6}px" title="Data-limite ${fmtD(dl)}${r.atrasoLim[i] ? ` — falhada por ${r.atrasoLim[i]} d.ú.` : ' — cumprida'}"></div>`; }
     // sobrecarga de equipa: faixa âmbar por baixo da barra nos dias em causa
     if (sob) sob.forEach(x => { barras += `<div class="plt-sob" style="top:${y + 26}px;left:${X(x.de)}px;width:${Math.max(4, (x.ate - x.de + 1) * px)}px" title="${esc(txtSobrecarga(x, i))}"></div>`; });
@@ -1495,6 +1582,7 @@ function ligarGantt() {
     bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up);
   });
   ch.addEventListener('dblclick', e => { const bar = e.target.closest('.plt-bar'); if (bar) abrirTarefa(+bar.dataset.i); });
+  ch.addEventListener('click', e => { const m = e.target.closest('.plt-alm'); if (m) { const a = alertasDoPlano().find(x => x.id === m.dataset.al); if (a) abrirAlerta(a); } });
   // botão direito: menu da barra (no gráfico) ou da tarefa (na grelha)
   ch.addEventListener('contextmenu', e => {
     const bar = e.target.closest('.plt-bar'); if (!bar) return;
@@ -1542,6 +1630,7 @@ function abrirMenuBarra(i, dia, x, y) {
   h += it('info', ICO.info, 'Definições da tarefa…');
   h += it('barra', ICO.pincel, folha ? 'Aparência e fases da barra…' : 'Aparência da barra…');
   if (folha) { const n = _ui.sel.has(i) ? selOrd().filter(eFolhaAtribuivel).length : 1; h += it('equipas', ICO.equipas, n > 1 ? `Execução e equipas de ${n} tarefas…` : 'Execução e equipas…'); }
+  if (!r.resumo[i]) h += it('alerta', ICO.sino, 'Novo alerta para esta tarefa…');
   if (folha && t.dur >= 2) {
     h += '<div class="plt-menu-sep"></div>';
     h += partir ? it('partir', ICO.tesoura, `Partir a barra a ${fmtD(partir.dia)}`)
@@ -1564,6 +1653,7 @@ function abrirMenuBarra(i, dia, x, y) {
     switch (b.dataset.m) {
       case 'info': abrirTarefa(i); break;
       case 'barra': abrirBarra(i); break;
+      case 'alerta': abrirAlerta(null, { tarefa: t.id }); break;
       case 'equipas': abrirAtribuir(_ui.sel.has(i) && _ui.sel.size > 1 ? selOrd().filter(eFolhaAtribuivel) : [i]); break;
       case 'partir':
         mudar(() => {
@@ -1677,7 +1767,8 @@ function ligarTeclado() {
   if (_keysOk) return; _keysOk = true;
   const body = $('plt-body');
   body.addEventListener('click', e => {
-    const b = e.target.closest('[data-acao],[data-abrir],[data-vista],[data-zoom],[data-mapa-per],[data-mapa-val],[data-mapa-orig],[data-sub-ed]'); if (!b) return;
+    const b = e.target.closest('[data-acao],[data-abrir],[data-abrir-al],[data-vista],[data-zoom],[data-mapa-per],[data-mapa-val],[data-mapa-orig],[data-sub-ed]'); if (!b) return;
+    if (b.dataset.abrirAl) return abrirPlano(b.dataset.abrirAl).then(() => abrirAlertas());
     if (b.dataset.mapaOrig) { _ui.mapaOrig = b.dataset.mapaOrig; return pintarPlano(); }
     if (b.dataset.subEd) return abrirSub(b.dataset.subEd);
     if (b.dataset.mapaPer) { _ui.mapaPer = b.dataset.mapaPer; return pintarPlano(); }
@@ -1705,6 +1796,7 @@ function ligarTeclado() {
     if (a === 'xml') return exportarMSProject();
     if (a === 'sobrecargas') return abrirSobrecargas();
     if (a === 'limites') return abrirLimites();
+    if (a === 'alertas') return abrirAlertas();
     if (a === 'nivelar') return nivelarEquipas();
     if (a === 'guardar-versao') return abrirGuardarVersao();
     if (a === 'sobrepor') return $('plt-menu')?.dataset.tipo === 'sob' ? fecharMenu() : abrirMenuSobrepor(b);
@@ -3011,6 +3103,134 @@ async function abrirGuardarVersao() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  ALERTAS: quando encomendar material, adjudicar subempreitadas e outras datas importantes
+// ═══════════════════════════════════════════════════════════════════
+// sugestões: adjudicar cada subempreiteiro antes da 1.ª tarefa dele
+function sugestoesAlertas() {
+  const T = _plano.tarefas, r = _R, L = alertasDoPlano();
+  return subsDoPlano().map(su => {
+    if (L.some(a => a.sub === su.id)) return null;
+    let k = -1;
+    T.forEach((t, i) => { if (t.sub === su.id && !r.resumo[i] && (k < 0 || r.es[i] < r.es[k])) k = i; });
+    if (k < 0) return null;
+    const antes = TIPOS_ALERTA.sub.antes;
+    return { tipo: 'sub', sub: su.id, titulo: `Adjudicar subempreitada — ${su.nome}${su.especialidade ? ' (' + su.especialidade + ')' : ''}`, tarefa: T[k].id, antes, d: dD(_C, oC(_C, r.es[k]) - antes), nomeT: T[k].nome };
+  }).filter(Boolean);
+}
+function abrirAlertas() {
+  if (!_plano) return;
+  calcular();
+  const T = _plano.tarefas, r = _R;
+  const ord = { atraso: 0, breve: 1, futuro: 2, sem: 3, ok: 4 };
+  const L = alertasDoPlano().map(a => { const d = dataAlerta(a); return { a, d, e: estadoAlerta(a, d) }; })
+    .sort((x, y) => ord[x.e] - ord[y.e] || (x.d ?? 9e9) - (y.d ?? 9e9));
+  const sug = sugestoesAlertas();
+  const linha = ({ a, d, e }) => {
+    const tp = TIPOS_ALERTA[a.tipo] || TIPOS_ALERTA.outro, i = a.tarefa ? r.idx.get(a.tarefa) : null;
+    return `<div class="plt-al ${e}" data-al="${esc(a.id)}">
+      <span class="plt-al-ic">${icoAlerta(a)}</span>
+      <div class="plt-al-tx"><b>${esc(a.titulo)}</b>
+        <small>${d != null ? `${tp.verbo ? tp.verbo + ' até' : 'Até'} <b>${fmtDL(d)}</b>` : ''}${i != null ? ` · ${a.antes | 0} d.ú. antes de «${esc(T[i].nome)}», que começa a ${fmtD(r.es[i])}` : a.tarefa ? ' · a tarefa foi apagada — edite o alerta' : ''}</small>
+        ${a.notas ? `<small class="plt-al-n">${esc(a.notas)}</small>` : ''}</div>
+      <div class="plt-al-a"><span class="plt-pill ${PILL_ALERTA[e]}">${esc(txtEstadoAlerta(a, d))}</span>
+        ${a.feito ? '<button type="button" class="plt-lnk" data-ala="desfazer">Desfazer</button>' : `<button type="button" class="plt-btn sec sm" data-ala="feito" title="Marcar como feito hoje">${ICO.visto}${tp.feito}</button>`}
+        <button type="button" class="plt-ico-btn plt-al-ed" data-ala="editar" title="Editar o alerta">${ICO.cfg}</button></div>
+    </div>`;
+  };
+  const corpo = `
+    <div class="plt-ac-bts"><button type="button" class="plt-btn pri sm" data-ala="novo">${ICO.plus}Novo alerta</button></div>
+    <p class="plt-nota">Cada alerta fica ligado a uma tarefa, com a antecedência em dias úteis: se a tarefa mudar de data no Gantt, o alerta acompanha. O sininho do portal avisa ${AVISO_DIAS} dias antes e no próprio dia; no Gantt aparece um sino na linha da tarefa.</p>
+    ${L.length ? L.map(linha).join('') : '<div class="dd-vazio">Ainda não há alertas neste plano. Crie um aqui ou com o botão direito numa tarefa do Gantt.</div>'}
+    ${sug.length ? `<h4>Sugestões — subempreitadas por adjudicar</h4>
+      ${sug.map((x, k) => `<div class="plt-al sug"><span class="plt-al-ic">${ICO.sub}</span><div class="plt-al-tx"><b>${esc(x.titulo)}</b><small>Adjudicar até <b>${fmtDL(x.d)}</b> · ${x.antes} d.ú. antes de «${esc(x.nomeT)}»</small></div><div class="plt-al-a"><button type="button" class="plt-btn sec sm" data-sug="${k}">${ICO.plus}Criar alerta</button></div></div>`).join('')}
+      ${sug.length > 1 ? `<div class="plt-ac-bts"><button type="button" class="plt-btn sec sm" data-ala="sug-todas">Criar os ${sug.length} alertas</button></div>` : ''}` : ''}`;
+  const dr = mostrarGaveta('Plano de trabalhos', 'Alertas', 'Encomendas de material, adjudicações e outras datas importantes', corpo,
+    '<button type="button" class="plt-btn sec" data-g="fechar2">Fechar</button>');
+  dr.querySelector('[data-g="fechar2"]').onclick = fecharGaveta;
+  dr.querySelector('.dd-b').onclick = e => {
+    const sb0 = e.target.closest('[data-sug]');
+    if (sb0) { const x = sug[+sb0.dataset.sug]; mudar(() => { listaAlertas().push({ id: uid(), tipo: 'sub', sub: x.sub, titulo: x.titulo, tarefa: x.tarefa, antes: x.antes }); }); return abrirAlertas(); }
+    const b = e.target.closest('[data-ala]'); if (!b) return;
+    const ac = b.dataset.ala, a = alertasDoPlano().find(x => x.id === b.closest('[data-al]')?.dataset.al);
+    if (ac === 'novo') return abrirAlerta(null);
+    if (ac === 'sug-todas') { mudar(() => { sug.forEach(x => listaAlertas().push({ id: uid(), tipo: 'sub', sub: x.sub, titulo: x.titulo, tarefa: x.tarefa, antes: x.antes })); }); return abrirAlertas(); }
+    if (!a) return;
+    if (ac === 'editar') return abrirAlerta(a);
+    if (ac === 'feito') { mudar(() => { a.feito = diso(hojeN()); }); showToast(`«${a.titulo}» marcado como feito`); return abrirAlertas(); }
+    if (ac === 'desfazer') { mudar(() => { delete a.feito; }); return abrirAlertas(); }
+  };
+}
+// Criar ou editar um alerta
+function abrirAlerta(a0, { tarefa: tarefa0 } = {}) {
+  if (!_plano) return;
+  calcular();
+  const T = _plano.tarefas, r = _R;
+  const a = a0 ? { ...a0 } : { tipo: 'material', titulo: '', tarefa: tarefa0 || '', antes: TIPOS_ALERTA.material.antes };
+  let antesMexido = !!a0;
+  const opts = T.map((t, i) => (r.resumo[i] ? `<optgroup label="${esc(r.edt[i] + ' · ' + t.nome)}"></optgroup>` : `<option value="${esc(t.id)}" ${t.id === a.tarefa ? 'selected' : ''}>${esc(r.edt[i])} · ${esc(t.nome)}</option>`)).join('');
+  const corpo = `
+    <div class="plt-ops plt-ops-3" id="al-tipo">${Object.entries(TIPOS_ALERTA).map(([k, v]) => `<button type="button" class="plt-op ${a.tipo === k ? 'on' : ''}" data-t="${k}"><span class="plt-op-ic">${k === 'sub' ? ICO.sub : k === 'material' ? ICO.caixa : ICO.sino}</span><b>${v.curto}</b></button>`).join('')}</div>
+    <div class="plt-f"><label id="al-tit-l">O quê</label><input id="al-tit" value="${esc(a.titulo)}" maxlength="200" placeholder="${esc((TIPOS_ALERTA[a.tipo] || TIPOS_ALERTA.outro).ph)}"/></div>
+    <div class="plt-f"><label>Tarefa em que é preciso</label><select id="al-tar"><option value="">— Sem tarefa: data fixa —</option>${opts}</select></div>
+    <div class="plt-f2" id="al-antes-w">
+      <div class="plt-f"><label id="al-antes-l">Antecedência (dias úteis)</label><input id="al-antes" type="number" min="0" max="400" step="1" value="${a.antes | 0}"/></div>
+      <div class="plt-f"></div>
+    </div>
+    <div class="plt-f" id="al-fixa-w"><label>Data</label><input id="al-fixa" type="date" value="${esc(a.dataFixa || '')}"/></div>
+    <div class="plt-alerta ok" id="al-calc"></div>
+    <div class="plt-f"><label>Notas</label><textarea id="al-notas" rows="3" placeholder="Fornecedor, prazo de entrega, contacto, quantidades…">${esc(a.notas || '')}</textarea></div>
+    ${a0 ? `<div class="plt-f2"><div class="plt-f"><label>Feito a</label><input id="al-feito" type="date" value="${esc(a.feito || '')}"/></div><div class="plt-f"></div></div>
+      <h4>Zona de perigo</h4><button type="button" class="plt-btn del sm" data-g="apagar">${ICO.del}Eliminar alerta</button>` : ''}`;
+  const dr = mostrarGaveta('Alertas', a0 ? 'Editar alerta' : 'Novo alerta', 'A data acompanha a tarefa quando o plano muda', corpo,
+    `<button type="button" class="plt-btn sec" data-g="cancelar">Cancelar</button><button type="button" class="plt-btn pri" data-g="ok">Guardar alerta</button>`);
+  setTimeout(() => $('al-tit')?.focus(), 320);
+  const calc = () => {
+    const tp = TIPOS_ALERTA[a.tipo], tid = $('al-tar').value, i = tid ? r.idx.get(tid) : null;
+    $('al-antes-w').hidden = !tid; $('al-fixa-w').hidden = !!tid;
+    $('al-antes-l').textContent = `${tp.verbo ? tp.verbo + ' quantos' : 'Quantos'} dias úteis antes do início da tarefa`;
+    let d = null;
+    if (i != null) d = dD(_C, oC(_C, r.es[i]) - Math.max(0, parseInt($('al-antes').value, 10) || 0));
+    else if ($('al-fixa').value) d = dnum($('al-fixa').value);
+    const el = $('al-calc');
+    el.hidden = d == null;
+    if (d != null) el.innerHTML = `${ICO.sino}<span>${tp.verbo ? tp.verbo + ' até' : 'Até'} <b>${fmtDL(d)}</b>${i != null ? ` — «${esc(T[i].nome)}» começa a ${fmtDL(r.es[i])}` : ''}. ${d < hojeN() ? '<b>Esta data já passou.</b>' : d === hojeN() ? '<b>É hoje.</b>' : `Faltam ${d - hojeN()} dia${d - hojeN() > 1 ? 's' : ''}.`}</span>`;
+    el.className = 'plt-alerta ' + (d != null && d < hojeN() ? 'bad' : 'ok');
+  };
+  dr.querySelector('#al-tipo').onclick = e => {
+    const b = e.target.closest('[data-t]'); if (!b) return;
+    a.tipo = b.dataset.t;
+    dr.querySelectorAll('#al-tipo .plt-op').forEach(x => x.classList.toggle('on', x === b));
+    $('al-tit').placeholder = TIPOS_ALERTA[a.tipo].ph;
+    if (!antesMexido) $('al-antes').value = TIPOS_ALERTA[a.tipo].antes;
+    calc();
+  };
+  $('al-antes').oninput = () => { antesMexido = true; calc(); };
+  $('al-tar').onchange = calc; $('al-fixa').oninput = calc;
+  calc();
+  dr.querySelector('[data-g="cancelar"]').onclick = fecharGaveta;
+  dr.querySelector('[data-g="apagar"]')?.addEventListener('click', () => {
+    if (!confirm(`Eliminar o alerta «${a0.titulo}»?`)) return;
+    mudar(() => { opcoesPlano().alertas = alertasDoPlano().filter(x => x.id !== a0.id); });
+    abrirAlertas();
+  });
+  dr.querySelector('[data-g="ok"]').onclick = () => {
+    const titulo = $('al-tit').value.trim(); if (!titulo) return showToast('Escreva o que é preciso encomendar ou adjudicar');
+    const tid = $('al-tar').value, fixa = $('al-fixa').value;
+    if (!tid && !fixa) return showToast('Escolha a tarefa ou uma data');
+    const novo = { id: a0?.id || uid(), tipo: a.tipo, titulo: titulo.slice(0, 200), ...(a0?.sub ? { sub: a0.sub } : {}) };
+    if (tid) { novo.tarefa = tid; novo.antes = Math.max(0, Math.min(400, parseInt($('al-antes').value, 10) || 0)); } else novo.dataFixa = fixa;
+    const notas = $('al-notas').value.trim(); if (notas) novo.notas = notas.slice(0, 1000);
+    const feito = a0 ? $('al-feito').value : ''; if (feito) novo.feito = feito;
+    mudar(() => {
+      const L = listaAlertas(), k = L.findIndex(x => x.id === novo.id);
+      if (k >= 0) L[k] = novo; else L.push(novo);
+    });
+    showToast(a0 ? 'Alerta guardado' : 'Alerta criado');
+    abrirAlertas();
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  VERSÕES DO PLANO (tabela planos_trabalho_versoes; em modo local, localStorage)
 //  Cada versão é uma cópia completa do plano (tarefas, equipas, subempreiteiros, opções) com nome e estado.
 // ═══════════════════════════════════════════════════════════════════
@@ -3521,7 +3741,8 @@ function resumoParaIA() {
     fix.length ? `PESSOAL E EQUIPAMENTO FIXO DE OBRA (não se atribui a tarefas; conta em todos os dias úteis do período)\n${fix.map(e => `- ${e.nome}: ${resumoComp(e) || 'sem composição'} — ${periodoFixa(e)}`).join('\n')}` : 'PESSOAL FIXO DE OBRA: nenhum definido.',
     subs.length ? `SUBEMPREITEIROS (nome — especialidade)\n${subs.map(s => `- ${s.nome}${s.especialidade ? ' — ' + s.especialidade : ''}`).join('\n')}` : 'SUBEMPREITEIROS: nenhum definido.',
   ].join('\n\n');
-  return `${cab}\n\n${secEq}\n\nTAREFAS (calendário vazio = o do plano; 6 = seg–sáb; 7 = todos os dias, duração em dias seguidos; folga negativa = não cumpre uma data-limite; «fim ref.» = fim na versão sobreposta; desvio > 0 = acaba depois)\nID | EDT | nível | nome | duração | calendário | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | data-limite | equipas | fim ref. | desvio (d.ú.) | notas\n${linhas.join('\n')}`;
+  const secAl = alertasDoPlano().length ? `ALERTAS (o que encomendar ou adjudicar e até quando)\n${alertasDoPlano().map(a => { const d = dataAlerta(a), i = a.tarefa ? r.idx.get(a.tarefa) : null; return `- [${(TIPOS_ALERTA[a.tipo] || TIPOS_ALERTA.outro).curto}] ${a.titulo} · até ${d != null ? ds(d) : '—'}${i != null ? ` · ${a.antes | 0} d.ú. antes da tarefa ${i + 1}` : ''} · ${txtEstadoAlerta(a, d)}`; }).join('\n')}` : 'ALERTAS: nenhum.';
+  return `${cab}\n\n${secEq}\n\n${secAl}\n\nTAREFAS (calendário vazio = o do plano; 6 = seg–sáb; 7 = todos os dias, duração em dias seguidos; folga negativa = não cumpre uma data-limite; «fim ref.» = fim na versão sobreposta; desvio > 0 = acaba depois)\nID | EDT | nível | nome | duração | calendário | início | fim | predecessoras | % | valor € | folga (d.ú.) | crítica | artigo | não iniciar antes de | data-limite | equipas | fim ref. | desvio (d.ú.) | notas\n${linhas.join('\n')}`;
 }
 
 function abrirIA() {
@@ -3696,6 +3917,7 @@ function descreverOps(p) {
       case 'mover': return `<b>Mover</b> ${nm(o.id)} ${o.dentro_de ? 'para dentro de ' + nm(o.dentro_de) : 'para a seguir a ' + nm(o.depois_de)}`;
       case 'nivel': return `${Number(o.delta) > 0 ? '<b>Avançar</b>' : '<b>Recuar</b>'} nível de ${nm(o.id)}`;
       case 'definir_equipa': return `<b>${o.fixa ? 'Pessoal fixo' : 'Equipa'}</b> «${esc(o.nome)}»${o.fixa && (o.de || o.ate) ? ` (${o.de ? 'de ' + esc(o.de) : ''}${o.ate ? ' até ' + esc(o.ate) : ''})` : ''}: ${[...(o.mao_de_obra || []).map(x => `${x.qtd} ${esc(x.categoria)}`), ...(o.equipamentos || []).map(x => `${x.qtd} ${esc(x.tipo)}`)].join(', ') || 'sem alterações à composição'}${o.disponiveis ? ` · ${o.disponiveis} disponíve${o.disponiveis == 1 ? 'l' : 'is'}` : ''}`;
+      case 'alerta': return `<b>Alerta</b> «${esc(o.nome || '')}» — ${o.id ? `${o.antes ?? (TIPOS_ALERTA[o.tipo_alerta] || TIPOS_ALERTA.outro).antes} d.ú. antes de ${nm(o.id)}` : `até ${dt(o.data_alerta)}`}`;
       case 'nivelar': return '<b>Nivelar equipas</b>: atrasar as tarefas necessárias para que nenhuma equipa esteja em duas frentes ao mesmo tempo';
       case 'definir_subempreiteiro': return `<b>Subempreiteiro</b> «${esc(o.nome)}»${o.especialidade ? ' — ' + esc(o.especialidade) : ''}`;
       case 'subempreiteiro': return `${nm(o.id)}: executada por <b>${o.nome && !/^plandese$/i.test(o.nome) ? esc(o.nome) : 'Plandese'}</b>`;
@@ -3877,6 +4099,17 @@ function aplicarOperacoes(ops, ids) {
           break;
         }
         case 'predecessoras': { const i = precisa(o.id); T[i].pred = predsDe(o.pred, T[i].id); break; }
+        case 'alerta': {
+          const titulo = String(o.nome || '').trim().slice(0, 200); if (!titulo) throw new Error('falta o que é preciso encomendar ou adjudicar');
+          const tipo = TIPOS_ALERTA[o.tipo_alerta] ? o.tipo_alerta : 'outro';
+          const al = { id: uid(), tipo, titulo };
+          if (o.id) { al.tarefa = T[precisa(o.id)].id; al.antes = o.antes != null ? Math.max(0, Math.min(400, parseInt(o.antes, 10) || 0)) : TIPOS_ALERTA[tipo].antes; }
+          else if (/^\d{4}-\d{2}-\d{2}$/.test(o.data_alerta || '')) al.dataFixa = o.data_alerta;
+          else throw new Error('o alerta precisa de uma tarefa (id) ou de uma data');
+          if (o.notas) al.notas = String(o.notas).slice(0, 1000);
+          listaAlertas().push(al);
+          break;
+        }
         case 'ligar': {
           const a = uidDe(o.de); if (pos(a) < 0) throw new Error(`tarefa ${o.de} não encontrada`);
           const t = T[precisa(o.para)]; if (t.id === a) throw new Error('uma tarefa não se liga a si própria');

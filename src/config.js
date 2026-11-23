@@ -92,6 +92,7 @@ export const NOTIF_SECTIONS = {
   'historico':    'Folha de Ponto',
   'compras':      'Compras',
   'necessidades': 'Necessidades de obra',
+  'planos-trabalho': 'Planos de Trabalho',
   'faturas':      'Faturas',
   'faturas-aprovar': 'Faturas Por Aprovar',
   'tesouraria':   'Tesouraria',
