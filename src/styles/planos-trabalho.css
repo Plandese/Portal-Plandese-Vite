@@ -655,3 +655,10 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-al-li small{font-size:12.5px;color:var(--p-mute);margin-left:auto;text-align:right}
 .plt-lista-bts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .plt-lista-bts .vg-abrir svg,.plt-top-acoes [data-acao="video"] svg{width:19px;height:19px}
+/* exportar um separador (Excel / PDF) */
+.plt-exp-bts{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
+.plt-exp-bts .plt-btn svg{width:16px;height:16px}
+.plt-menu-lin{display:flex;align-items:center;gap:6px;padding:4px 8px 4px 12px;font-size:14px;color:var(--d-ink,#1b2130)}
+.plt-menu-lin span{flex:1;min-width:0}
+.plt-menu-ch{height:28px;padding:0 11px;border:1.5px solid var(--d-brand,#173f9f);border-radius:99px;background:#fff;color:var(--d-brand,#173f9f);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.plt-menu-ch:hover{background:#eef3ff}

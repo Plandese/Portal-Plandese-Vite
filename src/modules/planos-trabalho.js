@@ -982,15 +982,20 @@ function abrirMenuExportar(anchor) {
   const it = (a, ic, t, sub) => `<button type="button" class="plt-menu-i plt-menu-i2" role="menuitem" data-exp="${a}">${ic}<span><b>${t}</b><small>${sub}</small></span></button>`;
   document.body.insertAdjacentHTML('beforeend', `<div class="plt-menu" id="plt-menu" role="menu" data-tipo="exp">
     <div class="plt-menu-h">Exportar o plano</div>
-    ${it('imprimir', ICO.imprimir, 'PDF ou imprimir', 'Gantt em A3 ou A4, pronto a enviar')}
-    ${it('xls', ICO.xls, 'Excel', 'Tarefas, cronograma financeiro e mapas')}
+    ${it('imprimir', ICO.imprimir, 'Gantt em PDF ou impressão', 'A3 ou A4, pronto a enviar')}
+    ${it('xls', ICO.xls, 'Excel completo', 'Tarefas, cronograma financeiro, mapas e subempreiteiros')}
     ${it('xml', ICO.mpp, 'MS Project', 'Ficheiro XML (Ficheiro → Abrir)')}
+    <div class="plt-menu-sep"></div>
+    <div class="plt-menu-h">Só um separador</div>
+    ${[['fin', 'Cronograma financeiro'], ['mo', 'Mapa de mão de obra'], ['eq', 'Mapa de equipamentos'], ['sub', 'Subempreiteiros']].map(([v, t]) => `<div class="plt-menu-lin"><span>${t}</span><button type="button" class="plt-menu-ch" data-exp2="${v}" data-fmt="xls">Excel</button><button type="button" class="plt-menu-ch" data-exp2="${v}" data-fmt="pdf">PDF</button></div>`).join('')}
   </div>`);
   const m = $('plt-menu'), r = anchor.getBoundingClientRect();
   anchor.setAttribute('aria-expanded', 'true');
   m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 8)) + 'px';
   m.style.top = Math.min(r.bottom + 6, innerHeight - m.offsetHeight - 8) + 'px';
   m.addEventListener('click', ev => {
+    const b2 = ev.target.closest('[data-exp2]');
+    if (b2) { fecharMenu(); return exportarVista(b2.dataset.exp2, b2.dataset.fmt); }
     const b = ev.target.closest('[data-exp]'); if (!b) return;
     fecharMenu();
     if (b.dataset.exp === 'imprimir') abrirImprimir(); else if (b.dataset.exp === 'xls') exportarExcel(); else exportarMSProject();
@@ -1773,8 +1778,9 @@ function ligarTeclado() {
   if (_keysOk) return; _keysOk = true;
   const body = $('plt-body');
   body.addEventListener('click', e => {
-    const b = e.target.closest('[data-acao],[data-abrir],[data-abrir-al],[data-vista],[data-zoom],[data-mapa-per],[data-mapa-val],[data-mapa-orig],[data-sub-ed]'); if (!b) return;
+    const b = e.target.closest('[data-acao],[data-abrir],[data-abrir-al],[data-exp-v],[data-vista],[data-zoom],[data-mapa-per],[data-mapa-val],[data-mapa-orig],[data-sub-ed]'); if (!b) return;
     if (b.dataset.abrirAl) return abrirPlano(b.dataset.abrirAl).then(() => abrirAlertas());
+    if (b.dataset.expV) return exportarVista(b.dataset.expV, b.dataset.fmt);
     if (b.dataset.mapaOrig) { _ui.mapaOrig = b.dataset.mapaOrig; return pintarPlano(); }
     if (b.dataset.subEd) return abrirSub(b.dataset.subEd);
     if (b.dataset.mapaPer) { _ui.mapaPer = b.dataset.mapaPer; return pintarPlano(); }
@@ -1887,6 +1893,7 @@ function pintarFinanceiro() {
   svg += `<polyline points="${pts}" class="cs"/>` + acum.map((a2, i) => `<circle cx="${pl + (i + 1) * cw}" cy="${yA(a2)}" r="3.5" class="csp"><title>Acumulado ${nomeMes(lista[i])}: ${eur2(a2)} (${total ? Math.round(a2 / total * 100) : 0}%)</title></circle>`).join('');
   const linhas = grupos.map(g => `<tr><td class="n"><span class="plt-edt">${g.edt}</span>${esc(g.nome)}</td><td class="v">${eur0(g.valor)}</td>${g.m.map(x => `<td class="${x ? '' : 'z'}">${x ? eur0(x) : '—'}</td>`).join('')}</tr>`).join('');
   v.innerHTML = `
+    <div class="plt-mapa-top"><div class="plt-mapa-info">${ICO.xls}<span><b>Cronograma financeiro</b> · ${lista.length} meses · ${eur0(total)}</span></div><span class="plt-exp-bts"><button type="button" class="plt-btn sec sm" data-exp-v="fin" data-fmt="xls" title="Exportar este separador para Excel">${ICO.xls}Excel</button><button type="button" class="plt-btn sec sm" data-exp-v="fin" data-fmt="pdf" title="Exportar este separador para PDF (ou imprimir)">${ICO.imprimir}PDF</button></span></div>
     <div class="plt-fin-card">
       <div class="plt-fin-h"><b>Faturação prevista por mês</b><span><i class="lg bm"></i>Mensal <i class="lg cs"></i>Acumulado (curva S)</span></div>
       <div class="plt-fin-g"><svg width="${W}" height="${Hh}" class="plt-fin-svg">${svg}</svg></div>
@@ -3617,16 +3624,17 @@ function abrirImprimir() {
     imprimirHtml(htmlImpressao(o));
   };
 }
-function imprimirHtml(html) {
+let _tituloOrig = null;   // título da janela antes de imprimir (o nome do PDF vem dele)
+function imprimirHtml(html, nome = nomeFicheiro()) {
   const fr = document.createElement('iframe');
   fr.setAttribute('aria-hidden', 'true');
   fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(fr);
   const d = fr.contentDocument; d.open(); d.write(html); d.close();
-  const titulo = document.title;
+  if (_tituloOrig == null) _tituloOrig = document.title;
   setTimeout(() => {
-    document.title = nomeFicheiro();          // nome sugerido para o PDF
-    try { fr.contentWindow.focus(); fr.contentWindow.print(); } finally { setTimeout(() => { document.title = titulo; fr.remove(); }, 1500); }
+    document.title = nome;                    // nome sugerido para o PDF
+    try { fr.contentWindow.focus(); fr.contentWindow.print(); } finally { setTimeout(() => { if (_tituloOrig != null) document.title = _tituloOrig; _tituloOrig = null; fr.remove(); }, 1500); }
   }, 250);
 }
 // Gera o documento de impressão: cada página tem cabeçalho, a tabela (nº, tarefa, duração, início, fim) e o Gantt em SVG (mm)
@@ -3809,6 +3817,264 @@ function exportarExcel() {
     const w3 = XLSX.utils.aoa_to_sheet(f); w3['!cols'] = [{ wch: 30 }, ...m.periodos.map(() => ({ wch: 13 })), { wch: 10 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, w3, tp === 'mo' ? 'Mapa de mão de obra' : 'Mapa de equipamento'); });
   XLSX.writeFile(wb, `${nomeFicheiro()}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EXPORTAR UM SEPARADOR — cronograma financeiro, mapas de mão de obra / equipamentos, subempreiteiros
+//  O mesmo modelo de tabela serve o Excel (ExcelJS, formatado) e o PDF (impressão do navegador):
+//  { nome, titulo, colunas: [{ h, w, t: 'txt'|'eur'|'num'|'num1'|'pct' }], fixas (colunas à esquerda), fim (colunas fixas à direita),
+//    linhas: [{ v: [...], k?: 'grupo'|'sub'|'total', t?: tipo dos números da linha }], notas: [] }
+// ═══════════════════════════════════════════════════════════════════
+const NOMES_VISTA = { fin: 'Cronograma financeiro', mo: 'Mapa de mão de obra', eq: 'Mapa de equipamentos', sub: 'Subempreiteiros' };
+const dsL = n => diso(n).split('-').reverse().join('/');
+const nomeMesL = k => { const [y, m] = k.split('-'); return MES_ABR[+m - 1] + ' ' + y.slice(2); };
+const totalPlano = () => _R.valor.reduce((a, v, i) => a + (_R.pai[i] === -1 ? v : 0), 0);
+function linhasCabecalho() {
+  const r = _R;
+  return [_plano.nome, `${subtituloPlano()} · ${fmtDL(r.S0)} → ${fmtDL(r.PF)} · ${prazoUteis()} dias úteis · ${eur0(totalPlano())}`,
+    `Exportado a ${new Date().toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}`];
+}
+// ── modelos ──
+function tabFinanceiro() {
+  const { lista, grupos } = distribuicaoMensal();
+  const total = grupos.reduce((a, g) => a + g.valor, 0);
+  const mens = lista.map((_, k) => grupos.reduce((a, g) => a + g.m[k], 0));
+  let ac = 0; const acum = mens.map(x => (ac += x));
+  return {
+    nome: 'Cronograma financeiro', titulo: 'Cronograma financeiro — faturação prevista por mês', fixas: 3, fim: 0,
+    colunas: [{ h: 'EDT', w: 7, t: 'txt' }, { h: 'Capítulo', w: 42, t: 'txt' }, { h: 'Valor', w: 15, t: 'eur' }, ...lista.map(k => ({ h: nomeMesL(k), w: 13, t: 'eur' }))],
+    linhas: [...grupos.map(g => ({ v: [g.edt, g.nome, g.valor, ...g.m] })),
+      { k: 'total', v: ['', 'Total mensal', total, ...mens] },
+      { k: 'total', v: ['', 'Acumulado', '', ...acum] },
+      { k: 'total', t: 'pct', v: ['', '% acumulada', '', ...acum.map(x => (total ? x / total : 0))] }],
+    notas: ['O valor de cada tarefa é distribuído por igual pelos seus dias de trabalho (as pausas das barras partidas não contam).'],
+    lista, mens, acum, total,
+  };
+}
+function tabFinanceiroTarefas() {
+  const r = _R, T = _plano.tarefas, { lista } = distribuicaoMensal(), meses = new Map(lista.map((k, i) => [k, i]));
+  const linhas = [];
+  T.forEach((t, i) => {
+    if (r.resumo[i] || !r.valor[i]) return;
+    const m = new Array(lista.length).fill(0), dias = diasTrabalho(i), porDia = r.valor[i] / dias.length;
+    for (const d of dias) { const k = meses.get(diso(d).slice(0, 7)); if (k != null) m[k] += porDia; }
+    linhas.push({ v: [r.edt[i], '    '.repeat(t.nivel) + t.nome, dsL(r.es[i]), dsL(r.ef[i]), r.valor[i], ...m] });
+  });
+  const tot = linhas.reduce((a, l) => a + l.v[4], 0);
+  linhas.push({ k: 'total', v: ['', 'Total', '', '', tot, ...lista.map((_, k) => linhas.reduce((a, l) => a + (l.v[5 + k] || 0), 0))] });
+  return { nome: 'Por tarefa', titulo: 'Cronograma financeiro — por tarefa', fixas: 5, fim: 0,
+    colunas: [{ h: 'EDT', w: 8, t: 'txt' }, { h: 'Tarefa', w: 46, t: 'txt' }, { h: 'Início', w: 11, t: 'txt' }, { h: 'Fim', w: 11, t: 'txt' }, { h: 'Valor', w: 14, t: 'eur' }, ...lista.map(k => ({ h: nomeMesL(k), w: 13, t: 'eur' }))], linhas };
+}
+const ROT_VAL = { max: 'máximo diário em simultâneo', med: 'média por dia útil', tot: null };
+function tabMapa(tipo, val, m = mapaRecursos(tipo, _ui.mapaPer || 'mes', _ui.mapaOrig || 'tudo')) {
+  const mo = tipo === 'mo';
+  const v = (p, c) => (val === 'max' ? (p.max.get(c) || 0) : val === 'tot' ? (p.soma.get(c) || 0) : (p.dias ? (p.soma.get(c) || 0) / p.dias : 0));
+  const vt = p => (val === 'max' ? p.maxTot : val === 'tot' ? p.somaTot : (p.dias ? p.somaTot / p.dias : 0));
+  const rotV = val === 'tot' ? (mo ? 'homens-dia' : 'dias de máquina') : ROT_VAL[val];
+  const orig = { tudo: '', plandese: ' · só Plandese', sub: ' · só subempreiteiros' }[_ui.mapaOrig || 'tudo'];
+  const nome = { max: 'Máximo diário', med: 'Média diária', tot: mo ? 'Homens-dia' : 'Dias de máquina' }[val];
+  return {
+    nome, titulo: `${NOMES_VISTA[tipo]} — ${rotV} por ${(_ui.mapaPer || 'mes') === 'mes' ? 'mês' : 'semana'}${orig}`, fixas: 1, fim: 2,
+    colunas: [{ h: mo ? 'Categoria' : 'Equipamento', w: 30, t: 'txt' }, ...m.periodos.map(p => ({ h: p.rotulo, w: 10, t: val === 'med' ? 'num1' : 'num' })), { h: 'Máximo', w: 10, t: 'num' }, { h: mo ? 'Homens-dia' : 'Dias', w: 12, t: 'num' }],
+    linhas: [...m.cats.map(c => ({ v: [c, ...m.periodos.map(p => v(p, c)), m.maxCat.get(c) || 0, m.totCat.get(c) || 0] })),
+      { k: 'total', v: [`Total${val === 'max' ? ' (em simultâneo)' : ''}`, ...m.periodos.map(vt), m.maxGeral, m.totGeral] }],
+    notas: [`${m.comAtrib} de ${m.nFolhas} tarefas com equipa${m.nFixas ? ` · ${m.nFixas} ${m.nFixas > 1 ? 'equipas' : 'equipa'} de pessoal fixo de obra, que ${m.nFixas > 1 ? 'contam' : 'conta'} em todos os dias úteis do período` : ''}.`,
+      'As equipas contam nos dias de trabalho das tarefas a que estão atribuídas.'],
+    m, val,
+  };
+}
+function tabSub() {
+  const r = _R, T = _plano.tarefas, subs = subsDoPlano();
+  const folhas = T.map((t, i) => i).filter(i => !r.resumo[i] && !r.ms[i]);
+  const tot = totalPlano(), valSub = folhas.filter(i => subDe(T[i])).reduce((a, i) => a + r.valor[i], 0);
+  const pc = x => (tot ? (x / tot * 100).toLocaleString('pt-PT', { maximumFractionDigits: 1 }) : '0') + '%';
+  const linhas = [];
+  subs.forEach(su => {
+    const idx = folhas.filter(i => T[i].sub === su.id);
+    const contactos = [su.contacto, su.telefone, su.email].filter(Boolean).join(' · ');
+    linhas.push({ k: 'grupo', v: [`${su.nome}${su.especialidade ? ' — ' + su.especialidade : ''}${contactos ? '   (' + contactos + ')' : ''}`] });
+    if (!idx.length) linhas.push({ v: ['', 'Ainda sem tarefas atribuídas', '', '', '', ''] });
+    idx.forEach(i => linhas.push({ v: [String(i + 1), T[i].nome, dsL(r.es[i]), dsL(r.ef[i]), r.dur[i], r.valor[i] || ''] }));
+    if (idx.length) linhas.push({ k: 'sub', v: ['', `Subtotal ${su.nome}`, dsL(Math.min(...idx.map(i => r.es[i]))), dsL(Math.max(...idx.map(i => r.ef[i]))), '', idx.reduce((a, i) => a + r.valor[i], 0)] });
+  });
+  linhas.push({ k: 'total', v: ['', 'Total subempreitado', '', '', '', valSub] });
+  return { nome: 'Subempreiteiros', titulo: 'Subempreiteiros — tarefas, datas e valores', fixas: 6, fim: 0,
+    colunas: [{ h: 'Nº', w: 6, t: 'txt' }, { h: 'Tarefa', w: 48, t: 'txt' }, { h: 'Início', w: 12, t: 'txt' }, { h: 'Fim', w: 12, t: 'txt' }, { h: 'Duração (d.ú.)', w: 13, t: 'num' }, { h: 'Valor', w: 15, t: 'eur' }],
+    linhas, resumo: `Valor da obra ${eur0(tot)} · Plandese ${eur0(tot - valSub)} (${pc(tot - valSub)}) · Subempreitado ${eur0(valSub)} (${pc(valSub)})` };
+}
+
+// ── Excel formatado (ExcelJS) ──
+async function excelTabelas(nome, folhas) {
+  const EJ = window.ExcelJS; if (!EJ) { showToast('Excel indisponível'); return; }
+  const wb = new EJ.Workbook(); wb.creator = 'Plandese'; wb.created = new Date();
+  const AZUL = 'FF173F9F', TINT = 'FFEAF0FC', LINHA = 'FFE3E8F0';
+  const FMT = { eur: '#,##0.00 "€"', num: '#,##0', num1: '#,##0.0', pct: '0.0%' };
+  const cab = linhasCabecalho();
+  folhas.forEach(f => {
+    const topo = [cab[0], cab[1], ...(f.resumo ? [f.resumo] : []), cab[2]];
+    const hdr = topo.length + 2;
+    const ws = wb.addWorksheet(f.nome.slice(0, 31), {
+      views: [{ state: 'frozen', ySplit: hdr, xSplit: Math.min(f.fixas || 1, 2) }],
+      pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } },
+      headerFooter: { oddFooter: `&L${_plano.nome}&RPágina &P de &N` },
+    });
+    ws.columns = f.colunas.map(c => ({ width: c.w || 12 }));
+    const n = f.colunas.length;
+    const t1 = ws.getCell(1, 1); t1.value = f.titulo; t1.font = { bold: true, size: 14, color: { argb: AZUL } };
+    topo.forEach((t, k) => { const c = ws.getCell(2 + k, 1); c.value = t; c.font = { size: 10, bold: k === 0, color: { argb: k === 0 ? 'FF1B2130' : 'FF5D6678' } }; });
+    const h = ws.getRow(hdr);
+    f.colunas.forEach((c, k) => {
+      const cell = h.getCell(k + 1); cell.value = c.h;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL } };
+      cell.alignment = { vertical: 'middle', horizontal: c.t === 'txt' ? 'left' : 'center', wrapText: true };
+    });
+    h.height = 30;
+    ws.pageSetup.printTitlesRow = `${hdr}:${hdr}`;
+    let r = hdr + 1;
+    f.linhas.forEach(l => {
+      const row = ws.getRow(r);
+      if (l.k === 'grupo') {
+        ws.mergeCells(r, 1, r, n);
+        const c = row.getCell(1); c.value = l.v[0]; c.font = { bold: true, color: { argb: AZUL } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TINT } };
+        row.height = 20; r++; return;
+      }
+      l.v.forEach((v, k) => {
+        const cell = row.getCell(k + 1), col = f.colunas[k] || {};
+        cell.value = v === '' || v == null ? null : v;
+        const tp = l.t && k >= (f.fixas || 1) && k < n - (f.fim || 0) ? l.t : col.t;
+        if (typeof v === 'number' && FMT[tp]) cell.numFmt = FMT[tp];
+        if (col.t !== 'txt') cell.alignment = { horizontal: 'right' };
+        cell.border = { bottom: { style: 'thin', color: { argb: LINHA } } };
+        if (l.k === 'total' || l.k === 'sub') {
+          cell.font = { bold: true };
+          if (l.k === 'total') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F4FA' } };
+        }
+      });
+      r++;
+    });
+    (f.notas || []).forEach(t => { r++; const c = ws.getCell(r, 1); c.value = t; c.font = { italic: true, size: 9, color: { argb: 'FF5D6678' } }; });
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `${nome}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  showToast('Excel descarregado');
+}
+
+// ── PDF (impressão do navegador) ──
+const fmtCel = (v, t) => {
+  if (v === '' || v == null) return '';
+  if (typeof v !== 'number') return esc(v);
+  if (t === 'eur') return v ? eur0(v) : '—';
+  if (t === 'pct') return (v * 100).toLocaleString('pt-PT', { maximumFractionDigits: 1 }) + '%';
+  if (t === 'num1') return v ? (Math.round(v * 10) / 10).toLocaleString('pt-PT') : '—';
+  return v ? v.toLocaleString('pt-PT') : '—';
+};
+// tabela em HTML; as colunas do meio (meses / semanas) repartem-se em blocos para caber na largura da folha
+function tabelaHtml(f, porBloco) {
+  const n = f.colunas.length, a = f.fixas || 1, z = f.fim || 0, meio = [];
+  for (let k = a; k < n - z; k++) meio.push(k);
+  const blocos = [];
+  if (!meio.length) blocos.push([]); else for (let k = 0; k < meio.length; k += porBloco) blocos.push(meio.slice(k, k + porBloco));
+  return blocos.map((bl, bi) => {
+    const idx = [...Array(a).keys(), ...bl, ...(bi === blocos.length - 1 || z === 0 ? [...Array(z).keys()].map(k => n - z + k) : [])];
+    const th = idx.map(k => `<th class="${f.colunas[k].t === 'txt' ? 'tx' : ''}">${esc(f.colunas[k].h)}</th>`).join('');
+    const tr = f.linhas.map(l => {
+      if (l.k === 'grupo') return `<tr class="grupo"><td colspan="${idx.length}">${esc(l.v[0])}</td></tr>`;
+      return `<tr class="${l.k || ''}">${idx.map(k => { const t = l.t && k >= a && k < n - z ? l.t : f.colunas[k].t; return `<td class="${t === 'txt' ? 'tx' : ''}">${fmtCel(l.v[k], t)}</td>`; }).join('')}</tr>`;
+    }).join('');
+    return `${blocos.length > 1 ? `<p class="bloco">Colunas ${bi + 1} de ${blocos.length}</p>` : ''}<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+  }).join('');
+}
+function svgFinanceiroPdf(t) {
+  const W = 1000, H = 250, pl = 70, pr = 52, pt = 12, pb = 28, n = t.lista.length, cw = (W - pl - pr) / Math.max(1, n);
+  const maxM = Math.max(1, ...t.mens), yM = x => pt + (H - pt - pb) * (1 - x / maxM), yA = x => pt + (H - pt - pb) * (1 - x / Math.max(1, t.total));
+  let g = '';
+  for (let k = 0; k <= 4; k++) { const y = pt + (H - pt - pb) * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#e3e8f0"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6a7284">${eur0(maxM * (1 - k / 4)).replace(' €', '')}</text><text x="${W - pr + 6}" y="${y + 4}" font-size="11" fill="#6a7284">${100 - k * 25}%</text>`; }
+  t.lista.forEach((k, i) => { const x = pl + i * cw; g += `<rect x="${x + cw * .18}" y="${yM(t.mens[i])}" width="${cw * .64}" height="${Math.max(0, H - pb - yM(t.mens[i]))}" rx="3" fill="#9db6ee"/>`; if (n <= 24 || i % 2 === 0) g += `<text x="${x + cw / 2}" y="${H - 9}" text-anchor="middle" font-size="11" fill="#6a7284">${nomeMesL(k)}</text>`; });
+  const pts = [`${pl},${yA(0)}`].concat(t.acum.map((a, i) => `${pl + (i + 1) * cw},${yA(a)}`)).join(' ');
+  g += `<polyline points="${pts}" fill="none" stroke="#173f9f" stroke-width="2.5"/>` + t.acum.map((a, i) => `<circle cx="${pl + (i + 1) * cw}" cy="${yA(a)}" r="3.5" fill="#fff" stroke="#173f9f" stroke-width="2"/>`).join('');
+  return `<div class="graf"><div class="leg"><i style="background:#9db6ee"></i>Faturação mensal <i class="ln"></i>Acumulado (curva S)</div><svg viewBox="0 0 ${W} ${H}" width="100%">${g}</svg></div>`;
+}
+function svgMapaPdf(t) {
+  const m = t.m, val = t.val, W = 1000, H = 240, pl = 46, pr = 12, pt = 12, pb = 28, n = m.periodos.length, cw = (W - pl - pr) / Math.max(1, n);
+  const v = (p, c) => (val === 'max' ? (p.max.get(c) || 0) : val === 'tot' ? (p.soma.get(c) || 0) : (p.dias ? (p.soma.get(c) || 0) / p.dias : 0));
+  const cor = c => CORES_MAPA[m.cats.indexOf(c) % CORES_MAPA.length];
+  const maxY = Math.max(1, ...m.periodos.map(p => m.cats.reduce((a, c) => a + v(p, c), 0)));
+  const passo = maxY <= 5 ? 1 : maxY <= 12 ? 2 : maxY <= 30 ? 5 : maxY <= 60 ? 10 : Math.ceil(maxY / 50) * 10;
+  const topo = Math.ceil(maxY / passo) * passo, Y = x => pt + (H - pt - pb) * (1 - x / topo);
+  let g = '';
+  for (let k = 0; k <= topo; k += passo) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(k)}" y2="${Y(k)}" stroke="#e3e8f0"/><text x="${pl - 6}" y="${Y(k) + 4}" text-anchor="end" font-size="11" fill="#6a7284">${k}</text>`;
+  m.periodos.forEach((p, i) => {
+    let acc = 0; const x = pl + i * cw + cw * .16, w = cw * .68;
+    m.cats.forEach(c => { const q = v(p, c); if (!q) return; g += `<rect x="${x}" y="${Y(acc + q)}" width="${w}" height="${Math.max(0, Y(acc) - Y(acc + q))}" fill="${cor(c)}"/>`; acc += q; });
+    if (n <= 26 || i % 2 === 0) g += `<text x="${pl + i * cw + cw / 2}" y="${H - 9}" text-anchor="middle" font-size="${n > 30 ? 9 : 11}" fill="#6a7284">${esc(p.rotulo)}</text>`;
+  });
+  return `<div class="graf"><div class="leg">${m.cats.map(c => `<span><i style="background:${cor(c)}"></i>${esc(c)}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" width="100%">${g}</svg></div>`;
+}
+function docRelatorio(titulo, corpo, a3) {
+  const cab = linhasCabecalho();
+  return `<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>
+    @page{size:${a3 ? 'A3' : 'A4'} landscape;margin:10mm}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#1b2130;font-size:${a3 ? 9.5 : 8.5}pt}
+    header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:.6mm solid #173f9f;padding-bottom:2mm;margin-bottom:4mm}
+    h1{font-size:15pt;margin:0 0 1mm;color:#173f9f} header p{margin:0;color:#3a4252} header p.d{color:#5d6678;font-size:8pt}
+    .mk{text-align:right}.mk b{display:block;font-size:14pt;letter-spacing:.6mm;color:#173f9f}.mk span{color:#5d6678;font-size:8pt}
+    h2{font-size:11.5pt;margin:5mm 0 2mm;color:#173f9f} h2:first-of-type{margin-top:0}
+    .resumo{margin:0 0 3mm;font-weight:bold}
+    .graf{border:.3mm solid #dde2ea;border-radius:3mm;padding:3mm 4mm;margin:0 0 4mm;page-break-inside:avoid}
+    .leg{display:flex;flex-wrap:wrap;gap:2mm 5mm;font-size:8pt;color:#3a4252;margin-bottom:1mm}.leg i{display:inline-block;width:3mm;height:3mm;border-radius:.7mm;margin-right:1.2mm;vertical-align:middle}
+    .leg i.ln{height:.8mm;background:#173f9f}
+    table{width:100%;border-collapse:collapse;margin:0 0 4mm;page-break-inside:auto}
+    thead{display:table-header-group} tr{page-break-inside:avoid}
+    th{background:#173f9f;color:#fff;font-weight:bold;padding:1.6mm 1.4mm;text-align:right;white-space:nowrap}
+    th.tx,td.tx{text-align:left}
+    td{padding:1.2mm 1.4mm;border-bottom:.2mm solid #e3e8f0;text-align:right;white-space:nowrap}
+    td.tx{white-space:normal;max-width:90mm}
+    tbody tr:nth-child(even) td{background:#f8fafd}
+    tr.total td{font-weight:bold;background:#eef2f9 !important}
+    tr.sub td{font-weight:bold}
+    tr.grupo td{background:#eaf0fc !important;color:#173f9f;font-weight:bold;text-align:left;padding-top:2mm}
+    .bloco{margin:0 0 1mm;font-size:7.5pt;color:#5d6678}
+    .notas{color:#5d6678;font-size:7.5pt;margin:2mm 0 0}
+  </style></head><body>
+  <header><div><h1>${esc(titulo)}</h1><p>${esc(cab[0])}</p><p class="d">${esc(cab[1])}</p></div><div class="mk"><b>PLANDESE</b><span>${esc(cab[2])}</span></div></header>
+  ${corpo}</body></html>`;
+}
+const notasHtml = f => (f.notas || []).length ? `<p class="notas">${f.notas.map(esc).join('<br>')}</p>` : '';
+
+async function exportarVista(v, fmt) {
+  if (!_plano) return;
+  calcular();
+  if (!_plano.tarefas.length) return showToast('O plano ainda não tem tarefas');
+  const nome = `${nomeFicheiro()}_${NOMES_VISTA[v].normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_')}`;
+  try {
+    if (v === 'fin') {
+      const t = tabFinanceiro();
+      if (!t.total) return showToast('O plano não tem valores: o cronograma financeiro está vazio');
+      if (fmt === 'xls') return await excelTabelas(nome, [t, tabFinanceiroTarefas()]);
+      const a3 = t.lista.length > 10;
+      return imprimirHtml(docRelatorio(NOMES_VISTA.fin, `${svgFinanceiroPdf(t)}<h2>Faturação prevista por capítulo e por mês</h2>${tabelaHtml(t, a3 ? 16 : 10)}${notasHtml(t)}`, a3), nome);
+    }
+    if (v === 'mo' || v === 'eq') {
+      const m = mapaRecursos(v, _ui.mapaPer || 'mes', _ui.mapaOrig || 'tudo');
+      if (!m.cats.length) return showToast(`O ${NOMES_VISTA[v].toLowerCase()} está vazio: atribua equipas às tarefas`);
+      if (fmt === 'xls') return await excelTabelas(nome, ['max', 'med', 'tot'].map(x => tabMapa(v, x, m)));
+      const t = tabMapa(v, _ui.mapaVal || 'max', m), a3 = m.periodos.length > 14;
+      return imprimirHtml(docRelatorio(NOMES_VISTA[v], `<h2>${esc((x => x[0].toUpperCase() + x.slice(1))(t.titulo.replace(NOMES_VISTA[v] + ' — ', '')))}</h2>${svgMapaPdf(t)}${tabelaHtml(t, a3 ? 24 : 14)}${notasHtml(t)}`, a3), nome);
+    }
+    if (v === 'sub') {
+      if (!subsDoPlano().length) return showToast('Ainda não há subempreiteiros neste plano');
+      const t = tabSub();
+      if (fmt === 'xls') return await excelTabelas(nome, [t]);
+      return imprimirHtml(docRelatorio(NOMES_VISTA.sub, `<p class="resumo">${esc(t.resumo)}</p>${tabelaHtml(t, 99)}`, false), nome);
+    }
+  } catch (e) { console.error(e); showToast('Erro ao exportar: ' + (e.message || e)); }
 }
 
 // XML do Microsoft Project (MSPDI) — abre no MS Project com Ficheiro → Abrir
@@ -4809,7 +5075,8 @@ function pintarSubempreiteiros() {
   const ds = o => fmtD(o);
   const cab = `<div class="plt-mapa-top">
       <div class="plt-mapa-info">${ICO.sub}<span><b>${subs.length} subempreiteiro${subs.length === 1 ? '' : 's'}</b> · ${folhas.filter(i => subDe(T[i])).length} de ${folhas.length} tarefas subempreitadas</span></div>
-      <button type="button" class="plt-btn pri sm" data-acao="novo-sub">${ICO.plus}Novo subempreiteiro</button>
+      <span class="plt-exp-bts">${subs.length ? `<button type="button" class="plt-btn sec sm" data-exp-v="sub" data-fmt="xls" title="Exportar este separador para Excel">${ICO.xls}Excel</button><button type="button" class="plt-btn sec sm" data-exp-v="sub" data-fmt="pdf" title="Exportar este separador para PDF (ou imprimir)">${ICO.imprimir}PDF</button>` : ''}
+      <button type="button" class="plt-btn pri sm" data-acao="novo-sub">${ICO.plus}Novo subempreiteiro</button></span>
     </div>
     <div class="plt-kpis">
       <div class="plt-kpi"><small>Valor da obra</small><b>${eur0(tot)}</b></div>
@@ -4908,6 +5175,7 @@ function pintarMapaRecursos(tipo) {
       <div class="plt-seg">${seg('mapaPer', 'semana', 'Semanas')}${seg('mapaPer', 'mes', 'Meses')}</div>
       <div class="plt-seg">${seg('mapaVal', 'max', 'Máximo diário', 'O máximo em simultâneo num dia do período')}${seg('mapaVal', 'med', 'Média diária', 'Média por dia útil do período')}${seg('mapaVal', 'tot', tipo === 'mo' ? 'Homens-dia' : 'Dias de máquina', tipo === 'mo' ? 'Homens × dias' : 'Unidades × dias')}</div>
       <button type="button" class="plt-btn sec sm" data-acao="equipas">${ICO.equipas}Equipas</button>
+      <span class="plt-exp-bts"><button type="button" class="plt-btn sec sm" data-exp-v="${tipo}" data-fmt="xls" title="Exportar este separador para Excel">${ICO.xls}Excel</button><button type="button" class="plt-btn sec sm" data-exp-v="${tipo}" data-fmt="pdf" title="Exportar este separador para PDF (ou imprimir)">${ICO.imprimir}PDF</button></span>
     </div>${_R.sob.lista.length ? `<div class="plt-alerta warn">${ICO.aviso}<span><b>${_R.sob.lista.length} período${_R.sob.lista.length > 1 ? 's' : ''} com equipas sobrecarregadas</b> — nesses dias o mapa mostra mais meios do que os disponíveis. <button type="button" class="plt-lnk" data-acao="sobrecargas">Ver e resolver</button></span></div>` : ''}`;
   if (!m.cats.length) {
     v.innerHTML = cab + `<div class="plt-vazio-g">
