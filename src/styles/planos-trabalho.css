@@ -653,3 +653,5 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-al-li:hover{background:rgba(255,255,255,.8)}
 .plt-al-li b{font-size:14px}
 .plt-al-li small{font-size:12.5px;color:var(--p-mute);margin-left:auto;text-align:right}
+.plt-lista-bts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.plt-lista-bts .vg-abrir svg,.plt-top-acoes [data-acao="video"] svg{width:19px;height:19px}

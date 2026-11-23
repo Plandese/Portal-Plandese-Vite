@@ -1,0 +1,55 @@
+/* ═══ Vídeo guiado («Como funciona»): foco, cursor, legendas e leitor ═══ */
+.vg{position:fixed;inset:0;z-index:9800;font-family:inherit;color:var(--d-ink,#1b2130)}
+.vg-bloq{position:absolute;inset:0;background:transparent;cursor:default}
+.vg.escuro .vg-bloq,.vg.com-cartao .vg-bloq{background:rgba(10,18,38,.55);transition:background .3s}
+.vg-foco{position:absolute;border-radius:16px;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--d-brand,#173f9f),0 0 0 9999px rgba(10,18,38,.55);
+  transition:left .45s cubic-bezier(.2,.8,.2,1),top .45s cubic-bezier(.2,.8,.2,1),width .45s cubic-bezier(.2,.8,.2,1),height .45s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.vg-cartao{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(620px,calc(100vw - 32px));padding:34px 36px 30px;border-radius:24px;
+  background:var(--d-brand,#173f9f);color:#fff;overflow:hidden;box-shadow:0 30px 80px rgba(10,28,90,.4);animation:vg-entra .5s cubic-bezier(.2,.8,.2,1)}
+.vg-cartao::before,.vg-cartao::after{content:'';position:absolute;border-radius:50%;background:rgba(255,255,255,.08)}
+.vg-cartao::before{width:260px;height:260px;right:-70px;top:-110px}
+.vg-cartao::after{width:150px;height:150px;right:90px;bottom:-90px}
+.vg-cartao small{position:relative;display:block;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.8}
+.vg-cartao b{position:relative;display:block;font-size:30px;font-weight:800;letter-spacing:-.5px;margin:8px 0 8px;line-height:1.15}
+.vg-cartao p{position:relative;margin:0;font-size:16px;line-height:1.5;opacity:.92}
+@keyframes vg-entra{from{opacity:0;transform:translate(-50%,-46%)}}
+.vg-cursor{position:absolute;left:50%;top:70%;width:28px;height:28px;margin:-3px 0 0 -5px;opacity:0;pointer-events:none;
+  transition:left .7s cubic-bezier(.45,.05,.25,1),top .7s cubic-bezier(.45,.05,.25,1),opacity .3s;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+.vg-cursor.ver{opacity:1}
+.vg-cursor svg{width:28px;height:28px;display:block}
+.vg-onda{position:absolute;left:-13px;top:-13px;width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--d-brand,#173f9f);opacity:0}
+.vg-cursor.clica .vg-onda{animation:vg-onda .55s ease-out}
+@keyframes vg-onda{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(1.5)}}
+/* leitor */
+.vg-player{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));background:#fff;border-radius:22px;
+  box-shadow:0 22px 60px rgba(10,28,90,.35);padding:14px 18px 12px;box-sizing:border-box}
+.vg-topo{display:flex;align-items:center;gap:10px;min-width:0}
+.vg-tit{flex:none;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-brand,#173f9f)}
+.vg-cap{flex:1;min-width:0;font-size:13px;color:#5d6678;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vg-cap::before{content:'·';margin-right:8px;color:#b9c1ce}
+.vg-leg{min-height:48px;margin:8px 0 10px;font-size:17px;line-height:1.45;font-weight:500;color:var(--d-ink,#1b2130)}
+.vg-barra{display:flex;gap:4px;margin:0 0 10px}
+.vg-seg{flex:1;height:14px;border:0;padding:4px 0;background:none;cursor:pointer}
+.vg-seg i{display:block;height:6px;border-radius:99px;background:#e3e8f0;transition:background .2s}
+.vg-seg:hover i{background:#c9d2e1}
+.vg-seg.feito i{background:var(--d-brand,#173f9f)}
+.vg-seg.ag i{background:linear-gradient(90deg,var(--d-brand,#173f9f) 0,var(--d-brand,#173f9f) 50%,#c9d6f3 50%);background-size:200% 100%;animation:vg-agora 6s linear infinite}
+.vg.pausa .vg-seg.ag i{animation-play-state:paused}
+@keyframes vg-agora{from{background-position:100% 0}to{background-position:0 0}}
+.vg-ctl{display:flex;align-items:center;gap:6px}
+.vg-b{flex:none;height:40px;min-width:40px;padding:0 10px;border-radius:99px;border:1.5px solid #dde2ea;background:#fff;color:var(--d-ink,#1b2130);display:inline-grid;place-items:center;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700}
+.vg-b svg{width:17px;height:17px}
+.vg-b:hover{background:#f1f4fa}
+.vg-b:disabled{opacity:.45;cursor:default}
+.vg-pp{width:52px;height:52px;border:0;background:var(--d-brand,#173f9f);color:#fff}
+.vg-pp:hover{background:var(--d-brand-d,#143786)}
+.vg-pp svg{width:22px;height:22px}
+.vg-fechar{height:34px;min-width:34px;margin-left:auto}
+.vg-num{font-size:13px;color:#5d6678;margin-left:6px;font-variant-numeric:tabular-nums}
+.vg-esp{flex:1}
+.vg-voz{height:40px;max-width:200px;border:1.5px solid #dde2ea;border-radius:99px;padding:0 12px;font:inherit;font-size:13px;color:var(--d-ink,#1b2130);background:#fff}
+.vg-aviso{margin:8px 0 0;font-size:12.5px;color:#a35a08}
+.vg.fim .vg-leg::after{content:' ▸ Carregue em ▶ para ver de novo';color:#5d6678;font-weight:400;font-size:14px}
+@media (max-width:640px){.vg-leg{font-size:15px}.vg-voz{display:none}}
+/* botão «Como funciona» */
+.vg-abrir svg{width:17px;height:17px}

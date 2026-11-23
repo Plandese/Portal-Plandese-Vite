@@ -12,6 +12,7 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { showToast } from './navigation.js';
 import { puLerArticulado, puArticuladoDaObra } from './precos-unitarios.js';
+import { iniciarVideoGuia } from './video-guia.js';
 
 const $ = id => document.getElementById(id);
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -80,6 +81,7 @@ const ICO = {
   zonas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>',
   sino: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
   caixa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+  playC: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5v7l6-3.5z" fill="currentColor"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -152,6 +154,7 @@ function rascApagar(id, ate) {
 let _retryT = null, _tentativas = 0;
 function agendarGravar() {
   const p = _plano; if (!p) return;
+  if (p._demo) { _estado = 'ok'; pintarEstado(); return; }     // plano do vídeo «Como funciona»: nada se grava
   p._sujo = true; p._mudouEm = Date.now();
   rascGravar(p);
   _estado = p._conflito ? 'conflito' : 'pend'; pintarEstado();
@@ -160,7 +163,7 @@ function agendarGravar() {
 }
 // grava já (as gravações do mesmo plano fazem fila: nunca duas ao mesmo tempo)
 function gravar(p = _plano) {
-  if (!p) return Promise.resolve();
+  if (!p || p._demo) return Promise.resolve();
   if (p === _plano) clearTimeout(_saveT);
   if (p._emCurso) { p._outraVez = true; return p._emCurso; }
   p._emCurso = gravarAgora(p).finally(() => { p._emCurso = null; if (p._outraVez) { p._outraVez = false; gravar(p); } });
@@ -281,7 +284,7 @@ function aplicarDoServidor(p, s) {
 let _verifEm = 0;
 async function verificarServidor() {
   const p = _plano;
-  if (!p || _modoLocal || p._conflito || p._emCurso || !$('plt-vista')?.offsetParent || Date.now() - _verifEm < 4000) return;
+  if (!p || p._demo || _modoLocal || p._conflito || p._emCurso || !$('plt-vista')?.offsetParent || Date.now() - _verifEm < 4000) return;
   _verifEm = Date.now();
   let r;
   try { r = await sb.from('planos_trabalho').select('updated_at').eq('id', p.id).maybeSingle(); } catch (e) { return; }
@@ -734,7 +737,7 @@ export async function renderPlanosTrabalho() {
   pintarLista();
 }
 
-const subtituloPlano = () => (nomeObra(_plano.obra_id) || 'Sem obra') + (opcoesPlano().tipo === 'resumo' ? ' · Plano resumo' : '');
+const subtituloPlano = () => (_plano._demo ? 'Obra de demonstração' : nomeObra(_plano.obra_id) || 'Sem obra') + (opcoesPlano().tipo === 'resumo' ? ' · Plano resumo' : '');
 function nomeObra(id) { const o = (S.OBRAS || []).find(x => String(x.id) === String(id)); return o ? o.nome : ''; }
 
 function resumoPlano(p) {
@@ -789,21 +792,23 @@ function pintarLista() {
   const grupos = new Map();
   _planos.forEach(p => { const k = p.obra_id ? String(p.obra_id) : ''; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(p); });
   const blocos = [...grupos.entries()].map(([k, ps]) => `<div class="plt-grupo">
-      <div class="plt-grupo-h"><b>${esc(nomeObra(k) || (k ? 'Obra ' + k : 'Sem obra'))}</b><span>${ps.length} plano${ps.length > 1 ? 's' : ''}</span>
-        <button type="button" class="plt-lnk" data-acao="novo" data-obra="${esc(k)}">${ICO.plus}Novo plano nesta obra</button></div>
+      <div class="plt-grupo-h"><b>${esc(ps[0]._demo ? 'Obra de demonstração' : nomeObra(k) || (k ? 'Obra ' + k : 'Sem obra'))}</b><span>${ps.length} plano${ps.length > 1 ? 's' : ''}</span>
+        ${ps[0]._demo ? '' : `<button type="button" class="plt-lnk" data-acao="novo" data-obra="${esc(k)}">${ICO.plus}Novo plano nesta obra</button>`}</div>
       <div class="plt-cards">${ps.map(card).join('')}</div>
     </div>`).join('');
   el.innerHTML = `${aviso}
     ${bannerAlertas()}
     <div class="plt-lista-top">
       <div class="plt-lista-tx">${_planos.length ? `${_planos.length} plano${_planos.length > 1 ? 's' : ''} em ${grupos.size} obra${grupos.size > 1 ? 's' : ''}` : ''}</div>
-      <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button>
+      <span class="plt-lista-bts"><button type="button" class="plt-btn sec vg-abrir" data-acao="video" title="Vídeo explicativo, narrado em português">${ICO.playC}Como funciona</button>
+      <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button></span>
     </div>
     ${_planos.length ? blocos : `<div class="plt-vazio-g">
       <div class="plt-vazio-ic">${ICO.plano}</div>
       <b>Ainda não há planos de trabalho</b>
       <p>Cria um plano detalhado a partir do articulado de uma obra (Lista de Preços ou ficheiro Excel/PDF), ou um plano resumo por zonas de intervenção e especialidades, e ajusta-o num gráfico de Gantt.</p>
-      <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button></div>`}`;
+      <span class="plt-lista-bts"><button type="button" class="plt-btn sec vg-abrir" data-acao="video">${ICO.playC}Como funciona</button>
+      <button type="button" class="plt-btn pri" data-acao="novo">${ICO.plus}Novo plano de trabalhos</button></span></div>`}`;
 }
 
 // ───────────────────────── página: plano aberto ─────────────────────────
@@ -848,6 +853,7 @@ async function abrirPlano(id) {
         <button type="button" class="plt-btn sec sm" data-acao="exportar" title="Exportar: PDF, Excel ou MS Project" aria-haspopup="menu">${ICO.exportar}<span class="plt-btn-tx">Exportar</span>${ICO.chev}</button>
         <span class="plt-top-sep" aria-hidden="true"></span>
         <button type="button" class="plt-btn pri sm" data-acao="ia" title="Pedir alterações ou fazer perguntas ao assistente de IA">${ICO.ia}Assistente</button>
+        <button type="button" class="plt-ico-btn" data-acao="video" title="Como funciona — vídeo explicativo, narrado em português" aria-label="Como funciona">${ICO.playC}</button>
         <button type="button" class="plt-ico-btn" data-acao="definicoes" title="Definições do plano" aria-label="Definições do plano">${ICO.cfg}</button>
       </div>
     </div>
@@ -1803,6 +1809,7 @@ function ligarTeclado() {
     if (a === 'diferencas') return abrirDiferencas();
     if (a === 'versoes') return abrirVersoes();
     if (a === 'imprimir') return abrirImprimir();
+    if (a === 'video') return abrirVideoPlanos();
     acao(a);
   });
   // gravação: guardar já ao sair do separador, avisar ao fechar com alterações por enviar, tentar de novo quando a rede voltar
@@ -3025,6 +3032,7 @@ async function sobreporVersao(v, gravarEscolha = true) {
 }
 // Ao abrir um plano: carrega a lista de versões e repõe a versão sobreposta da última vez
 async function prepararSobreposicao(p) {
+  if (p._demo) return;
   try { if (_ver.planoId !== p.id) await carregarVersoes(); } catch (e) { return; }
   if (_plano !== p) return;
   const sb0 = opcoesPlano().sobrepor;
@@ -3229,6 +3237,179 @@ function abrirAlerta(a0, { tarefa: tarefa0 } = {}) {
     abrirAlertas();
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  VÍDEO «COMO FUNCIONA» — narrado em português de Portugal, sobre um plano de demonstração
+//  O plano de demonstração só existe em memória enquanto o vídeo corre (p._demo: nunca é gravado).
+//  Ao mudar o módulo, rever as cenas abaixo (seletores e falas).
+// ═══════════════════════════════════════════════════════════════════
+function planoDemo() {
+  // começa numa segunda-feira, cinco semanas antes de hoje: há obra feita, em curso e por fazer
+  let n = hojeN() - 35; while (dow(n) !== 1) n--;
+  const T = o => ({ pred: [], pct: 0, valor: 0, cod: '', un: '', qtd: 0, notas: '', fechado: false, inicioMin: null, ...o });
+  const lig = (id, tipo = 'FS', lag = 0) => ({ id, tipo, lag });
+  const vala = [{ id: 'dq1', n: 1 }];
+  const tarefas = [
+    T({ id: 'd1', nome: 'Consignação', nivel: 0, dur: 0 }),
+    T({ id: 'd2', nome: 'Montagem do estaleiro', nivel: 0, dur: 5, pred: [lig('d1')], pct: 100, valor: 4500 }),
+    T({ id: 'd3', nome: 'Rede de águas residuais', nivel: 0, dur: 0 }),
+    T({ id: 'd4', nome: 'Abertura e entivação de vala', nivel: 1, dur: 14, pred: [lig('d2')], pct: 70, valor: 38000, equipas: vala }),
+    T({ id: 'd5', nome: 'Assentamento de tubagem PVC Ø315', nivel: 1, dur: 10, pred: [lig('d4', 'SS', 4)], pct: 30, valor: 52000, equipas: vala }),
+    T({ id: 'd6', nome: 'Ensaio de estanquidade', nivel: 1, dur: 2, pred: [lig('d5')], cal: '7', valor: 1800 }),
+    T({ id: 'd7', nome: 'Rede de abastecimento de água', nivel: 0, dur: 0 }),
+    T({ id: 'd8', nome: 'Abertura de vala', nivel: 1, dur: 8, pred: [lig('d4')], valor: 21000, equipas: vala }),
+    T({ id: 'd9', nome: 'Tubagem PEAD Ø110 e acessórios', nivel: 1, dur: 8, pred: [lig('d8', 'SS', 2)], valor: 34000 }),
+    T({ id: 'd10', nome: 'Ligações às redes existentes', nivel: 1, dur: 3, pred: [lig('d9')], valor: 6500 }),
+    T({ id: 'd11', nome: 'Pavimentação', nivel: 0, dur: 0 }),
+    T({ id: 'd12', nome: 'Base em tout-venant', nivel: 1, dur: 5, pred: [lig('d6'), lig('d10')], valor: 15000 }),
+    T({ id: 'd13', nome: 'Pavimento betuminoso', nivel: 1, dur: 4, pred: [lig('d12')], valor: 41000, sub: 'ds1' }),
+    T({ id: 'd14', nome: 'Receção provisória', nivel: 0, dur: 0, pred: [lig('d13')] }),
+  ];
+  const atual = {
+    id: 'demo-plano-trabalhos', _demo: true, obra_id: 'demo', nome: 'Plano de demonstração — Rede de saneamento', data_inicio: diso(n), calendario: '5', tarefas,
+    equipas: [{ id: 'dq1', nome: 'Equipa de valas', cor: '#5b86e5', mo: [{ cat: 'Manobrador', qtd: 1 }, { cat: 'Canalizador', qtd: 1 }, { cat: 'Servente', qtd: 2 }], eq: [{ tipo: 'Retroescavadora', qtd: 1 }, { tipo: 'Camião basculante', qtd: 1 }] }],
+    subempreiteiros: [{ id: 'ds1', nome: 'Pavimentos do Sul', especialidade: 'Pavimentação betuminosa' }],
+    opcoes: { prazo: { dias: 120 }, alertas: [
+      { id: 'da1', tipo: 'material', titulo: 'Tubagem PEAD Ø110 e acessórios', tarefa: 'd9', antes: 15, notas: 'Prazo de entrega: 3 semanas' },
+      { id: 'da2', tipo: 'sub', titulo: 'Adjudicar subempreitada — Pavimentos do Sul', tarefa: 'd13', antes: 20, sub: 'ds1' }] },
+    updated_at: new Date().toISOString(),
+  };
+  // a versão inicial: a vala estava prevista em 10 dias e ainda não havia nada feito
+  const inicial = JSON.parse(JSON.stringify(atual));
+  inicial.tarefas.forEach(t => { t.pct = 0; if (t.id === 'd4') t.dur = 10; });
+  return { atual, inicial };
+}
+
+async function abrirVideoPlanos() {
+  if (document.getElementById('vg')) return;
+  const ant = { plano: _plano, undo: _undo, redo: _redo, vista: _ui.vista, zoom: _ui.zoom, comp: _ui.comp, refs: _ui.refs, critico: _ui.critico };
+  if (_plano?._sujo) { try { await gravar(_plano); } catch (e) { /* fica no rascunho */ } }
+  await carregarFeriados();
+  const { atual: demo, inicial } = planoDemo();
+  _planos = [demo, ..._planos.filter(x => !x._demo)];
+  const refInicial = comCalculo(inicial, (r, q) => ({ tarefas: Object.fromEntries(q.tarefas.map((t, i) => [t.id, { es: diso(r.es[i]), ef: diso(r.ef[i]), nome: t.nome }])), fim: r.PF }));
+  const compDemo = { planoId: demo.id, versaoId: 'demo-v1', nome: 'Versão inicial', data: demo.updated_at, ...refInicial };
+  const iT = id => demo.tarefas.findIndex(t => t.id === id);
+  const barra = id => () => document.querySelector(`#plt-cb .plt-bar[data-i="${iT(id)}"]`);
+  const limpar = () => { fecharMenu(); fecharGaveta(); fecharIA(); };
+  const naLista = () => { limpar(); _plano = null; _R = null; _ui.comp = null; pintarLista(); };
+  const noPlano = async ({ vista = 'gantt', comp = false } = {}) => {
+    limpar();
+    if (_plano !== demo) { _ui.comp = null; await abrirPlano(demo.id); }
+    _ui.critico = true; _ui.refs = true;
+    const c = comp ? compDemo : null;
+    if (_ui.vista !== vista || _ui.zoom !== 'semana' || _ui.comp !== c) {
+      _ui.vista = vista; _ui.zoom = 'semana'; _ui.comp = c;
+      const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto;
+      calcular(); pintarPlano();
+    }
+    const g = $('plt-grid'); if (g) g.scrollLeft = 0;
+  };
+  const novoAberto = () => { if (!$('pn-tipo')) { limpar(); abrirNovo(); } };
+  const clicarEm = sel => { const e = document.querySelector(sel); if (e) e.click(); };
+  const cenas = [
+    { capitulo: 'Abertura', prep: naLista, cartao: { titulo: 'Planos de Trabalho', sub: 'Montar o plano de uma obra, acompanhar a execução e partilhá-lo com o dono de obra.' },
+      falas: ['Bem-vindo ao módulo Planos de Trabalho.', 'Em cerca de três minutos, vai ver como se monta o plano de uma obra, como se acompanha a execução e como se partilha com o dono de obra.'] },
+    { capitulo: 'Os planos de cada obra', prep: naLista, falas: [
+      { t: 'Na página inicial estão todos os planos, agrupados por obra.', alvo: '.plt-grupo' },
+      { t: 'Para começar um plano novo, carregue em «Novo plano de trabalhos».', alvo: '.plt-lista-top [data-acao="novo"]', cursor: 'clique', acao: async () => { await espera(150); abrirNovo(); } },
+    ] },
+    { capitulo: 'Plano detalhado ou plano resumo', prep: () => { limpar(); abrirNovo(); }, falas: [
+      { t: 'Há dois tipos de plano.', alvo: '#pn-tipo' },
+      { t: 'O plano detalhado é montado a partir do articulado da empreitada, com uma tarefa por artigo.', alvo: '#pn-tipo [data-t="detalhado"]', cursor: 'mover' },
+      { t: 'O plano resumo organiza a obra por zonas de intervenção e por especialidades, sem precisar do articulado.', alvo: '#pn-tipo [data-t="resumo"]', cursor: 'clique',
+        acao: async ctl => {
+          clicarEm('#pn-tipo [data-t="resumo"]'); await espera(450);
+          for (const n of ['Movimentação de terras', 'Rede de águas residuais', 'Pavimentação']) {
+            const sel = `#pn-res-corpo [data-rz="sug"][data-n="${n}"]`;
+            await ctl.cursor(sel); await ctl.clicar(); clicarEm(sel); await espera(150);
+          }
+          ctl.alvo('#pn-res-corpo .plt-rz-wrap');
+        } },
+      { t: 'Em cada zona indica os dias de cada especialidade, e o portal liga as tarefas e calcula a conclusão.', alvo: '#pn-res-corpo .plt-rz-wrap' },
+    ] },
+    { capitulo: 'O assistente monta o plano', prep: () => { novoAberto(); if (_novo?.tipo !== 'detalhado') clicarEm('#pn-tipo [data-t="detalhado"]'); }, falas: [
+      { t: 'No plano detalhado, junta a lista de preços em Excel ou PDF e descreve como vai ser a obra: as frentes de trabalho, as equipas e as condicionantes.', alvo: '#pn-origem' },
+      { t: 'O assistente de inteligência artificial lê tudo e propõe as tarefas, as durações, as ligações e as equipas. Depois, ajusta-se à mão.', alvo: '#pn-modo' },
+    ] },
+    { capitulo: 'Um plano aberto', prep: () => noPlano(), falas: [
+      { t: 'Este é um plano aberto.', alvo: '.plt-top' },
+      { t: 'No topo tem o início, a conclusão, o prazo em dias úteis, o valor e a margem para o prazo contratual.', alvo: '#plt-kpis' },
+    ] },
+    { capitulo: 'A tabela das tarefas', prep: () => noPlano(), falas: [
+      { t: 'À esquerda, a tabela das tarefas.', alvo: '#plt-grid' },
+      { t: 'Escreve-se diretamente nas células: o nome, a duração, as datas e as predecessoras, tal como no MS Project.', alvo: '#plt-gb .plt-r[data-i="4"]', cursor: 'mover' },
+      { t: 'As tarefas agrupam-se em capítulos, com os botões de nível da barra de cima.', alvo: '.plt-tb' },
+    ] },
+    { capitulo: 'O gráfico de Gantt', prep: () => noPlano(), falas: [
+      { t: 'À direita, o gráfico de Gantt.', alvo: '#plt-chart' },
+      { t: 'Arraste uma barra para mudar o início, ou a ponta direita para mudar a duração.', alvo: barra('d9'), cursor: 'mover' },
+      { t: 'As tarefas do caminho crítico aparecem a vermelho, e a linha laranja marca o dia de hoje.', alvo: '#plt-chart' },
+    ] },
+    { capitulo: 'O botão direito', prep: () => noPlano(), falas: [
+      { t: 'Com o botão direito numa tarefa, tem mais opções.', alvo: barra('d5'), cursor: 'clique',
+        acao: async ctl => { const b = barra('d5')(); if (!b) return; const r = b.getBoundingClientRect(); abrirMenuBarra(iT('d5'), null, r.left + 30, r.bottom + 6); await espera(200); ctl.alvo('#plt-menu'); } },
+      { t: 'Pode partir a barra em fases, escolher as equipas ou o subempreiteiro que a executa, e criar alertas.', alvo: '#plt-menu' },
+    ] },
+    { capitulo: 'Atualizar o avanço', prep: () => noPlano(), falas: [
+      { t: 'Para acompanhar a obra, atualize a percentagem feita de cada tarefa.', alvo: barra('d5') },
+      { t: 'Escreva-a na coluna da percentagem, ou arraste a marca branca dentro da barra, como agora.', alvo: barra('d5'),
+        acao: async ctl => {
+          const t = demo.tarefas[iT('d5')];
+          const pos = () => { const b = barra('d5')(); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width * (t.pct / 100), y: r.top + r.height / 2 }; };
+          await ctl.cursor(pos());
+          for (let v = (t.pct || 0) + 5; v <= 60; v += 5) { t.pct = v; calcular(); pintarGrelha(); pintarGrafico(); pintarKpis(); const p0 = pos(); if (p0) await ctl.cursor(p0); }
+        } },
+    ] },
+    { capitulo: 'Versões e desvios', prep: () => noPlano(), falas: [
+      { t: 'Sempre que atualizar o plano, guarde uma versão.', alvo: '[data-acao="guardar-versao"]', cursor: 'mover' },
+      { t: 'A versão inicial pode ficar sobreposta, a cinzento, por baixo de cada tarefa.', alvo: '.plt-tb-sob', cursor: 'clique',
+        acao: async ctl => { _ui.comp = compDemo; calcular(); pintarPlano(); await espera(300); ctl.alvo('#plt-chart'); } },
+      { t: 'Assim vê logo o que se atrasou. Aqui, a abertura de vala está quatro dias úteis atrasada, e o topo do plano mostra o efeito na conclusão.', alvo: barra('d4'),
+        acao: async () => { const g = $('plt-grid'), c = document.querySelector('.plt-gh [data-col="desv"]'); if (g && c) g.scrollLeft = Math.max(0, c.offsetLeft - g.clientWidth + c.offsetWidth + 20); } },
+    ] },
+    { capitulo: 'Alertas', prep: () => noPlano({ comp: true }), falas: [
+      { t: 'Nos alertas marca o que tem de encomendar ou de adjudicar.', alvo: '.plt-tb [data-acao="alertas"]', cursor: 'clique', acao: async ctl => { abrirAlertas(); await espera(350); ctl.alvo('#plt-drawer'); } },
+      { t: 'Cada alerta fica ligado a uma tarefa, com a antecedência em dias úteis. Se a tarefa mudar de data, o alerta acompanha, e fica a âmbar uma semana antes.', alvo: '#plt-drawer .dd-b' },
+    ] },
+    { capitulo: 'Faturação e mapas', prep: () => noPlano({ comp: true }), falas: [
+      { t: 'Nos separadores tem o cronograma financeiro, com a faturação prevista por mês e a curva S.', alvo: '.plt-tab[data-vista="fin"]', cursor: 'clique',
+        acao: async ctl => { _ui.vista = 'fin'; pintarPlano(); await espera(200); ctl.alvo('#plt-vista'); } },
+      { t: 'E os mapas de mão de obra e de equipamentos, calculados a partir das equipas de cada tarefa.', alvo: '.plt-tab[data-vista="mo"]', cursor: 'clique',
+        acao: async ctl => { _ui.vista = 'mo'; pintarPlano(); await espera(200); ctl.alvo('#plt-vista'); } },
+    ] },
+    { capitulo: 'O assistente', prep: () => noPlano({ comp: true }), falas: [
+      { t: 'O assistente percebe pedidos escritos em português.', alvo: '[data-acao="ia"]', cursor: 'mover' },
+      { t: 'Por exemplo: a vala está a sessenta por cento, ou recupera duas semanas no prazo. Propõe as alterações e só as aplica quando confirmar.', alvo: '[data-acao="ia"]' },
+    ] },
+    { capitulo: 'Exportar', prep: () => noPlano({ comp: true }), falas: [
+      { t: 'Em Exportar, tira o PDF em A3 ou A4 para enviar ao dono de obra, o Excel com o cronograma financeiro, ou o ficheiro para o MS Project.', alvo: '[data-acao="exportar"]', cursor: 'clique',
+        acao: async ctl => { const b = document.querySelector('[data-acao="exportar"]'); if (b) abrirMenuExportar(b); await espera(200); ctl.alvo('#plt-menu'); } },
+    ] },
+    { capitulo: 'Tudo guardado', prep: () => noPlano({ comp: true }), falas: [
+      { t: 'Tudo é guardado sozinho, à medida que trabalha.', alvo: '#plt-estado', cursor: 'mover' },
+      { t: 'Se se enganar, o atalho Control Z desfaz qualquer alteração.', alvo: '.plt-tb [data-acao="anular"]', cursor: 'mover' },
+    ] },
+    { capitulo: 'Fim', prep: () => { limpar(); }, cartao: { titulo: 'Está pronto para começar', sub: 'Pode rever este vídeo sempre que quiser, no botão «Como funciona».' },
+      falas: ['Está pronto para começar.', 'Pode rever este vídeo sempre que quiser, no botão Como funciona.'] },
+  ];
+  iniciarVideoGuia({
+    titulo: 'Como funciona · Planos de Trabalho', cenas,
+    aoFechar: async () => {
+      limpar();
+      _planos = _planos.filter(x => !x._demo);
+      _ui.refs = ant.refs; _ui.critico = ant.critico;
+      if (ant.plano && _planos.includes(ant.plano)) {
+        _plano = null; _ui.comp = ant.comp;
+        await abrirPlano(ant.plano.id);
+        _undo = ant.undo; _redo = ant.redo; _ui.vista = ant.vista; _ui.zoom = ant.zoom; _ui.comp = ant.comp;
+        const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto;
+        calcular(); pintarPlano();
+      } else { _plano = null; _R = null; _ui.comp = null; pintarLista(); }
+    },
+  });
+}
+const espera = ms => new Promise(r => setTimeout(r, ms));
 
 // ═══════════════════════════════════════════════════════════════════
 //  VERSÕES DO PLANO (tabela planos_trabalho_versoes; em modo local, localStorage)
