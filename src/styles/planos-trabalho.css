@@ -706,3 +706,6 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-xl tr.sub td{font-weight:700}
 .plt-xl tr.nota td{color:#5d6678;font-style:italic;font-size:12px;text-align:left}
 @media (max-width:760px){.plt-pv-caixa{width:100vw;height:100vh;border-radius:0}.plt-pv-zoom{display:none}}
+.plt-xl-graf{margin:18px 0 24px 44px;width:900px;border:1px solid #e3e6eb}
+.plt-xl-graf svg{display:block;width:900px;height:auto}
+.plt-xl tr.tit td,.plt-xl tr.topo td{text-align:left}

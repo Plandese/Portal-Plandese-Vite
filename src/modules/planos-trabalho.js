@@ -3729,8 +3729,10 @@ function folhaPreviewHtml(f) {
     h += lin(l.k || '', f.colunas.map((c, k) => { const t = l.t && k >= a && k < n - z ? l.t : c.t; return `<td class="${c.t === 'txt' ? 'tx' : ''}">${fx(l.v[k], t)}</td>`; }).join(''));
   });
   (f.notas || []).forEach(t => { h += lin('', vaz(0)); h += lin('nota', `<td colspan="${n}">${esc(t)}</td>`); });
+  const g = f.grafico;
   return `<table class="plt-xl"><colgroup><col class="ln">${f.colunas.map(c => `<col style="width:${Math.round((c.w || 12) * 7.2)}px">`).join('')}</colgroup>
-    <thead><tr><th class="ln"></th>${f.colunas.map((c, k) => `<th>${colLetra(k)}</th>`).join('')}</tr></thead><tbody>${h}</tbody></table>`;
+    <thead><tr><th class="ln"></th>${f.colunas.map((c, k) => `<th>${colLetra(k)}</th>`).join('')}</tr></thead><tbody>${h}</tbody></table>
+    ${g ? `<div class="plt-xl-graf">${svgCompleto(g, '900')}</div>` : ''}`;
 }
 function preverExcel(titulo, nome, folhas) {
   const pv = abrirPv({ tipo: 'xls', titulo, ok: 'Descarregar Excel', abas: folhas.map(f => f.nome) });
@@ -3739,27 +3741,6 @@ function preverExcel(titulo, nome, folhas) {
   pv.aoAba = mostrar; mostrar(0);
   pv.aoOk = async () => { await excelTabelas(nome, folhas); fecharPv(); };
 }
-// Excel completo (SheetJS): as folhas tal como ficam no ficheiro
-function preverExcelLivro(titulo, nome, wb) {
-  const pv = abrirPv({ tipo: 'xls', titulo, ok: 'Descarregar Excel', abas: wb.SheetNames });
-  pv.info(`${nome}.xlsx · ${wb.SheetNames.length} folha${wb.SheetNames.length > 1 ? 's' : ''}`);
-  const mostrar = k => {
-    const ws = wb.Sheets[wb.SheetNames[k]];
-    const rg = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
-    const fx = c => (c == null ? '' : typeof c.v === 'number' ? (Number.isInteger(c.v) ? c.v.toLocaleString('pt-PT') : c.v.toLocaleString('pt-PT', { maximumFractionDigits: 2 })) : esc(c.v));
-    let h = `<thead><tr><th class="ln"></th>${Array.from({ length: rg.e.c + 1 }, (_, c) => `<th>${colLetra(c)}</th>`).join('')}</tr></thead><tbody>`;
-    for (let r = 0; r <= rg.e.r; r++) {
-      h += `<tr class="${r === 0 ? 'hdr' : ''}"><th class="ln">${r + 1}</th>`;
-      for (let c = 0; c <= rg.e.c; c++) { const cel = ws[XLSX.utils.encode_cell({ r, c })]; h += `<td class="${cel && typeof cel.v !== 'number' ? 'tx' : ''}">${fx(cel)}</td>`; }
-      h += '</tr>';
-    }
-    const cols = (ws['!cols'] || []).map(c => `<col style="width:${Math.round((c.wch || 10) * 7.2)}px">`).join('');
-    pv.corpo.innerHTML = `<div class="plt-pv-xl"><table class="plt-xl"><colgroup><col class="ln">${cols}</colgroup>${h}</tbody></table></div>`;
-  };
-  pv.aoAba = mostrar; mostrar(0);
-  pv.aoOk = () => { XLSX.writeFile(wb, `${nome}.xlsx`); fecharPv(); showToast('Excel descarregado'); };
-}
-
 let _tituloOrig = null;   // título da janela antes de imprimir (o nome do PDF vem dele)
 // Gera o documento de impressão: cada página tem cabeçalho, a tabela (nº, tarefa, duração, início, fim) e o Gantt em SVG (mm)
 function htmlImpressao(o) {
@@ -3895,52 +3876,20 @@ function htmlImpressao(o) {
 // ───────────────────────── exportar ─────────────────────────
 const nomeFicheiro = () => { const f = _plano.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_|_$/g, ''); return /^plano/i.test(f) ? f : 'Plano_' + f; };
 
+// Excel completo: as mesmas folhas formatadas dos separadores (com os gráficos), mais o plano e as sobrecargas
 function exportarExcel() {
-  if (!window.XLSX) return showToast('Excel indisponível');
-  const r = _R, T = _plano.tarefas;
-  const ds = n => diso(n).split('-').reverse().join('/');
-  const ref = r.ref;
-  const rows = [['ID', 'EDT', 'Artigo', 'Nome da tarefa', 'Duração', 'Calendário', 'Início', 'Fim', 'Predecessoras', '% concluída', 'Folga (d.ú.)', 'Data-limite', 'Un.', 'Quantidade', 'Valor (€)',
-    ...(ref ? [`Início (${ref.nome})`, `Fim (${ref.nome})`, 'Desvio do fim (d.ú.)'] : [])]];
-  T.forEach((t, i) => rows.push([i + 1, r.edt[i], t.cod || '', '    '.repeat(t.nivel) + t.nome, durDe(i), r.resumo[i] ? '' : CAL_NOMES[r.cal[i].k], ds(r.es[i]), ds(r.ef[i]), txtPred(i), r.pct[i], r.resumo[i] ? '' : r.folga[i], t.limite ? ds(dnum(t.limite)) + (r.atrasoLim[i] ? ` (falhada por ${r.atrasoLim[i]} d.ú.)` : '') : '', t.un || '', t.qtd || '', Math.round(r.valor[i] * 100) / 100,
-    ...(ref ? (r.bEF[i] != null ? [ds(r.bES[i]), ds(r.bEF[i]), r.desvio[i]] : ['', '', 'nova']) : [])]));
-  if (r.PZ != null) rows.push([], ['', '', '', 'Prazo contratual', '', '', '', ds(r.PZ), '', '', '', r.PF > r.PZ ? `Excede em ${contaUteis(_C, r.PZ + 1, r.PF) || 1} d.ú.` : 'Cumprido']);
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [6, 8, 10, 60, 10, 22, 11, 11, 16, 10, 10, 26, 6, 11, 14, ...(ref ? [14, 14, 12] : [])].map(w => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, ws, 'Plano de trabalhos');
-  const sob = r.sob.lista;
-  if (sob.length) {
-    const fsb = [['Equipa', 'De', 'Até', 'Em uso', 'Disponíveis', 'Tarefas']];
-    sob.forEach(c => fsb.push([c.eq.nome, ds(c.de), ds(c.ate), c.max, c.disp, c.tarefas.map(j => `${j + 1} ${T[j].nome}`).join('; ')]));
-    const w5 = XLSX.utils.aoa_to_sheet(fsb); w5['!cols'] = [{ wch: 26 }, { wch: 11 }, { wch: 11 }, { wch: 8 }, { wch: 11 }, { wch: 90 }];
-    XLSX.utils.book_append_sheet(wb, w5, 'Sobrecargas de equipas');
-  }
-  if (T.length) {
-    const { lista, grupos } = distribuicaoMensal();
-    const f = [['EDT', 'Capítulo', 'Valor (€)', ...lista]];
-    grupos.forEach(g => f.push([g.edt, g.nome, Math.round(g.valor * 100) / 100, ...g.m.map(x => Math.round(x * 100) / 100)]));
-    const mens = lista.map((_, k) => grupos.reduce((s, g) => s + g.m[k], 0));
-    let ac = 0;
-    f.push(['', 'Total mensal', Math.round(grupos.reduce((s, g) => s + g.valor, 0) * 100) / 100, ...mens.map(x => Math.round(x * 100) / 100)]);
-    f.push(['', 'Acumulado', '', ...mens.map(x => Math.round((ac += x) * 100) / 100)]);
-    const ws2 = XLSX.utils.aoa_to_sheet(f);
-    ws2['!cols'] = [{ wch: 8 }, { wch: 50 }, { wch: 14 }, ...lista.map(() => ({ wch: 12 }))];
-    XLSX.utils.book_append_sheet(wb, ws2, 'Cronograma financeiro');
-  }
-  if (subsDoPlano().length) {
-    const fs = [['Subempreiteiro', 'Especialidade', 'ID', 'Tarefa', 'Início', 'Fim', 'Duração (d.ú.)', 'Valor (€)']];
-    subsDoPlano().forEach(su => T.forEach((t, i) => { if (t.sub === su.id && !r.resumo[i]) fs.push([su.nome, su.especialidade || '', i + 1, t.nome, ds(r.es[i]), ds(r.ef[i]), r.dur[i], Math.round(r.valor[i] * 100) / 100]); }));
-    const w4 = XLSX.utils.aoa_to_sheet(fs); w4['!cols'] = [{ wch: 28 }, { wch: 26 }, { wch: 5 }, { wch: 55 }, { wch: 11 }, { wch: 11 }, { wch: 12 }, { wch: 13 }];
-    XLSX.utils.book_append_sheet(wb, w4, 'Subempreiteiros');
-  }
-  ['mo', 'eq'].forEach(tp => { const m = mapaRecursos(tp, 'mes'); if (!m.cats.length) return;
-    const f = [[tp === 'mo' ? 'Categoria' : 'Equipamento', ...m.periodos.map(x => x.rotulo + ' (máx.)'), 'Máximo', 'Total (dias)']];
-    m.cats.forEach(c => f.push([c, ...m.periodos.map(x => x.max.get(c) || 0), m.maxCat.get(c) || 0, m.totCat.get(c) || 0]));
-    f.push(['Total (simultâneo)', ...m.periodos.map(x => x.maxTot), m.maxGeral, m.totGeral]);
-    const w3 = XLSX.utils.aoa_to_sheet(f); w3['!cols'] = [{ wch: 30 }, ...m.periodos.map(() => ({ wch: 13 })), { wch: 10 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, w3, tp === 'mo' ? 'Mapa de mão de obra' : 'Mapa de equipamento'); });
-  preverExcelLivro('Excel completo do plano', `${nomeFicheiro()}`, wb);
+  if (!_plano) return;
+  calcular();
+  if (!_plano.tarefas.length) return showToast('O plano ainda não tem tarefas');
+  const folhas = [tabPlano()];
+  if (_R.sob.lista.length) folhas.push(tabSobrecargas());
+  const fin = tabFinanceiro(); if (fin.total) folhas.push(fin);
+  if (subsDoPlano().length) folhas.push(tabSub());
+  ['mo', 'eq'].forEach(tp => {
+    const m = mapaRecursos(tp, 'mes', 'tudo'); if (!m.cats.length) return;
+    const t = tabMapa(tp, 'max', m, { per: 'mes', orig: 'tudo' }); t.nome = NOMES_VISTA[tp]; folhas.push(t);
+  });
+  preverExcel('Excel completo do plano', nomeFicheiro(), folhas);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3959,6 +3908,24 @@ function linhasCabecalho() {
     `Exportado a ${new Date().toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}`];
 }
 // ── modelos ──
+function tabPlano() {
+  const r = _R, T = _plano.tarefas, ref = r.ref;
+  const colunas = [{ h: 'ID', w: 6, t: 'num' }, { h: 'EDT', w: 8, t: 'txt' }, { h: 'Artigo', w: 10, t: 'txt' }, { h: 'Nome da tarefa', w: 56, t: 'txt' }, { h: 'Duração', w: 9, t: 'num' },
+    { h: 'Calendário', w: 20, t: 'txt' }, { h: 'Início', w: 11, t: 'txt' }, { h: 'Fim', w: 11, t: 'txt' }, { h: 'Predecessoras', w: 15, t: 'txt' }, { h: '% concluída', w: 10, t: 'num' },
+    { h: 'Folga (d.ú.)', w: 10, t: 'num' }, { h: 'Data-limite', w: 24, t: 'txt' }, { h: 'Un.', w: 6, t: 'txt' }, { h: 'Quantidade', w: 11, t: 'num' }, { h: 'Valor', w: 15, t: 'eur' },
+    ...(ref ? [{ h: `Início (${ref.nome})`, w: 14, t: 'txt' }, { h: `Fim (${ref.nome})`, w: 14, t: 'txt' }, { h: 'Desvio do fim (d.ú.)', w: 12, t: 'num' }] : [])];
+  const linhas = T.map((t, i) => ({ k: r.resumo[i] ? 'sub' : undefined, v: [i + 1, r.edt[i], t.cod || '', '    '.repeat(t.nivel) + t.nome, durDe(i), r.resumo[i] ? '' : CAL_NOMES[r.cal[i].k],
+    dsL(r.es[i]), dsL(r.ef[i]), txtPred(i), r.pct[i], r.resumo[i] ? '' : r.folga[i], t.limite ? dsL(dnum(t.limite)) + (r.atrasoLim[i] ? ` (falhada por ${r.atrasoLim[i]} d.ú.)` : '') : '',
+    t.un || '', t.qtd || '', Math.round(r.valor[i] * 100) / 100, ...(ref ? (r.bEF[i] != null ? [dsL(r.bES[i]), dsL(r.bEF[i]), r.desvio[i]] : ['', '', 'nova']) : [])] }));
+  const notas = r.PZ != null ? [`Prazo contratual: ${dsL(r.PZ)} — ${r.PF > r.PZ ? `excedido em ${contaUteis(_C, r.PZ + 1, r.PF) || 1} dias úteis` : 'cumprido'}.`] : [];
+  return { nome: 'Plano de trabalhos', titulo: 'Plano de trabalhos', fixas: 4, fim: 0, colunas, linhas, notas };
+}
+function tabSobrecargas() {
+  const T = _plano.tarefas;
+  return { nome: 'Sobrecargas de equipas', titulo: 'Sobrecargas de equipas', fixas: 6, fim: 0,
+    colunas: [{ h: 'Equipa', w: 26, t: 'txt' }, { h: 'De', w: 11, t: 'txt' }, { h: 'Até', w: 11, t: 'txt' }, { h: 'Em uso', w: 8, t: 'num' }, { h: 'Disponíveis', w: 11, t: 'num' }, { h: 'Tarefas', w: 90, t: 'txt' }],
+    linhas: _R.sob.lista.map(c => ({ v: [c.eq.nome, dsL(c.de), dsL(c.ate), c.max, c.disp, c.tarefas.map(j => `${j + 1} ${T[j].nome}`).join('; ')] })) };
+}
 function tabFinanceiro() {
   const { lista, grupos } = distribuicaoMensal();
   const total = grupos.reduce((a, g) => a + g.valor, 0);
@@ -3973,6 +3940,7 @@ function tabFinanceiro() {
       { k: 'total', t: 'pct', v: ['', '% acumulada', '', ...acum.map(x => (total ? x / total : 0))] }],
     notas: ['O valor de cada tarefa é distribuído por igual pelos seus dias de trabalho (as pausas das barras partidas não contam).'],
     lista, mens, acum, total,
+    get grafico() { return grafFinanceiro(this); },
   };
 }
 function tabFinanceiroTarefas() {
@@ -3990,21 +3958,24 @@ function tabFinanceiroTarefas() {
     colunas: [{ h: 'EDT', w: 8, t: 'txt' }, { h: 'Tarefa', w: 46, t: 'txt' }, { h: 'Início', w: 11, t: 'txt' }, { h: 'Fim', w: 11, t: 'txt' }, { h: 'Valor', w: 14, t: 'eur' }, ...lista.map(k => ({ h: nomeMesL(k), w: 13, t: 'eur' }))], linhas };
 }
 const ROT_VAL = { max: 'máximo diário em simultâneo', med: 'média por dia útil', tot: null };
-function tabMapa(tipo, val, m = mapaRecursos(tipo, _ui.mapaPer || 'mes', _ui.mapaOrig || 'tudo')) {
+function tabMapa(tipo, val, m, o = {}) {
+  const per = o.per || _ui.mapaPer || 'mes', origK = o.orig || _ui.mapaOrig || 'tudo';
+  m = m || mapaRecursos(tipo, per, origK);
   const mo = tipo === 'mo';
   const v = (p, c) => (val === 'max' ? (p.max.get(c) || 0) : val === 'tot' ? (p.soma.get(c) || 0) : (p.dias ? (p.soma.get(c) || 0) / p.dias : 0));
   const vt = p => (val === 'max' ? p.maxTot : val === 'tot' ? p.somaTot : (p.dias ? p.somaTot / p.dias : 0));
   const rotV = val === 'tot' ? (mo ? 'homens-dia' : 'dias de máquina') : ROT_VAL[val];
-  const orig = { tudo: '', plandese: ' · só Plandese', sub: ' · só subempreiteiros' }[_ui.mapaOrig || 'tudo'];
+  const orig = { tudo: '', plandese: ' · só Plandese', sub: ' · só subempreiteiros' }[origK];
   const nome = { max: 'Máximo diário', med: 'Média diária', tot: mo ? 'Homens-dia' : 'Dias de máquina' }[val];
   return {
-    nome, titulo: `${NOMES_VISTA[tipo]} — ${rotV} por ${(_ui.mapaPer || 'mes') === 'mes' ? 'mês' : 'semana'}${orig}`, fixas: 1, fim: 2,
+    nome, titulo: `${NOMES_VISTA[tipo]} — ${rotV} por ${per === 'mes' ? 'mês' : 'semana'}${orig}`, fixas: 1, fim: 2,
     colunas: [{ h: mo ? 'Categoria' : 'Equipamento', w: 30, t: 'txt' }, ...m.periodos.map(p => ({ h: p.rotulo, w: 10, t: val === 'med' ? 'num1' : 'num' })), { h: 'Máximo', w: 10, t: 'num' }, { h: mo ? 'Homens-dia' : 'Dias', w: 12, t: 'num' }],
     linhas: [...m.cats.map(c => ({ v: [c, ...m.periodos.map(p => v(p, c)), m.maxCat.get(c) || 0, m.totCat.get(c) || 0] })),
       { k: 'total', v: [`Total${val === 'max' ? ' (em simultâneo)' : ''}`, ...m.periodos.map(vt), m.maxGeral, m.totGeral] }],
     notas: [`${m.comAtrib} de ${m.nFolhas} tarefas com equipa${m.nFixas ? ` · ${m.nFixas} ${m.nFixas > 1 ? 'equipas' : 'equipa'} de pessoal fixo de obra, que ${m.nFixas > 1 ? 'contam' : 'conta'} em todos os dias úteis do período` : ''}.`,
       'As equipas contam nos dias de trabalho das tarefas a que estão atribuídas.'],
     m, val,
+    get grafico() { return grafMapa(this); },
   };
 }
 function tabSub() {
@@ -4034,7 +4005,7 @@ async function excelTabelas(nome, folhas) {
   const AZUL = 'FF173F9F', TINT = 'FFEAF0FC', LINHA = 'FFE3E8F0';
   const FMT = { eur: '#,##0.00 "€"', num: '#,##0', num1: '#,##0.0', pct: '0.0%' };
   const cab = linhasCabecalho();
-  folhas.forEach(f => {
+  for (const f of folhas) {
     const topo = [cab[0], cab[1], ...(f.resumo ? [f.resumo] : []), cab[2]];
     const hdr = topo.length + 2;
     const ws = wb.addWorksheet(f.nome.slice(0, 31), {
@@ -4079,7 +4050,17 @@ async function excelTabelas(nome, folhas) {
       r++;
     });
     (f.notas || []).forEach(t => { r++; const c = ws.getCell(r, 1); c.value = t; c.font = { italic: true, size: 9, color: { argb: 'FF5D6678' } }; });
-  });
+    // gráfico do separador, como imagem, por baixo da tabela
+    const g = f.grafico;
+    if (g) {
+      try {
+        const png = await svgParaPng(g);
+        const id = wb.addImage({ base64: png.slice(png.indexOf(',') + 1), extension: 'png' });
+        const larg = 900, alt = Math.round(larg * g.h / g.w);
+        ws.addImage(id, { tl: { col: 0, row: r + 1 }, ext: { width: larg, height: alt }, editAs: 'oneCell' });
+      } catch (e) { console.error('gráfico no Excel:', e); }
+    }
+  }
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const a = document.createElement('a');
@@ -4114,20 +4095,41 @@ function tabelaHtml(f, porBloco) {
     return `${blocos.length > 1 ? `<p class="bloco">Colunas ${bi + 1} de ${blocos.length}</p>` : ''}<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
   }).join('');
 }
-function svgFinanceiroPdf(t) {
-  const W = 1000, H = 250, pl = 70, pr = 52, pt = 12, pb = 28, n = t.lista.length, cw = (W - pl - pr) / Math.max(1, n);
+// Gráficos dos separadores em SVG autónomo (título e legenda incluídos): no PDF a toda a largura, no Excel como imagem
+function svgCompleto(g, largura) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${g.w} ${g.h}" ${largura ? `width="${largura}"` : `width="${g.w}" height="${g.h}"`} font-family="Arial, Helvetica, sans-serif"><rect width="${g.w}" height="${g.h}" fill="#fff"/>${g.corpo}</svg>`;
+}
+function legendaSvg(itens, x0, y0, xMax) {
+  let x = x0, y = y0, out = '';
+  itens.forEach(it => {
+    const w = 18 + String(it.txt).length * 6.4 + 20;
+    if (x + w > xMax && x > x0) { x = x0; y += 19; }
+    out += it.linha ? `<line x1="${x}" x2="${x + 13}" y1="${y - 4}" y2="${y - 4}" stroke="${it.cor}" stroke-width="3"/>` : `<rect x="${x}" y="${y - 10}" width="12" height="12" rx="2" fill="${it.cor}"/>`;
+    out += `<text x="${x + 18}" y="${y}" font-size="12" fill="#3a4252">${esc(it.txt)}</text>`;
+    x += w;
+  });
+  return { svg: out, y };
+}
+function grafFinanceiro(t) {
+  const W = 1000, pl = 74, pr = 52, pb = 28, n = t.lista.length, cw = (W - pl - pr) / Math.max(1, n);
+  const tit = `<text x="${pl}" y="22" font-size="15" font-weight="bold" fill="#173f9f">Faturação prevista por mês</text>`;
+  const leg = legendaSvg([{ cor: '#9db6ee', txt: 'Faturação mensal (eixo da esquerda)' }, { cor: '#173f9f', txt: 'Acumulado — curva S (eixo da direita)', linha: true }], pl, 46, W - pr);
+  const pt = leg.y + 18, H = pt + 240;
   const maxM = Math.max(1, ...t.mens), yM = x => pt + (H - pt - pb) * (1 - x / maxM), yA = x => pt + (H - pt - pb) * (1 - x / Math.max(1, t.total));
   let g = '';
   for (let k = 0; k <= 4; k++) { const y = pt + (H - pt - pb) * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#e3e8f0"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6a7284">${eur0(maxM * (1 - k / 4)).replace(' €', '')}</text><text x="${W - pr + 6}" y="${y + 4}" font-size="11" fill="#6a7284">${100 - k * 25}%</text>`; }
   t.lista.forEach((k, i) => { const x = pl + i * cw; g += `<rect x="${x + cw * .18}" y="${yM(t.mens[i])}" width="${cw * .64}" height="${Math.max(0, H - pb - yM(t.mens[i]))}" rx="3" fill="#9db6ee"/>`; if (n <= 24 || i % 2 === 0) g += `<text x="${x + cw / 2}" y="${H - 9}" text-anchor="middle" font-size="11" fill="#6a7284">${nomeMesL(k)}</text>`; });
   const pts = [`${pl},${yA(0)}`].concat(t.acum.map((a, i) => `${pl + (i + 1) * cw},${yA(a)}`)).join(' ');
   g += `<polyline points="${pts}" fill="none" stroke="#173f9f" stroke-width="2.5"/>` + t.acum.map((a, i) => `<circle cx="${pl + (i + 1) * cw}" cy="${yA(a)}" r="3.5" fill="#fff" stroke="#173f9f" stroke-width="2"/>`).join('');
-  return `<div class="graf"><div class="leg"><i style="background:#9db6ee"></i>Faturação mensal <i class="ln"></i>Acumulado (curva S)</div><svg viewBox="0 0 ${W} ${H}" width="100%">${g}</svg></div>`;
+  return { corpo: tit + leg.svg + g, w: W, h: H };
 }
-function svgMapaPdf(t) {
-  const m = t.m, val = t.val, W = 1000, H = 240, pl = 46, pr = 12, pt = 12, pb = 28, n = m.periodos.length, cw = (W - pl - pr) / Math.max(1, n);
+function grafMapa(t) {
+  const m = t.m, val = t.val, W = 1000, pl = 50, pr = 14, pb = 28, n = m.periodos.length, cw = (W - pl - pr) / Math.max(1, n);
   const v = (p, c) => (val === 'max' ? (p.max.get(c) || 0) : val === 'tot' ? (p.soma.get(c) || 0) : (p.dias ? (p.soma.get(c) || 0) / p.dias : 0));
   const cor = c => CORES_MAPA[m.cats.indexOf(c) % CORES_MAPA.length];
+  const tit = `<text x="${pl}" y="22" font-size="15" font-weight="bold" fill="#173f9f">${esc(t.titulo)}</text>`;
+  const leg = legendaSvg(m.cats.map(c => ({ cor: cor(c), txt: c })), pl, 46, W - pr);
+  const pt = leg.y + 18, H = pt + 230;
   const maxY = Math.max(1, ...m.periodos.map(p => m.cats.reduce((a, c) => a + v(p, c), 0)));
   const passo = maxY <= 5 ? 1 : maxY <= 12 ? 2 : maxY <= 30 ? 5 : maxY <= 60 ? 10 : Math.ceil(maxY / 50) * 10;
   const topo = Math.ceil(maxY / passo) * passo, Y = x => pt + (H - pt - pb) * (1 - x / topo);
@@ -4138,7 +4140,17 @@ function svgMapaPdf(t) {
     m.cats.forEach(c => { const q = v(p, c); if (!q) return; g += `<rect x="${x}" y="${Y(acc + q)}" width="${w}" height="${Math.max(0, Y(acc) - Y(acc + q))}" fill="${cor(c)}"/>`; acc += q; });
     if (n <= 26 || i % 2 === 0) g += `<text x="${pl + i * cw + cw / 2}" y="${H - 9}" text-anchor="middle" font-size="${n > 30 ? 9 : 11}" fill="#6a7284">${esc(p.rotulo)}</text>`;
   });
-  return `<div class="graf"><div class="leg">${m.cats.map(c => `<span><i style="background:${cor(c)}"></i>${esc(c)}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" width="100%">${g}</svg></div>`;
+  return { corpo: tit + leg.svg + g, w: W, h: H };
+}
+const svgFinanceiroPdf = t => `<div class="graf">${svgCompleto(t.grafico, '100%')}</div>`;
+const svgMapaPdf = t => `<div class="graf">${svgCompleto(t.grafico, '100%')}</div>`;
+// imagem PNG de um gráfico (para pôr no Excel)
+async function svgParaPng(g, escala = 2) {
+  const img = new Image();
+  await new Promise((ok, ko) => { img.onload = ok; img.onerror = () => ko(new Error('Não foi possível desenhar o gráfico')); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgCompleto(g)); });
+  const c = document.createElement('canvas'); c.width = g.w * escala; c.height = g.h * escala;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
 }
 function docRelatorio(titulo, corpo, a3) {
   const cab = linhasCabecalho();
@@ -4190,7 +4202,7 @@ async function exportarVista(v, fmt) {
       if (!m.cats.length) return showToast(`O ${NOMES_VISTA[v].toLowerCase()} está vazio: atribua equipas às tarefas`);
       if (fmt === 'xls') return preverExcel(NOMES_VISTA[v], nome, ['max', 'med', 'tot'].map(x => tabMapa(v, x, m)));
       const t = tabMapa(v, _ui.mapaVal || 'max', m), a3 = m.periodos.length > 14;
-      return preverPdf(NOMES_VISTA[v], docRelatorio(NOMES_VISTA[v], `<h2>${esc((x => x[0].toUpperCase() + x.slice(1))(t.titulo.replace(NOMES_VISTA[v] + ' — ', '')))}</h2>${svgMapaPdf(t)}${tabelaHtml(t, a3 ? 24 : 14)}${notasHtml(t)}`, a3), nome);
+      return preverPdf(NOMES_VISTA[v], docRelatorio(NOMES_VISTA[v], `${svgMapaPdf(t)}${tabelaHtml(t, a3 ? 24 : 14)}${notasHtml(t)}`, a3), nome);
     }
     if (v === 'sub') {
       if (!subsDoPlano().length) return showToast('Ainda não há subempreiteiros neste plano');
