@@ -564,14 +564,14 @@ const txtDesvio = d => (d == null ? '' : d > 0 ? `+${d} d.ú.` : d < 0 ? `${d} d
 // ── Alertas de datas importantes (opcoes.alertas): encomendar material, adjudicar subempreitadas, outros ──
 // [{ id, tipo: 'material'|'sub'|'outro', titulo, tarefa?: <id da tarefa>, antes: <d.ú. antes do início da tarefa>,
 //    dataFixa?: 'AAAA-MM-DD' (sem tarefa), feito?: 'AAAA-MM-DD', notas?, sub?: <subempreiteiro de onde veio a sugestão>,
-//    data, inicio, tarefaNome — calculados ao gravar: o aviso diário do servidor (fn_alertas_planos) lê-os }]
+//    data, inicio, tarefaNome — calculados ao gravar: o aviso da lista de planos (e fn_alertas_planos, hoje desligada) lê-os }]
 // Ligado a uma tarefa, o alerta acompanha o plano: se a tarefa mudar de data, a data do alerta muda também.
 const TIPOS_ALERTA = {
   material: { nome: 'Encomenda de material', curto: 'Encomenda', verbo: 'Encomendar', feito: 'Encomendado', antes: 15, ph: 'Ex.: Tubagem PEAD Ø90 e acessórios' },
   sub: { nome: 'Adjudicação de subempreitada', curto: 'Subempreitada', verbo: 'Adjudicar', feito: 'Adjudicado', antes: 20, ph: 'Ex.: Pavimentação betuminosa' },
   outro: { nome: 'Outra data importante', curto: 'Outro', verbo: '', feito: 'Feito', antes: 10, ph: 'Ex.: Pedir corte de água aos SMAS' },
 };
-const AVISO_DIAS = 7;   // o sininho avisa 7 dias antes e no próprio dia
+const AVISO_DIAS = 7;   // a partir de 7 dias antes passa a âmbar e aparece no aviso da lista de planos
 const alertasDoPlano = () => (Array.isArray(opcoesPlano().alertas) ? opcoesPlano().alertas : []);
 const listaAlertas = () => (Array.isArray(opcoesPlano().alertas) ? opcoesPlano().alertas : (opcoesPlano().alertas = []));
 const icoAlerta = a => (a.tipo === 'sub' ? ICO.sub : a.tipo === 'material' ? ICO.caixa : ICO.sino);
@@ -3139,7 +3139,7 @@ function abrirAlertas() {
   };
   const corpo = `
     <div class="plt-ac-bts"><button type="button" class="plt-btn pri sm" data-ala="novo">${ICO.plus}Novo alerta</button></div>
-    <p class="plt-nota">Cada alerta fica ligado a uma tarefa, com a antecedência em dias úteis: se a tarefa mudar de data no Gantt, o alerta acompanha. O sininho do portal avisa ${AVISO_DIAS} dias antes e no próprio dia; no Gantt aparece um sino na linha da tarefa.</p>
+    <p class="plt-nota">Cada alerta fica ligado a uma tarefa, com a antecedência em dias úteis: se a tarefa mudar de data no Gantt, o alerta acompanha. Fica a âmbar ${AVISO_DIAS} dias antes e a vermelho quando a data passa; no Gantt aparece um sino na linha da tarefa e a lista de planos mostra os que estão perto.</p>
     ${L.length ? L.map(linha).join('') : '<div class="dd-vazio">Ainda não há alertas neste plano. Crie um aqui ou com o botão direito numa tarefa do Gantt.</div>'}
     ${sug.length ? `<h4>Sugestões — subempreitadas por adjudicar</h4>
       ${sug.map((x, k) => `<div class="plt-al sug"><span class="plt-al-ic">${ICO.sub}</span><div class="plt-al-tx"><b>${esc(x.titulo)}</b><small>Adjudicar até <b>${fmtDL(x.d)}</b> · ${x.antes} d.ú. antes de «${esc(x.nomeT)}»</small></div><div class="plt-al-a"><button type="button" class="plt-btn sec sm" data-sug="${k}">${ICO.plus}Criar alerta</button></div></div>`).join('')}
