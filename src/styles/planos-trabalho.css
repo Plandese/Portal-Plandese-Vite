@@ -536,3 +536,8 @@ button.plt-limc:hover{border-color:var(--p-brand,#173f9f)}
 button.plt-cmp-r{width:100%;text-align:left;font:inherit;background:none;border:0;cursor:pointer;display:flex;align-items:center;gap:10px}
 button.plt-cmp-r .dd-tx{flex:1;min-width:0}
 button.plt-cmp-r:hover{background:#f6f8fc}
+/* Estado da gravação (clicável: guardar já, tentar de novo, resolver conflito) */
+button.plt-estado-b{border:0;font-family:inherit;cursor:pointer}
+button.plt-estado-b.ok{cursor:default}
+button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
+@keyframes plt-pisca{50%{box-shadow:0 0 0 4px rgba(179,38,30,.18)}}

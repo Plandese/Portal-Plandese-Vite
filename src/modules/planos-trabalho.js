@@ -103,6 +103,7 @@ async function carregarPlanos() {
   }
   _modoLocal = false;
   _planos = r.data || [];
+  _planos.forEach(p => { p._srv = p.updated_at; });   // versão do servidor (para detetar alterações noutro lado)
 }
 
 async function carregarFeriados() {
@@ -114,34 +115,190 @@ async function carregarFeriados() {
   } catch (e) {}
 }
 
-function agendarGravar() {
-  _estado = 'pend'; pintarEstado();
-  clearTimeout(_saveT);
-  _saveT = setTimeout(gravar, 700);
+// Gravação segura:
+//  • cada alteração fica logo num rascunho neste computador (localStorage) até o servidor a confirmar —
+//    se o separador fechar, faltar a rede ou o computador desligar, recupera-se ao voltar a abrir o plano;
+//  • a gravação só substitui o plano no servidor se ninguém o tiver gravado entretanto (updated_at = _srv);
+//    se tiver, pergunta-se com que versão ficar e a outra vai para «Versões» (nada se perde);
+//  • se falhar, tenta de novo (3 s, 10 s, 30 s, depois a cada minuto) e logo que a rede volte.
+const LS_RASC = 'plt_rascunhos_v1';
+// os campos do plano que se gravam
+const campos = p => ({
+  obra_id: p.obra_id ?? null, nome: p.nome, data_inicio: p.data_inicio, calendario: p.calendario,
+  tarefas: Array.isArray(p.tarefas) ? p.tarefas : [], equipas: Array.isArray(p.equipas) ? p.equipas : [],
+  subempreiteiros: Array.isArray(p.subempreiteiros) ? p.subempreiteiros : [],
+  opcoes: p.opcoes && typeof p.opcoes === 'object' && !Array.isArray(p.opcoes) ? p.opcoes : {},
+});
+// JSON com as chaves ordenadas (o jsonb do servidor devolve as chaves noutra ordem)
+const canon = v => (Array.isArray(v) ? '[' + v.map(canon).join(',') + ']'
+  : v && typeof v === 'object' ? '{' + Object.keys(v).filter(k => v[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}'
+  : JSON.stringify(v ?? null));
+const rascLer = () => { try { return JSON.parse(localStorage.getItem(LS_RASC) || '{}'); } catch (e) { return {}; } };
+function rascGravar(p) {
+  if (_modoLocal || !p) return;
+  try { const o = rascLer(); o[p.id] = { srv: p._srv || null, em: p._mudouEm, dados: campos(p) }; localStorage.setItem(LS_RASC, JSON.stringify(o)); }
+  catch (e) { /* sem espaço: fica só a gravação no servidor */ }
 }
-async function gravar() {
+function rascApagar(id, ate) {
+  try { const o = rascLer(); if (!o[id] || (ate && o[id].em > ate)) return; delete o[id]; localStorage.setItem(LS_RASC, JSON.stringify(o)); } catch (e) { /* sem armazenamento */ }
+}
+
+let _retryT = null, _tentativas = 0;
+function agendarGravar() {
   const p = _plano; if (!p) return;
+  p._sujo = true; p._mudouEm = Date.now();
+  rascGravar(p);
+  _estado = p._conflito ? 'conflito' : 'pend'; pintarEstado();
   clearTimeout(_saveT);
-  p.updated_at = new Date().toISOString();
-  if (_modoLocal) { lsGravarTodos(); _estado = 'ok'; pintarEstado(); return; }
-  _estado = 'a'; pintarEstado();
-  const linha = {
-    id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio,
-    calendario: p.calendario, tarefas: p.tarefas, equipas: Array.isArray(p.equipas) ? p.equipas : [],
-    subempreiteiros: Array.isArray(p.subempreiteiros) ? p.subempreiteiros : [], updated_at: p.updated_at,
-    opcoes: p.opcoes && typeof p.opcoes === 'object' ? p.opcoes : {},
+  _saveT = setTimeout(() => gravar(p), 700);
+}
+// grava já (as gravações do mesmo plano fazem fila: nunca duas ao mesmo tempo)
+function gravar(p = _plano) {
+  if (!p) return Promise.resolve();
+  if (p === _plano) clearTimeout(_saveT);
+  if (p._emCurso) { p._outraVez = true; return p._emCurso; }
+  p._emCurso = gravarAgora(p).finally(() => { p._emCurso = null; if (p._outraVez) { p._outraVez = false; gravar(p); } });
+  return p._emCurso;
+}
+const estadoDe = (p, e) => { if (p === _plano) { _estado = e; pintarEstado(); } };
+async function gravarAgora(p) {
+  if (p._apagado) return;
+  if (_modoLocal) { p.updated_at = new Date().toISOString(); p._sujo = false; lsGravarTodos(); estadoDe(p, 'ok'); return; }
+  if (p._conflito) { estadoDe(p, 'conflito'); return; }
+  if (!p._sujo) { if (p === _plano && _estado !== 'erro') estadoDe(p, 'ok'); return; }
+  const em = p._mudouEm || Date.now();
+  p._sujo = false;
+  estadoDe(p, 'a');
+  const linha = { ...campos(p), updated_at: new Date().toISOString() };
+  const enviar = () => {
+    let q = sb.from('planos_trabalho').update(linha).eq('id', p.id);
+    if (p._srv) q = q.eq('updated_at', p._srv);
+    return q.select('updated_at');
   };
-  let { error } = await sb.from('planos_trabalho').upsert(linha);
-  // coluna «opcoes» ainda não criada (migração por aplicar): grava o resto
-  if (error && /opcoes/i.test(error.message || '')) { delete linha.opcoes; ({ error } = await sb.from('planos_trabalho').upsert(linha)); if (!error) console.warn('planos_trabalho: falta a coluna opcoes (prazo contratual não guardado)'); }
-  _estado = error ? 'erro' : 'ok';
-  if (error) console.error('planos_trabalho:', error);
-  pintarEstado();
+  let r;
+  try {
+    r = await enviar();
+    // coluna «opcoes» ainda não criada (migração por aplicar): grava o resto
+    if (r.error && /opcoes/i.test(r.error.message || '')) { delete linha.opcoes; r = await enviar(); }
+  } catch (e) { r = { error: e }; }
+  if (p._apagado) return;
+  if (r.error) { p._sujo = true; return falhaGravar(p, r.error); }
+  if (!r.data || !r.data.length) { p._sujo = true; return conflitoAoGravar(p); }
+  p._srv = p.updated_at = r.data[0].updated_at;
+  _tentativas = 0; clearTimeout(_retryT);
+  if (!p._sujo) { rascApagar(p.id, em); estadoDe(p, 'ok'); }
+  else estadoDe(p, 'pend');      // mudou entretanto: a próxima gravação já está agendada
+}
+function falhaGravar(p, err) {
+  console.error('planos_trabalho:', err);
+  estadoDe(p, 'erro');
+  if (!_tentativas) showToast('Não foi possível guardar no servidor — as alterações ficam neste computador e são enviadas assim que possível');
+  const espera = [3, 10, 30, 60][Math.min(_tentativas, 3)] * 1000; _tentativas++;
+  clearTimeout(_retryT); _retryT = setTimeout(() => gravar(p), espera);
+}
+// O servidor não aceitou: o plano foi gravado noutro lado depois de o abrirmos (ou eliminado)
+async function conflitoAoGravar(p) {
+  let r;
+  try { r = await sb.from('planos_trabalho').select('*').eq('id', p.id).maybeSingle(); } catch (e) { r = { error: e }; }
+  if (r.error) return falhaGravar(p, r.error);
+  if (!r.data) return planoApagadoFora(p);
+  // conteúdo igual (por exemplo, a mesma gravação vinda de outro separador): basta acertar a versão
+  if (canon(campos(r.data)) === canon(campos(p))) { p._srv = p.updated_at = r.data.updated_at; p._sujo = false; rascApagar(p.id); estadoDe(p, 'ok'); return; }
+  p._conflito = { servidor: r.data };
+  estadoDe(p, 'conflito');
+  if (p === _plano) abrirConflito(p);
+}
+function planoApagadoFora(p) {
+  if (p._apagado) return;
+  if (p !== _plano) { rascApagar(p.id); return showToast(`O plano «${p.nome}» foi eliminado noutro dispositivo`); }
+  estadoDe(p, 'conflito');
+  const dr = mostrarGaveta('Plano de trabalhos', 'Plano eliminado noutro dispositivo', p.nome,
+    `<div class="plt-alerta bad">${ICO.aviso}<span>Este plano já não existe no servidor: foi eliminado noutro dispositivo ou separador. O que está neste ecrã ainda não se perdeu.</span></div>
+     <p class="plt-nota">Pode voltar a criá-lo com o que está neste ecrã, ou sair e descartá-lo.</p>`,
+    `<button type="button" class="plt-btn sec" data-g="descartar">Descartar</button><button type="button" class="plt-btn pri" data-g="recriar">Voltar a criar</button>`);
+  dr.querySelector('[data-g="descartar"]').onclick = () => {
+    p._apagado = true; rascApagar(p.id); clearTimeout(_retryT);
+    _planos = _planos.filter(x => x.id !== p.id); _plano = null; _R = null; fecharGaveta(); fecharIA(); renderPlanosTrabalho();
+  };
+  dr.querySelector('[data-g="recriar"]').onclick = async () => {
+    const linha = { id: p.id, ...campos(p), updated_at: new Date().toISOString() };
+    const { data, error } = await sb.from('planos_trabalho').insert(linha).select('updated_at');
+    if (error) return showToast('Erro ao criar: ' + error.message);
+    p._srv = p.updated_at = data?.[0]?.updated_at || linha.updated_at; p._sujo = false; p._conflito = null;
+    rascApagar(p.id); estadoDe(p, 'ok'); fecharGaveta(); showToast('Plano criado de novo');
+  };
+}
+// Escolher entre o que está neste ecrã e o que foi gravado noutro lado; o que não se escolher vai para «Versões»
+function abrirConflito(p) {
+  const s = p._conflito?.servidor; if (!s) return;
+  const quando = new Date(s.updated_at).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' });
+  const rs = resumoDados(campos(s)), rm = resumoDados(campos(p));
+  const col = (tit, r) => `<div class="dd-tile"><small>${tit}</small><b>${r.n || 0} tarefas</b><span class="plt-cmp-v">${r.n ? `${fmtD(dnum(r.ini))} → ${fmtD(dnum(r.fim))} · ${r.dias} d.ú.${r.valor ? ' · ' + eur0(r.valor) : ''}` : 'sem tarefas'}</span></div>`;
+  const dr = mostrarGaveta('Plano de trabalhos', 'Este plano mudou noutro lado', p.nome,
+    `<div class="plt-alerta warn">${ICO.aviso}<span>Foi gravado noutro dispositivo ou separador a <b>${esc(quando)}</b>, depois de o abrir aqui. Para não se apagarem um ao outro, escolha com qual quer continuar.</span></div>
+     <div class="dd-tiles">${col('Neste ecrã', rm)}${col(`Gravado a ${esc(quando)}`, rs)}</div>
+     <p class="plt-nota" style="margin-top:14px">A versão que não escolher fica guardada em <b>Versões</b> (cópia automática): pode compará-la ou repô-la depois.</p>`,
+    `<button type="button" class="plt-btn sec" data-g="servidor">Usar a gravada</button><button type="button" class="plt-btn pri" data-g="meu">Ficar com esta</button>`);
+  const fazer = async (b, escolha) => {
+    dr.querySelectorAll('.dd-f .plt-btn').forEach(x => { x.disabled = true; }); b.textContent = 'A guardar…';
+    try { await resolverConflito(p, escolha); }
+    catch (e) { showToast('Erro: ' + (e.message || e)); dr.querySelectorAll('.dd-f .plt-btn').forEach(x => { x.disabled = false; }); b.textContent = escolha === 'meu' ? 'Ficar com esta' : 'Usar a gravada'; }
+  };
+  dr.querySelector('[data-g="meu"]').onclick = e => fazer(e.currentTarget, 'meu');
+  dr.querySelector('[data-g="servidor"]').onclick = e => fazer(e.currentTarget, 'servidor');
+}
+async function resolverConflito(p, escolha) {
+  const s = p._conflito.servidor;
+  const hora = d => new Date(d).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' });
+  if (escolha === 'meu') {
+    await guardarVersao(`Gravada noutro dispositivo (${hora(s.updated_at)})`, 'copia', dadosDoPlano(campos(s)), p.id);
+    p._srv = s.updated_at; p._conflito = null; p._sujo = true;
+    fecharGaveta();
+    await gravar(p);
+    showToast('Ficou a versão deste ecrã; a outra está em Versões');
+  } else {
+    await guardarVersao(`Alterações deste ecrã (${hora(Date.now())})`, 'copia', dadosDoPlano(p), p.id);
+    p._conflito = null;
+    aplicarDoServidor(p, s);
+    showToast('Ficou a versão gravada; a deste ecrã está em Versões');
+  }
+}
+// substitui o plano aberto pelo que está no servidor
+function aplicarDoServidor(p, s) {
+  Object.assign(p, campos(s));
+  p._srv = p.updated_at = s.updated_at; p._sujo = false;
+  rascApagar(p.id);
+  if (p === _plano) { _undo = []; _redo = []; _ui.sel.clear(); fecharGaveta(); abrirPlano(p.id); estadoDe(p, 'ok'); }
+}
+// Ao voltar ao separador: se o plano foi gravado noutro lado, atualiza-o (ou pergunta, se há alterações aqui)
+let _verifEm = 0;
+async function verificarServidor() {
+  const p = _plano;
+  if (!p || _modoLocal || p._conflito || p._emCurso || !$('plt-vista')?.offsetParent || Date.now() - _verifEm < 4000) return;
+  _verifEm = Date.now();
+  let r;
+  try { r = await sb.from('planos_trabalho').select('updated_at').eq('id', p.id).maybeSingle(); } catch (e) { return; }
+  if (r.error || p !== _plano || p._emCurso) return;
+  if (!r.data) return planoApagadoFora(p);
+  if (!p._srv || r.data.updated_at === p._srv) return;
+  try { r = await sb.from('planos_trabalho').select('*').eq('id', p.id).maybeSingle(); } catch (e) { return; }
+  if (r.error || !r.data || p !== _plano || p._emCurso) return;
+  if (!p._sujo) { aplicarDoServidor(p, r.data); return showToast('Plano atualizado com o que foi gravado noutro dispositivo'); }
+  if (canon(campos(r.data)) === canon(campos(p))) { p._srv = p.updated_at = r.data.updated_at; return; }
+  p._conflito = { servidor: r.data };
+  estadoDe(p, 'conflito');
+  abrirConflito(p);
+}
+function clicarEstado() {
+  const p = _plano; if (!p) return;
+  if (p._conflito) return p._conflito.servidor ? abrirConflito(p) : planoApagadoFora(p);
+  if (_estado === 'erro' || _estado === 'pend') { _tentativas = 0; clearTimeout(_retryT); gravar(p); }
 }
 function pintarEstado() {
   const el = $('plt-estado'); if (!el) return;
-  const m = { ok: ['ok', 'Guardado'], pend: ['mute', 'Por guardar…'], a: ['mute', 'A guardar…'], erro: ['bad', 'Erro ao guardar'] }[_estado];
-  el.className = 'plt-pill ' + m[0]; el.textContent = m[1];
+  const m = { ok: ['ok', 'Guardado', 'Tudo guardado no servidor'], pend: ['mute', 'Por guardar…', 'Clique para guardar já'], a: ['mute', 'A guardar…', ''],
+    erro: ['bad', 'Erro ao guardar', 'As alterações estão neste computador; clique para tentar de novo'], conflito: ['bad', 'Conflito — escolher versão', 'Este plano foi gravado noutro lado; clique para escolher com que versão ficar'] }[_estado] || ['mute', '', ''];
+  el.className = 'plt-pill plt-estado-b ' + m[0]; el.textContent = m[1]; el.title = m[2];
 }
 
 // ───────────────────────── calendário (dias úteis) ─────────────────────────
@@ -507,17 +664,35 @@ function lerPred(txt, i) {
 function eAscendente(a, b) { for (let k = _R.pai[b]; k !== -1; k = _R.pai[k]) if (k === a) return true; return false; }
 
 // ───────────────────────── anular / refazer ─────────────────────────
+// Cada passo guarda o plano inteiro (tarefas, equipas, subempreiteiros, datas, calendário, prazo, linha de base…),
+// por isso o Ctrl+Z desfaz qualquer alteração, incluindo as do assistente e das definições.
+const LIM_UNDO = 50;
+const fotoPlano = () => JSON.stringify(campos(_plano));
+function registarUndo(antes) {
+  if (antes === fotoPlano()) return false;
+  _undo.push(antes); if (_undo.length > LIM_UNDO) _undo.shift();
+  _redo = [];
+  return true;
+}
+// repõe uma fotografia, mantendo o que é só de vista (grupos recolhidos) e a última versão guardada
+function reporFoto(txt) {
+  const o = JSON.parse(txt);
+  const fechado = new Map(_plano.tarefas.map(t => [t.id, !!t.fechado])), uv = opcoesPlano().ultimaVersao;
+  Object.assign(_plano, o);
+  _plano.tarefas.forEach(t => { if (fechado.has(t.id)) t.fechado = fechado.get(t.id); });
+  if (uv) opcoesPlano().ultimaVersao = uv; else delete opcoesPlano().ultimaVersao;
+  montarCalendario();
+}
 function mudar(fn) {
-  const antes = JSON.stringify(_plano.tarefas);
+  const antes = fotoPlano();
   const r = fn();
   if (r === false) return;
-  _undo.push(antes); if (_undo.length > 60) _undo.shift();
-  _redo = [];
-  depoisDeMudar();
+  if (registarUndo(antes)) depoisDeMudar();
+  else { calcular(); pintarPlano(); }
 }
 function depoisDeMudar() { calcular(); pintarPlano(); agendarGravar(); }
-function anular() { if (!_undo.length) return; _redo.push(JSON.stringify(_plano.tarefas)); _plano.tarefas = JSON.parse(_undo.pop()); _ui.sel.clear(); depoisDeMudar(); }
-function refazer() { if (!_redo.length) return; _undo.push(JSON.stringify(_plano.tarefas)); _plano.tarefas = JSON.parse(_redo.pop()); _ui.sel.clear(); depoisDeMudar(); }
+function anular() { if (!_undo.length) return; _redo.push(fotoPlano()); reporFoto(_undo.pop()); _ui.sel.clear(); depoisDeMudar(); }
+function refazer() { if (!_redo.length) return; _undo.push(fotoPlano()); reporFoto(_redo.pop()); _ui.sel.clear(); depoisDeMudar(); }
 
 // ───────────────────────── página: lista de planos ─────────────────────────
 export async function renderPlanosTrabalho() {
@@ -584,7 +759,20 @@ async function abrirPlano(id) {
   if (!Array.isArray(p.equipas)) p.equipas = [];
   if (!Array.isArray(p.subempreiteiros)) p.subempreiteiros = [];
   if (!p.opcoes || typeof p.opcoes !== 'object' || Array.isArray(p.opcoes)) p.opcoes = {};
-  if (_plano !== p) { _undo = []; _redo = []; _ui.sel.clear(); _ui.vista = 'gantt'; }
+  let recuperado = false;
+  if (_plano !== p) {
+    _undo = []; _redo = []; _ui.sel.clear(); _ui.vista = 'gantt';
+    // alterações que ficaram neste computador sem chegar ao servidor (separador fechado, sem rede…)
+    const rc = !_modoLocal && !p._sujo && !p._conflito ? rascLer()[p.id] : null;
+    if (rc && rc.dados) {
+      if (canon(rc.dados) === canon(campos(p))) rascApagar(p.id);
+      else {
+        Object.assign(p, rc.dados);
+        if (rc.srv) p._srv = rc.srv;     // se o servidor mudou depois do rascunho, a gravação pergunta com que versão ficar
+        recuperado = true;
+      }
+    }
+  }
   _plano = p;
   montarCalendario(); calcular();
   const el = $('plt-body');
@@ -595,7 +783,7 @@ async function abrirPlano(id) {
         <small>${esc(nomeObra(p.obra_id) || 'Sem obra')}</small>
         <b id="plt-titulo">${esc(p.nome)}</b>
       </div>
-      <span id="plt-estado" class="plt-pill ok">Guardado</span>
+      <button type="button" id="plt-estado" class="plt-pill plt-estado-b ok" data-acao="estado">Guardado</button>
       <div class="plt-top-acoes">
         <button type="button" class="plt-btn pri sm" data-acao="ia" title="Pedir alterações ou fazer perguntas ao assistente de IA">${ICO.ia}Assistente</button>
         <button type="button" class="plt-btn sec sm" data-acao="acomp" title="Data de estado, datas reais e linha de base">${ICO.acomp}Acompanhamento</button>
@@ -618,11 +806,14 @@ async function abrirPlano(id) {
     <div id="plt-vista"></div>`;
   pintarEstado();
   pintarPlano();
+  if (recuperado) { agendarGravar(); showToast('Recuperadas alterações que não tinham chegado ao servidor'); }
+  else setTimeout(verificarServidor, 300);
 }
 
 function pintarPlano() {
   if (!_plano || !$('plt-vista')) return;
   $('plt-titulo').textContent = _plano.nome;
+  const ob = document.querySelector('.plt-top-tx small'); if (ob) ob.textContent = nomeObra(_plano.obra_id) || 'Sem obra';
   document.querySelectorAll('.plt-tab').forEach(b => b.classList.toggle('on', b.dataset.vista === _ui.vista));
   pintarKpis();
   if (_ui.vista === 'fin') pintarFinanceiro();
@@ -1485,7 +1676,13 @@ function ligarTeclado() {
     if (b.dataset.zoom) { _ui.zoom = b.dataset.zoom; const ch = $('plt-chart'); if (ch) delete ch.dataset.pronto; return pintarGantt(); }
     const a = b.dataset.acao;
     if (a === 'novo') return abrirNovo();
-    if (a === 'voltar') { fecharIA(); gravar(); _plano = null; _R = null; _ui.comp = null; return renderPlanosTrabalho(); }
+    if (a === 'voltar') {
+      // espera pela gravação antes de recarregar a lista (senão a lista podia trazer a versão anterior)
+      fecharIA(); const p = _plano; _plano = null; _R = null; _ui.comp = null; clearTimeout(_saveT);
+      $('plt-body').innerHTML = '<div class="plt-vazio">A guardar…</div>';
+      return gravar(p).finally(() => { if (!_plano) renderPlanosTrabalho(); });
+    }
+    if (a === 'estado') return clicarEstado();
     if (a === 'definicoes') return abrirDefinicoes();
     if (a === 'equipas') return abrirEquipas();
     if (a === 'novo-sub') return abrirSub(null);
@@ -1501,6 +1698,18 @@ function ligarTeclado() {
     if (a === 'versoes') return abrirVersoes();
     if (a === 'imprimir') return abrirImprimir();
     acao(a);
+  });
+  // gravação: guardar já ao sair do separador, avisar ao fechar com alterações por enviar, tentar de novo quando a rede voltar
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { if (_plano && (_estado === 'pend' || _estado === 'erro')) gravar(); }
+    else verificarServidor();
+  });
+  window.addEventListener('focus', () => verificarServidor());
+  window.addEventListener('online', () => { if (_plano && _estado === 'erro') { _tentativas = 0; gravar(); } });
+  window.addEventListener('beforeunload', e => {
+    if (!_plano || !['pend', 'a', 'erro', 'conflito'].includes(_estado)) return;
+    if (_estado === 'pend') gravar();
+    e.preventDefault(); e.returnValue = '';
   });
   document.addEventListener('keydown', e => {
     if (!_plano || _ui.vista !== 'gantt' || !$('plt-gantt') || !$('plt-gantt').offsetParent) return;
@@ -1891,9 +2100,10 @@ async function criarPlano() {
 // grava um plano novo (servidor, ou este computador em modo local); devolve false se falhar
 async function inserirPlano(p) {
   if (!_modoLocal) {
-    const linha = { id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio, calendario: p.calendario, tarefas: p.tarefas, equipas: p.equipas || [], subempreiteiros: p.subempreiteiros || [], opcoes: p.opcoes || {} };
-    let { error } = await sb.from('planos_trabalho').insert(linha);
-    if (error && /opcoes/i.test(error.message || '')) { delete linha.opcoes; ({ error } = await sb.from('planos_trabalho').insert(linha)); }
+    const linha = { id: p.id, obra_id: p.obra_id, nome: p.nome, data_inicio: p.data_inicio, calendario: p.calendario, tarefas: p.tarefas, equipas: p.equipas || [], subempreiteiros: p.subempreiteiros || [], opcoes: p.opcoes || {}, updated_at: p.updated_at || new Date().toISOString() };
+    let { data, error } = await sb.from('planos_trabalho').insert(linha).select('updated_at');
+    if (error && /opcoes/i.test(error.message || '')) { delete linha.opcoes; ({ data, error } = await sb.from('planos_trabalho').insert(linha).select('updated_at')); }
+    if (!error) p._srv = p.updated_at = data?.[0]?.updated_at || linha.updated_at;
     if (error) {
       if (tabelaEmFalta(error)) { _modoLocal = true; _planos = lsLer(); }
       else { showToast('Erro ao criar: ' + error.message); return false; }
@@ -2468,16 +2678,21 @@ function abrirDefinicoes() {
   dr.querySelector('[data-g="ok"]').onclick = () => {
     const nome = $('pd-nome').value.trim(), ini = $('pd-ini').value;
     if (!nome || !ini) return showToast('Nome e data de início são obrigatórios');
-    p.nome = nome; p.obra_id = $('pd-obra').value || null; p.data_inicio = ini; p.calendario = $('pd-cal').value;
-    const pzD = parseInt($('pd-pz-dias').value, 10), pzT = $('pd-pz-data').value;
-    if (pzD > 0) opcoesPlano().prazo = { dias: pzD }; else if (pzT) opcoesPlano().prazo = { data: pzT }; else delete opcoesPlano().prazo;
-    const desc = $('pd-desc').value.trim(); if (desc) opcoesPlano().descricao = desc.slice(0, 8000); else delete opcoesPlano().descricao;
-    if (desTirar.size) { const l = (opcoesPlano().desenhos || []).filter((x, k) => !desTirar.has(k)); if (l.length) opcoesPlano().desenhos = l; else delete opcoesPlano().desenhos; }
-    montarCalendario(); calcular(); fecharGaveta(); abrirPlano(p.id); agendarGravar();
+    const pzD = parseInt($('pd-pz-dias').value, 10), pzT = $('pd-pz-data').value, desc = $('pd-desc').value.trim(), obra = $('pd-obra').value || null, cal = $('pd-cal').value;
+    mudar(() => {
+      p.nome = nome; p.obra_id = obra; p.data_inicio = ini; p.calendario = cal;
+      if (pzD > 0) opcoesPlano().prazo = { dias: pzD }; else if (pzT) opcoesPlano().prazo = { data: pzT }; else delete opcoesPlano().prazo;
+      if (desc) opcoesPlano().descricao = desc.slice(0, 8000); else delete opcoesPlano().descricao;
+      if (desTirar.size) { const l = (opcoesPlano().desenhos || []).filter((x, k) => !desTirar.has(k)); if (l.length) opcoesPlano().desenhos = l; else delete opcoesPlano().desenhos; }
+      montarCalendario();
+    });
+    fecharGaveta(); abrirPlano(p.id);
   };
   dr.querySelector('[data-g="apagar"]').onclick = async () => {
     if (!confirm(`Eliminar o plano «${p.nome}»? Não é possível recuperar.`)) return;
-    if (!_modoLocal) { const { error } = await sb.from('planos_trabalho').delete().eq('id', p.id); if (error) return showToast('Erro ao eliminar: ' + error.message); }
+    p._apagado = true; clearTimeout(_saveT); clearTimeout(_retryT);
+    if (!_modoLocal) { const { error } = await sb.from('planos_trabalho').delete().eq('id', p.id); if (error) { p._apagado = false; return showToast('Erro ao eliminar: ' + error.message); } }
+    rascApagar(p.id);
     _planos = _planos.filter(x => x.id !== p.id); if (_modoLocal) lsGravarTodos();
     _plano = null; _R = null; fecharGaveta(); renderPlanosTrabalho(); showToast('Plano eliminado');
   };
@@ -2593,12 +2808,14 @@ function abrirAcompanhamento() {
       if (ir && fr && fr < ir) return showToast(`«${t.nome}»: o fim real é antes do início real`);
       if (ir !== (t.iniReal || '') || fr !== (t.fimReal || '') || pc !== (Number(t.pct) || 0)) mud.push({ t, ir, fr, pc });
     }
-    if (ed) op.estado = ed; else delete op.estado;
-    if (mud.length) mudar(() => { mud.forEach(m => { m.t.pct = m.pc; definirReal(m.t, m.ir, m.fr); }); });
-    if (baseAcao === 'retirar') delete op.base;
-    if (baseAcao === 'fixar') fixarLinhaBase();
+    mudar(() => {
+      const o = opcoesPlano();
+      if (ed) o.estado = ed; else delete o.estado;
+      mud.forEach(m => { m.t.pct = m.pc; definirReal(m.t, m.ir, m.fr); });
+      if (baseAcao === 'retirar') delete o.base;
+      if (baseAcao === 'fixar') fixarLinhaBase();       // fotografia já com as datas reais acabadas de pôr
+    });
     fecharGaveta();
-    calcular(); pintarPlano(); agendarGravar();
     showToast(baseAcao === 'fixar' ? 'Linha de base fixada' : mud.length ? `Avanço de ${mud.length} tarefa${mud.length > 1 ? 's' : ''} guardado` : 'Acompanhamento guardado');
   };
 }
@@ -2647,9 +2864,9 @@ async function dadosVersao(v) {
   if (r.error) throw r.error;
   return r.data.dados;
 }
-async function guardarVersao(nome, estado) {
-  const dados = dadosDoPlano(_plano), resumo = resumoDados(dados);
-  const v = { id: uid(), plano_id: _plano.id, nome: String(nome).slice(0, 120), estado, resumo, dados, created_at: new Date().toISOString() };
+async function guardarVersao(nome, estado, dados = dadosDoPlano(_plano), planoId = _plano.id) {
+  const resumo = resumoDados(dados);
+  const v = { id: uid(), plano_id: planoId, nome: String(nome).slice(0, 120), estado, resumo, dados, created_at: new Date().toISOString() };
   if (!_ver.local) {
     const { error } = await sb.from('planos_trabalho_versoes').insert(v);
     if (error) {
@@ -2657,9 +2874,9 @@ async function guardarVersao(nome, estado) {
       _ver.local = true;
     }
   }
-  if (_ver.local) { const o = verLsLer(); (o[_plano.id] = o[_plano.id] || []).unshift({ ...v, criado_por: S.currentUser?.key }); verLsGravar(o); }
-  if (estado !== 'copia') { opcoesPlano().ultimaVersao = { nome: v.nome, estado, data: v.created_at }; agendarGravar(); }
-  _ver.lista.unshift({ ...v, dados: undefined, criado_por: S.currentUser?.key });
+  if (_ver.local) { const o = verLsLer(); (o[planoId] = o[planoId] || []).unshift({ ...v, criado_por: S.currentUser?.key }); verLsGravar(o); }
+  if (estado !== 'copia' && _plano?.id === planoId) { opcoesPlano().ultimaVersao = { nome: v.nome, estado, data: v.created_at }; agendarGravar(); }
+  if (_ver.planoId === planoId) _ver.lista.unshift({ ...v, dados: undefined, criado_por: S.currentUser?.key });
   return v;
 }
 async function apagarVersao(v) {
@@ -2714,9 +2931,8 @@ function pintarVersoes(dr) {
       if (a === 'guardar') {
         const nome = $('vv-nome').value.trim(); if (!nome) return showToast('Dê um nome à versão');
         b.disabled = true;
-        if (chk.checked && !fixarLinhaBase()) { b.disabled = false; return; }
+        if (chk.checked) { let ok = true; mudar(() => { ok = fixarLinhaBase(); if (!ok) return false; }); if (!ok) { b.disabled = false; return; } }
         await guardarVersao(nome, est.value);
-        if (chk.checked) { calcular(); pintarPlano(); agendarGravar(); }
         showToast(`Versão «${nome}» guardada${chk.checked ? ' e fixada como linha de base' : ''}`);
         return pintarVersoes(dr);
       }
@@ -2737,13 +2953,16 @@ function pintarVersoes(dr) {
       if (a === 'repor') {
         if (!confirm(`Repor a versão «${v.nome}»? O plano atual é primeiro guardado como cópia automática.`)) { b.disabled = false; return; }
         await guardarVersao(`Antes de repor «${v.nome}»`, 'copia');
-        Object.assign(_plano, { nome: d.nome || _plano.nome, data_inicio: d.data_inicio, calendario: d.calendario, tarefas: d.tarefas || [], equipas: d.equipas || [], subempreiteiros: d.subempreiteiros || [] });
-        const op = opcoesPlano(), fica = { base: op.base, estado: op.estado, ultimaVersao: op.ultimaVersao };
-        _plano.opcoes = { ...(d.opcoes || {}) };
-        Object.entries(fica).forEach(([k, x]) => { if (x) _plano.opcoes[k] = x; });
-        _undo = []; _redo = []; _ui.sel.clear(); _ui.comp = null;
-        fecharGaveta(); abrirPlano(_plano.id); agendarGravar();
-        return showToast(`Versão «${v.nome}» reposta`);
+        _ui.comp = null;
+        mudar(() => {
+          Object.assign(_plano, { nome: d.nome || _plano.nome, data_inicio: d.data_inicio, calendario: d.calendario, tarefas: d.tarefas || [], equipas: d.equipas || [], subempreiteiros: d.subempreiteiros || [] });
+          const op = opcoesPlano(), fica = { base: op.base, estado: op.estado, ultimaVersao: op.ultimaVersao };
+          _plano.opcoes = { ...(d.opcoes || {}) };
+          Object.entries(fica).forEach(([k, x]) => { if (x) _plano.opcoes[k] = x; });
+          montarCalendario();
+        });
+        _ui.sel.clear(); fecharGaveta(); abrirPlano(_plano.id);
+        return showToast(`Versão «${v.nome}» reposta — Ctrl+Z para voltar atrás`);
       }
       if (a === 'copia') return copiarParaNovo(d, `${d.nome || _plano.nome} (${v.nome})`);
     } catch (err) { showToast('Erro: ' + (err.message || err)); b.disabled = false; }
@@ -2753,7 +2972,7 @@ async function copiarParaNovo(d, nome) {
   const p = { ...JSON.parse(JSON.stringify(d)), id: uid(), nome: nome.slice(0, 200), updated_at: new Date().toISOString() };
   // as tarefas mantêm os ids (as ligações usam-nos); são únicos dentro de cada plano
   if (!await inserirPlano(p)) return;
-  gravar(); _ui.comp = null; fecharGaveta(); fecharIA();
+  await gravar(); _ui.comp = null; fecharGaveta(); fecharIA();
   showToast(`Plano «${p.nome}» criado`);
   abrirPlano(p.id);
 }
@@ -3435,7 +3654,7 @@ function aplicarOperacoes(ops, ids) {
   const erros = [];
   let feitas = 0, mudouPlano = false;
   _baseNoFim = false;
-  const antes = JSON.stringify(_plano.tarefas);
+  const antes = fotoPlano();
   const antesPlano = { data_inicio: _plano.data_inicio, calendario: _plano.calendario, nome: _plano.nome };
   const T = _plano.tarefas;
   const novos = {};
@@ -3633,11 +3852,10 @@ function aplicarOperacoes(ops, ids) {
   limparLigacoesResumo();
   if (_baseNoFim) fixarLinhaBase();
   if (feitas) {
-    _undo.push(antes); if (_undo.length > 60) _undo.shift();
-    _redo = [];
+    registarUndo(antes);
     _ui.sel.clear();
     depoisDeMudar();
-    if (mudouPlano) showToast(`Datas do plano alteradas (antes: início ${antesPlano.data_inicio}) — o Ctrl+Z não repõe o início nem o calendário`);
+    if (mudouPlano) showToast(`Datas do plano alteradas (antes: início ${antesPlano.data_inicio}) — Ctrl+Z para anular`);
   }
   return { feitas, erros };
 }
@@ -3818,10 +4036,10 @@ function abrirEquipas() {
         eq: (e.eq || []).filter(x => x.tipo && x.qtd > 0).map(x => ({ tipo: x.tipo, qtd: +x.qtd })) };
     });
     const idsTrab = new Set(limpas.filter(e => !eFixa(e)).map(e => e.id));
-    _plano.equipas = limpas;
-    const orfas = _plano.tarefas.some(t => (t.equipas || []).some(a => !idsTrab.has(a.id)));
-    if (orfas) mudar(() => { _plano.tarefas.forEach(t => { if (t.equipas) { t.equipas = t.equipas.filter(a => idsTrab.has(a.id)); if (!t.equipas.length) delete t.equipas; } }); });
-    else depoisDeMudar();
+    mudar(() => {
+      _plano.equipas = limpas;
+      _plano.tarefas.forEach(t => { if (t.equipas) { t.equipas = t.equipas.filter(a => idsTrab.has(a.id)); if (!t.equipas.length) delete t.equipas; } });
+    });
     fecharGaveta();
     showToast('Equipas guardadas');
   };
@@ -3992,8 +4210,10 @@ function abrirSub(id, atribuirA) {
   dr.querySelector('[data-g="apagar"]')?.addEventListener('click', () => {
     const n = _plano.tarefas.filter(t => t.sub === s0.id).length;
     if (!confirm(`Eliminar «${s0.nome}»?${n ? ` As ${n} tarefa(s) dele passam a ser executadas pela Plandese.` : ''}`)) return;
-    _plano.subempreiteiros = subsDoPlano().filter(x => x.id !== s0.id);
-    if (n) mudar(() => { _plano.tarefas.forEach(t => { if (t.sub === s0.id) delete t.sub; }); }); else depoisDeMudar();
+    mudar(() => {
+      _plano.subempreiteiros = subsDoPlano().filter(x => x.id !== s0.id);
+      _plano.tarefas.forEach(t => { if (t.sub === s0.id) delete t.sub; });
+    });
     fecharGaveta();
   });
   dr.querySelector('[data-g="ok"]').onclick = () => {
@@ -4002,10 +4222,13 @@ function abrirSub(id, atribuirA) {
     if (subsDoPlano().some(x => x.nome.toLowerCase() === nome.toLowerCase() && x.id !== s0?.id)) return showToast('Já existe um subempreiteiro com esse nome');
     const dados = { nome, especialidade: v('especialidade'), contacto: v('contacto'), telefone: v('telefone'), email: v('email'), notas: v('notas') };
     Object.keys(dados).forEach(k => { if (!dados[k]) delete dados[k]; });
-    let sid = s0?.id;
-    if (s0) { Object.keys(s0).forEach(k => { if (k !== 'id') delete s0[k]; }); Object.assign(s0, dados); }
-    else { sid = uid(); subsDoPlano().push({ id: sid, ...dados }); }
-    if (atribuirA?.length) mudar(() => { atribuirA.forEach(i => { _plano.tarefas[i].sub = sid; }); }); else depoisDeMudar();
+    const sid = s0?.id || uid();
+    mudar(() => {
+      const su = s0 ? subPorId(s0.id) : null;
+      if (su) { Object.keys(su).forEach(k => { if (k !== 'id') delete su[k]; }); Object.assign(su, dados); }
+      else subsDoPlano().push({ id: sid, ...dados });
+      (atribuirA || []).forEach(i => { if (_plano.tarefas[i]) _plano.tarefas[i].sub = sid; });
+    });
     fecharGaveta();
     showToast(s0 ? 'Subempreiteiro atualizado' : 'Subempreiteiro criado');
   };
