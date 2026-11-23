@@ -1832,7 +1832,7 @@ function ligarTeclado() {
   });
   document.addEventListener('keydown', e => {
     if (!_plano || _ui.vista !== 'gantt' || !$('plt-gantt') || !$('plt-gantt').offsetParent) return;
-    if (document.querySelector('#plt-drawer.open')) return;
+    if (document.querySelector('#plt-drawer.open') || $('plt-pv')) return;
     const emInput = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
     const k = e.key;
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && k.toLowerCase() === 'z' && !emInput) { e.preventDefault(); return anular(); }
@@ -3621,22 +3621,146 @@ function abrirImprimir() {
     o = { papel: $('im-papel').value, escala: $('im-esc').value, nivel: $('im-nv').value, crit: v('im-crit'), ligacoes: v('im-lig'), ref: $('im-ref') ? v('im-ref') : o.ref };
     try { localStorage.setItem(LS_IMP, JSON.stringify(o)); } catch (e) { /* sem armazenamento */ }
     fecharGaveta();
-    imprimirHtml(htmlImpressao(o));
+    preverPdf('Gantt do plano', htmlImpressao(o), nomeFicheiro(), { voltar: abrirImprimir });
   };
 }
-let _tituloOrig = null;   // título da janela antes de imprimir (o nome do PDF vem dele)
-function imprimirHtml(html, nome = nomeFicheiro()) {
-  const fr = document.createElement('iframe');
-  fr.setAttribute('aria-hidden', 'true');
-  fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-  document.body.appendChild(fr);
-  const d = fr.contentDocument; d.open(); d.write(html); d.close();
-  if (_tituloOrig == null) _tituloOrig = document.title;
-  setTimeout(() => {
-    document.title = nome;                    // nome sugerido para o PDF
-    try { fr.contentWindow.focus(); fr.contentWindow.print(); } finally { setTimeout(() => { if (_tituloOrig != null) document.title = _tituloOrig; _tituloOrig = null; fr.remove(); }, 1500); }
-  }, 250);
+// ═══════════════════════════════════════════════════════════════════
+//  PRÉ-VISUALIZAÇÃO antes de descarregar o Excel ou de abrir a impressão do PDF
+//  PDF: o próprio documento de impressão num iframe, com folhas de papel e zoom (estilos só de ecrã; imprime-se dali)
+//  Excel: as folhas do livro em tabelas, como no Excel (letras das colunas, nº das linhas, separadores das folhas)
+// ═══════════════════════════════════════════════════════════════════
+function fecharPv() { const el = $('plt-pv'); if (!el) return; el.remove(); document.removeEventListener('keydown', _pvTecla, true); }
+function _pvTecla(e) { if (e.key === 'Escape' && $('plt-pv')) { e.stopPropagation(); e.preventDefault(); fecharPv(); } }
+function abrirPv({ tipo, titulo, ok, voltar, abas }) {
+  fecharPv(); fecharMenu();
+  document.body.insertAdjacentHTML('beforeend', `<div class="plt-pv" id="plt-pv" role="dialog" aria-modal="true" aria-label="Pré-visualização">
+    <div class="plt-pv-fundo" data-pv="fechar"></div>
+    <div class="plt-pv-caixa">
+      <div class="plt-pv-h">
+        <span class="plt-pv-ic ${tipo}">${tipo === 'pdf' ? ICO.imprimir : ICO.xls}</span>
+        <div class="plt-pv-tx"><small>Pré-visualização · ${tipo === 'pdf' ? 'PDF' : 'Excel'}</small><b>${esc(titulo)}</b><span class="plt-pv-info"></span></div>
+        ${tipo === 'pdf' ? `<div class="plt-pv-zoom"><button type="button" data-pv="menos" title="Diminuir">−</button><span class="plt-pv-z">100%</span><button type="button" data-pv="mais" title="Aumentar">+</button><button type="button" data-pv="ajustar" class="tx" title="Ajustar à largura">Ajustar</button></div>` : ''}
+        <div class="plt-pv-bts">
+          ${voltar ? `<button type="button" class="plt-btn sec sm" data-pv="voltar">${ICO.cfg}Alterar opções</button>` : ''}
+          <button type="button" class="plt-btn sec sm" data-pv="fechar">Fechar</button>
+          <button type="button" class="plt-btn pri sm" data-pv="ok">${tipo === 'pdf' ? ICO.imprimir : ICO.exportar}${esc(ok)}</button>
+        </div>
+      </div>
+      ${abas && abas.length > 1 ? `<div class="plt-pv-abas">${abas.map((a, k) => `<button type="button" class="plt-pv-aba ${k ? '' : 'on'}" data-pv-aba="${k}">${esc(a)}</button>`).join('')}</div>` : ''}
+      <div class="plt-pv-b"></div>
+    </div>
+  </div>`);
+  const el = $('plt-pv');
+  const api = { el, corpo: el.querySelector('.plt-pv-b'), info: t => { el.querySelector('.plt-pv-info').textContent = t; }, zoomTxt: t => { const z = el.querySelector('.plt-pv-z'); if (z) z.textContent = t; }, aoOk: null, aoAba: null, aoZoom: null };
+  el.addEventListener('click', e => {
+    const ab = e.target.closest('[data-pv-aba]');
+    if (ab) { el.querySelectorAll('.plt-pv-aba').forEach(x => x.classList.toggle('on', x === ab)); return api.aoAba?.(+ab.dataset.pvAba); }
+    const b = e.target.closest('[data-pv]'); if (!b) return;
+    const a = b.dataset.pv;
+    if (a === 'fechar') return fecharPv();
+    if (a === 'voltar') { fecharPv(); return voltar(); }
+    if (a === 'ok') return api.aoOk?.();
+    api.aoZoom?.(a);
+  });
+  document.addEventListener('keydown', _pvTecla, true);
+  return api;
 }
+function preverPdf(titulo, html, nome, { voltar } = {}) {
+  const pv = abrirPv({ tipo: 'pdf', titulo, ok: 'Imprimir ou guardar PDF', voltar });
+  const fr = document.createElement('iframe'); fr.className = 'plt-pv-fr'; fr.title = 'Pré-visualização do PDF';
+  pv.corpo.appendChild(fr);
+  const d = fr.contentDocument; d.open(); d.write(html); d.close();
+  // estilos só de ecrã: folhas de papel sobre fundo cinzento (não entram na impressão)
+  const st = d.createElement('style');
+  st.textContent = `@media screen{html{background:#e6eaf0}body{padding:24px 0 40px}
+    .pg{background:#fff;margin:0 auto 22px;padding:8mm;box-sizing:content-box;box-shadow:0 2px 14px rgba(10,28,90,.2)}
+    .pv-folha{background:#fff;margin:0 auto;padding:10mm;box-sizing:content-box;box-shadow:0 2px 14px rgba(10,28,90,.2)}}`;
+  const stZ = d.createElement('style');
+  d.head.append(st, stZ);
+  const a3 = /size:\s*(A3|420mm)/i.test(html);
+  // relatórios (texto corrido): numa folha com a largura útil do papel
+  if (!d.querySelector('.pg')) {
+    const f = d.createElement('div'); f.className = 'pv-folha'; f.style.width = (a3 ? 400 : 277) + 'mm';
+    while (d.body.firstChild) f.appendChild(d.body.firstChild);
+    d.body.appendChild(f);
+  }
+  const nPag = d.querySelectorAll('.pg').length;
+  pv.info(`${nome}.pdf · ${a3 ? 'A3' : 'A4'} ao baixo${nPag ? ` · ${nPag} página${nPag > 1 ? 's' : ''}` : ''}`);
+  let z = 1;
+  const aplicar = () => { stZ.textContent = `@media screen{html{zoom:${z}}}`; pv.zoomTxt(Math.round(z * 100) + '%'); };
+  const ajustar = () => {
+    const folha = d.querySelector('.pg, .pv-folha'); if (!folha) return;
+    z = 1; aplicar();
+    z = Math.max(0.3, Math.min(1.6, (fr.clientWidth - 36) / (folha.getBoundingClientRect().width + 4)));
+    aplicar();
+  };
+  pv.aoZoom = a => { if (a === 'mais') z = Math.min(2.5, z + 0.1); if (a === 'menos') z = Math.max(0.25, z - 0.1); if (a === 'ajustar') return ajustar(); aplicar(); };
+  setTimeout(ajustar, 60);
+  pv.aoOk = () => imprimirFr(fr, nome);
+}
+function imprimirFr(fr, nome) {
+  if (_tituloOrig == null) _tituloOrig = document.title;
+  document.title = nome;                    // nome sugerido para o PDF
+  try { fr.contentWindow.focus(); fr.contentWindow.print(); }
+  finally { setTimeout(() => { if (_tituloOrig != null) document.title = _tituloOrig; _tituloOrig = null; }, 1500); }
+}
+// Excel feito com o modelo de tabelas (separadores do plano)
+const colLetra = k => { let s = ''; k++; while (k) { const r = (k - 1) % 26; s = String.fromCharCode(65 + r) + s; k = Math.floor((k - 1) / 26); } return s; };
+function folhaPreviewHtml(f) {
+  const cab = linhasCabecalho(), topo = [cab[0], cab[1], ...(f.resumo ? [f.resumo] : []), cab[2]];
+  const n = f.colunas.length, a = f.fixas || 1, z = f.fim || 0;
+  const fx = (v, t) => {
+    if (v === '' || v == null) return '';
+    if (typeof v !== 'number') return esc(v);
+    if (t === 'eur') return v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    if (t === 'pct') return (v * 100).toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+    if (t === 'num1') return v.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return v.toLocaleString('pt-PT');
+  };
+  let nl = 0;
+  const lin = (cls, cels) => `<tr class="${cls}"><th class="ln">${++nl}</th>${cels}</tr>`;
+  const vaz = k => `<td colspan="${n - k}"></td>`;
+  let h = lin('tit', `<td colspan="${n}">${esc(f.titulo)}</td>`);
+  topo.forEach((t, k) => { h += lin(k ? 'topo' : 'topo b', `<td colspan="${n}">${esc(t)}</td>`); });
+  h += lin('', `<td colspan="${n}"></td>`);
+  h += lin('hdr', f.colunas.map(c => `<td class="${c.t === 'txt' ? 'tx' : ''}">${esc(c.h)}</td>`).join(''));
+  f.linhas.forEach(l => {
+    if (l.k === 'grupo') { h += lin('grupo', `<td colspan="${n}">${esc(l.v[0])}</td>`); return; }
+    h += lin(l.k || '', f.colunas.map((c, k) => { const t = l.t && k >= a && k < n - z ? l.t : c.t; return `<td class="${c.t === 'txt' ? 'tx' : ''}">${fx(l.v[k], t)}</td>`; }).join(''));
+  });
+  (f.notas || []).forEach(t => { h += lin('', vaz(0)); h += lin('nota', `<td colspan="${n}">${esc(t)}</td>`); });
+  return `<table class="plt-xl"><colgroup><col class="ln">${f.colunas.map(c => `<col style="width:${Math.round((c.w || 12) * 7.2)}px">`).join('')}</colgroup>
+    <thead><tr><th class="ln"></th>${f.colunas.map((c, k) => `<th>${colLetra(k)}</th>`).join('')}</tr></thead><tbody>${h}</tbody></table>`;
+}
+function preverExcel(titulo, nome, folhas) {
+  const pv = abrirPv({ tipo: 'xls', titulo, ok: 'Descarregar Excel', abas: folhas.map(f => f.nome) });
+  pv.info(`${nome}.xlsx · ${folhas.length} folha${folhas.length > 1 ? 's' : ''}`);
+  const mostrar = k => { pv.corpo.innerHTML = `<div class="plt-pv-xl">${folhaPreviewHtml(folhas[k])}</div>`; };
+  pv.aoAba = mostrar; mostrar(0);
+  pv.aoOk = async () => { await excelTabelas(nome, folhas); fecharPv(); };
+}
+// Excel completo (SheetJS): as folhas tal como ficam no ficheiro
+function preverExcelLivro(titulo, nome, wb) {
+  const pv = abrirPv({ tipo: 'xls', titulo, ok: 'Descarregar Excel', abas: wb.SheetNames });
+  pv.info(`${nome}.xlsx · ${wb.SheetNames.length} folha${wb.SheetNames.length > 1 ? 's' : ''}`);
+  const mostrar = k => {
+    const ws = wb.Sheets[wb.SheetNames[k]];
+    const rg = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    const fx = c => (c == null ? '' : typeof c.v === 'number' ? (Number.isInteger(c.v) ? c.v.toLocaleString('pt-PT') : c.v.toLocaleString('pt-PT', { maximumFractionDigits: 2 })) : esc(c.v));
+    let h = `<thead><tr><th class="ln"></th>${Array.from({ length: rg.e.c + 1 }, (_, c) => `<th>${colLetra(c)}</th>`).join('')}</tr></thead><tbody>`;
+    for (let r = 0; r <= rg.e.r; r++) {
+      h += `<tr class="${r === 0 ? 'hdr' : ''}"><th class="ln">${r + 1}</th>`;
+      for (let c = 0; c <= rg.e.c; c++) { const cel = ws[XLSX.utils.encode_cell({ r, c })]; h += `<td class="${cel && typeof cel.v !== 'number' ? 'tx' : ''}">${fx(cel)}</td>`; }
+      h += '</tr>';
+    }
+    const cols = (ws['!cols'] || []).map(c => `<col style="width:${Math.round((c.wch || 10) * 7.2)}px">`).join('');
+    pv.corpo.innerHTML = `<div class="plt-pv-xl"><table class="plt-xl"><colgroup><col class="ln">${cols}</colgroup>${h}</tbody></table></div>`;
+  };
+  pv.aoAba = mostrar; mostrar(0);
+  pv.aoOk = () => { XLSX.writeFile(wb, `${nome}.xlsx`); fecharPv(); showToast('Excel descarregado'); };
+}
+
+let _tituloOrig = null;   // título da janela antes de imprimir (o nome do PDF vem dele)
 // Gera o documento de impressão: cada página tem cabeçalho, a tabela (nº, tarefa, duração, início, fim) e o Gantt em SVG (mm)
 function htmlImpressao(o) {
   const r = _R, T = _plano.tarefas;
@@ -3816,7 +3940,7 @@ function exportarExcel() {
     f.push(['Total (simultâneo)', ...m.periodos.map(x => x.maxTot), m.maxGeral, m.totGeral]);
     const w3 = XLSX.utils.aoa_to_sheet(f); w3['!cols'] = [{ wch: 30 }, ...m.periodos.map(() => ({ wch: 13 })), { wch: 10 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, w3, tp === 'mo' ? 'Mapa de mão de obra' : 'Mapa de equipamento'); });
-  XLSX.writeFile(wb, `${nomeFicheiro()}.xlsx`);
+  preverExcelLivro('Excel completo do plano', `${nomeFicheiro()}`, wb);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -4057,22 +4181,22 @@ async function exportarVista(v, fmt) {
     if (v === 'fin') {
       const t = tabFinanceiro();
       if (!t.total) return showToast('O plano não tem valores: o cronograma financeiro está vazio');
-      if (fmt === 'xls') return await excelTabelas(nome, [t, tabFinanceiroTarefas()]);
+      if (fmt === 'xls') return preverExcel(NOMES_VISTA.fin, nome, [t, tabFinanceiroTarefas()]);
       const a3 = t.lista.length > 10;
-      return imprimirHtml(docRelatorio(NOMES_VISTA.fin, `${svgFinanceiroPdf(t)}<h2>Faturação prevista por capítulo e por mês</h2>${tabelaHtml(t, a3 ? 16 : 10)}${notasHtml(t)}`, a3), nome);
+      return preverPdf(NOMES_VISTA.fin, docRelatorio(NOMES_VISTA.fin, `${svgFinanceiroPdf(t)}<h2>Faturação prevista por capítulo e por mês</h2>${tabelaHtml(t, a3 ? 16 : 10)}${notasHtml(t)}`, a3), nome);
     }
     if (v === 'mo' || v === 'eq') {
       const m = mapaRecursos(v, _ui.mapaPer || 'mes', _ui.mapaOrig || 'tudo');
       if (!m.cats.length) return showToast(`O ${NOMES_VISTA[v].toLowerCase()} está vazio: atribua equipas às tarefas`);
-      if (fmt === 'xls') return await excelTabelas(nome, ['max', 'med', 'tot'].map(x => tabMapa(v, x, m)));
+      if (fmt === 'xls') return preverExcel(NOMES_VISTA[v], nome, ['max', 'med', 'tot'].map(x => tabMapa(v, x, m)));
       const t = tabMapa(v, _ui.mapaVal || 'max', m), a3 = m.periodos.length > 14;
-      return imprimirHtml(docRelatorio(NOMES_VISTA[v], `<h2>${esc((x => x[0].toUpperCase() + x.slice(1))(t.titulo.replace(NOMES_VISTA[v] + ' — ', '')))}</h2>${svgMapaPdf(t)}${tabelaHtml(t, a3 ? 24 : 14)}${notasHtml(t)}`, a3), nome);
+      return preverPdf(NOMES_VISTA[v], docRelatorio(NOMES_VISTA[v], `<h2>${esc((x => x[0].toUpperCase() + x.slice(1))(t.titulo.replace(NOMES_VISTA[v] + ' — ', '')))}</h2>${svgMapaPdf(t)}${tabelaHtml(t, a3 ? 24 : 14)}${notasHtml(t)}`, a3), nome);
     }
     if (v === 'sub') {
       if (!subsDoPlano().length) return showToast('Ainda não há subempreiteiros neste plano');
       const t = tabSub();
-      if (fmt === 'xls') return await excelTabelas(nome, [t]);
-      return imprimirHtml(docRelatorio(NOMES_VISTA.sub, `<p class="resumo">${esc(t.resumo)}</p>${tabelaHtml(t, 99)}`, false), nome);
+      if (fmt === 'xls') return preverExcel(NOMES_VISTA.sub, nome, [t]);
+      return preverPdf(NOMES_VISTA.sub, docRelatorio(NOMES_VISTA.sub, `<p class="resumo">${esc(t.resumo)}</p>${tabelaHtml(t, 99)}`, false), nome);
     }
   } catch (e) { console.error(e); showToast('Erro ao exportar: ' + (e.message || e)); }
 }

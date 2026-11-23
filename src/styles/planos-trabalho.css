@@ -1,5 +1,5 @@
 /* ═══ Planos de Trabalho (versão de teste) — Gantt tipo MS Project · design novo (desktop-shell) ═══ */
-#sec-planos-trabalho,.plt-drawer,.plt-tip{--p-brand:var(--d-brand,#173f9f);--p-ink:var(--d-ink,#1b2130);--p-mute:var(--d-mute,#5d6678);--p-line:var(--d-line,#dde2ea);--p-line2:var(--d-line2,#edf0f5);--p-tint:var(--d-tint,#eaf0fc)}
+#sec-planos-trabalho,.plt-drawer,.plt-tip,.plt-pv{--p-brand:var(--d-brand,#173f9f);--p-ink:var(--d-ink,#1b2130);--p-mute:var(--d-mute,#5d6678);--p-line:var(--d-line,#dde2ea);--p-line2:var(--d-line2,#edf0f5);--p-tint:var(--d-tint,#eaf0fc)}
 #plt-body{color:var(--p-ink)}
 .plt-vazio{padding:28px;color:var(--p-mute);font-size:14.5px}
 
@@ -662,3 +662,47 @@ button.plt-estado-b.bad{animation:plt-pisca 1.6s ease-in-out 3}
 .plt-menu-lin span{flex:1;min-width:0}
 .plt-menu-ch{height:28px;padding:0 11px;border:1.5px solid var(--d-brand,#173f9f);border-radius:99px;background:#fff;color:var(--d-brand,#173f9f);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .plt-menu-ch:hover{background:#eef3ff}
+/* ── Pré-visualização (PDF / Excel) antes de imprimir ou descarregar ── */
+.plt-pv{position:fixed;inset:0;z-index:9750;display:grid;place-items:center;font-family:inherit}
+.plt-pv-fundo{position:absolute;inset:0;background:rgba(10,18,38,.55)}
+.plt-pv-caixa{position:relative;display:flex;flex-direction:column;width:min(1280px,calc(100vw - 32px));height:calc(100vh - 40px);background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(10,28,90,.35);animation:plt-pv-in .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes plt-pv-in{from{opacity:0;transform:translateY(10px) scale(.985)}}
+.plt-pv-h{flex:none;display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1.5px solid var(--d-line,#dde2ea);flex-wrap:wrap}
+.plt-pv-ic{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--d-tint,#eaf0fc);color:var(--d-brand,#173f9f)}
+.plt-pv-ic.xls{background:#dff5e7;color:#1d6f42}
+.plt-pv-ic svg{width:20px;height:20px}
+.plt-pv-tx{flex:1;min-width:200px}
+.plt-pv-tx small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5d6678}
+.plt-pv-tx b{display:block;font-size:18px;font-weight:800;letter-spacing:-.2px;color:var(--d-ink,#1b2130)}
+.plt-pv-info{display:block;font-size:12.5px;color:#5d6678;margin-top:1px}
+.plt-pv-zoom{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:99px;background:#eef1f6}
+.plt-pv-zoom button{height:32px;min-width:32px;border:0;border-radius:99px;background:none;font:inherit;font-size:17px;font-weight:600;color:var(--d-ink,#1b2130);cursor:pointer}
+.plt-pv-zoom button.tx{font-size:13px;padding:0 12px}
+.plt-pv-zoom button:hover{background:#fff}
+.plt-pv-z{min-width:48px;text-align:center;font-size:13px;font-weight:700;color:#3a4252;font-variant-numeric:tabular-nums}
+.plt-pv-bts{display:flex;gap:8px;align-items:center;margin-left:auto}
+.plt-pv-bts .plt-btn svg{width:17px;height:17px}
+.plt-pv-abas{flex:none;display:flex;gap:6px;padding:10px 18px;border-bottom:1.5px solid var(--d-line,#dde2ea);overflow-x:auto;background:#fafbfd}
+.plt-pv-aba{flex:none;height:34px;padding:0 14px;border:1.5px solid #d5dae3;border-radius:99px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:var(--d-ink,#1b2130);cursor:pointer;white-space:nowrap}
+.plt-pv-aba.on{background:#1d6f42;border-color:#1d6f42;color:#fff}
+.plt-pv-b{flex:1;min-height:0;position:relative;background:#e6eaf0}
+.plt-pv-fr{position:absolute;inset:0;width:100%;height:100%;border:0;background:#e6eaf0}
+.plt-pv-xl{position:absolute;inset:0;overflow:auto;background:#fff}
+/* folha de Excel */
+.plt-xl{border-collapse:collapse;table-layout:fixed;font-family:Calibri,Arial,sans-serif;font-size:13px;color:#1b2130}
+.plt-xl col.ln{width:44px}
+.plt-xl thead th{position:sticky;top:0;z-index:2;height:24px;background:#f3f4f6;border:1px solid #d4d8de;font-weight:500;color:#5d6678;font-size:12px}
+.plt-xl th.ln{position:sticky;left:0;z-index:1;background:#f3f4f6;border:1px solid #d4d8de;font-weight:500;color:#5d6678;font-size:12px;text-align:center}
+.plt-xl thead th.ln{z-index:3}
+.plt-xl td{height:22px;padding:0 6px;border:1px solid #e3e6eb;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plt-xl td.tx{text-align:left}
+.plt-xl tr.tit td{font-size:17px;font-weight:700;color:#173f9f;height:28px}
+.plt-xl tr.topo td{color:#5d6678;font-size:12.5px}
+.plt-xl tr.topo.b td{color:#1b2130;font-weight:700}
+.plt-xl tr.hdr td{background:#173f9f;color:#fff;font-weight:700;white-space:normal;height:34px;text-align:center;line-height:1.2}
+.plt-xl tr.hdr td.tx{text-align:left}
+.plt-xl tr.grupo td{background:#eaf0fc;color:#173f9f;font-weight:700;text-align:left}
+.plt-xl tr.total td{background:#f1f4fa;font-weight:700}
+.plt-xl tr.sub td{font-weight:700}
+.plt-xl tr.nota td{color:#5d6678;font-style:italic;font-size:12px;text-align:left}
+@media (max-width:760px){.plt-pv-caixa{width:100vw;height:100vh;border-radius:0}.plt-pv-zoom{display:none}}
