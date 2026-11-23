@@ -74,6 +74,8 @@ const ICO = {
   acomp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>',
   versoes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
   imprimir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>',
+  exportar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
+  chev: '<svg class="plt-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   plano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M6 10h10M9 15h9M5 20h7"/></svg>',
 };
 
@@ -785,14 +787,13 @@ async function abrirPlano(id) {
       </div>
       <button type="button" id="plt-estado" class="plt-pill plt-estado-b ok" data-acao="estado">Guardado</button>
       <div class="plt-top-acoes">
+        <button type="button" class="plt-btn sec sm" data-acao="acomp" title="Acompanhamento: data de estado, datas reais e linha de base">${ICO.acomp}<span class="plt-btn-tx">Acompanhamento</span></button>
+        <button type="button" class="plt-btn sec sm" data-acao="versoes" title="Versões: guardar, comparar e repor">${ICO.versoes}<span class="plt-btn-tx">Versões</span></button>
+        <button type="button" class="plt-btn sec sm" data-acao="equipas" title="Equipas de trabalho: mão de obra e equipamentos">${ICO.equipas}<span class="plt-btn-tx">Equipas</span></button>
+        <button type="button" class="plt-btn sec sm" data-acao="exportar" title="Exportar: PDF, Excel ou MS Project" aria-haspopup="menu">${ICO.exportar}<span class="plt-btn-tx">Exportar</span>${ICO.chev}</button>
+        <span class="plt-top-sep" aria-hidden="true"></span>
         <button type="button" class="plt-btn pri sm" data-acao="ia" title="Pedir alterações ou fazer perguntas ao assistente de IA">${ICO.ia}Assistente</button>
-        <button type="button" class="plt-btn sec sm" data-acao="acomp" title="Data de estado, datas reais e linha de base">${ICO.acomp}Acompanhamento</button>
-        <button type="button" class="plt-btn sec sm" data-acao="versoes" title="Guardar, comparar e repor versões do plano">${ICO.versoes}Versões</button>
-        <button type="button" class="plt-btn sec sm" data-acao="imprimir" title="Imprimir o Gantt ou guardar em PDF (A3/A4)">${ICO.imprimir}PDF</button>
-        <button type="button" class="plt-btn sec sm" data-acao="xls">${ICO.xls}Excel</button>
-        <button type="button" class="plt-btn sec sm" data-acao="xml" title="Ficheiro XML que o MS Project abre (Ficheiro → Abrir)">${ICO.mpp}MS Project</button>
-        <button type="button" class="plt-btn sec sm" data-acao="equipas" title="Equipas de trabalho: mão de obra e equipamentos">${ICO.equipas}Equipas</button>
-        <button type="button" class="plt-btn sec sm" data-acao="definicoes">${ICO.cfg}Definições</button>
+        <button type="button" class="plt-ico-btn" data-acao="definicoes" title="Definições do plano" aria-label="Definições do plano">${ICO.cfg}</button>
       </div>
     </div>
     <div class="plt-kpis" id="plt-kpis"></div>
@@ -907,6 +908,26 @@ function aplicarColunas(antes) {
   const w = g.offsetWidth;
   g.style.width = Math.max(220, Math.min(w >= antes - 2 ? gridW() : w, gridW())) + 'px';
   try { localStorage.setItem(LS_SPLIT, g.offsetWidth); } catch (e) { /* sem armazenamento */ }
+}
+// Menu «Exportar» do topo do plano
+function abrirMenuExportar(anchor) {
+  fecharMenu();
+  const it = (a, ic, t, sub) => `<button type="button" class="plt-menu-i plt-menu-i2" role="menuitem" data-exp="${a}">${ic}<span><b>${t}</b><small>${sub}</small></span></button>`;
+  document.body.insertAdjacentHTML('beforeend', `<div class="plt-menu" id="plt-menu" role="menu" data-tipo="exp">
+    <div class="plt-menu-h">Exportar o plano</div>
+    ${it('imprimir', ICO.imprimir, 'PDF ou imprimir', 'Gantt em A3 ou A4, pronto a enviar')}
+    ${it('xls', ICO.xls, 'Excel', 'Tarefas, cronograma financeiro e mapas')}
+    ${it('xml', ICO.mpp, 'MS Project', 'Ficheiro XML (Ficheiro → Abrir)')}
+  </div>`);
+  const m = $('plt-menu'), r = anchor.getBoundingClientRect();
+  anchor.setAttribute('aria-expanded', 'true');
+  m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 8)) + 'px';
+  m.style.top = Math.min(r.bottom + 6, innerHeight - m.offsetHeight - 8) + 'px';
+  m.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-exp]'); if (!b) return;
+    fecharMenu();
+    if (b.dataset.exp === 'imprimir') abrirImprimir(); else if (b.dataset.exp === 'xls') exportarExcel(); else exportarMSProject();
+  });
 }
 function abrirMenuColunas(anchor, x, y, kHdr) {
   fecharMenu();
@@ -1513,7 +1534,7 @@ function ligarGantt() {
 
 // ───────────────────────── menu do botão direito ─────────────────────────
 const PAUSA_PADRAO = 5;
-function fecharMenu() { $('plt-menu')?.remove(); }
+function fecharMenu() { $('plt-menu')?.remove(); document.querySelector('[data-acao="exportar"][aria-expanded="true"]')?.setAttribute('aria-expanded', 'false'); }
 function abrirMenuBarra(i, dia, x, y) {
   fecharMenu();
   const t = _plano.tarefas[i], r = _R;
@@ -1571,7 +1592,7 @@ function abrirMenuBarra(i, dia, x, y) {
   });
 }
 // fecha o menu ao clicar fora (mousedown, antes de qualquer re-render), com Esc ou ao sair da janela
-document.addEventListener('mousedown', e => { if (!e.target.closest('#plt-menu, [data-acao="colunas"]')) fecharMenu(); });
+document.addEventListener('mousedown', e => { if (!e.target.closest('#plt-menu, [data-acao="colunas"], [data-acao="exportar"]')) fecharMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
 window.addEventListener('blur', fecharMenu);
 window.addEventListener('resize', fecharMenu);
@@ -1689,6 +1710,7 @@ function ligarTeclado() {
     if (a === 'colunas') return $('plt-menu') ? fecharMenu() : abrirMenuColunas(b);
     if (a === 'atribuir') return abrirAtribuir(selOrd().filter(eFolhaAtribuivel));
     if (a === 'ia') return abrirIA();
+    if (a === 'exportar') return $('plt-menu')?.dataset.tipo === 'exp' ? fecharMenu() : abrirMenuExportar(b);
     if (a === 'xls') return exportarExcel();
     if (a === 'xml') return exportarMSProject();
     if (a === 'sobrecargas') return abrirSobrecargas();

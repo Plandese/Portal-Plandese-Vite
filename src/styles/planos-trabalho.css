@@ -44,13 +44,31 @@
 
 /* cabeçalho do plano */
 .plt-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.plt-top .plt-top-tx{flex:0 1 auto}
+.plt-top .plt-estado-b{flex:none}
 .plt-ico-btn{flex:none;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--p-line);background:#fff;color:var(--p-ink);display:grid;place-items:center;cursor:pointer}
 .plt-ico-btn:hover{background:#f1f4fa}
 .plt-ico-btn svg{width:20px;height:20px}
 .plt-top-tx{min-width:0}
 .plt-top-tx small{display:block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--p-mute)}
 .plt-top-tx b{display:block;font-size:21px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.plt-top-acoes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.plt-top-acoes{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+.plt-top-sep{width:1px;height:26px;background:var(--p-line);margin:0 4px}
+.plt-top-acoes .plt-ico-btn{width:40px;height:40px;color:var(--p-brand);border-color:var(--p-brand)}
+.plt-top-acoes .plt-ico-btn:hover{background:var(--p-tint)}
+.plt-top-acoes .plt-ico-btn svg{width:18px;height:18px}
+.plt-btn .plt-chev{width:15px;height:15px;margin-left:-2px;transition:transform .15s}
+.plt-btn[aria-expanded="true"] .plt-chev{transform:rotate(180deg)}
+.plt-btn[aria-expanded="true"]{background:var(--p-tint)}
+/* ecrãs mais estreitos: os botões secundários ficam só com o ícone (o nome aparece ao passar o rato) */
+@media (max-width:1480px){
+  .plt-top-acoes .plt-btn.sec .plt-btn-tx{display:none}
+  .plt-top-acoes .plt-btn.sec{padding:0 13px;gap:4px}
+}
+.plt-menu-i2{height:auto;padding:9px 12px;align-items:flex-start}
+.plt-menu-i2 svg{margin-top:2px}
+.plt-menu-i2 b{display:block;font-size:14px;font-weight:600}
+.plt-menu-i2 small{display:block;font-size:12px;color:#5d6678;margin-top:1px}
 .plt-kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .plt-kpi{padding:10px 16px;border:1.5px solid var(--p-line);border-radius:18px;background:#fff;min-width:120px}
 .plt-kpi small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--p-mute)}
