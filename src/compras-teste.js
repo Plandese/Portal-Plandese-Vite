@@ -1096,8 +1096,9 @@ async function arrancar() {
   const { data } = await sb.auth.getSession();
   if (!data?.session) { $('gt-login').hidden = false; $('gt-app').hidden = true; return; }
   _user = (data.session.user.email || '').split('@')[0];
-  const { data: papel } = await sb.rpc('fn_my_role');
-  if (papel !== 'admin') { $('gt-login').hidden = true; $('gt-app').hidden = true; $('gt-semacesso').hidden = false; return; }
+  // só quem tem a página ligada na matriz de permissões (o servidor também o exige: fn_pag_on nas tabelas ct_*)
+  const { data: pode } = await sb.rpc('fn_pag_on', { p_sec: 'compras-teste' });
+  if (pode !== true) { $('gt-login').hidden = true; $('gt-app').hidden = true; $('gt-semacesso').hidden = false; return; }
   $('gt-user').textContent = _user;
   $('gt-login').hidden = true; $('gt-app').hidden = false;
   try { _papel = localStorage.getItem('ct_papel') || 'admin'; } catch (x) { _papel = 'admin'; }

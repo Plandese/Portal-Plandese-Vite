@@ -1,15 +1,14 @@
 // Agente Plandese — PLANOS DE TRABALHO (Gantt). Responde a perguntas sobre o plano aberto e propõe
 // alterações (operações) que o utilizador aplica no portal com um clique («Aplicar», anulável com Ctrl+Z).
-//  · Corre com o JWT do utilizador; só os usernames de UTILIZADORES (os mesmos de SOLO_USER_SECTIONS em permissions.js).
+//  · Corre com o JWT do utilizador; só quem tem a página «planos-trabalho» na matriz de permissões (fn_pag_on).
 //  · O plano vem do cliente (já calculado); a função NUNCA grava o plano: só devolve propostas.
 //  · Resposta em NDJSON (uma linha JSON por evento): texto, ferramenta, propostas, erro, fim.
-// Segredos: ANTHROPIC_API_KEY. Opcionais: AGENTE_PLANOS_MODEL, AGENTE_PLANOS_LIMITE, AGENTE_PLANOS_UTILIZADORES.
+// Segredos: ANTHROPIC_API_KEY. Opcionais: AGENTE_PLANOS_MODEL, AGENTE_PLANOS_LIMITE.
 import Anthropic from "npm:@anthropic-ai/sdk@^0.136.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const MODEL = Deno.env.get("AGENTE_PLANOS_MODEL") ?? "claude-opus-5-5";
 const LIMITE = Number(Deno.env.get("AGENTE_PLANOS_LIMITE") ?? 300);
-const UTILIZADORES = (Deno.env.get("AGENTE_PLANOS_UTILIZADORES") ?? "admin,david.mosca,manuel.fonseca").split(",").map((s) => s.trim());
 const MAX_PASSOS = 5;
 const MAX_PLANO_CHARS = 120000;
 
@@ -927,7 +926,8 @@ Deno.serve(async (req: Request) => {
   // Identidade vem da base de dados, nunca do cliente.
   const [{ data: role }, { data: username }] = await Promise.all([sb.rpc("fn_my_role"), sb.rpc("fn_my_username")]);
   if (!role || !username) return json({ error: "Sessão inválida ou utilizador sem perfil." }, 401);
-  if (!UTILIZADORES.includes(username)) return json({ error: "Este assistente não está disponível para este utilizador." }, 403);
+  const { data: pode } = await sb.rpc("fn_pag_on", { p_sec: "planos-trabalho" });
+  if (pode !== true) return json({ error: "Este assistente não está disponível para este utilizador." }, 403);
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Pedido inválido" }, 400); }

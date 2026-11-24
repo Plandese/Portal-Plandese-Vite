@@ -44,16 +44,16 @@ const OVR_STORAGE_KEY = 'plandese_access_overrides_v1';
 const emptyOvr = () => ({ roles:{}, users:{} });
 // Sub-páginas fechadas por omissão a um perfil, enquanto o administrador não as abrir na matriz
 // (o diretor de obra só vê "Faturas por aprovar"; as restantes do Financeiro são dadas caso a caso)
-const DEFAULT_ROLE_OFF = { diretor_obra:['faturas','tesouraria'] };
+// (Estrutura Central e as páginas do circuito das faturas ficam fechadas por omissão a quem não é da área financeira)
+const DEFAULT_ROLE_OFF = { diretor_obra:['faturas','tesouraria','estrutura-central'], compras:['faturas','tesouraria','faturas-aprovar','estrutura-central'] };
 const roleOffOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].off) || DEFAULT_ROLE_OFF[role] || [];
-// Telas Finais não é uma secção do portal: o acesso é a lista de usernames em app_config/telas_finais_acesso
-// (decidida no servidor por fn_tf_acesso). Aparece como sub-página extra no capítulo Produção.
-const TF_CONFIG_KEY = 'telas_finais_acesso';
-const TF_DEFAULT = ['admin','david.mosca','rui.alves'];
-let _tf = null;
-// Módulo Clientes (Balanço de Faturação / Carteira): admin + lista de usernames em app_config/clientes_acesso (servidor: fn_clientes_acesso)
-const CLI_CONFIG_KEY = 'clientes_acesso';
-let _cli = [];
+// Todas as páginas se gerem na matriz. Além das páginas dos capítulos (capítulo ligado e página não fechada) há:
+//  • PAG_ABERTAS — ligadas a todos por omissão; desligam-se pondo a página em «off»
+//  • PAG_LIVRES  — não dependem de capítulo; ligam-se pondo a página em «on» (roles.<role>.on / users.<u>.on,
+//                  a da pessoa substitui a do perfil, como «off»). No servidor: fn_pag_on(página).
+export const PAG_ABERTAS = ['painel','calendario','notificacoes','ponto-escritorio'];
+export const PAG_LIVRES  = ['balanco-fat','carteira','telas-finais','fornecedores','planos-trabalho','guias-teste','compras-teste'];
+const roleOnOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].on) || [];
 let _ovr = loadOverridesLocal();
 
 function loadOverridesLocal(){
@@ -70,11 +70,9 @@ export async function loadPermissionsFromServer(){
   let result = null;
   try {
     const { data, error } = await sb.from('app_config')
-      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY, TF_CONFIG_KEY, CLI_CONFIG_KEY]);
+      .select('key,value').in('key', [PERM_CONFIG_KEY, OVR_CONFIG_KEY]);
     if(error) throw error;
     (data||[]).forEach(row=>{
-      if(row.key === TF_CONFIG_KEY && Array.isArray(row.value)){ _tf = row.value; return; }
-      if(row.key === CLI_CONFIG_KEY && Array.isArray(row.value)){ _cli = row.value; return; }
       if(!row.value || typeof row.value !== 'object') return;
       if(row.key === PERM_CONFIG_KEY){
         try { localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(row.value)); } catch(e){}
@@ -95,7 +93,7 @@ const _openChaps = new Set();   // capítulos expandidos (sub-páginas)
 
 function cloneJ(o){ return JSON.parse(JSON.stringify(o)); }
 function draft(){
-  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr), tf: [...(_tf || TF_DEFAULT)], cli: [...(_cli || [])] };
+  if(!_draft) _draft = { perms: loadPermissions(), ovr: cloneJ(_ovr) };
   return _draft;
 }
 const sameSet = (a,b)=>{ a=a||[]; b=b||[]; return a.length===b.length && a.every(x=>b.includes(x)); };
@@ -115,7 +113,10 @@ async function upsertConfig(key, value){
 
 function normalizeOvr(o){
   // perfis com lista predefinida guardam sempre a lista (mesmo vazia), senão voltavam a fechar
-  Object.keys(o.roles).forEach(r=>{ if(!(o.roles[r].off||[]).length && !DEFAULT_ROLE_OFF[r]) delete o.roles[r]; });
+  Object.keys(o.roles).forEach(r=>{
+    if(o.roles[r].on && !o.roles[r].on.length) delete o.roles[r].on;
+    if(!o.roles[r].on && !(o.roles[r].off||[]).length && !DEFAULT_ROLE_OFF[r]) delete o.roles[r];
+  });
   Object.keys(o.users).forEach(u=>{ if(!Object.keys(o.users[u]).length) delete o.users[u]; });
   return o;
 }
@@ -137,12 +138,6 @@ export async function savePermissions(){
   try {
     await upsertConfig(PERM_CONFIG_KEY, perms);
     await upsertConfig(OVR_CONFIG_KEY, ovr);
-    const tf = [...new Set(['admin', ...d.tf])];
-    await upsertConfig(TF_CONFIG_KEY, tf);
-    _tf = tf;
-    const cli = [...new Set(d.cli || [])];
-    await upsertConfig(CLI_CONFIG_KEY, cli);
-    _cli = cli;
   } catch(e){ serverOk = false; }
   showToast(serverOk ? 'Permissões guardadas ✓' : '⚠️ Guardado localmente — falhou no servidor');
   if(S.currentUser) applyRolePermissions(S.currentUser.role);
@@ -153,10 +148,10 @@ export async function savePermissions(){
 }
 
 export async function resetPermissions(){
-  if(!confirm('Repor todas as permissões para os valores predefinidos? Isto remove também as exceções por pessoa e por sub-página.')) return;
+  if(!confirm('Repor todas as permissões para os valores predefinidos? Isto remove também as exceções por pessoa e por sub-página, e as páginas fora dos capítulos (Clientes, Telas Finais, Planos de Trabalho, testes…) ficam só para o administrador.')) return;
   try { localStorage.removeItem(PERM_STORAGE_KEY); localStorage.removeItem(OVR_STORAGE_KEY); } catch(e){}
   _ovr = emptyOvr();
-  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr(), tf: [...TF_DEFAULT], cli: [...(_cli || [])] };
+  _draft = { perms: cloneJ(DEFAULT_PERMISSIONS), ovr: emptyOvr() };
   _paSnap = '';
   CONFIGURABLE_ROLES.forEach(r=>{
     if(ROLE_ACCESS[r.key]){
@@ -167,8 +162,6 @@ export async function resetPermissions(){
   try {
     await upsertConfig(PERM_CONFIG_KEY, DEFAULT_PERMISSIONS);
     await upsertConfig(OVR_CONFIG_KEY, emptyOvr());
-    await upsertConfig(TF_CONFIG_KEY, TF_DEFAULT);
-    _tf = [...TF_DEFAULT];
   } catch(e){ /* servidor indisponível — reposição só local */ }
   renderPermMatrix();
   showToast('Permissões repostas ✓');
@@ -188,12 +181,17 @@ function offList(role, user){
   if(o && o.off) return o.off;
   return roleOffOf(d.ovr, role);
 }
-function secBlockedByRole(role, sec){ return !!(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)); }
+function onList(role, user){
+  const d = draft();
+  const o = user ? d.ovr.users[user] : null;
+  if(o && o.on) return o.on;
+  return roleOnOf(d.ovr, role);
+}
 function secEff(role, user, ch, sec){
-  if(secBlockedByRole(role, sec)) return false;
   if(offList(role,user).includes(sec)) return false;
+  if(PAG_ABERTAS.includes(sec)) return true;
+  if(PAG_LIVRES.includes(sec)) return onList(role,user).includes(sec);
   if(sec==='faturas-aprovar' && role==='diretor_obra') return true;
-  if(sec==='ponto-escritorio') return true;
   return chapEff(role, user, ch);
 }
 
@@ -205,26 +203,25 @@ function secEff(role, user, ch, sec){
 //  Ligar uma página de um capítulo fechado abre o capítulo só com essa página; desligar a última página
 //  aberta fecha o capítulo (o servidor, fn_cap, deixa de dar os dados desse capítulo).
 // ═══════════════════════════════════════════════════════════════════
-// regras: 'todos' (todos os perfis) · 'cada' (todos, cada um a sua folha) · 'admin' (só administrador)
-//         'lista:cli' / 'lista:tf' (pessoas escolhidas) · 'teste' (página pessoal em teste) · 'forn' (conta como Definições)
+// Todas as páginas têm interruptor por perfil e exceções por pessoa (ver PAG_ABERTAS / PAG_LIVRES).
 const MENU_ACESSOS = [
   { label:'Geral', paginas:[
-    { sec:'painel', label:'Painel Principal', regra:'todos' },
-    { sec:'calendario', label:'Calendário', regra:'todos' },
-    { sec:'notificacoes', label:'Notificações', regra:'todos' },
+    { sec:'painel', label:'Painel Principal' },
+    { sec:'calendario', label:'Calendário' },
+    { sec:'notificacoes', label:'Notificações' },
   ]},
   { ch:'rh', label:'Recursos Humanos', paginas:[
     { sec:'historico', label:'Folha de Ponto' },
     { sec:'fecho-mes', label:'Folha de Fecho' },
     { sec:'mapa-ferias', label:'Mapa de Férias' },
-    { sec:'ponto-escritorio', label:'Folha de Ponto (escritório)', regra:'cada' },
+    { sec:'ponto-escritorio', label:'Folha de Ponto (escritório)' },
     { sec:'colaboradores', label:'Colaboradores' },
     { sec:'empresas-moa', label:'Mão de Obra Aluguer' },
   ]},
   { ch:'cmp', label:'Compras', paginas:[
     { sec:'compras', label:'Pedidos de compra' },
     { sec:'necessidades', label:'Necessidades de obra' },
-    { sec:'fornecedores', label:'Lista de Fornecedores', regra:'forn' },
+    { sec:'fornecedores', label:'Lista de Fornecedores' },
   ]},
   { ch:'fin', label:'Financeiro', paginas:[
     { sub:'Fornecedores' },
@@ -232,8 +229,8 @@ const MENU_ACESSOS = [
     { sec:'faturas-aprovar', label:'Faturas Por Aprovar' },
     { sec:'tesouraria', label:'Tesouraria' },
     { sub:'Clientes' },
-    { sec:'balanco-fat', label:'Balanço de Faturação', regra:'lista:cli' },
-    { sec:'carteira', label:'Carteira de Encomendas', regra:'lista:cli' },
+    { sec:'balanco-fat', label:'Balanço de Faturação' },
+    { sec:'carteira', label:'Carteira de Encomendas' },
     { sub:'Estrutura Central' },
     { sec:'estrutura-central', label:'Faturas da Estrutura Central' },
   ]},
@@ -246,21 +243,17 @@ const MENU_ACESSOS = [
     { sec:'existencias', label:'Existências' },
     { sec:'precos-unitarios', label:'Lista de Preços' },
     { sec:'pendentes-tavira', label:'Pós Venda' },
-    { sec:'telas-finais', label:'Telas Finais', regra:'lista:tf' },
+    { sec:'telas-finais', label:'Telas Finais' },
   ]},
   { ch:'def', label:'Definições', paginas:[
     { sec:'obras', label:'Adicionar obra' },
     { sec:'utilizadores', label:'Gerir utilizadores' },
     { sec:'atividade', label:'Histórico de atividade' },
-    { sec:'planos-trabalho', label:'Planos de Trabalho', regra:'teste' },
-    { sec:'guias-teste', label:'Guias de Remessa (teste)', regra:'admin' },
-    { sec:'compras-teste', label:'Compras (teste)', regra:'admin' },
+    { sec:'planos-trabalho', label:'Planos de Trabalho' },
+    { sec:'guias-teste', label:'Guias de Remessa (teste)' },
+    { sec:'compras-teste', label:'Compras (teste)' },
   ]},
 ];
-const LISTAS = {
-  cli: { titulo:'Clientes', paginas:'Balanço de Faturação e Carteira de Encomendas', nota:'O administrador vê sempre estas páginas. Escolha as outras pessoas que também as podem ver.' },
-  tf:  { titulo:'Telas Finais', paginas:'Telas Finais (editor dos esquemas de nós)', nota:'Escolha quem pode abrir o editor das telas finais. O administrador tem sempre acesso.' },
-};
 const _paFechados = new Set();   // grupos recolhidos no ecrã
 let _paSnap = '';                // estado guardado (para avisar de alterações por guardar)
 let _paQ = '';
@@ -268,10 +261,9 @@ let _paQ = '';
 const roleLabel = r => (CONFIGURABLE_ROLES.find(x=>x.key===r)||{}).label || r;
 const nomeDe = u => (S.USERS?.[u]?.nome) || u;
 const escP = t => String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const regraLista = p => (p.regra && p.regra.startsWith('lista:')) ? p.regra.slice(6) : null;
-// páginas do capítulo que dependem do capítulo (as abertas a todos não contam)
-const paginasCap = ch => (NAV_CHAPTERS.find(c=>c.id===ch)?.sections || []).filter(s => s !== 'ponto-escritorio');
-const editavel = (p, role) => !p.regra && !secBlockedByRole(role, p.sec);
+// páginas que dependem do capítulo (as abertas a todos e as que não dependem de capítulo não contam)
+const paginasCap = ch => (NAV_CHAPTERS.find(c=>c.id===ch)?.sections || []).filter(s => !PAG_ABERTAS.includes(s) && !PAG_LIVRES.includes(s) && s !== 'guias');
+const solta = sec => PAG_ABERTAS.includes(sec) || PAG_LIVRES.includes(sec);
 
 // Forma canónica do rascunho (para saber se há alterações): a ordem das listas não conta e a lista de páginas
 // fechadas de um perfil igual à predefinida vale o mesmo que não a ter
@@ -280,23 +272,47 @@ function estadoGuardavel(){
   const srt = a => [...(a||[])].sort();
   const perms = {}; Object.keys(d.perms).sort().forEach(r => { perms[r] = srt(d.perms[r]); });
   const roles = {}; Object.keys(d.ovr.roles).sort().forEach(r => {
-    const off = srt(d.ovr.roles[r].off);
-    if(!sameSet(off, DEFAULT_ROLE_OFF[r] || [])) roles[r] = off;
+    const c = {}, off = srt(d.ovr.roles[r].off), on = srt(d.ovr.roles[r].on);
+    if(d.ovr.roles[r].off && !sameSet(off, DEFAULT_ROLE_OFF[r] || [])) c.off = off;
+    if(on.length) c.on = on;
+    if(Object.keys(c).length) roles[r] = c;
   });
   const users = {}; Object.keys(d.ovr.users).sort().forEach(u => {
     const o = d.ovr.users[u], c = {};
     if(o.chapters) c.chapters = srt(o.chapters);
     if(o.off) c.off = srt(o.off);
+    if(o.on) c.on = srt(o.on);
     if(Object.keys(c).length) users[u] = c;
   });
-  return JSON.stringify({ perms, roles, users, tf:srt(d.tf), cli:srt(d.cli) });
+  return JSON.stringify({ perms, roles, users });
 }
-// Páginas de um capítulo que o separador mostra como «Só administrador» (Lista de Fornecedores conta como
-// Definições no servidor): ficam sempre fechadas quando se abre o capítulo e não o mantêm aberto
-const SO_ADMIN_NO_CAP = ['fornecedores'];
+// grava capítulos / off / on de um perfil (user=null) ou de uma pessoa (só o que difere do perfil)
+function gravarAcesso(role, user, { chs, off, on }){
+  const d = draft();
+  if(!user){
+    const r = d.ovr.roles[role] = { ...(d.ovr.roles[role] || {}) };
+    if(chs) d.perms[role] = chs;
+    if(off) r.off = off;
+    if(on) r.on = on;
+    return;
+  }
+  const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
+  if(chs){ if(sameSet(chs, d.perms[role] || [])) delete ou.chapters; else ou.chapters = chs; }
+  if(off){ if(sameSet(off, roleOffOf(d.ovr, role))) delete ou.off; else ou.off = off; }
+  if(on){ if(sameSet(on, roleOnOf(d.ovr, role))) delete ou.on; else ou.on = on; }
+  if(!Object.keys(ou).length) delete d.ovr.users[user];
+}
+// Páginas que não dependem de capítulo: as abertas (só «off») e as livres («on»)
+function setPaginaSolta(role, user, sec, ligar){
+  let off = offList(role, user).filter(s => s !== sec), on = [...onList(role, user)];
+  if(PAG_ABERTAS.includes(sec)){ if(!ligar) off.push(sec); gravarAcesso(role, user, { off }); return; }
+  on = ligar ? [...new Set([...on, sec])] : on.filter(s => s !== sec);
+  gravarAcesso(role, user, { off, on });
+}
 
 // Liga/desliga uma página para um perfil (user=null) ou para uma pessoa (exceção)
 function setPagina(role, user, ch, sec, on){
+  if(solta(sec)) return setPaginaSolta(role, user, sec, on);
   const d = draft();
   const roleChs = d.perms[role] || [], roleOff = roleOffOf(d.ovr, role);
   const o = user ? (d.ovr.users[user] || {}) : null;
@@ -306,21 +322,23 @@ function setPagina(role, user, ch, sec, on){
   if(on){
     if(!chs.includes(ch)){
       chs.push(ch);
-      off = [...new Set([...off, ...pags.filter(s => s !== sec && !secBlockedByRole(role, s))])];   // abre o capítulo só com esta página
+      off = [...new Set([...off, ...pags.filter(s => s !== sec)])];   // abre o capítulo só com esta página
     }
     off = off.filter(s => s !== sec);
   } else {
     off = [...new Set([...off, sec])];
     // sem nenhuma página aberta, o capítulo fecha (e a lista fica limpa)
     // (Faturas por aprovar conta: o diretor tem o capítulo Financeiro por omissão só com ela e não se lho tira sem querer)
-    const aberta = s => !off.includes(s) && !secBlockedByRole(role, s) && !SO_ADMIN_NO_CAP.includes(s);
+    const aberta = s => !off.includes(s);
     if(chs.includes(ch) && !pags.some(aberta)){ chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s) || (s==='faturas-aprovar' && role==='diretor_obra')); }
   }
-  if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
-  const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
-  if(sameSet(chs, roleChs)) delete ou.chapters; else ou.chapters = chs;
-  if(sameSet(off, roleOffOf(d.ovr, role))) delete ou.off; else ou.off = off;
-  if(!Object.keys(ou).length) delete d.ovr.users[user];
+  gravarAcesso(role, user, { chs, off });
+}
+// Liga/desliga todas as páginas de um grupo do menu para um perfil (ou pessoa): o capítulo e as páginas soltas
+function setGrupo(role, user, gi, on){
+  const g = MENU_ACESSOS[gi];
+  if(g.ch) setCapitulo(role, user, g.ch, on);
+  g.paginas.forEach(p => { if(p.sec && solta(p.sec)) setPaginaSolta(role, user, p.sec, on); });
 }
 // Liga/desliga todas as páginas de um capítulo para um perfil (ou pessoa)
 function setCapitulo(role, user, ch, on){
@@ -330,17 +348,13 @@ function setCapitulo(role, user, ch, on){
   let chs = [...((o && o.chapters) || roleChs)];
   let off = [...((o && o.off) || roleOff)];
   const pags = paginasCap(ch);
-  if(on){ if(!chs.includes(ch)) chs.push(ch); off = off.filter(s => !pags.includes(s)); off.push(...pags.filter(s => SO_ADMIN_NO_CAP.includes(s))); }
+  if(on){ if(!chs.includes(ch)) chs.push(ch); off = off.filter(s => !pags.includes(s)); }
   else { chs = chs.filter(c => c !== ch); off = off.filter(s => !pags.includes(s)); if(role==='diretor_obra' && pags.includes('faturas-aprovar')) off.push('faturas-aprovar'); }
-  if(!user){ d.perms[role] = chs; d.ovr.roles[role] = { off }; return; }
-  const ou = d.ovr.users[user] || (d.ovr.users[user] = {});
-  if(sameSet(chs, roleChs)) delete ou.chapters; else ou.chapters = chs;
-  if(sameSet(off, roleOff)) delete ou.off; else ou.off = off;
-  if(!Object.keys(ou).length) delete d.ovr.users[user];
+  gravarAcesso(role, user, { chs, off });
 }
 // estado de um grupo para um perfil/pessoa: 'on' | 'mix' | 'off' | null (sem páginas editáveis)
 function estadoGrupo(g, role, user){
-  const ps = g.paginas.filter(p => p.sec && editavel(p, role));
+  const ps = g.paginas.filter(p => p.sec);
   if(!ps.length) return null;
   const n = ps.filter(p => secEff(role, user, g.ch, p.sec)).length;
   return n === ps.length ? 'on' : n ? 'mix' : 'off';
@@ -353,7 +367,7 @@ function excecoes(role, ch, sec){
 function diferencasPessoa(role, user){
   const out = [];
   MENU_ACESSOS.forEach(g => g.paginas.forEach(p => {
-    if(!p.sec || !g.ch || !editavel(p, role)) return;
+    if(!p.sec) return;
     const a = secEff(role, user, g.ch, p.sec), b = secEff(role, null, g.ch, p.sec);
     if(a !== b) out.push({ label:p.label, on:a });
   }));
@@ -365,14 +379,6 @@ const sw = (on, attrs, title='') => {
   const lig = on === true || on === 'on', mix = on === 'mix';
   return `<button type="button" class="pa-sw ${mix?'mix':lig?'on':''}" ${attrs} aria-pressed="${lig}" title="${escP(title)}"><i></i></button>`;
 };
-function pillRegra(p, role){
-  if(p.regra==='todos') return '<span class="pa-pill">Todos</span>';
-  if(p.regra==='cada') return '<span class="pa-pill" title="Cada pessoa preenche e vê a sua folha">Todos — a sua</span>';
-  if(p.regra==='admin') return '<span class="pa-pill mute">Só administrador</span>';
-  if(p.regra==='forn') return '<span class="pa-pill mute" title="Esta página conta como Definições no servidor: hoje só o administrador a vê e edita">Só administrador</span>';
-  if(secBlockedByRole(role, p.sec)) return `<span class="pa-pill mute" title="Esta página não existe para o perfil ${escP(roleLabel(role))}">Não</span>`;
-  return '';
-}
 
 export function renderPermMatrix(){
   const box = document.getElementById('perm-acessos');
@@ -389,27 +395,13 @@ export function renderPermMatrix(){
     if(q && !pags.some(p => p.sec)) return;
     const fechado = !q && _paFechados.has(gi);
     linhas.push(`<tr class="pa-g"><td><button type="button" class="pa-g-b" data-pa="grp" data-gi="${gi}"><span class="pa-car">${fechado?'▸':'▾'}</span>${escP(g.label)}</button></td>${roles.map(r => {
-      if(!g.ch) return '<td></td>';
       const st = estadoGrupo(g, r.key, null);
-      return `<td>${st ? sw(st, `data-pa="cap" data-role="${r.key}" data-ch="${g.ch}"`, st==='on'?'Todas as páginas ligadas — clique para desligar o capítulo':st==='mix'?'Algumas páginas ligadas — clique para ligar todas':'Capítulo desligado — clique para ligar todas as páginas') : ''}</td>`;
+      return `<td>${st ? sw(st, `data-pa="cap" data-role="${r.key}" data-gi="${gi}"`, st==='on'?'Todas as páginas ligadas — clique para desligar o capítulo':st==='mix'?'Algumas páginas ligadas — clique para ligar todas':'Capítulo desligado — clique para ligar todas as páginas') : ''}</td>`;
     }).join('')}</tr>`);
     if(fechado) return;
     pags.forEach((p, k) => {
       if(p.sub){ if(pags.slice(k+1).some(x => x.sec && !x.sub) && !(pags[k+1]||{}).sub) linhas.push(`<tr class="pa-sg"><td colspan="${roles.length+1}">${escP(p.sub)}</td></tr>`); return; }
-      const lista = regraLista(p);
-      if(lista){
-        const nomes = (lista==='tf' ? d.tf.filter(u=>u!=='admin') : d.cli).map(nomeDe);
-        linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td><td colspan="${roles.length}"><div class="pa-lista"><span class="pa-pill info">Pessoas escolhidas</span>${nomes.length ? nomes.map(n=>`<span class="pa-pess">${escP(n)}</span>`).join('') : '<span class="pa-mute">só o administrador</span>'}<button type="button" class="pa-lnk" data-pa="lista" data-l="${lista}">Escolher pessoas</button></div></td></tr>`);
-        return;
-      }
-      if(p.regra==='teste'){
-        const us = SOLO_USER_SECTIONS[p.sec] || [];
-        linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td><td colspan="${roles.length}"><div class="pa-lista"><span class="pa-pill warn">Em teste</span>${us.map(u=>`<span class="pa-pess">${escP(nomeDe(u))}</span>`).join('')}<span class="pa-mute">definido no portal (não se muda aqui)</span></div></td></tr>`);
-        return;
-      }
       linhas.push(`<tr class="pa-p"><td>${escP(p.label)}</td>${roles.map(r => {
-        const pr = pillRegra(p, r.key);
-        if(pr) return `<td>${pr}</td>`;
         const on = secEff(r.key, null, g.ch, p.sec);
         const ex = excecoes(r.key, g.ch, p.sec);
         return `<td><span class="pa-c">${sw(on, `data-pa="pag" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}"`, on?'Ligada para o perfil':'Desligada para o perfil')}${ex.length ? `<button type="button" class="pa-exc" data-pa="exc" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}" title="${escP(ex.map(u=>u.nome).join(', '))}">${ex.length} ${ex.length===1?'exceção':'exceções'}</button>` : `<button type="button" class="pa-exc vazio" data-pa="exc" data-role="${r.key}" data-ch="${g.ch}" data-sec="${p.sec}" title="Dar ou tirar só a algumas pessoas">pessoas</button>`}</span></td>`;
@@ -447,13 +439,12 @@ function ligarPA(box){
   if(box._paOk) return; box._paOk = true;
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-pa]'); if(!b) return;
-    const { pa, role, ch, sec, gi, l } = b.dataset;
+    const { pa, role, ch, sec, gi } = b.dataset;
     if(pa==='grp'){ const i = +gi; _paFechados.has(i) ? _paFechados.delete(i) : _paFechados.add(i); return renderPermMatrix(); }
     if(pa==='pag'){ setPagina(role, null, ch, sec, !b.classList.contains('on')); return renderPermMatrix(); }
-    if(pa==='cap'){ setCapitulo(role, null, ch, !b.classList.contains('on')); return renderPermMatrix(); }
+    if(pa==='cap'){ setGrupo(role, null, +gi, !b.classList.contains('on')); return renderPermMatrix(); }
     if(pa==='exc') return gavetaPagina(role, ch, sec);
     if(pa==='perfil') return gavetaPerfil(role);
-    if(pa==='lista') return gavetaLista(l);
     if(pa==='todas-exc') return gavetaExcecoes();
     if(pa==='repor') return resetPermissions();
     if(pa==='guardar') return savePermissions();
@@ -541,14 +532,8 @@ function gavetaPessoa(user){
       const ps = g.paginas.filter(p => p.sec);
       h += `<h4>${escP(g.label)}</h4>`;
       ps.forEach(p => {
-        const lista = regraLista(p);
-        let dir;
-        if(lista){ const on = (lista==='tf'?d.tf:d.cli).includes(user); dir = sw(on, `data-r="lista" data-l="${lista}"`, 'Lista de pessoas escolhidas'); }
-        else if(p.regra==='teste') dir = `<span class="pa-pill ${(SOLO_USER_SECTIONS[p.sec]||[]).includes(user)?'info':'mute'}">${(SOLO_USER_SECTIONS[p.sec]||[]).includes(user)?'Sim (em teste)':'Não'}</span>`;
-        else { const pr = pillRegra(p, role); if(pr) dir = pr; else {
-          const on = secEff(role, user, g.ch, p.sec), dif = on !== secEff(role, null, g.ch, p.sec);
-          dir = `${dif?`<span class="pa-pill warn">exceção</span>`:''}${sw(on, `data-r="pag" data-ch="${g.ch}" data-sec="${p.sec}"`)}`;
-        } }
+        const on = secEff(role, user, g.ch, p.sec), dif = on !== secEff(role, null, g.ch, p.sec);
+        const dir = `${dif?`<span class="pa-pill warn">exceção</span>`:''}${sw(on, `data-r="pag" data-ch="${g.ch||''}" data-sec="${p.sec}"`)}`;
         h += `<div class="pa-dp"><span>${escP(p.label)}</span><span class="pa-dp-d">${dir}</span></div>`;
       });
     });
@@ -558,7 +543,6 @@ function gavetaPessoa(user){
     const d = draft();
     if(b.dataset.r==='pag') setPagina(role, user, b.dataset.ch, b.dataset.sec, !b.classList.contains('on'));
     if(b.dataset.r==='repor') delete d.ovr.users[user];
-    if(b.dataset.r==='lista'){ const k = b.dataset.l, on = !b.classList.contains('on'); d[k] = on ? [...new Set([...d[k], user])] : d[k].filter(x => x !== user); }
     renderPermMatrix();
   });
 }
@@ -578,25 +562,6 @@ function gavetaExcecoes(){
     const b = e.target.closest('[data-r]'); if(!b) return;
     if(b.dataset.r==='pessoa') return gavetaPessoa(b.dataset.u);
     if(b.dataset.r==='repor'){ delete draft().ovr.users[b.dataset.u]; renderPermMatrix(); }
-  });
-}
-
-// Lista de pessoas escolhidas (Clientes / Telas Finais)
-function gavetaLista(k){
-  const L = LISTAS[k];
-  gavetaPA('Pessoas escolhidas', L.titulo, L.paginas, () => {
-    const d = draft();
-    const us = Object.entries(S.USERS||{}).filter(([,u]) => u.role && u.role !== 'encarregado' && u.role !== 'admin')
-      .map(([username,u]) => ({ username, nome:u.nome||username, role:u.role })).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
-    return `<p class="pa-dnota">${escP(L.nota)}</p>` + us.map(u => {
-      const on = d[k].includes(u.username);
-      return `<div class="pa-dl ${on?'dif':''}"><span class="d-rav">${escP(iniciais(u.nome))}</span><div class="pa-dl-tx"><b>${escP(u.nome)}</b><small>${escP(ROLE_LABELS[u.role] || u.role)}</small></div>${sw(on, `data-r="lista" data-u="${u.username}"`)}</div>`;
-    }).join('');
-  }, e => {
-    const b = e.target.closest('[data-r="lista"]'); if(!b) return;
-    const d = draft(), u = b.dataset.u, on = !b.classList.contains('on');
-    d[k] = on ? [...new Set([...d[k], u])] : d[k].filter(x => x !== u);
-    renderPermMatrix();
   });
 }
 
@@ -643,33 +608,25 @@ const OPEN_SECTIONS = ['painel','analise','notificacoes','calendario','m-modulos
 // Falha "fechada": secção desconhecida ou perfil sem configuração → sem acesso (excepto admin).
 // Dentro do capítulo Financeiro, cada página é só para certos perfis (fluxo das faturas);
 // o diretor de obra pode recebê-las do administrador na matriz (DEFAULT_ROLE_OFF fecha-as por omissão)
+// (as antigas regras fixas por perfil passaram a predefinições da matriz: DEFAULT_ROLE_OFF)
 const SECTION_ROLES = {
-  'faturas':         ['admin','financeiro','diretor_obra'],
-  'tesouraria':      ['admin','financeiro','diretor_obra'],
-  'estrutura-central': ['admin','financeiro'],   // faturas do CC Estrutura central: só a área financeira
-  'guias':           ['admin'],   // em testes: só o administrador
-  'faturas-aprovar': ['admin','financeiro','diretor_obra'],
+  'guias':           ['admin'],   // secção antiga das guias (sem botão no menu): só o administrador
 };
 
-// Páginas do módulo Clientes (fora da matriz de permissões): administrador + utilizadores autorizados. O servidor aplica o mesmo limite por RLS.
-export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
-
-// Páginas pessoais em teste (fora da matriz de permissões): só os utilizadores indicados. O servidor aplica o mesmo limite por RLS.
-export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['admin', 'david.mosca', 'manuel.fonseca'] };
-
 export function roleCanAccessSection(role, sec, username){
-  if(SOLO_USER_SECTIONS[sec]) return !!username && SOLO_USER_SECTIONS[sec].includes(username);
-  if(ADMIN_ONLY_SECTIONS.includes(sec)) return role === 'admin' || (!!username && _cli.includes(username));
   if(role === 'admin') return true;
+  if(!role) return false;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   const uo = username ? _ovr.users[username] : null;
   const off = (uo && uo.off) || roleOffOf(_ovr, role);
   if(off.includes(sec)) return false;
+  // Páginas abertas a todos por omissão (ponto do escritório: cada pessoa a sua folha; o RLS limita o que cada um vê)
+  if(PAG_ABERTAS.includes(sec)) return role !== 'encarregado' || sec !== 'ponto-escritorio';
+  if(OPEN_SECTIONS.includes(sec)) return true;
+  // Páginas fora dos capítulos: só quem as tem ligadas (o servidor decide o mesmo com fn_pag_on)
+  if(PAG_LIVRES.includes(sec)) return ((uo && uo.on) || roleOnOf(_ovr, role)).includes(sec);
   // Faturas por aprovar: o diretor de obra acede mesmo sem o capítulo Financeiro (o RLS limita-o às faturas das suas obras)
   if(sec === 'faturas-aprovar' && role === 'diretor_obra') return true;
-  // Ponto do escritório: cada pessoa preenche a sua folha, mesmo sem o capítulo Recursos Humanos (o RLS limita o que cada um vê)
-  if(sec === 'ponto-escritorio') return !!role && role !== 'encarregado';
-  if(OPEN_SECTIONS.includes(sec)) return !!role;
   const chId = chapterOfSection(sec);
   if(!chId) return false;
   if(uo && uo.chapters) return uo.chapters.includes(chId);
@@ -682,41 +639,30 @@ export function canAccessSection(sec){
   return roleCanAccessSection(S.currentUser?.role, sec, S.currentUser?.key);
 }
 
+// secção de um botão do menu: data-sec ou o goTo('…') do onclick
+const secDoBotao = el => el.dataset.sec || ((el.getAttribute('onclick') || '').match(/goTo\('([^']+)'/) || [])[1] || null;
+
 export function applyRolePermissions(role){
   const user = S.currentUser?.key;
-  const allSecs = NAV_CHAPTERS.flatMap(ch=>ch.sections);
-  // repor tudo visível antes de reaplicar (necessário ao trocar de utilizador sem recarregar a página)
-  document.querySelectorAll('.nav-lbl[data-grp],.nav-group[data-grp],.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(el=>{ el.style.display=''; });
-  allSecs.forEach(sec=>{ document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display=''; }); });
-  // Páginas só do administrador (data-solo): escondidas a todos os outros perfis
-  const soloOk = role === 'admin' || (!!user && _cli.includes(user));
-  document.querySelectorAll('[data-solo]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
-  document.querySelectorAll('.nav-subgrp[data-sub="cli"]').forEach(el=>{ el.style.display = soloOk ? '' : 'none'; });
-  document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el=>{ el.style.display=''; });
-  // Páginas pessoais (data-solo-user): só para os utilizadores da lista, qualquer que seja o perfil
-  document.querySelectorAll('[data-solo-user]').forEach(el=>{ el.style.display = roleCanAccessSection(role, el.dataset.soloUser, user) ? '' : 'none'; });
-  if(role === 'admin') return; // admin vê tudo
-  if(!ROLE_ACCESS[role]) return;
-  // Esconder capítulos inteiros (grupo + toggle) sem nenhuma página permitida
-  NAV_CHAPTERS.forEach(ch=>{
-    if(ch.sections.some(sec=>roleCanAccessSection(role, sec, user))) return;
-    // páginas pessoais (data-solo-user) também mantêm o capítulo visível (ex.: Planos de Trabalho em Definições)
-    if([...document.querySelectorAll('.nav-group[data-grp="'+ch.id+'"] [data-solo-user]')].some(el=>roleCanAccessSection(role, el.dataset.soloUser, user))) return;
-    document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
+  const pode = sec => roleCanAccessSection(role, sec, user);
+  // páginas do menu (incluindo as que não dependem de capítulo, marcadas com data-sec)
+  document.querySelectorAll('.sidebar .nav-btn').forEach(el => {
+    const sec = secDoBotao(el); if(!sec) return;
+    el.style.display = pode(sec) ? '' : 'none';
   });
-  // Esconder páginas individuais não permitidas (perfil, pessoa ou sub-página)
-  allSecs.forEach(sec=>{
-    if(roleCanAccessSection(role, sec, user)) return;
-    document.querySelectorAll(`.nav-btn[onclick*="goTo('${sec}'"]`).forEach(el=>{ el.style.display='none'; });
+  // sub-capítulos: Clientes e Estrutura Central somem por inteiro (título incluído) sem nenhuma página
+  document.querySelectorAll('.nav-sub[data-sub="cli"],.nav-subgrp[data-sub="cli"]').forEach(el => { el.style.display = (pode('balanco-fat') || pode('carteira')) ? '' : 'none'; });
+  document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el => { el.style.display = pode('estrutura-central') ? '' : 'none'; });
+  // capítulos (grupo + título) sem nenhuma página visível
+  document.querySelectorAll('.sidebar .nav-group[data-grp]').forEach(gr => {
+    const algum = [...gr.querySelectorAll('.nav-btn')].some(el => { const sec = secDoBotao(el); return sec ? pode(sec) : el.style.display !== 'none'; });
+    gr.style.display = algum ? '' : 'none';
+    document.querySelectorAll('.nav-lbl[data-grp="'+gr.dataset.grp+'"]').forEach(el => { el.style.display = algum ? '' : 'none'; });
   });
-  // Sub-capítulo Estrutura Central: some por inteiro (título incluído) para quem não tem a página
-  if(!roleCanAccessSection(role, 'estrutura-central', user)){
-    document.querySelectorAll('.nav-sub[data-sub="estc"],.nav-subgrp[data-sub="estc"]').forEach(el=>{ el.style.display='none'; });
-  }
-  // Esconder atalhos da barra de navegação inferior (mobile) e das definições cuja página não é permitida
+  // atalhos da barra de navegação inferior (mobile) e das definições cuja página não é permitida
   document.querySelectorAll('.bnav-btn[onclick],.settings-item[onclick*="goTo("]').forEach(btn=>{
     const m = btn.getAttribute('onclick').match(/goTo\('([^']+)'/);
     const sec = m && m[1];
-    if(sec && allSecs.includes(sec) && !roleCanAccessSection(role, sec, user)) btn.style.display='none';
+    btn.style.display = sec && !sec.startsWith('m-') && sec !== 'analise' && !pode(sec) ? 'none' : '';
   });
 }

@@ -1,14 +1,15 @@
 // ═══════════════════════════════════════
-//  GUIAS DE REMESSA (TESTE) — atalho em Definições, só para o administrador
+//  GUIAS DE REMESSA (TESTE) — atalho em Definições, para quem tem a página na matriz de permissões
 //  A página vive em /guias-teste.html (sistema separado do portal, ver supabase/migrations/20261103_guias_teste_separado.sql)
-//  e usa a mesma sessão. O acesso é também decidido no servidor: as tabelas gt_* só deixam o administrador entrar.
+//  e usa a mesma sessão. O acesso é também decidido no servidor: as tabelas gt_* usam fn_pag_on('guias-teste').
 // ═══════════════════════════════════════
-import { S } from '../state.js';
+import { canAccessSection } from './permissions.js';
 
+// quem vê os atalhos decide-se na matriz de permissões (páginas «guias-teste» e «compras-teste»)
 export function initGuiasTesteLink(){
-  ['nav-guias-teste','nav-compras-teste'].forEach(id => {
+  [['nav-guias-teste','guias-teste'],['nav-compras-teste','compras-teste']].forEach(([id, sec]) => {
     const btn = document.getElementById(id);
-    if(btn) btn.style.display = S.currentUser?.role === 'admin' ? '' : 'none';
+    if(btn) btn.style.display = canAccessSection(sec) ? '' : 'none';
   });
 }
 

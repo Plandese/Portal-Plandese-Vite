@@ -410,6 +410,13 @@ window.savePerfil = async function () {
     // Barreira central de segurança: qualquer entrada (sidebar, painel, notificações,
     // atalhos, chamadas programáticas) passa por aqui e é recusada sem permissão.
     if (!canAccessSection(id)) {
+      // Painel desligado na matriz de permissões: abre a primeira página do menu a que a pessoa tem acesso
+      if (id === 'painel') {
+        const alt = [...document.querySelectorAll('.sidebar .nav-btn[onclick*="goTo("]')]
+          .map(b => (b.getAttribute('onclick').match(/goTo\('([^']+)'/) || [])[1])
+          .find(s => s && s !== 'painel' && canAccessSection(s));
+        if (alt) return window.goTo(alt, document.querySelector(`.sidebar .nav-btn[onclick*="goTo('${alt}'"]`));
+      }
       showToast('🔒 Sem permissão para aceder a esta secção');
       return;
     }

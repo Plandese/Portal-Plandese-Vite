@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 //  PLANOS DE TRABALHO (versão de teste) — Gantt tipo MS Project a partir do articulado
-//  Página pessoal: só os utilizadores de SOLO_USER_SECTIONS (permissions.js) a veem;
+//  Acesso pela matriz de permissões (página «planos-trabalho»; servidor: fn_pag_on);
 //  o servidor aplica o mesmo limite por RLS na tabela planos_trabalho.
 //  Enquanto a tabela não existir na Supabase, os planos ficam guardados neste computador.
 //
