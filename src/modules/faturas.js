@@ -702,6 +702,8 @@ function _rowToFat(r){
     aprovadoPor:  r.aprovado_por || '',
     aprovadoEm:   r.aprovado_em  || '',
     pagaNaOrigem: !!r.paga_na_origem,
+    pagoPor:      r.pago_por || '',
+    pagoEm:       r.pago_em || '',
     guiasRef:     r.guias_ref || [],
     guiaEstado:   r.guia_estado || null,
     guiaResumo:   r.guia_resumo || null,
@@ -774,7 +776,79 @@ async function abrirFaturaPorDbId(dbId){
   let f = FATURAS.find(x => x._dbId === dbId);
   if(!f){ await carregarFaturas(); f = FATURAS.find(x => x._dbId === dbId); }
   if(!f){ showToast('Fatura não encontrada'); return; }
+  try{
+    const { data } = await sb.from('faturas').select('status,paga_na_origem,pago_por,pago_em').eq('id', dbId).maybeSingle();
+    if(data) Object.assign(f, { status: data.status || f.status, pagaNaOrigem: !!data.paga_na_origem, pagoPor: data.pago_por || '', pagoEm: data.pago_em || '' });
+  } catch(e){ /* sem rede: usa o que já tinha */ }
   editarFatura(f.id);
+}
+
+// ── Fatura paga antes da aprovação do diretor ─────────────────────────────
+// A Tesouraria paga uma fatura que ainda está «Aguarda diretor»: continua nas Faturas por aprovar com a nota
+// «Já paga» e, quando o diretor aprova, chega à Tesouraria já como paga (servidor: fn_marcar_paga_por_aprovar).
+let _podePagarP = null;
+function podePagarFaturas(){
+  if(!_podePagarP) _podePagarP = sb.rpc('fn_pode_propor').then(({ data }) => data === true).catch(() => false);
+  return _podePagarP;
+}
+const _nomeU = k => S.USERS?.[k]?.nome || k || '';
+const _dataHora = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-PT') + ' às ' + d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' }); };
+function notaPagaPorAprovar(f){
+  if(!f?.pagaNaOrigem) return '';
+  return 'Já paga' + (f.pagoEm ? ' a ' + _dataHora(f.pagoEm) : '') + (f.pagoPor ? ' por ' + _nomeU(f.pagoPor) : '');
+}
+// dbId da fatura; paga=true marca, false desfaz. Avisa o(s) diretor(es) da obra. Devolve true se mudou.
+async function marcarPagaPorAprovar(dbId, paga, info = {}){
+  const { data, error } = await sb.rpc('fn_marcar_paga_por_aprovar', { p_ids: [dbId], p_paga: !!paga });
+  if(error){ showToast('Não foi possível guardar: ' + (error.message || error)); return false; }
+  if(!data){ showToast(paga ? 'Esta fatura já não está à espera do diretor (ou já estava marcada como paga)' : 'Esta fatura já não tinha a marca de paga'); return false; }
+  const f = FATURAS.find(x => x._dbId === dbId);
+  const agora = new Date().toISOString();
+  if(f) Object.assign(f, paga ? { pagaNaOrigem: true, pagoPor: S.currentUser?.key || '', pagoEm: agora } : { pagaNaOrigem: false, pagoPor: '', pagoEm: '' });
+  const forn = info.fornecedor ?? f?.fornecedor ?? '', total = info.total ?? f?.total, cc = info.centroCusto ?? f?.centroCusto ?? '';
+  showToast(paga ? 'Fatura marcada como paga — continua à espera da aprovação do diretor' : 'Marca de paga retirada');
+  if(paga){
+    const msg = `Fatura já paga (continua por aprovar): ${forn}${total ? ' · ' + total + '€' : ''} (${cc})`;
+    R.emitEvent?.({ acao: msg, seccao:'faturas-aprovar', obra: cc });
+    const obra = S.OBRAS.find(o => o.nome === cc);
+    const dest = [...new Set([obra?.diretor_id, ...(obra?.diretores_extra || []), ..._aprovadoresFat].filter(u => u && u !== S.currentUser?.key))];
+    if(dest.length){
+      try{ await sb.from('notificacoes').insert(dest.map(destinatario => ({ actor: S.currentUser?.key || null, actor_nome: S.currentUser?.nome || 'Sistema', acao: msg, seccao:'faturas-aprovar', destinatario }))); }
+      catch(e){ console.warn('Notif diretor (paga):', e); }
+    }
+  }
+  if(f && parseInt(document.getElementById('mf-id')?.value, 10) === f.id) mostrarPagaFatura(f);
+  renderFaturas();
+  _refrescarTesouraria();
+  return true;
+}
+// Nota (e botão) no detalhe da fatura
+async function mostrarPagaFatura(f){
+  const bar = document.getElementById('mf-aprovacao-bar'); if(!bar) return;
+  let box = document.getElementById('mf-paga-box');
+  if(!box){ box = document.createElement('div'); box.id = 'mf-paga-box'; bar.parentNode.insertBefore(box, bar); }
+  box.dataset.for = String(f.id);
+  const porAprovar = f.status === 'aguarda_diretor';
+  const pode = porAprovar && await podePagarFaturas();
+  if(box.dataset.for !== String(f.id)) return;   // entretanto abriu outra fatura
+  if(!porAprovar || (!f.pagaNaOrigem && !pode)){ box.style.cssText = 'display:none'; box.innerHTML = ''; return; }
+  const btn = (txt, acao, pri) => `<button type="button" data-mf-paga="${acao}" style="height:36px;padding:0 16px;border-radius:99px;font-size:13.5px;font-weight:600;cursor:pointer;${pri ? 'background:#173f9f;color:#fff;border:0' : 'background:#fff;color:#173f9f;border:1.5px solid #173f9f'}">${txt}</button>`;
+  if(f.pagaNaOrigem){
+    box.style.cssText = 'margin-top:14px;padding:14px 16px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;color:#166534;font-size:13.5px;display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+    box.innerHTML = `<div style="flex:1;min-width:220px"><b>${_fEsc(notaPagaPorAprovar(f))}</b><div style="margin-top:2px;color:#3f6b4e">Continua à espera da aprovação do diretor de obra; depois de aprovada passa para a Tesouraria já como paga.</div></div>${pode ? btn('Desfazer', 'desfazer', false) : ''}`;
+  } else {
+    box.style.cssText = 'margin-top:14px;padding:14px 16px;background:#f6f8fc;border:1.5px solid #dde2ea;border-radius:14px;color:#5d6678;font-size:13.5px;display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+    box.innerHTML = `<div style="flex:1;min-width:220px">Teve de pagar esta fatura antes de o diretor a aprovar? Marque-a como paga: fica aqui à espera da aprovação, com a nota de que já foi paga.</div>${btn('Marcar como paga', 'marcar', true)}`;
+  }
+  box.onclick = async e => {
+    const b = e.target.closest('[data-mf-paga]'); if(!b) return;
+    const paga = b.dataset.mfPaga === 'marcar';
+    if(paga && !confirm(`Marcar a fatura ${f.numero || ''} de ${f.fornecedor || 'fornecedor'}${f.total ? ' (' + f.total + '€)' : ''} como paga?\n\nContinua nas Faturas por aprovar até o diretor de obra a aprovar.`)) return;
+    if(!paga && !confirm('Retirar a marca de paga desta fatura?')) return;
+    b.disabled = true;
+    await marcarPagaPorAprovar(f._dbId, paga);
+    b.disabled = false;
+  };
 }
 const _refrescarTesouraria = () => {
   if(document.getElementById('sec-tesouraria')?.classList.contains('active')) R.renderTesouraria?.();
@@ -971,7 +1045,8 @@ const _fatDesk = () => document.body.classList.contains('device-desktop') && !do
 let _fatSel = null, _fatChip = 'todas', _fatNPrev = 0;
 const _FAT_PD = ['extraida','rever','pendente_aprovacao'], _FAT_LAN = ['validada','paga','aprovada','aguarda_diretor'];
 const _fEsc = t => String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function _fatPill(s){
+function _fatPill(s, f){
+  if(s === 'aguarda_diretor' && f?.pagaNaOrigem) return `<span class="dd-pill info">Aguarda diretor</span> <span class="dd-pill ok" title="${_fEsc(notaPagaPorAprovar(f))}">Já paga</span>`;
   const m = {extraida:['Por validar','warn'],rever:['A rever','warn'],pendente_aprovacao:['Pendente','warn'],aguarda_diretor:['Aguarda diretor','info'],validada:['Lançada','ok'],aprovada:['Aprovada','ok'],paga:['Paga','mute'],rejeitada:['Rejeitada','bad']}[s] || ['—','mute'];
   return `<span class="dd-pill ${m[1]}">${m[0]}</span>`;
 }
@@ -987,7 +1062,7 @@ function _fatRenderDesk(lista){
   if(!lista.some(f=>f.id===_fatSel)) _fatSel = (lista[0]||{}).id ?? null;
   box.innerHTML = vis.length ? `<div class="tbl-wrap"><table class="cmp-t fat-t"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Obra</th><th>Data</th><th class="r">Valor</th><th>Estado</th><th></th></tr></thead><tbody>${vis.map(f=>{
       const m = String(f.centroCusto||'').match(/^(O\d+)/);
-      return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status)}${_semFicheiro.has(f._dbId)?' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>':''}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;
+      return `<tr class="${f.id===_fatSel?'sel':''}" data-fsel="${f.id}"><td><b>${_fEsc(f.numero||f.ficheiro||'—')}</b></td><td>${_fEsc(f.fornecedor||'—')}</td><td>${m?`<span class="d-cod">${m[1]}</span>`:'<span class="mut">—</span>'}</td><td>${f.data?fmtPT(f.data):'—'}</td><td class="r"><b>${eur(f.total)}</b></td><td>${_fatPill(f.status, f)}${_semFicheiro.has(f._dbId)?' <span class="dd-pill bad" title="O ficheiro desta fatura já não existe na Dropbox">Sem ficheiro</span>':''}</td><td class="cmp-t-act"><button type="button" class="btn btn-secondary btn-sm" data-fdet="${f.id}">Detalhe</button></td></tr>`;
     }).join('')}</tbody></table></div>` : '<div class="d-empty" style="border:0">Sem faturas para mostrar. Carregue o primeiro documento acima.</div>';
   if(!form) return;
   const f = FATURAS.find(x=>x.id===_fatSel);
@@ -1134,6 +1209,7 @@ function editarFatura(id){
   }
 
   mostrarGuiasFatura(f);
+  mostrarPagaFatura(f);
   atualizaArtigosModal(f);
   validaCamposModal();
   document.getElementById('modal-fat').classList.add('open');
@@ -2300,4 +2376,5 @@ export {
   aprovarFatura, rejeitarFatura,
   importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirFaturaPorDbId, carregarPastasFaturas, abrirArtigosFatura,
   carregarAprovadoresFaturas, ehAprovadorFaturas, moverFaturaLancada, sincronizarLancadas, verificarLancadas,
+  marcarPagaPorAprovar, podePagarFaturas, notaPagaPorAprovar,
 };

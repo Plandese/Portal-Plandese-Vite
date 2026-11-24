@@ -2,14 +2,17 @@
 //  FATURAS POR APROVAR — faturas com o centro de custo já confirmado pelo financeiro,
 //  organizadas por obra, a aguardar a aprovação (e carimbo) do diretor de obra.
 //  Cada diretor vê as faturas das suas obras; o administrador e o financeiro vêem todas.
+//  Faturas pagas antes da aprovação (a Tesouraria teve de as pagar) ficam aqui com a nota «Já paga».
 // ═══════════════════════════════════════════════════════════════════
 import { S } from '../state.js';
 import { sb } from '../supabase.js';
 import { fmtPT } from '../utils/helpers.js';
-import { abrirFaturaPorDbId, carregarPastasFaturas, carregarAprovadoresFaturas, ehAprovadorFaturas } from './faturas.js';
+import { abrirFaturaPorDbId, carregarPastasFaturas, carregarAprovadoresFaturas, ehAprovadorFaturas, marcarPagaPorAprovar, podePagarFaturas, notaPagaPorAprovar } from './faturas.js';
 
 let _rows = [];
 let _obra = null;   // centro de custo aberto (null = cartões das obras)
+let _podePagar = false;   // pode marcar faturas como pagas (as mesmas pessoas que pagam na Tesouraria)
+const nota = r => notaPagaPorAprovar({ pagaNaOrigem: r.paga_na_origem, pagoPor: r.pago_por, pagoEm: r.pago_em });
 const _ocultas = new Set();   // faturas já aprovadas pelo utilizador, ainda a ser carimbadas/guardadas em segundo plano
 
 // Tira (ou repõe) uma fatura da lista enquanto a Dropbox a guarda em segundo plano
@@ -48,12 +51,13 @@ function diretoresDaObra(nome) {
 async function carregar() {
   await carregarAprovadoresFaturas();
   const { data, error } = await sb.from('faturas')
-    .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo,guia_estado')
+    .select('id,fornecedor,numero,total,data,data_pag,status,centro_custo,guia_estado,paga_na_origem,pago_por,pago_em')
     .eq('status', 'aguarda_diretor')
     .eq('teste', false)
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw error;
+  _podePagar = await podePagarFaturas();
   const vis = obrasVisiveis();
   _rows = (data || []).filter(r => !_ocultas.has(r.id) && (!vis || vis.has(r.centro_custo)));
 }
@@ -106,12 +110,13 @@ function desenhar() {
     const rs = grupos.get(k);
     const sub = rs.reduce((s, r) => s + (Number(r.total) || 0), 0);
     total += sub;
-    const venc = rs.filter(r => r.data_pag && r.data_pag < h).length;
-    const prox = rs.map(r => r.data_pag).filter(Boolean).sort()[0];
+    const venc = rs.filter(r => r.data_pag && r.data_pag < h && !r.paga_na_origem).length;
+    const pagas = rs.filter(r => r.paga_na_origem).length;
+    const prox = rs.filter(r => !r.paga_na_origem).map(r => r.data_pag).filter(Boolean).sort()[0];
     return `<button type="button" class="far-card" data-far-obra="${esc(k)}" title="Ver as faturas desta obra">
       <span class="far-card-top">
         <span class="far-card-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg></span>
-        <span class="far-card-tt"><b>${esc(k || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} · ${eur(sub)}</small></span>
+        <span class="far-card-tt"><b>${esc(k || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} · ${eur(sub)}${pagas ? ` · <span class="far-paga">${pagas} já paga${pagas === 1 ? '' : 's'}</span>` : ''}</small></span>
         <span class="far-card-n">${rs.length}</span>
       </span>
       <span class="far-card-dir"><small>Aprova</small><b title="${esc(diretoresDaObra(k))}">${esc(diretoresDaObra(k))}</b></span>
@@ -122,33 +127,52 @@ function desenhar() {
     </button>`;
   }).join('');
 
-  box.innerHTML = `<div class="far-sum"><span><b>${chaves.length}</b> obra${chaves.length === 1 ? '' : 's'}</span><span><b>${lista.length}</b> fatura${lista.length === 1 ? '' : 's'}</span><span>Total por aprovar <b>${eur(total)}</b></span></div>
+  const nPagas = lista.filter(r => r.paga_na_origem).length;
+  box.innerHTML = `<div class="far-sum"><span><b>${chaves.length}</b> obra${chaves.length === 1 ? '' : 's'}</span><span><b>${lista.length}</b> fatura${lista.length === 1 ? '' : 's'}</span><span>Total por aprovar <b>${eur(total)}</b></span>${nPagas ? `<span><b>${nPagas}</b> já paga${nPagas === 1 ? '' : 's'}</span>` : ''}</div>
     <div class="far-cards">${cartoes}</div>`;
 }
 
 // Página de uma obra: lista das faturas por aprovar
 function desenharObra(box, obra, rs, h) {
   const total = rs.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const nPagas = rs.filter(r => r.paga_na_origem).length;
   const linhas = rs.map(r => {
-    const vencida = r.data_pag && r.data_pag < h;
-    return `<tr class="tes-row" data-far-id="${r.id}" title="Clique para ver a fatura e aprovar">
+    const vencida = r.data_pag && r.data_pag < h && !r.paga_na_origem;
+    const paga = r.paga_na_origem ? `<span class="dd-pill ok" title="${esc(nota(r))}">Já paga</span> ` : '';
+    const acao = _podePagar
+      ? (r.paga_na_origem
+        ? `<button type="button" class="far-pagar" data-far-pagar="${r.id}" data-paga="0" title="Retirar a marca de paga">Desfazer</button>`
+        : `<button type="button" class="far-pagar" data-far-pagar="${r.id}" data-paga="1" title="Teve de pagar antes da aprovação: fica aqui, com a nota de que já foi paga">Marcar paga</button>`)
+      : '';
+    return `<tr class="tes-row${r.paga_na_origem ? ' far-row-paga' : ''}" data-far-id="${r.id}" title="${r.paga_na_origem ? esc(nota(r)) + ' — clique para ver a fatura e aprovar' : 'Clique para ver a fatura e aprovar'}">
       <td>${esc(r.fornecedor || '—')}</td>
       <td><b>${esc(r.numero || '—')}</b></td>
       <td>${r.data ? fmtPT(r.data) : '—'}</td>
       <td class="r"><b>${eur(r.total)}</b></td>
       <td class="${vencida ? 'tes-venc' : ''}">${r.data_pag ? fmtPT(r.data_pag) : '<span class="mut">—</span>'}${vencida ? ' <small>vencida</small>' : ''}</td>
-      <td class="r">${r.guia_estado === 'suspensa' ? '<span class="dd-pill bad" title="As guias de remessa não coincidem com a fatura">Suspensa</span>' : '<span class="dd-pill info">Aprovar</span>'}</td>
+      <td class="r far-acoes">${paga}${r.guia_estado === 'suspensa' ? '<span class="dd-pill bad" title="As guias de remessa não coincidem com a fatura">Suspensa</span>' : '<span class="dd-pill info">Aprovar</span>'}${acao}</td>
     </tr>`;
   }).join('');
   box.innerHTML = `<div class="far-obra-hdr">
       <button type="button" class="btn btn-secondary btn-sm" data-far-back="1">← Todas as obras</button>
-      <div class="far-obra-tt"><b>${esc(obra || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} por aprovar · ${eur(total)} · Aprova: ${esc(diretoresDaObra(obra))}</small></div>
+      <div class="far-obra-tt"><b>${esc(obra || 'Sem centro de custo')}</b><small>${rs.length} fatura${rs.length === 1 ? '' : 's'} por aprovar · ${eur(total)}${nPagas ? ` · ${nPagas} já paga${nPagas === 1 ? '' : 's'}` : ''} · Aprova: ${esc(diretoresDaObra(obra))}</small></div>
     </div>
     <div class="tbl-wrap"><table class="cmp-t tes-t">
       <thead><tr><th>Fornecedor</th><th>Fatura</th><th>Data</th><th class="r">Valor com IVA</th><th>Vencimento</th><th></th></tr></thead>
       <tbody class="tes-grp">${linhas}</tbody>
       <tfoot><tr><td colspan="3"><b>Total (${rs.length} fatura${rs.length === 1 ? '' : 's'})</b></td><td class="r"><b>${eur(total)}</b></td><td colspan="2"></td></tr></tfoot>
     </table></div>`;
+}
+
+// Marca (ou desfaz) uma fatura como paga antes da aprovação; fica na lista com a nota «Já paga»
+async function pagar(id, paga, btn) {
+  const r = _rows.find(x => x.id === id); if (!r) return;
+  if (paga && !confirm(`Marcar a fatura ${r.numero || ''} de ${r.fornecedor || 'fornecedor'} (${eur(r.total)}) como paga?\n\nContinua nas Faturas por aprovar até o diretor de obra a aprovar.`)) return;
+  if (!paga && !confirm('Retirar a marca de paga desta fatura?')) return;
+  if (btn) btn.disabled = true;
+  // (marcarPagaPorAprovar volta a carregar esta página)
+  await marcarPagaPorAprovar(id, paga, { fornecedor: r.fornecedor, total: r.total, centroCusto: r.centro_custo });
+  if (btn) btn.disabled = false;
 }
 
 export async function renderFaturasAprovar(opts) {
@@ -169,6 +193,8 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-far-obra]');
   if (c) { _obra = c.dataset.farObra; desenhar(); document.getElementById('sec-faturas-aprovar')?.scrollIntoView?.({ block: 'start' }); return; }
   if (e.target.closest('[data-far-back]')) { _obra = null; desenhar(); return; }
+  const bp = e.target.closest('[data-far-pagar]');
+  if (bp) { pagar(Number(bp.dataset.farPagar), bp.dataset.paga === '1', bp); return; }
   const r = e.target.closest('tr[data-far-id]');
   if (r) abrirFaturaPorDbId(Number(r.dataset.farId));
 });

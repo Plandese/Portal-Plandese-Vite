@@ -2196,6 +2196,15 @@ body:not(.device-mobile) #cmp-view-area{display:none}
 .far-card-dir{display:block;min-width:0}
 .far-card-dir small{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--d-mute,#5d6678);margin-bottom:2px}
 .far-card-dir b{display:block;font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* faturas pagas antes da aprovação */
+.far-paga{color:#166534;font-weight:600}
+.far-acoes{white-space:nowrap}
+.far-acoes>*+*{margin-left:6px}
+.far-pagar{height:28px;padding:0 12px;border-radius:99px;border:1.5px solid var(--d-brand,#173f9f);background:#fff;color:var(--d-brand,#173f9f);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;vertical-align:middle}
+.far-pagar:hover{background:var(--d-tint,#eaf0fc)}
+.far-pagar:disabled{opacity:.5;cursor:default}
+.far-pagar[data-paga="0"]{border-color:var(--d-line,#dde2ea);color:var(--d-mute,#5d6678)}
+.tes-row.far-row-paga td{background:#f6fdf8}
 
 /* ───────── Tesouraria: seleção e propostas de pagamento ───────── */
 .tes-t .tes-ck{width:38px;padding-right:0;text-align:center}
