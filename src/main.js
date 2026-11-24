@@ -11,6 +11,7 @@ import './styles/painel-atencao.css';
 import './styles/ponto-esc.css';
 import './styles/guias.css';
 import './styles/necessidades.css';
+import './styles/planeamento-projetos.css';
 import './styles/clientes-carteira.css';
 import './styles/colab-ficha.css';
 import './styles/avisos-validades.css';

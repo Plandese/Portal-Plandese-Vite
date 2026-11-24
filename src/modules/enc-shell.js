@@ -23,6 +23,7 @@ const IC = {
   cart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
   drop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7s6 6.3 6 10.8a6 6 0 0 1-12 0C6 9 12 2.7 12 2.7z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
 };
 
@@ -44,6 +45,9 @@ const ECRAS = {
   'enc-screen-historico-enc':{ t: 'Histórico', s: 'Registos anteriores', i: IC.clock, back: 'encVoltarHome', nav: 'hist' },
   'enc-screen-ponto-ia':     { t: 'Folha de ponto', s: 'Por conversa · MO Plandese', i: IC.user, back: 'encGoFolhaPontoPlandese', nav: 'ponto' },
   'enc-screen-compras-chat': { t: 'Compras', s: 'Assistente de compras', i: IC.cart, back: 'encVoltarHome', nav: 'home' },
+  'enc-screen-planeamento':  { t: 'Planeamento mensal', s: 'Tarefas do mês nas suas obras', i: IC.cal, back: 'encVoltarHome', nav: 'home' },
+  'enc-screen-projetos':     { t: 'Projetos', s: 'Projetos e cadastros das obras', i: IC.doc, back: 'encVoltarHome', nav: 'home', estados: {
+    'enc-pj-docs': 'encProjVoltar' } },
 };
 const IDS = Object.keys(ECRAS);
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];

@@ -134,7 +134,7 @@ let _combModoManual = false;
 
 function _encHideAll(){
   ['enc-screen0','enc-screen1','enc-screen2','enc-screen-equip','enc-screen-aluguer','enc-screen-historico-enc','enc-screen-combustivel','enc-screen-comb-deposito','enc-screen-comb-viatura','enc-screen-comb-ultimos','enc-screen-comb-aprovar',
-   'enc-screen-compras-chat','enc-screen-ponto-ia'].forEach(id=>{
+   'enc-screen-compras-chat','enc-screen-ponto-ia','enc-screen-planeamento','enc-screen-projetos'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }

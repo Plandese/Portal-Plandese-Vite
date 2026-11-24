@@ -113,7 +113,7 @@ export const NAV_CHAPTERS = [
   {id:'cmp',  label:'Compras',                   sections:['compras','necessidades']},
   {id:'fin',  label:'Financeiro',                sections:['faturas','faturas-aprovar','guias','tesouraria','estrutura-central']},
   {id:'log',  label:'Logística e Equipamentos',  sections:['equipamentos','combustivel']},
-  {id:'prod', label:'Produção',                  sections:['producao','existencias','precos-unitarios','pendentes-tavira']},
+  {id:'prod', label:'Produção',                  sections:['producao','planeamento-mensal','projetos-obra','existencias','precos-unitarios','pendentes-tavira']},
   {id:'def',  label:'Definições',                sections:['obras','utilizadores','atividade','fornecedores']},
 ];
 
@@ -126,6 +126,8 @@ export const ENC_MODULES = [
   {id:'combustivel',   label:'Combustível',   nav:'comb'},
   {id:'compras',       label:'Compras',       nav:null},
   {id:'historico',     label:'Histórico',     nav:'hist'},
+  {id:'planeamento',   label:'Planeamento Mensal', nav:null},
+  {id:'projetos',      label:'Projetos',      nav:null},
 ];
 
 // Chave pública VAPID para Web Push (não é segredo — vai no browser). A privada

@@ -111,6 +111,8 @@ import { renderLembretes, lembretesOpenModal, lembretesCloseModal, lembretesSave
 import { initAgente, agenteStop, agenteToggle } from './modules/agente.js';
 import { initTelasFinaisLink, abrirTelasFinais } from './modules/telas-finais.js';
 import { initGuiasTesteLink, abrirGuiasTeste, abrirComprasTeste } from './modules/guias-teste-link.js';
+import { renderPlaneamentoMensal, encGoPlaneamento } from './modules/planeamento-mensal.js';
+import { renderProjetosObra, encGoProjetos, encProjVoltar } from './modules/projetos-obra.js';
 import { initExistencias, exSetQtd, exPesquisa, exMudarObra, exMudarMes, exDescartar, exGravar, exAbrirObra, exVoltar, exAbrirAdd, exSetPreco, exRemover } from './modules/existencias.js';
 
 // ── Registry R — permite que módulos chamem funções de outros módulos sem imports circulares ──
@@ -323,6 +325,10 @@ Object.assign(window, {
   // Chat compras
   encGoComprasChat,
 
+  // Planeamento Mensal e Projetos (portal do diretor + app dos encarregados)
+  renderPlaneamentoMensal, encGoPlaneamento,
+  renderProjetosObra, encGoProjetos, encProjVoltar,
+
   // Férias
   renderMapaFerias, feriasNavAno, feriasTogglePrevista, feriasToggleLock, feriasToggleFuncDropdown, feriasToggleFunc, feriasLimparFuncs,
 
@@ -438,6 +444,8 @@ window.savePerfil = async function () {
     if (id === 'combustivel')  { _initCombustivelAdmin(); }
     if (id === 'fecho-mes')    { abrirFechoMes(); }
     if (id === 'producao')          { renderControloObras(true); }  // ao entrar, volta sempre à lista de empreitadas
+    if (id === 'planeamento-mensal') { renderPlaneamentoMensal(); }
+    if (id === 'projetos-obra')     { renderProjetosObra(); }
     if (id === 'existencias')       { initExistencias(); }
     if (id === 'precos-unitarios')  { initPrecosUnit(); }
     if (id === 'planos-trabalho')   { renderPlanosTrabalho(); }

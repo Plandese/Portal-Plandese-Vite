@@ -248,6 +248,8 @@ const MENU_ACESSOS = [
   ]},
   { ch:'prod', label:'Produção', paginas:[
     { sec:'producao', label:'Controlo de Obras' },
+    { sec:'planeamento-mensal', label:'Planeamento Mensal' },
+    { sec:'projetos-obra', label:'Projetos' },
     { sec:'existencias', label:'Existências' },
     { sec:'precos-unitarios', label:'Lista de Preços' },
     { sec:'pendentes-tavira', label:'Pós Venda' },
