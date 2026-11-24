@@ -9,13 +9,17 @@ import { S } from '../state.js';
 // Chave (linha) na tabela app_config onde a matriz de permissões é partilhada entre dispositivos
 const PERM_CONFIG_KEY = 'role_permissions';
 
+// O perfil Administrador também se configura; só a conta «admin» (SUPER_USER) vê sempre tudo, aqui e no servidor
+export const SUPER_USER = 'admin';
 const CONFIGURABLE_ROLES = [
+  {key:'admin',        label:'Administrador'},
   {key:'diretor_obra', label:'Diretor de Obra'},
   {key:'compras',      label:'Compras'},
   {key:'financeiro',   label:'Financeiro'},
 ];
 
 const DEFAULT_PERMISSIONS = {
+  admin:        ['rh','cmp','fin','log','prod','def'],
   diretor_obra: ['rh','cmp','fin','log','prod'],
   compras:      ['cmp'],
   financeiro:   ['fin','cmp'],
@@ -27,7 +31,7 @@ const PERM_STORAGE_KEY = 'plandese_role_permissions_v2';
 export function loadPermissions(){
   try {
     const raw = localStorage.getItem(PERM_STORAGE_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw) return { ...JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)), ...JSON.parse(raw) };
   } catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS));
 }
@@ -53,7 +57,9 @@ const roleOffOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].off) || DEF
 //                  a da pessoa substitui a do perfil, como «off»). No servidor: fn_pag_on(página).
 export const PAG_ABERTAS = ['painel','calendario','notificacoes','ponto-escritorio'];
 export const PAG_LIVRES  = ['balanco-fat','carteira','telas-finais','fornecedores','planos-trabalho','guias-teste','compras-teste'];
-const roleOnOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].on) || [];
+// o perfil Administrador tem todas as páginas livres ligadas por omissão
+const DEFAULT_ROLE_ON = { admin: PAG_LIVRES };
+const roleOnOf = (ovr, role) => (ovr.roles[role] && ovr.roles[role].on) || DEFAULT_ROLE_ON[role] || [];
 let _ovr = loadOverridesLocal();
 
 function loadOverridesLocal(){
@@ -100,9 +106,11 @@ const sameSet = (a,b)=>{ a=a||[]; b=b||[]; return a.length===b.length && a.every
 
 function cfgUsersOfRole(role){
   return Object.entries(S.USERS||{})
-    .filter(([,u])=>u.role===role)
+    .filter(([username,u])=>u.role===role && username!==SUPER_USER)
     .map(([username,u])=>({username, nome:u.nome||username}))
-    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt'))
+    // duas contas com o mesmo nome: mostra também o utilizador
+    .map((u,_,a)=>a.filter(x=>x.nome===u.nome).length>1 ? { ...u, nome:`${u.nome} (${u.username})` } : u);
 }
 
 async function upsertConfig(key, value){
@@ -114,8 +122,8 @@ async function upsertConfig(key, value){
 function normalizeOvr(o){
   // perfis com lista predefinida guardam sempre a lista (mesmo vazia), senão voltavam a fechar
   Object.keys(o.roles).forEach(r=>{
-    if(o.roles[r].on && !o.roles[r].on.length) delete o.roles[r].on;
-    if(!o.roles[r].on && !(o.roles[r].off||[]).length && !DEFAULT_ROLE_OFF[r]) delete o.roles[r];
+    if(o.roles[r].on && !o.roles[r].on.length && !DEFAULT_ROLE_ON[r]) delete o.roles[r].on;
+    if(!o.roles[r].on && !(o.roles[r].off||[]).length && !DEFAULT_ROLE_OFF[r] && !DEFAULT_ROLE_ON[r]) delete o.roles[r];
   });
   Object.keys(o.users).forEach(u=>{ if(!Object.keys(o.users[u]).length) delete o.users[u]; });
   return o;
@@ -274,7 +282,7 @@ function estadoGuardavel(){
   const roles = {}; Object.keys(d.ovr.roles).sort().forEach(r => {
     const c = {}, off = srt(d.ovr.roles[r].off), on = srt(d.ovr.roles[r].on);
     if(d.ovr.roles[r].off && !sameSet(off, DEFAULT_ROLE_OFF[r] || [])) c.off = off;
-    if(on.length) c.on = on;
+    if(d.ovr.roles[r].on && !sameSet(on, DEFAULT_ROLE_ON[r] || [])) c.on = on;
     if(Object.keys(c).length) roles[r] = c;
   });
   const users = {}; Object.keys(d.ovr.users).sort().forEach(u => {
@@ -413,7 +421,7 @@ export function renderPermMatrix(){
     <div class="pa-top">
       <div class="pa-top-tx">
         <b>Quem vê cada página</b>
-        <span>As páginas estão organizadas como no menu. Ligue ou desligue por perfil; em «pessoas» dá ou tira a uma pessoa só. O administrador vê tudo. As alterações aplicam-se no próximo início de sessão de cada pessoa.</span>
+        <span>As páginas estão organizadas como no menu. Ligue ou desligue por perfil; em «pessoas» dá ou tira a uma pessoa só. A conta «admin» vê sempre tudo. As alterações aplicam-se no próximo início de sessão de cada pessoa.</span>
       </div>
       <div class="pa-top-ac">
         <input type="search" class="pa-q" id="pa-q" placeholder="Procurar página…" value="${escP(_paQ)}" autocomplete="off"/>
@@ -524,7 +532,7 @@ function gavetaPerfil(role){
 // Uma pessoa: todas as páginas, como no menu
 function gavetaPessoa(user){
   const role = S.USERS?.[user]?.role;
-  if(!CONFIGURABLE_ROLES.some(r => r.key === role)) return showToast('Este perfil não se configura aqui');
+  if(user === SUPER_USER || !CONFIGURABLE_ROLES.some(r => r.key === role)) return showToast('Este perfil não se configura aqui');
   gavetaPA(roleLabel(role), nomeDe(user), () => { const n = diferencasPessoa(role, user).length; return n ? `${n} ${n===1?'exceção':'exceções'} ao perfil` : 'Igual ao perfil'; }, () => {
     const d = draft(), tem = d.ovr.users[user] && Object.keys(d.ovr.users[user]).length;
     let h = tem ? `<button type="button" class="pa-btn sec pa-repor" data-r="repor">Repor ao perfil (tirar todas as exceções)</button>` : '';
@@ -614,7 +622,7 @@ const SECTION_ROLES = {
 };
 
 export function roleCanAccessSection(role, sec, username){
-  if(role === 'admin') return true;
+  if(username === SUPER_USER) return true;
   if(!role) return false;
   if(SECTION_ROLES[sec] && !SECTION_ROLES[sec].includes(role)) return false;
   const uo = username ? _ovr.users[username] : null;
