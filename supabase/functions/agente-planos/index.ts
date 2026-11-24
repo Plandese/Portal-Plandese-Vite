@@ -9,7 +9,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const MODEL = Deno.env.get("AGENTE_PLANOS_MODEL") ?? "claude-opus-5-5";
 const LIMITE = Number(Deno.env.get("AGENTE_PLANOS_LIMITE") ?? 300);
-const UTILIZADORES = (Deno.env.get("AGENTE_PLANOS_UTILIZADORES") ?? "admin,david.mosca").split(",").map((s) => s.trim());
+const UTILIZADORES = (Deno.env.get("AGENTE_PLANOS_UTILIZADORES") ?? "admin,david.mosca,manuel.fonseca").split(",").map((s) => s.trim());
 const MAX_PASSOS = 5;
 const MAX_PLANO_CHARS = 120000;
 

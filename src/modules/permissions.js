@@ -655,7 +655,7 @@ const SECTION_ROLES = {
 export const ADMIN_ONLY_SECTIONS = ['balanco-fat', 'carteira'];
 
 // Páginas pessoais em teste (fora da matriz de permissões): só os utilizadores indicados. O servidor aplica o mesmo limite por RLS.
-export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['admin', 'david.mosca'] };
+export const SOLO_USER_SECTIONS = { 'planos-trabalho': ['admin', 'david.mosca', 'manuel.fonseca'] };
 
 export function roleCanAccessSection(role, sec, username){
   if(SOLO_USER_SECTIONS[sec]) return !!username && SOLO_USER_SECTIONS[sec].includes(username);
@@ -700,6 +700,8 @@ export function applyRolePermissions(role){
   // Esconder capítulos inteiros (grupo + toggle) sem nenhuma página permitida
   NAV_CHAPTERS.forEach(ch=>{
     if(ch.sections.some(sec=>roleCanAccessSection(role, sec, user))) return;
+    // páginas pessoais (data-solo-user) também mantêm o capítulo visível (ex.: Planos de Trabalho em Definições)
+    if([...document.querySelectorAll('.nav-group[data-grp="'+ch.id+'"] [data-solo-user]')].some(el=>roleCanAccessSection(role, el.dataset.soloUser, user))) return;
     document.querySelectorAll('.nav-lbl[data-grp="'+ch.id+'"],.nav-group[data-grp="'+ch.id+'"]').forEach(el=>{ el.style.display='none'; });
   });
   // Esconder páginas individuais não permitidas (perfil, pessoa ou sub-página)
