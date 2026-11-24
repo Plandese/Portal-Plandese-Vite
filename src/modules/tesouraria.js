@@ -44,7 +44,8 @@ async function carregar() {
     .order('data_pag', { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw error;
-  _rows = data || [];
+  // as faturas da Estrutura Central (CC O099) têm o seu próprio sub-módulo e não entram na Tesouraria
+  _rows = (data || []).filter(r => !/^O099\b/i.test(String(r.centro_custo || '').trim()));
   // limpa seleções de faturas que já não estão por pagar
   const validos = new Set(_rows.filter(porPagar).map(r => r.id));
   [..._sel].forEach(id => { if (!validos.has(id)) _sel.delete(id); });
