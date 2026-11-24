@@ -4115,7 +4115,9 @@ function grafFinanceiro(t) {
   const tit = `<text x="${pl}" y="22" font-size="15" font-weight="bold" fill="#173f9f">Faturação prevista por mês</text>`;
   const leg = legendaSvg([{ cor: '#9db6ee', txt: 'Faturação mensal (eixo da esquerda)' }, { cor: '#173f9f', txt: 'Acumulado — curva S (eixo da direita)', linha: true }], pl, 46, W - pr);
   const pt = leg.y + 18, H = pt + 240;
-  const maxM = Math.max(1, ...t.mens), yM = x => pt + (H - pt - pb) * (1 - x / maxM), yA = x => pt + (H - pt - pb) * (1 - x / Math.max(1, t.total));
+  // topo do eixo arredondado: 4 divisões com um passo «redondo» (ex.: 35 000 → 0 / 35 000 / … / 140 000)
+  const pM = Math.max(1, ...t.mens) / 4, mag = 10 ** Math.floor(Math.log10(pM));
+  const maxM = 4 * mag * [1, 1.2, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7.5, 8, 10].find(f => f * mag >= pM - 1e-9), yM = x => pt + (H - pt - pb) * (1 - x / maxM), yA = x => pt + (H - pt - pb) * (1 - x / Math.max(1, t.total));
   let g = '';
   for (let k = 0; k <= 4; k++) { const y = pt + (H - pt - pb) * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#e3e8f0"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6a7284">${eur0(maxM * (1 - k / 4)).replace(' €', '')}</text><text x="${W - pr + 6}" y="${y + 4}" font-size="11" fill="#6a7284">${100 - k * 25}%</text>`; }
   t.lista.forEach((k, i) => { const x = pl + i * cw; g += `<rect x="${x + cw * .18}" y="${yM(t.mens[i])}" width="${cw * .64}" height="${Math.max(0, H - pb - yM(t.mens[i]))}" rx="3" fill="#9db6ee"/>`; if (n <= 24 || i % 2 === 0) g += `<text x="${x + cw / 2}" y="${H - 9}" text-anchor="middle" font-size="11" fill="#6a7284">${nomeMesL(k)}</text>`; });
