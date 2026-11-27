@@ -521,7 +521,10 @@ async function eqContadorCarregar(eq){
     const un=r.contador_tipo||(eqCatIsVeiculo(eq.categoria)?'km':'horas');
     const val=Number(r.contador_valor).toLocaleString('pt-PT',{maximumFractionDigits:1});
     box.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13l3.5-3.5"/><path d="M12 3v2"/></svg>
-      <b>${val} ${un==='km'?'km':'horas'}</b><span>${[r.data?eqDatePT(r.data):'',r.obra_nome].filter(Boolean).map(eqEsc).join(' · ')}${r.aprovacao==='pendente'?' · por aprovar':''}</span>`;
+      <div class="eqc-tx"><small>Último abastecimento${r.aprovacao==='pendente'?' · por aprovar':''}</small>
+        <b>${val} ${un==='km'?'km':'horas'}</b>
+        ${r.data?`<span class="eqc-data">${eqEsc(eqDatePT(r.data))}</span>`:''}
+        ${r.obra_nome?`<span class="eqc-obra" title="${eqEsc(r.obra_nome)}">${eqEsc(r.obra_nome)}</span>`:''}</div>`;
     box.title='Último registo do contador num abastecimento (Combustíveis)';
     box.hidden=false;
     box.parentElement?.classList.add('tem-contador');

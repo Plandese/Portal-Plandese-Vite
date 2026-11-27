@@ -2300,3 +2300,8 @@ body.device-mobile .pr-resize{display:none}
 .eq-contador svg{width:16px;height:16px;flex:none}
 .eq-contador b{font-weight:800;font-size:14px;white-space:nowrap}
 .eq-contador span{opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eq-contador .eqc-tx{display:flex;flex-direction:column;min-width:0;gap:1px}
+.eq-contador .eqc-tx small{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5d6678}
+.eq-contador .eqc-tx b{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#173f9f;white-space:nowrap;margin:1px 0 2px}
+.eq-contador .eqc-data,.eq-contador .eqc-obra{font-size:12.5px;color:#5d6678;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eq-contador .eqc-obra{color:#1b2130;font-weight:600}
