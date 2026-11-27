@@ -217,7 +217,8 @@ export async function eqDocsMoverPasta(antes, listaAntes, depois, listaDepois) {
 
 // ── Passagem dos ficheiros antigos (bucket eq-documentos) para a Dropbox ──
 // Cada registo é «reservado» apagando-o primeiro: se dois utilizadores correrem isto ao mesmo tempo,
-// só um envia o ficheiro. Se o envio falhar, o registo volta a ser criado.
+// só um envia o ficheiro. Se o envio falhar, o registo volta a ser criado. O ficheiro original
+// continua no bucket, por isso nada se perde mesmo que a página feche a meio.
 async function migrarRegisto(r, raiz) {
   const { data: apagado, error } = await sb.from('eq_documentos').delete().eq('id', r.id).select('*');
   if (error || !apagado?.length) return false;
@@ -230,7 +231,7 @@ async function migrarRegisto(r, raiz) {
     await sb.from('eq_documentos').insert(resto);
     throw e;
   }
-  sb.storage.from(BUCKET_ANTIGO).remove([r.path]).catch(() => {});
+  // O ficheiro fica no bucket antigo como cópia de segurança (não é apagado).
   return true;
 }
 async function migrarEquipamento(eq, lista) {
