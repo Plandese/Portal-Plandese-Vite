@@ -6,7 +6,7 @@ import { S, R } from '../state.js';
 import { fmt, fmtPT } from '../utils/helpers.js';
 import { showToast, closeModal, openModal } from './navigation.js';
 import { obraEmCurso } from '../config.js';
-import { abrirEqDocs, contarEqDocs } from './eq-docs.js';
+import { abrirEqDocs, contarEqDocs, eqDocsSincronizar, eqDocsMoverPasta } from './eq-docs.js';
 
 let EQUIPAMENTOS  = JSON.parse(localStorage.getItem('plandese_eq')||'[]');
 let EQ_MOVIMENTOS = JSON.parse(localStorage.getItem('plandese_eq_mov')||'[]');
@@ -501,8 +501,8 @@ function _eqBuscaRowHtml(eq){
   </div>`;
 }
 
-function eqAbrirDocs(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); abrirEqDocs(id, eq?eq.nome:''); }
-function eqDocsContar(id){ contarEqDocs(id).then(n=>{ const el=document.getElementById('meqd-docn'); if(el&&n){ el.textContent=n; el.style.display=''; } }).catch(()=>{}); }
+function eqAbrirDocs(id){ const eq=EQUIPAMENTOS.find(e=>e.id===id); abrirEqDocs(eq, EQUIPAMENTOS); }
+function eqDocsContar(id){ contarEqDocs(EQUIPAMENTOS.find(e=>e.id===id), EQUIPAMENTOS).then(n=>{ const el=document.getElementById('meqd-docn'); if(el&&n){ el.textContent=n; el.style.display=''; } }).catch(()=>{}); }
 window.eqDocsAtualizou = id => eqDocsContar(id);
 // Janela de detalhe do equipamento: escolher entre QR, manutenção, histórico e edição
 // (as outras janelas abrem por cima desta, que fica por baixo)
@@ -928,8 +928,13 @@ function saveEquipamento(){
     const o=(S.OBRAS||[]).find(x=>x.id===selObra.value);
     obj.obraId=o?o.id:null; obj.ultimoLocal=o?o.nome:null; obj.ultimoRegisto=new Date().toISOString();
   }
+  const listaAntes=EQUIPAMENTOS.slice();
   if(_editingEqId){ const i=EQUIPAMENTOS.findIndex(e=>e.id===_editingEqId); if(i>=0)EQUIPAMENTOS[i]=obj; else EQUIPAMENTOS.push(obj); }
   else EQUIPAMENTOS.push(obj);
+  // Nome ou tipo mudou: a pasta da documentação na Dropbox acompanha
+  if(ex && (ex.nome!==obj.nome || eqCatNorm(ex.categoria)!==eqCatNorm(obj.categoria))){
+    eqDocsMoverPasta(ex, listaAntes, obj, EQUIPAMENTOS.slice()).catch(()=>{});
+  }
   saveEqLocal(); closeModal('modal-equip'); renderEquipamentos(); refreshEqMap();
   showEqAlert('Equipamento guardado com sucesso.');
   sbUpsertEquipamento(obj);
@@ -1050,6 +1055,8 @@ async function sbLoadEquipamentos(){
     data.forEach(row=>{ localMap[row.id]=eqFromRow(row); });
     EQUIPAMENTOS=Object.values(localMap);
     saveEqLocal();
+    // Pastas da documentação na Dropbox + passagem dos ficheiros antigos (segundo plano; a ponte recusa encarregados)
+    if(S.currentUser && S.currentUser.role!=='encarregado') setTimeout(()=>eqDocsSincronizar(EQUIPAMENTOS.slice()), 4000);
   }catch(e){ console.warn('sbLoadEquipamentos:',e); }
   try{
     const {data:mrows,error:merr}=await sb.from('eq_manutencoes').select('*');

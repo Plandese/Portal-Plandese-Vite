@@ -111,7 +111,7 @@ async function _comRepeticao(fn){
     }
   }
 }
-const _ESCRITA = /^files\/(move_v2|delete_v2|upload)/;
+const _ESCRITA = /^files\/(move_v2|delete_v2|upload|create_folder_batch$)/;
 
 async function _rpc(endpoint, body, team = true){
   const run = () => _comRepeticao(async () => {
@@ -233,6 +233,24 @@ export async function dropboxUploadTeam(blob, path){
 export async function dropboxMoveTeam(fromPath, toPath){
   const data = await _rpc('files/move_v2', { from_path: fromPath, to_path: toPath, autorename: true });
   return data.metadata?.path_display;
+}
+
+// Cria várias pastas de uma vez (as que já existem são ignoradas). A Dropbox pode responder
+// em diferido (async_job_id): nesse caso consulta o trabalho até terminar.
+export async function dropboxCreateFolders(paths){
+  const unicos = [...new Set(paths)];
+  for(let i = 0; i < unicos.length; i += 5000){
+    let r = await _rpc('files/create_folder_batch', { paths: unicos.slice(i, i + 5000), autorename: false, force_async: false });
+    if(r['.tag'] !== 'async_job_id') continue;
+    const job = r.async_job_id;
+    for(let n = 0; ; n++){
+      if(n > 40) throw new Error('Dropbox: a criação das pastas está a demorar demasiado');
+      await _dorme(1500);
+      r = await _rpc('files/create_folder_batch/check', { async_job_id: job });
+      if(r['.tag'] !== 'in_progress') break;
+    }
+    if(r['.tag'] === 'failed') throw new Error('Dropbox: não foi possível criar as pastas — ' + JSON.stringify(r).slice(0, 200));
+  }
 }
 
 export async function dropboxDeleteTeam(path){

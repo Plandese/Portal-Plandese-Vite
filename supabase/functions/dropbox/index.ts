@@ -24,6 +24,8 @@ const PERMITIDOS = new Set([
   "https://api.dropboxapi.com/2/files/list_folder/continue",
   "https://api.dropboxapi.com/2/files/delete_v2",
   "https://api.dropboxapi.com/2/files/move_v2",
+  "https://api.dropboxapi.com/2/files/create_folder_batch",
+  "https://api.dropboxapi.com/2/files/create_folder_batch/check",
   "https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings",
   "https://api.dropboxapi.com/2/users/get_current_account",
 ]);
