@@ -45,3 +45,8 @@
 .av-erro{color:#b3261e}
 .av-drawer .dd-f .btn:disabled{opacity:.55;cursor:default}
 @media (max-width:640px){ .av-add{grid-template-columns:1fr} }
+/* Separadores Colaboradores / Equipamentos (no cabeçalho azul) */
+.av-tabs{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.av-tabs button{height:36px;padding:0 16px;border-radius:99px;border:1.5px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+.av-tabs button:hover{background:rgba(255,255,255,.12)}
+.av-tabs button.on{background:#fff;border-color:#fff;color:var(--m-brand,#173f9f)}

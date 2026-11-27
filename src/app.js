@@ -40,7 +40,7 @@ import { renderPlanosTrabalho } from './modules/planos-trabalho.js';
 import { renderGuiasEscritorio } from './modules/guias-escritorio.js';
 import { renderFaturasAprovar, ocultarFaturaPorAprovar } from './modules/faturas-aprovar.js';
 import { renderEstruturaCentral } from './modules/estrutura-central.js';
-import { abrirAvisosValidades, fecharAvisosValidades, avCampo, avCampoGeral, avAdicionarDest, avRemoverDest, avGuardar, avTeste } from './modules/avisos-validades.js';
+import { abrirAvisosValidades, fecharAvisosValidades, avGrupo, avCampo, avCampoGeral, avAdicionarDest, avRemoverDest, avGuardar, avTeste } from './modules/avisos-validades.js';
 import './modules/guias.js';
 import { handleFatFiles, renderFaturas, limparFatFiltros, editarFatura, saveFatura, apagarFatura, exportFaturasXLSX, setupFatDropzone, atualizaKPIs, seedFaturasDemo, carregarTemplatesFaturas, carregarFaturas, openFatSel, fssClose, fssSetActive, fssTextClick, fssSave, _fssFatInputChange, aprovarFatura, rejeitarFatura, importarFaturasDropbox, configurarPastasFaturas, apagarTodasFaturas, abrirDocumentoNovaJanela, abrirArtigosFatura } from './modules/faturas.js';
 import { handlersArtigos } from './modules/faturas-artigos.js';
@@ -208,7 +208,7 @@ Object.assign(window, {
 
   // Colaboradores
   abrirFichaColab, fecharFichaColab, fichaEditar, fichaCancelar, fichaGuardar, fichaTipoChange, fichaFicheiroEscolhido, fichaEnviar, fichaAbrirDoc, fichaImprimirEPI, fichaVerCaducados,
-  abrirAvisosValidades, fecharAvisosValidades, avCampo, avCampoGeral, avAdicionarDest, avRemoverDest, avGuardar, avTeste,
+  abrirAvisosValidades, fecharAvisosValidades, avGrupo, avCampo, avCampoGeral, avAdicionarDest, avRemoverDest, avGuardar, avTeste,
   renderColabs, saveColab, editColab, toggleColab, colabToggleHideInativos, colabSetVista,
 
   // Folha de ponto do escritório

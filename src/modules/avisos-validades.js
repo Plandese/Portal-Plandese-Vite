@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 //  AVISOS POR EMAIL — validades dos colaboradores (Identificação, FA, EPI)
-//  Painel lateral aberto pelo botão «Avisos por email» da página Colaboradores:
-//  quem recebe o email e com que antecedência para cada documento.
+//  e dos equipamentos (Seguro, Inspeção/IPO, Garantia)
+//  Painel lateral aberto pelo botão «Avisos por email» das páginas Colaboradores e
+//  Equipamentos (separadores no cabeçalho): quem recebe o email e com que antecedência.
 //  O envio é feito pela Edge Function «avisos-validades», todos os dias às 08:00
 //  (pg_cron); ver migração 20261118_avisos_validades.sql.
 // ═══════════════════════════════════════════════════════════════════
@@ -9,11 +10,37 @@ import { sb } from '../supabase.js';
 import { S } from '../state.js';
 import { validadesColaboradores } from './colaboradores-ficha.js';
 
-const TIPOS = { id: 'Identificação', fa: 'Ficha de aptidão (FA)', epi: 'EPI' };
-const SUB = { id: 'Cartão de Cidadão, título de residência ou passaporte', fa: 'Exame de medicina do trabalho', epi: 'Entrega de equipamento de proteção individual' };
+// Dois grupos no mesmo painel, cada um com os seus destinatários, regras e permissões:
+//   colab → colaboradores (capítulo RH); eq → equipamentos (capítulo Equipamentos)
+const GRUPOS = {
+  colab: {
+    nome: 'Colaboradores', tabCfg: 'avisos_validades_config', tabEnv: 'avisos_validades_enviados', colChave: 'numero',
+    tipos: { id: 'Identificação', fa: 'Ficha de aptidão (FA)', epi: 'EPI' },
+    sub: { id: 'Cartão de Cidadão, título de residência ou passaporte', fa: 'Exame de medicina do trabalho', epi: 'Entrega de equipamento de proteção individual' },
+    resumo: 'Identificação, FA e EPI a caducar', semPermissao: 'Não tem permissão para gerir estes avisos (capítulo Recursos Humanos).',
+    validades: async () => { const v = await validadesColaboradores(); return v && v.map(x => ({ ...x, chave: x.numero, ref: '' })); },
+  },
+  eq: {
+    nome: 'Equipamentos', tabCfg: 'avisos_eq_config', tabEnv: 'avisos_eq_enviados', colChave: 'equip_id',
+    tipos: { seguro: 'Seguro', ipo: 'Inspeção (IPO)', garantia: 'Garantia' },
+    sub: { seguro: 'Validade do seguro do veículo/equipamento', ipo: 'Inspeção periódica obrigatória', garantia: 'Fim da garantia do fabricante ou fornecedor' },
+    resumo: 'Seguro, inspeção e garantia a caducar', semPermissao: 'Não tem permissão para gerir estes avisos (capítulo Equipamentos).',
+    validades: async () => {
+      const { data, error } = await sb.from('equipamentos').select('id,nome,matricula,codigo,seguro_validade,ipo_validade,garantia_ate');
+      if(error) return null;
+      const out = [];
+      (data || []).forEach(e => [['seguro', e.seguro_validade], ['ipo', e.ipo_validade], ['garantia', e.garantia_ate]].forEach(([tipo, ate]) => {
+        if(ate) out.push({ chave: e.id, nome: e.nome, ref: e.matricula || e.codigo || '', tipo, ate: String(ate).slice(0, 10) });
+      }));
+      return out;
+    },
+  },
+};
 const REGRA_BASE = { ativo: true, primeiro: 30, n: 3, intervalo: 7, no_dia: true };
 
+let _grupo = 'colab';
 let _cfg = null, _enviados = [], _valid = null, _erro = '', _aGuardar = false, _alterado = false, _carregando = false;
+const G = () => GRUPOS[_grupo];
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = m => (typeof window.showToast === 'function' ? window.showToast(m) : alert(m));
@@ -57,31 +84,44 @@ export function fecharAvisosValidades(){
   document.getElementById('av-drawer')?.classList.remove('open');
   document.getElementById('av-scrim')?.classList.remove('open');
 }
-export async function abrirAvisosValidades(){
+export async function abrirAvisosValidades(grupo){
+  if(GRUPOS[grupo]) _grupo = grupo;
   const dr = _drawer();
   _carregando = true; _erro = ''; _desenhar();
   requestAnimationFrame(() => { dr.classList.add('open'); document.getElementById('av-scrim')?.classList.add('open'); dr.setAttribute('aria-hidden', 'false'); });
   await _carregar();
   _carregando = false; _desenhar();
 }
+// Separadores Colaboradores / Equipamentos
+export async function avGrupo(g){
+  if(!GRUPOS[g] || g === _grupo) return;
+  if(_alterado && !confirm('Há alterações por guardar. Mudar de separador mesmo assim?')) return;
+  _grupo = g; _alterado = false;
+  _carregando = true; _erro = ''; _desenhar();
+  await _carregar();
+  if(_grupo !== g) return;
+  _carregando = false; _desenhar();
+}
 
 async function _carregar(){
+  const g = G();
   const [c, e, v] = await Promise.all([
-    sb.from('avisos_validades_config').select('*').eq('id', 1).maybeSingle(),
-    sb.from('avisos_validades_enviados').select('numero,tipo,ate,dias,enviado_em').order('enviado_em', { ascending: false }).limit(1000),
-    validadesColaboradores().catch(() => null),
+    sb.from(g.tabCfg).select('*').eq('id', 1).maybeSingle(),
+    sb.from(g.tabEnv).select(`${g.colChave},tipo,ate,dias,enviado_em`).order('enviado_em', { ascending: false }).limit(1000),
+    g.validades().catch(() => null),
   ]);
+  if(g !== G()) return;
   if(c.error || !c.data){
     _cfg = null;
     _erro = c.error && /schema cache|does not exist/i.test(c.error.message) ? 'Os avisos por email ainda não estão instalados na base de dados.'
       : c.error ? 'Não foi possível ler a configuração: ' + c.error.message
-      : 'Não tem permissão para gerir os avisos (capítulo Recursos Humanos).';
+      : g.semPermissao;
     return;
   }
   _cfg = JSON.parse(JSON.stringify(c.data));
-  _cfg.regras = Object.fromEntries(Object.keys(TIPOS).map(k => [k, { ...REGRA_BASE, ...(_cfg.regras?.[k] || {}) }]));
+  _cfg.regras = Object.fromEntries(Object.keys(g.tipos).map(k => [k, { ...REGRA_BASE, ...(_cfg.regras?.[k] || {}) }]));
   _cfg.destinatarios = Array.isArray(_cfg.destinatarios) ? _cfg.destinatarios : [];
-  _enviados = e.data || [];
+  _enviados = (e.data || []).map(r => ({ ...r, chave: r[g.colChave] }));
   _valid = v;
   _alterado = false;
 }
@@ -89,13 +129,13 @@ async function _carregar(){
 // O que sai no próximo envio (08:00) e as datas dos avisos nos próximos 60 dias
 function _proximos(){
   if(!_valid || !_cfg) return [];
-  const h = hoje(), ja = new Set(_enviados.map(r => `${r.numero}|${r.tipo}|${r.ate}|${r.dias}`));
+  const h = hoje(), ja = new Set(_enviados.map(r => `${r.chave}|${r.tipo}|${r.ate}|${r.dias}`));
   const out = [];
   _valid.forEach(v => {
     const r = _cfg.regras[v.tipo]; if(!r?.ativo) return;
     const ds = diasAviso(r), faltam = diasEntre(h, v.ate);
     const devidos = ds.filter(d => faltam <= d);
-    if(devidos.length){ const d = Math.min(...devidos); if(!ja.has(`${v.numero}|${v.tipo}|${v.ate}|${d}`)) out.push({ ...v, agora: true, faltam, quando: h }); }
+    if(devidos.length){ const d = Math.min(...devidos); if(!ja.has(`${v.chave}|${v.tipo}|${v.ate}|${d}`)) out.push({ ...v, agora: true, faltam, quando: h }); }
     ds.filter(d => faltam > d).forEach(d => { const q = somaDias(v.ate, -d); if(diasEntre(h, q) <= 60) out.push({ ...v, agora: false, faltam: d, quando: q }); });
   });
   return out.sort((a, b) => (b.agora - a.agora) || a.quando.localeCompare(b.quando) || (a.faltam - b.faltam) || a.nome.localeCompare(b.nome, 'pt'));
@@ -114,10 +154,10 @@ function _desenhar(){
     const dest = cfg.destinatarios.length
       ? cfg.destinatarios.map((d, i) => `<span class="av-dest"><b>${esc(d.nome || d.email)}</b>${d.nome ? `<small>${esc(d.email)}</small>` : ''}<button type="button" onclick="avRemoverDest(${i})" aria-label="Remover ${esc(d.nome || d.email)}">×</button></span>`).join('')
       : '<span class="av-mute">Ainda ninguém recebe estes avisos.</span>';
-    const cartoes = Object.entries(TIPOS).map(([k, nome]) => {
+    const cartoes = Object.entries(G().tipos).map(([k, nome]) => {
       const r = cfg.regras[k];
       return `<div class="av-card${r.ativo ? '' : ' off'}" data-tipo="${k}">
-        <div class="av-card-h"><div><b>${nome}</b><small>${SUB[k]}</small></div>
+        <div class="av-card-h"><div><b>${nome}</b><small>${G().sub[k]}</small></div>
           <label class="av-sw" title="Avisar sobre este documento"><input type="checkbox" data-k="ativo" ${r.ativo ? 'checked' : ''} onchange="avCampo(this)"/><span></span></label></div>
         <div class="av-grid">
           ${_num('primeiro', '1.º aviso', r.primeiro, 'dias antes')}
@@ -134,8 +174,8 @@ function _desenhar(){
       : `<span class="dd-pill warn">${x.faltam ? `${x.faltam} d antes` : 'No dia'}</span>`;
     const lista = prox.length
       ? prox.map(x => `<div class="dd-row av-prox"><div class="av-q${x.agora ? ' now' : ''}">${x.agora ? 'Próximo<br>envio' : fmt(x.quando).slice(0, 5)}</div>
-          <div class="dd-tx"><b>${esc(x.nome)}</b><small>${TIPOS[x.tipo]} · válido até ${fmt(x.ate)}</small></div><div class="dd-pills">${sit(x)}</div></div>`).join('')
-      : `<div class="dd-vazio">${_valid === null ? 'Sem acesso às validades dos colaboradores.' : 'Não há avisos previstos nos próximos 60 dias.'}</div>`;
+          <div class="dd-tx"><b>${esc(x.nome)}</b><small>${x.ref ? esc(x.ref) + ' · ' : ''}${G().tipos[x.tipo]} · válido até ${fmt(x.ate)}</small></div><div class="dd-pills">${sit(x)}</div></div>`).join('')
+      : `<div class="dd-vazio">${_valid === null ? `Sem acesso às validades (${G().nome.toLowerCase()}).` : 'Não há avisos previstos nos próximos 60 dias.'}</div>`;
     const nAgora = prox.filter(x => x.agora).length;
     corpo = `
       <div class="av-on"><div><b>Enviar avisos por email</b><small>Todos os dias às 8h sai um único email com os avisos do dia.</small></div>
@@ -158,9 +198,11 @@ function _desenhar(){
   dr.innerHTML = `
     <div class="dd-h">
       <button class="dd-x" onclick="fecharAvisosValidades()" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      <small>Colaboradores</small>
+      <small>${G().nome}</small>
       <h2>Avisos por email</h2>
-      <p>Identificação, FA e EPI a caducar</p>
+      <p>${G().resumo}</p>
+      <div class="av-tabs" role="tablist">${Object.entries(GRUPOS).map(([k, g]) =>
+        `<button type="button" role="tab" aria-selected="${k === _grupo}" class="${k === _grupo ? 'on' : ''}" onclick="avGrupo('${k}')">${g.nome}</button>`).join('')}</div>
     </div>
     <div class="dd-b">${corpo}</div>
     ${rodape ? `<div class="dd-f">${rodape}</div>` : ''}`;
@@ -197,7 +239,7 @@ export function avRemoverDest(i){ _cfg.destinatarios.splice(i, 1); _alterado = t
 export async function avGuardar(){
   if(!_cfg || _aGuardar) return;
   _aGuardar = true; _desenhar();
-  const { error } = await sb.from('avisos_validades_config').update({
+  const { error } = await sb.from(G().tabCfg).update({
     ativo: _cfg.ativo, destinatarios: _cfg.destinatarios, regras: _cfg.regras,
     atualizado_em: new Date().toISOString(), atualizado_por: S.currentUser?.key || null,
   }).eq('id', 1);
@@ -209,7 +251,7 @@ export async function avTeste(){
   if(_alterado){ toast('Guarde primeiro as alterações'); return; }
   if(!_cfg?.destinatarios.length){ toast('Acrescente pelo menos um destinatário'); return; }
   toast('A enviar o email de teste…');
-  const { data, error } = await sb.functions.invoke('avisos-validades', { body: { acao: 'teste' } });
+  const { data, error } = await sb.functions.invoke('avisos-validades', { body: { acao: 'teste', grupo: _grupo } });
   let msg = data?.error;
   if(error){ try{ msg = (await error.context?.json())?.error || error.message; }catch{ msg = error.message; } }
   if(msg){ toast('Não foi possível enviar: ' + msg); return; }
