@@ -2293,3 +2293,10 @@ body.device-mobile .pr-resize{display:none}
 #eq-tab-recolha-nb,#eq-tab-manut-nb{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;margin-left:6px;border-radius:99px;background:#e0443e;color:#fff;font-size:12px;font-weight:700;line-height:1}
 #eq-tab-recolha-nb[hidden],#eq-tab-manut-nb[hidden]{display:none}
 #eq-view-recolha .d-empty{padding:28px;text-align:center;color:#5d6678;font-size:14px}
+
+/* Detalhe do equipamento: km/horas do último abastecimento (pílula no cabeçalho) */
+.eq-contador{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:6px 14px 6px 10px;border-radius:99px;background:#eef3ff;color:#173f9f;font-size:13px;line-height:1.2;max-width:100%}
+.eq-contador[hidden]{display:none}
+.eq-contador svg{width:16px;height:16px;flex:none}
+.eq-contador b{font-weight:800;font-size:14px;white-space:nowrap}
+.eq-contador span{opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

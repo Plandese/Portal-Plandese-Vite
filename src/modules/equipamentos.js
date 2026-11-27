@@ -506,6 +506,26 @@ function eqDocsContar(id){ contarEqDocs(EQUIPAMENTOS.find(e=>e.id===id), EQUIPAM
 window.eqDocsAtualizou = id => eqDocsContar(id);
 // Janela de detalhe do equipamento: escolher entre QR, manutenção, histórico e edição
 // (as outras janelas abrem por cima desta, que fica por baixo)
+// Km ou horas do equipamento: a leitura do contador mais recente registada num abastecimento
+// (registos_combustivel, sem os rejeitados). Veículos em km, máquinas em horas.
+async function eqContadorCarregar(eq){
+  const el=()=>document.getElementById('meqd-contador');
+  try{
+    const {data,error}=await sb.from('registos_combustivel')
+      .select('contador_valor,contador_tipo,data,obra_nome,aprovacao')
+      .eq('equipamento_id',eq.id).not('contador_valor','is',null).neq('aprovacao','rejeitado')
+      .order('data',{ascending:false}).order('criado_em',{ascending:false}).limit(1);
+    const box=el(); if(!box) return;
+    const r=!error&&data&&data[0];
+    if(!r) return;
+    const un=r.contador_tipo||(eqCatIsVeiculo(eq.categoria)?'km':'horas');
+    const val=Number(r.contador_valor).toLocaleString('pt-PT',{maximumFractionDigits:1});
+    box.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13l3.5-3.5"/><path d="M12 3v2"/></svg>
+      <b>${val} ${un==='km'?'km':'horas'}</b><span>${[r.data?eqDatePT(r.data):'',r.obra_nome].filter(Boolean).map(eqEsc).join(' · ')}${r.aprovacao==='pendente'?' · por aprovar':''}</span>`;
+    box.title='Último registo do contador num abastecimento (Combustíveis)';
+    box.hidden=false;
+  }catch(e){ console.warn('eqContadorCarregar:',e); }
+}
 function abrirEqDetalhe(id){
   const eq = EQUIPAMENTOS.find(e=>e.id===id); if(!eq) return;
   const pend = eqPendentes(eq.id).length;
@@ -522,6 +542,7 @@ function abrirEqDetalhe(id){
       </div>
       ${sub?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${sub}</div>`:''}
       <div style="font-size:12px;color:var(--gray-400);margin-top:3px">${eqEsc(eq.ultimoLocal||'Sem localização registada')}</div>
+      <div id="meqd-contador" class="eq-contador" hidden></div>
     </div>
     ${eq.propriedade==='aluguer'?`<div id="meqd-aluguer" class="eq-alu-box"></div>`:''}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
@@ -535,6 +556,7 @@ function abrirEqDetalhe(id){
   openModal('modal-eq-det');
   if(eq.propriedade==='aluguer') eqAluguerCarregar(eq.id);
   eqDocsContar(eq.id);
+  eqContadorCarregar(eq);
   if(eq.ultimoLat&&eq.ultimoLng) eqCidade(eq.ultimoLat,eq.ultimoLng).then(c=>{ const el=document.getElementById('meqd-cidade'); if(el) el.textContent=c||'Ver no mapa onde está o equipamento'; });
 }
 

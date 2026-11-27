@@ -1473,3 +1473,5 @@ body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover
 body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .nav-btn.active::before{left:-13px}
 body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .d-favs{margin-top:8px;padding-top:8px;border-top:1px solid var(--d-line2)}
 body.device-desktop:not(.enc-mode).d-nav-mini #admin-app .sidebar:is(:not(:hover),[data-sem-hover]) .nav-btn .nb:not([hidden]){position:absolute;top:7px;right:9px;min-width:10px;width:10px;height:10px;padding:0;font-size:0;border:2px solid #fff;box-sizing:content-box}
+body.device-desktop:not(.enc-mode) #modal-eq-det .dr-h .eq-contador{display:inline-flex;background:rgba(255,255,255,.16);color:#fff!important;border:1px solid rgba(255,255,255,.22)}
+body.device-desktop:not(.enc-mode) #modal-eq-det .dr-h .eq-contador[hidden]{display:none}
