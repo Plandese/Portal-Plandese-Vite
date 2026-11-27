@@ -347,6 +347,127 @@ function abrirEqObraDetalhe(i){
   openModal('modal-eq-obra-detalhe');
 }
 
+// ── Transferir equipamentos entre obras (duas obras lado a lado, arrastar com o rato) ──
+// Cada lado escolhe um «local»: uma obra (o:<id>) ou um local só em texto sem obra (t:<texto>).
+// Largar um equipamento no outro lado grava a obra/local no equipamento e um movimento no histórico.
+let _eqTr = { a:'', b:'' }, _eqTrArrastar = null;
+function _eqTrLocais(){
+  const m = new Map();
+  (S.OBRAS||[]).forEach(o=>{ if(o.ativa!==false || EQUIPAMENTOS.some(e=>e.obraId===o.id)) m.set('o:'+o.id, o.nome); });
+  EQUIPAMENTOS.forEach(e=>{ if(!e.obraId && e.ultimoLocal) m.set('t:'+e.ultimoLocal, e.ultimoLocal); });
+  return [...m].sort((x,y)=>x[1].localeCompare(y[1],'pt'));
+}
+const _eqTrNome = k => k.startsWith('o:') ? ((S.OBRAS||[]).find(o=>o.id===k.slice(2))?.nome || '') : k.slice(2);
+const _eqTrItens = k => !k ? [] : EQUIPAMENTOS
+  .filter(e=> k.startsWith('o:') ? e.obraId===k.slice(2) : (!e.obraId && e.ultimoLocal===k.slice(2)))
+  .sort((a,b)=>_eqOrdemEstado(a)-_eqOrdemEstado(b)||a.nome.localeCompare(b.nome,'pt'));
+const _eqTrChave = eq => eq.obraId ? 'o:'+eq.obraId : (eq.ultimoLocal ? 't:'+eq.ultimoLocal : '');
+
+function eqTransfAbrir(i){
+  // abre já com a obra do cartão (se vier de um cartão) do lado esquerdo
+  const ob = (i!=null) ? _eqObraGroups[i] : null;
+  if(ob?.items?.[0]) _eqTr.a = _eqTrChave(ob.items[0]);
+  let el = document.getElementById('modal-eq-transf');
+  if(!el){
+    el = document.createElement('div');
+    el.className = 'modal-bg'; el.id = 'modal-eq-transf';
+    el.innerHTML = `<div class="modal eqt-modal" role="dialog" aria-label="Transferir equipamentos entre obras">
+      <div class="eqt-h"><div><h2>Transferir entre obras</h2><p>Escolha duas obras e arraste os equipamentos de uma para a outra.</p></div>
+        <button type="button" class="eqt-x" data-eqt="fechar" aria-label="Fechar">×</button></div>
+      <div class="eqt-cols">${['a','b'].map(l=>`<section class="eqt-col" data-lado="${l}">
+          <label class="eqt-lbl" for="eqt-sel-${l}">${l==='a'?'Obra de origem':'Obra de destino'}</label>
+          <select id="eqt-sel-${l}" class="eqt-sel" data-lado="${l}"></select>
+          <input type="search" class="eqt-q" data-lado="${l}" placeholder="Filtrar por nome, matrícula ou código…" autocomplete="off">
+          <div class="eqt-n" data-lado="${l}"></div>
+          <div class="eqt-lista" data-lado="${l}"></div>
+        </section>`).join('')}</div>
+      <div class="eqt-f"><span>Os dois lados funcionam nos dois sentidos. A transferência fica no histórico do equipamento.</span>
+        <button type="button" class="eqt-btn" data-eqt="fechar">Fechar</button></div>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('mousedown', e=>{ el.dataset.fora = e.target===el ? '1' : ''; });
+    el.addEventListener('click', e=>{
+      if((e.target===el && el.dataset.fora) || e.target.closest('[data-eqt="fechar"]')) eqTransfFechar();
+    });
+    el.addEventListener('change', e=>{ const s=e.target.closest('.eqt-sel'); if(s){ _eqTr[s.dataset.lado]=s.value; _eqTrDesenhar(); } });
+    el.addEventListener('input', e=>{ if(e.target.closest('.eqt-q')) _eqTrDesenhar(); });
+    el.addEventListener('dragstart', e=>{
+      const c=e.target.closest('.eqt-eq'); if(!c) return;
+      _eqTrArrastar = { id:c.dataset.id, de:c.closest('.eqt-col').dataset.lado };
+      e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', c.dataset.id);
+      c.classList.add('drag'); el.classList.add('a-arrastar');
+    });
+    // limpa o estado do arrasto (no drop a lista é redesenhada e o dragend já não chega a esta janela)
+    const limpar=()=>{ el.classList.remove('a-arrastar'); el.querySelectorAll('.eqt-col.over').forEach(x=>x.classList.remove('over')); el.querySelectorAll('.eqt-eq.drag').forEach(x=>x.classList.remove('drag')); _eqTrArrastar=null; };
+    el.addEventListener('dragend', limpar);
+    el.addEventListener('dragover', e=>{
+      const col=e.target.closest('.eqt-col'); if(!col||!_eqTrArrastar||col.dataset.lado===_eqTrArrastar.de||!_eqTr[col.dataset.lado]) return;
+      e.preventDefault(); e.dataTransfer.dropEffect='move'; col.classList.add('over');
+    });
+    el.addEventListener('dragleave', e=>{ const col=e.target.closest('.eqt-col'); if(col && !col.contains(e.relatedTarget)) col.classList.remove('over'); });
+    el.addEventListener('drop', e=>{
+      const col=e.target.closest('.eqt-col'); if(!col||!_eqTrArrastar) return;
+      e.preventDefault();
+      const destino=_eqTr[col.dataset.lado], mov=_eqTrArrastar;
+      limpar();
+      if(col.dataset.lado!==mov.de && destino) _eqTrMover(mov.id, destino);
+    });
+  }
+  if(!_eqTr.b || _eqTr.b===_eqTr.a) _eqTr.b = '';
+  el.querySelectorAll('.eqt-q').forEach(q=>q.value='');
+  _eqTrDesenhar();
+  el.classList.add('open');
+}
+function eqTransfFechar(){
+  document.getElementById('modal-eq-transf')?.classList.remove('open');
+  if(_eqView==='obra') renderEqPorObra();
+}
+function _eqTrDesenhar(){
+  const el=document.getElementById('modal-eq-transf'); if(!el) return;
+  const locais=_eqTrLocais();
+  ['a','b'].forEach(l=>{
+    const outro=_eqTr[l==='a'?'b':'a'];
+    const sel=el.querySelector(`.eqt-sel[data-lado="${l}"]`);
+    sel.innerHTML=`<option value="">Escolher obra…</option>`+locais.filter(([k])=>k!==outro)
+      .map(([k,n])=>`<option value="${eqEsc(k)}"${k===_eqTr[l]?' selected':''}>${eqEsc(n)} (${_eqTrItens(k).length})</option>`).join('');
+    const termo=_eqSemAc(el.querySelector(`.eqt-q[data-lado="${l}"]`).value).trim();
+    const todos=_eqTrItens(_eqTr[l]);
+    const lista=todos.filter(e=>!termo||_eqSemAc([e.nome,e.codigo,e.matricula,e.marcaModelo].join(' ')).includes(termo));
+    el.querySelector(`.eqt-n[data-lado="${l}"]`).textContent = !_eqTr[l] ? '' :
+      (lista.length===todos.length ? `${todos.length} equipamento${todos.length!==1?'s':''}` : `${lista.length} de ${todos.length} equipamentos`);
+    el.querySelector(`.eqt-lista[data-lado="${l}"]`).innerHTML = !_eqTr[l]
+      ? `<div class="eqt-vazio">Escolha a obra ${l==='a'?'de origem':'de destino'}.</div>`
+      : lista.length ? lista.map(e=>`<div class="eqt-eq" draggable="true" data-id="${e.id}" title="Arraste para a outra obra">
+            <span class="eqt-grip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+            <div class="eqt-eq-tx"><b>${eqEsc(e.nome)}</b><div>${eqCatBadge(e.categoria)} ${eqEstadoBadge(e.estado)}</div></div>
+          </div>`).join('')
+        : `<div class="eqt-vazio">${todos.length?'Nenhum equipamento corresponde ao filtro.':'Sem equipamentos. Arraste para aqui.'}</div>`;
+  });
+}
+async function _eqTrMover(eqId, destino){
+  const eq=EQUIPAMENTOS.find(e=>e.id===eqId); if(!eq) return;
+  const de=eqObraNome(eq)||'sem local', para=_eqTrNome(destino);
+  const antes={ obraId:eq.obraId, ultimoLocal:eq.ultimoLocal, ultimoRegisto:eq.ultimoRegisto, ultimoLat:eq.ultimoLat, ultimoLng:eq.ultimoLng };
+  const agora=new Date().toISOString(), obraId=destino.startsWith('o:')?destino.slice(2):null;
+  // a localização GPS antiga deixa de valer depois de mudar de obra
+  Object.assign(eq,{ obraId, ultimoLocal:para, ultimoRegisto:agora, ultimoLat:null, ultimoLng:null });
+  _eqTrDesenhar();
+  const {data,error}=await sb.from('equipamentos')
+    .update({ obra_id:obraId, ultimo_local:para, ultimo_registo:agora, ultimo_lat:null, ultimo_lng:null }).eq('id',eqId).select('id');
+  if(error||!data?.length){
+    Object.assign(eq,antes); _eqTrDesenhar();
+    showToast('Não foi possível transferir: '+(error?.message||'sem permissão')); return;
+  }
+  saveEqLocal();
+  const quem=S.currentUser?.nome||S.currentUser?.key||'Portal';
+  const mov={ equip_id:eqId, obra_id:obraId, obra_nome:para, obs:`Transferido de «${de}» no portal`.slice(0,500), encarregado:String(quem).slice(0,100), criado_em:agora };
+  const {error:em}=await sb.from('eq_movimentos').insert(mov);
+  if(em) console.warn('eq_movimentos:',em);
+  else EQ_MOVIMENTOS.push({ id:'MOV'+Date.now().toString(36).toUpperCase(), equipId:eqId, obraId, obraNome:para, lat:null, lng:null, obs:mov.obs, encarregado:mov.encarregado, criadoEm:agora });
+  showToast(`${eq.nome} → ${para}`);
+  R.emitEvent?.({ acao:`Equipamento transferido: ${eq.nome} → ${para}`, seccao:'equipamentos' });
+}
+
 // ── Vista "Manutenção" (quadro Pendente/Resolvida) ──
 // Miniaturas das fotografias de um pedido (bucket privado → URLs assinados, carregados após o render)
 function eqManutFotosHtml(m){
@@ -1379,7 +1500,7 @@ export {
   showQrCode, printQrCode, showEqHistorico, exportEquipamentosXLSX, eqAluguerClick, eqQrAbrir, eqQrFechar, eqQrFoto, eqObrasPickerFiltra, eqObrasPickerEscolher,
   openEqManut, eqAbrirDocs, eqManutFotoAbrir, abrirEqDetalhe, eqVerLocalizacao, addEqManut, toggleEqManut, removeEqManut, eqManutFromRow,
   switchEqView, renderEqPorObra, abrirEqObraDetalhe, eqRecolhaFeita,
-  renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra,
+  renderEqManutBoard, abrirEqManutPicker, eqManutPickFiltra, eqTransfAbrir,
   sbLoadEquipamentos, sbFetchEquipamentoById, sbUpsertEquipamento, sbUpdateEquipamentoLocal,
   initEquipamentos, initQrRegistration, qrRegistarLeitura, submitQrRegistration,
   qrGasValidar, qrGasOrigem, qrGasSubmeter, qrGasNovo

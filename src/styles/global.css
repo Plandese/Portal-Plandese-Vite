@@ -2305,3 +2305,42 @@ body.device-mobile .pr-resize{display:none}
 .eq-contador .eqc-tx b{font-size:20px;font-weight:800;letter-spacing:-.3px;color:#173f9f;white-space:nowrap;margin:1px 0 2px}
 .eq-contador .eqc-data,.eq-contador .eqc-obra{font-size:12.5px;color:#5d6678;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .eq-contador .eqc-obra{color:#1b2130;font-weight:600}
+
+/* ═══ Equipamentos › Por Obra › Transferir entre obras (arrastar) — design novo ═══ */
+.eqt-barra{display:flex;justify-content:flex-end;margin:0 0 14px}
+.eqt-abrir{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 20px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);background:#fff;color:var(--m-brand,#173f9f);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.eqt-abrir:hover{background:var(--m-brand,#173f9f);color:#fff}
+.eqt-abrir svg{width:18px;height:18px}
+#modal-eq-transf{z-index:2400}
+.eqt-modal{width:min(1120px,96vw)!important;max-width:96vw!important;height:min(780px,92vh);padding:0!important;border-radius:24px!important;overflow:hidden;display:flex;flex-direction:column;background:#fff}
+.eqt-h{position:relative;overflow:hidden;flex:none;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px 28px 26px;background:var(--m-brand,#173f9f);color:#fff}
+.eqt-h::before{content:'';position:absolute;right:-60px;top:-90px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.07)}
+.eqt-h > *{position:relative}
+.eqt-h h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.3px;color:#fff}
+.eqt-h p{margin:4px 0 0;font-size:14px;opacity:.85}
+.eqt-x{width:40px;height:40px;flex:none;border-radius:99px;border:1.5px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:22px;line-height:1;cursor:pointer}
+.eqt-x:hover{background:rgba(255,255,255,.14)}
+.eqt-cols{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 24px 12px}
+.eqt-col{min-height:0;display:flex;flex-direction:column;padding:16px;border:1.5px solid #e3e7ee;border-radius:22px;background:#f8fafd;transition:border-color .15s,background .15s}
+.eqt-lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5d6678;margin:0 2px 6px}
+.eqt-sel,.eqt-q{width:100%;box-sizing:border-box;height:50px;border:1.5px solid #b9c1ce;border-radius:14px;padding:0 14px;font-family:inherit;font-size:16px;color:var(--m-ink,#1b2130);background:#fff;outline:none}
+.eqt-q{height:44px;font-size:15px;margin-top:8px}
+.eqt-sel:focus,.eqt-q:focus{border-color:var(--m-brand,#173f9f);box-shadow:0 0 0 4px rgba(23,63,159,.13)}
+.eqt-n{font-size:13px;color:#5d6678;margin:10px 4px 6px;min-height:16px}
+.eqt-lista{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px}
+.eqt-eq{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #e3e7ee;border-radius:16px;background:#fff;cursor:grab;user-select:none}
+.eqt-eq:hover{border-color:#c0cde9;box-shadow:0 6px 18px rgba(23,63,159,.08)}
+.eqt-eq:active{cursor:grabbing}
+.eqt-eq.drag{opacity:.45}
+.eqt-grip{flex:none;color:#9aa3b5;display:flex}
+.eqt-grip svg{width:18px;height:18px}
+.eqt-eq-tx{min-width:0}
+.eqt-eq-tx b{display:block;font-size:14px;color:var(--m-ink,#1b2130);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eqt-eq-tx div{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
+.eqt-vazio{padding:28px 12px;text-align:center;font-size:14px;color:#8a93a5;border:1.5px dashed #d5dae3;border-radius:16px}
+#modal-eq-transf.a-arrastar .eqt-col:not(.over) .eqt-lista{opacity:.9}
+.eqt-col.over{border-color:var(--m-brand,#173f9f);border-style:dashed;background:#eef3ff}
+.eqt-f{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 24px 18px;border-top:1px solid #eef1f6}
+.eqt-f span{font-size:13px;color:#5d6678}
+.eqt-btn{height:46px;padding:0 26px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);background:#fff;color:var(--m-brand,#173f9f);font-family:inherit;font-size:15.5px;font-weight:600;cursor:pointer}
+@media (max-width:760px){.eqt-cols{grid-template-columns:1fr;overflow-y:auto}.eqt-col{min-height:320px}.eqt-f span{display:none}}
