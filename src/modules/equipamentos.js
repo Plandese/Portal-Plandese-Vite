@@ -524,6 +524,7 @@ async function eqContadorCarregar(eq){
       <b>${val} ${un==='km'?'km':'horas'}</b><span>${[r.data?eqDatePT(r.data):'',r.obra_nome].filter(Boolean).map(eqEsc).join(' · ')}${r.aprovacao==='pendente'?' · por aprovar':''}</span>`;
     box.title='Último registo do contador num abastecimento (Combustíveis)';
     box.hidden=false;
+    box.parentElement?.classList.add('tem-contador');
   }catch(e){ console.warn('eqContadorCarregar:',e); }
 }
 function abrirEqDetalhe(id){
