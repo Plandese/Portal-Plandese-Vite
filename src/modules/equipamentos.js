@@ -117,7 +117,8 @@ function eqManutFromRow(row){
   return { id:row.id, equipId:row.equip_id, data:row.data||'', descricao:row.descricao,
            custo:row.custo==null?'':row.custo, estado:row.estado||'pendente',
            origem:row.origem||'portal', solicitanteNome:row.solicitante_nome||'',
-           obraNome:row.obra_nome||'', criadoEm:row.criado_em, fotos:row.fotos||[] };
+           obraNome:row.obra_nome||'', criadoEm:row.criado_em, fotos:row.fotos||[],
+           resolvidaEm:row.resolvida_em||null };
 }
 
 // ── Helpers ────────────────────────────
@@ -402,7 +403,10 @@ function renderEqManutBoard(){
   if(equipFilt) items = items.filter(m=>m.equipId===equipFilt);
   if(obraFilt)  items = items.filter(m=>(equipMap[m.equipId]?.ultimoLocal||'')===obraFilt);
   const pend = items.filter(m=>m.estado==='pendente').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
-  const done = items.filter(m=>m.estado==='resolvida').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
+  // Resolvidas só ficam no quadro 7 dias depois de resolvidas (o histórico continua na ficha do equipamento)
+  const limite = Date.now() - 7*24*3600*1000;
+  const done = items.filter(m=>m.estado==='resolvida' && m.resolvidaEm && new Date(m.resolvidaEm).getTime()>=limite)
+                    .sort((a,b)=>new Date(b.resolvidaEm)-new Date(a.resolvidaEm));
 
   // Um cartão por equipamento: várias pendências do mesmo equipamento ficam juntas
   // (grupos ordenados pelo pedido mais recente, que já vem primeiro na lista).
@@ -1131,7 +1135,8 @@ async function toggleEqManut(id){
   const novo=m.estado==='pendente'?'resolvida':'pendente';
   const {error}=await sb.from('eq_manutencoes').update({estado:novo}).eq('id',id);
   if(error){ showToast('Erro ao atualizar a manutenção'); renderEqManut(); return; }
-  m.estado=novo; renderEqManut(); _eqManutRefreshViews();
+  m.estado=novo; m.resolvidaEm = novo==='resolvida' ? new Date().toISOString() : null;
+  renderEqManut(); _eqManutRefreshViews();
 }
 // Dois cliques em vez de confirm(): os diálogos nativos são bloqueados em alguns
 // ecrãs/webviews e o botão parecia "não fazer nada".
