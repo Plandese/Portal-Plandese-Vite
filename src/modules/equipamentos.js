@@ -404,24 +404,44 @@ function renderEqManutBoard(){
   const pend = items.filter(m=>m.estado==='pendente').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
   const done = items.filter(m=>m.estado==='resolvida').sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm));
 
-  const cardHtml = m=>{
-    const eq   = equipMap[m.equipId];
-    const meta = [m.data?eqDatePT(m.data):'', m.custo!==''?(+m.custo).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €':''].filter(Boolean).join(' · ');
-    const rodape = [eq?.ultimoLocal, meta, m.solicitanteNome].filter(Boolean).join(' · ');
-    return `<div class="card" style="padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="openEqManut('${m.equipId}')">
+  // Um cartão por equipamento: várias pendências do mesmo equipamento ficam juntas
+  // (grupos ordenados pelo pedido mais recente, que já vem primeiro na lista).
+  const agrupar = list=>{
+    const grupos = new Map();
+    list.forEach(m=>{ if(!grupos.has(m.equipId)) grupos.set(m.equipId,[]); grupos.get(m.equipId).push(m); });
+    return [...grupos.values()];
+  };
+  const itemHtml = (m, primeiro)=>{
+    const meta = [m.data?eqDatePT(m.data):'', m.custo!==''&&m.custo!=null?(+m.custo).toLocaleString('pt-PT',{minimumFractionDigits:2})+' €':''].filter(Boolean).join(' · ');
+    const rodape = [meta, m.solicitanteNome].filter(Boolean).join(' · ');
+    return `<div style="${primeiro?'margin-top:6px':'margin-top:9px;padding-top:9px;border-top:1px solid var(--gray-100,#eef1f6)'}">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${eqEsc(eq?eq.nome:m.equipId)}</div>
+        <div style="font-size:12px;color:var(--gray-600)">${eqEsc(m.descricao)}</div>
         ${eqManutOrigemBadge(m)}
       </div>
-      <div style="font-size:12px;color:var(--gray-600);margin-top:5px">${eqEsc(m.descricao)}</div>
-      ${rodape?`<div style="font-size:11px;color:var(--gray-400);margin-top:6px">${eqEsc(rodape)}</div>`:''}
+      ${rodape?`<div style="font-size:11px;color:var(--gray-400);margin-top:4px">${eqEsc(rodape)}</div>`:''}
       ${eqManutFotosHtml(m)}
+    </div>`;
+  };
+  const cardHtml = (grupo, estado)=>{
+    const m0 = grupo[0];
+    const eq = equipMap[m0.equipId];
+    const n  = grupo.length;
+    const cor = estado==='pendente' ? 'background:#fdecec;color:#b91c1c' : 'background:#e7f6ee;color:#15803d';
+    const etiqueta = n>1 ? `<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;${cor};flex-shrink:0">${n} ${estado==='pendente'?'pendentes':'resolvidas'}</span>` : '';
+    return `<div class="card" style="padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="openEqManut('${m0.equipId}')">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${eqEsc(eq?eq.nome:m0.equipId)}</div>
+        ${etiqueta}
+      </div>
+      ${eq?.ultimoLocal?`<div style="font-size:11px;color:var(--gray-400);margin-top:2px">${eqEsc(eq.ultimoLocal)}</div>`:''}
+      ${grupo.map((m,i)=>itemHtml(m,i===0)).join('')}
     </div>`;
   };
   const colP = document.getElementById('eq-manut-col-pendente');
   const colD = document.getElementById('eq-manut-col-resolvida');
-  if(colP) colP.innerHTML = pend.length ? pend.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções pendentes</div>';
-  if(colD) colD.innerHTML = done.length ? done.map(cardHtml).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções resolvidas</div>';
+  if(colP) colP.innerHTML = pend.length ? agrupar(pend).map(g=>cardHtml(g,'pendente')).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções pendentes</div>';
+  if(colD) colD.innerHTML = done.length ? agrupar(done).map(g=>cardHtml(g,'resolvida')).join('') : '<div style="text-align:center;padding:20px;color:var(--gray-300);font-size:12px">Sem manutenções resolvidas</div>';
   eqManutCarregarFotos(colP); eqManutCarregarFotos(colD);
   const cP = document.getElementById('eq-manut-count-pend'); if(cP) cP.textContent = pend.length;
   const cD = document.getElementById('eq-manut-count-done'); if(cD) cD.textContent = done.length;
