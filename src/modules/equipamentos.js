@@ -355,6 +355,8 @@ function _eqTrLocais(){
   const m = new Map();
   (S.OBRAS||[]).forEach(o=>{ if(o.ativa!==false || EQUIPAMENTOS.some(e=>e.obraId===o.id)) m.set('o:'+o.id, o.nome); });
   EQUIPAMENTOS.forEach(e=>{ if(!e.obraId && e.ultimoLocal) m.set('t:'+e.ultimoLocal, e.ultimoLocal); });
+  // um local escolhido continua na lista mesmo depois de ficar sem equipamentos (para se poder voltar a largar lá)
+  [_eqTr.a,_eqTr.b].forEach(k=>{ if(k && !m.has(k)) m.set(k, _eqTrNome(k)||k.slice(2)); });
   return [...m].sort((x,y)=>x[1].localeCompare(y[1],'pt'));
 }
 const _eqTrNome = k => k.startsWith('o:') ? ((S.OBRAS||[]).find(o=>o.id===k.slice(2))?.nome || '') : k.slice(2);

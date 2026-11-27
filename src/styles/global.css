@@ -2308,6 +2308,7 @@ body.device-mobile .pr-resize{display:none}
 
 /* ═══ Equipamentos › Por Obra › Transferir entre obras (arrastar) — design novo ═══ */
 .eqt-barra{display:flex;justify-content:flex-end;margin:0 0 14px}
+body.device-mobile .eqt-barra{display:none} /* arrastar com o rato não funciona no toque */
 .eqt-abrir{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 20px;border-radius:99px;border:1.5px solid var(--m-brand,#173f9f);background:#fff;color:var(--m-brand,#173f9f);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
 .eqt-abrir:hover{background:var(--m-brand,#173f9f);color:#fff}
 .eqt-abrir svg{width:18px;height:18px}
